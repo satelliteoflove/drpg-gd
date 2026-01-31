@@ -1,3 +1,4 @@
+class_name CombatRNGClass
 extends Node
 
 static var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
