@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Monster" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://resources/monster.gd" id="1_monster"]
+[ext_resource type="Script" path="res://resources/monster_attack.gd" id="2_attack"]
+
+[sub_resource type="Resource" id="attack_1"]
+script = ExtResource("2_attack")
+attack_name = "Slime Tackle"
+damage_dice = "1d4"
+accuracy_bonus = 0
+effect = ""
+effect_chance = 0.0
+
+[resource]
+script = ExtResource("1_monster")
+monster_name = "Slime"
+max_hp = 15
+strength = 8
+agility = 8
+defense = 0
+evasion = 0
+exp_reward = 5
+gold_reward_dice = "1d6"
+attacks = [SubResource("attack_1")]

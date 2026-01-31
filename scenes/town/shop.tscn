@@ -1,0 +1,299 @@
+[gd_scene load_steps=2 format=3 uid="uid://dashop00001"]
+
+[ext_resource type="Script" path="res://scenes/town/shop.gd" id="1_script"]
+
+[node name="Shop" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.12, 0.1, 0.14, 1)
+
+[node name="MainHBox" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+theme_override_constants/separation = 16
+
+[node name="LeftPanel" type="VBoxContainer" parent="MainHBox"]
+custom_minimum_size = Vector2(450, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="MainHBox/LeftPanel"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "SHOP"
+theme_override_font_sizes/font_size = 24
+
+[node name="GoldLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
+layout_mode = 2
+text = "Gold: 0"
+horizontal_alignment = 2
+
+[node name="ScrapLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
+layout_mode = 2
+text = "Scrap: 0"
+horizontal_alignment = 2
+
+[node name="ModeContainer" type="HBoxContainer" parent="MainHBox/LeftPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BuyButton" type="Button" parent="MainHBox/LeftPanel/ModeContainer"]
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "Buy"
+
+[node name="SellButton" type="Button" parent="MainHBox/LeftPanel/ModeContainer"]
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+toggle_mode = true
+text = "Sell"
+
+[node name="ModeLabel" type="Label" parent="MainHBox/LeftPanel/ModeContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "< Buy >"
+horizontal_alignment = 1
+
+[node name="CapacityLabel" type="Label" parent="MainHBox/LeftPanel/ModeContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Inventory: 0/30"
+horizontal_alignment = 2
+
+[node name="ItemsPanel" type="PanelContainer" parent="MainHBox/LeftPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/LeftPanel/ItemsPanel"]
+layout_mode = 2
+
+[node name="ItemsList" type="VBoxContainer" parent="MainHBox/LeftPanel/ItemsPanel/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MessageLabel" type="Label" parent="MainHBox/LeftPanel"]
+layout_mode = 2
+text = "Welcome to the Shop."
+horizontal_alignment = 1
+
+[node name="HelpLabel" type="Label" parent="MainHBox/LeftPanel"]
+layout_mode = 2
+text = "Left/Right: Switch mode | Up/Down: Navigate | Enter: Select | Esc: Back"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+
+[node name="BackButton" type="Button" parent="MainHBox/LeftPanel"]
+layout_mode = 2
+text = "Back to Town"
+
+[node name="RightPanel" type="VBoxContainer" parent="MainHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="InfoPanel" type="PanelContainer" parent="MainHBox/RightPanel"]
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+
+[node name="InfoLabel" type="RichTextLabel" parent="MainHBox/RightPanel/InfoPanel"]
+layout_mode = 2
+bbcode_enabled = true
+text = "Select an item to view details."
+
+[node name="ComparisonLabel" type="Label" parent="MainHBox/RightPanel"]
+layout_mode = 2
+text = "Party Comparison"
+
+[node name="ComparisonPanel" type="PanelContainer" parent="MainHBox/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/RightPanel/ComparisonPanel"]
+layout_mode = 2
+
+[node name="ComparisonList" type="VBoxContainer" parent="MainHBox/RightPanel/ComparisonPanel/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ModalOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.7)
+
+[node name="QuantityDialog" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -80.0
+offset_right = 150.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DialogBg" type="ColorRect" parent="QuantityDialog"]
+layout_mode = 2
+color = Color(0.15, 0.12, 0.18, 1)
+
+[node name="VBox" type="VBoxContainer" parent="QuantityDialog"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="QuantityTitle" type="Label" parent="QuantityDialog/VBox"]
+layout_mode = 2
+text = "Select Quantity"
+horizontal_alignment = 1
+
+[node name="QuantityHBox" type="HBoxContainer" parent="QuantityDialog/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="MinusButton" type="Button" parent="QuantityDialog/VBox/QuantityHBox"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "-"
+
+[node name="QuantityValue" type="Label" parent="QuantityDialog/VBox/QuantityHBox"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlusButton" type="Button" parent="QuantityDialog/VBox/QuantityHBox"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "+"
+
+[node name="TotalLabel" type="Label" parent="QuantityDialog/VBox"]
+layout_mode = 2
+text = "Total: 0 gold"
+horizontal_alignment = 1
+
+[node name="ButtonsHBox" type="HBoxContainer" parent="QuantityDialog/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="ConfirmQuantity" type="Button" parent="QuantityDialog/VBox/ButtonsHBox"]
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "Buy"
+
+[node name="CancelQuantity" type="Button" parent="QuantityDialog/VBox/ButtonsHBox"]
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "Cancel"
+
+[node name="EquipDialog" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -120.0
+offset_right = 180.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DialogBg" type="ColorRect" parent="EquipDialog"]
+layout_mode = 2
+color = Color(0.15, 0.12, 0.18, 1)
+
+[node name="VBox" type="VBoxContainer" parent="EquipDialog"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="EquipTitle" type="Label" parent="EquipDialog/VBox"]
+layout_mode = 2
+text = "Purchase Equipment"
+horizontal_alignment = 1
+
+[node name="EquipItemName" type="Label" parent="EquipDialog/VBox"]
+layout_mode = 2
+text = "Item Name - 100 gold"
+horizontal_alignment = 1
+
+[node name="EquipOptions" type="VBoxContainer" parent="EquipDialog/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CancelEquip" type="Button" parent="EquipDialog/VBox"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="UpgradeDialog" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -120.0
+offset_right = 180.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DialogBg" type="ColorRect" parent="UpgradeDialog"]
+layout_mode = 2
+color = Color(0.15, 0.12, 0.18, 1)
+
+[node name="VBox" type="VBoxContainer" parent="UpgradeDialog"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="UpgradeTitle" type="Label" parent="UpgradeDialog/VBox"]
+layout_mode = 2
+text = "Select Stat to Upgrade"
+horizontal_alignment = 1
+
+[node name="UpgradeItemName" type="Label" parent="UpgradeDialog/VBox"]
+layout_mode = 2
+text = "Item Name"
+horizontal_alignment = 1
+
+[node name="UpgradeOptions" type="VBoxContainer" parent="UpgradeDialog/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CancelUpgrade" type="Button" parent="UpgradeDialog/VBox"]
+layout_mode = 2
+text = "Cancel"

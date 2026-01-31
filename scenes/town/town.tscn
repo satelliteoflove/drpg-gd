@@ -1,0 +1,78 @@
+[gd_scene load_steps=2 format=3 uid="uid://cqauit0ymcu2"]
+
+[ext_resource type="Script" uid="uid://dgfhj4yg3ql0i" path="res://scenes/town/town.gd" id="1_n11nm"]
+
+[node name="Town" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_n11nm")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.15, 0.12, 0.1, 1)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -150.0
+offset_right = 100.0
+offset_bottom = 150.0
+
+[node name="Title" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "TOWN"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+
+[node name="TavernButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Tavern"
+
+[node name="ShopButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Shop"
+
+[node name="PartyButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Party"
+
+[node name="InnButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Inn"
+
+[node name="TempleButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Temple"
+
+[node name="TrainingButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Training Grounds"
+
+[node name="Spacer2" type="Control" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+
+[node name="DungeonButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Enter Dungeon"
+
+[node name="TestCombatButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Test Combat (Debug)"
+
+[node name="MainMenuButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "Main Menu"

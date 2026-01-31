@@ -1,0 +1,1090 @@
+# DRPG2 Godot Port - Implementation Plan
+# This is the authoritative reference for architecture and implementation.
+# Edit sections as decisions are made or work is completed.
+
+meta:
+  project: drpg-gd
+  source: ~/Documents/the4ofus/repos/drpg2/
+  godot_version: "4.5"
+  language: GDScript (strict static typing)
+  last_updated: 2026-01-26
+
+# =============================================================================
+# CORE DECISIONS
+# =============================================================================
+
+decisions:
+  rendering:
+    choice: GridMap-based 3D
+    rationale: |
+      Native Godot tool for grid-based 3D levels.
+      Instanced rendering, built-in collision, MCP tooling support.
+    not_chosen:
+      - Pre-rendered 2D views (inflexible)
+      - Shader raycasting (complex)
+      - Procedural MeshInstance3D (not idiomatic, performance issues)
+
+  movement:
+    choice: Grid-based instant steps
+    behavior:
+      - Forward/backward moves one cell instantly
+      - Left/right rotates 90 degrees instantly
+      - No interpolation initially (can add as polish)
+    rationale: Matches classic Wizardry feel, simpler to implement
+
+  scene_transitions:
+    choice: Always use SceneManager
+    rationale: |
+      Clean state on each scene load.
+      _ready() runs fresh with predictable initialization.
+      No race conditions from deferred cleanup.
+    applies_to:
+      - Main menu to town
+      - Town to dungeon
+      - Dungeon floor to floor (NOT in-place reload)
+      - Dungeon to combat
+      - Combat back to dungeon
+
+  data_persistence:
+    choice: Resource-based with GameState caching
+    pattern: |
+      GameState (autoload) holds runtime data.
+      Resources for serializable data (characters, dungeons, items).
+      SaveManager handles disk serialization.
+
+  class_references:
+    choice: Use class_name, fix underlying issues
+    issue: |
+      Currently using preload() workarounds because class_name resolution failed.
+      This indicates project structure or dependency issues to fix.
+    fix: Ensure no circular dependencies, proper script loading order
+
+# =============================================================================
+# PROJECT STRUCTURE
+# =============================================================================
+
+structure:
+  autoload:
+    game_state.gd:
+      purpose: Global runtime state
+      contains:
+        - current_mode (enum)
+        - current_floor (int)
+        - party (Resource)
+        - roster (Resource)
+        - dungeon_floors (Dictionary cache)
+        - dungeon_spawn_at_stairs_up (bool)
+      signals:
+        - floor_changed(new_floor)
+        - combat_started(encounter_data)
+        - combat_ended(victory)
+        - party_member_died(character)
+        - game_saved()
+        - game_loaded()
+
+    scene_manager.gd:
+      purpose: All scene transitions
+      methods:
+        - go_to_main_menu()
+        - go_to_town()
+        - go_to_dungeon(floor_num, spawn_at_stairs_up)
+        - go_to_combat(encounter_data)
+        - return_from_combat()
+      implementation: Uses get_tree().change_scene_to_file()
+
+    audio_manager.gd:
+      purpose: Music and SFX playback
+      status: Stub for now, implement in Phase 5
+
+    save_manager.gd:
+      purpose: Save/load game state to disk
+      status: Stub for now, implement in Phase 5
+
+  scenes:
+    main_menu/:
+      files: [main_menu.tscn, main_menu.gd]
+      status: Done (basic)
+
+    town/:
+      files: [town.tscn, town.gd]
+      status: Done (basic placeholder)
+      todo: Phase 4 - full town implementation
+
+    dungeon/:
+      files:
+        - dungeon.tscn
+        - dungeon.gd
+        - dungeon_meshes.tres (MeshLibrary)
+      status: Needs refactor to GridMap
+
+    combat/:
+      files: [combat.tscn, combat.gd]
+      status: Placeholder only
+      todo: Phase 3 implementation
+
+  systems:
+    dungeon/:
+      dungeon_generator.gd:
+        purpose: Procedural dungeon generation
+        status: Done, working correctly
+        output: DungeonData Resource
+
+    combat/:
+      todo: Phase 3
+      files_planned:
+        - combat_system.gd
+        - initiative_tracker.gd
+        - status_effects.gd
+
+    magic/:
+      todo: Phase 3
+      files_planned:
+        - spell_caster.gd
+        - spell_registry.gd
+
+  resources:
+    dungeon_tile.gd:
+      status: Done
+      purpose: Single tile with wall flags, special type
+
+    dungeon_room.gd:
+      status: Done
+      purpose: Room bounds and metadata
+
+    dungeon_data.gd:
+      status: Done
+      purpose: Complete floor data
+
+    character.gd:
+      status: Not started
+      todo: Phase 4
+
+    party.gd:
+      status: Not started
+      todo: Phase 4
+
+    monster.gd:
+      status: Not started
+      todo: Phase 3
+
+  entities:
+    purpose: Runtime entity classes (if needed beyond Resources)
+    status: May not be needed - evaluate during implementation
+
+  data:
+    purpose: Static game data as .tres files
+    subdirs: [races, classes, monsters, items, spells, encounters]
+    status: Not started
+    todo: Phase 3-4 as needed
+
+# =============================================================================
+# PHASE 1: SKELETON (MOSTLY COMPLETE)
+# =============================================================================
+
+phase_1:
+  name: Skeleton
+  status: Complete with issues
+
+  completed:
+    - Project structure created
+    - Autoloads registered (GameState, SceneManager, AudioManager, SaveManager)
+    - Basic scene navigation working
+    - Main menu, town, dungeon, combat placeholder scenes
+
+  issues_to_fix:
+    - class_name resolution (using preload workarounds)
+    - Scene files may have stale references
+
+# =============================================================================
+# PHASE 2: DUNGEON (NEEDS REFACTOR)
+# =============================================================================
+
+phase_2:
+  name: Dungeon
+  status: Complete - refactored to pure GridMap architecture
+
+  completed:
+    - Pure GridMap rendering (6 GridMaps)
+    - Procedural generation algorithm
+    - Grid-based movement with proper tile centering
+    - Wall collision detection
+    - Stairs up/down detection
+    - Floor caching via GameState
+    - Scene-based floor transitions via SceneManager
+    - OmniLight torch atmosphere
+    - Ceiling tiles
+    - 30fps frame limiter
+
+  architecture:
+    rendering:
+      approach: 6 GridMaps (1 item per cell limitation)
+      gridmaps:
+        - FloorGridMap: floor tiles + stairs markers
+        - CeilingGridMap: ceiling tiles
+        - NorthWallGridMap: north-facing walls
+        - SouthWallGridMap: south-facing walls
+        - EastWallGridMap: east-facing walls
+        - WestWallGridMap: west-facing walls
+      mesh_libraries: Created programmatically in _setup_grid_maps()
+      cell_size: 2.0 x 2.0 x 2.0 meters
+
+    camera:
+      positioning: Cell center (grid_pos * CELL_SIZE + CELL_SIZE/2)
+      height: 1.6 meters
+      fov: 75 degrees
+
+    lighting:
+      player_light: OmniLight3D attached to camera
+      range: 12 meters
+      ambient: Dark (0.05, 0.05, 0.08) at 0.3 energy
+
+    floor_transitions:
+      method: SceneManager.go_to_dungeon(floor_num, spawn_at_stairs_up)
+      caching: GameState.dungeon_floors dictionary
+      spawn: Based on GameState.dungeon_spawn_at_stairs_up flag
+
+    files:
+      - scenes/dungeon/dungeon.tscn
+      - scenes/dungeon/dungeon.gd
+      - systems/dungeon/dungeon_generator.gd
+      - resources/dungeon_tile.gd
+      - resources/dungeon_room.gd
+      - resources/dungeon_data.gd
+
+  resolved_questions:
+    wall_positioning:
+      decision: Cell edge (confirmed by existing code)
+      rationale: |
+        Generator sets walls based on adjacency to solid tiles.
+        Renderer positions walls at CELL_SIZE/2.0 offsets.
+        All logic expects edge positioning.
+
+    ceiling:
+      decision: Yes, add ceiling tiles
+      rationale: Better enclosed atmosphere
+
+    lighting:
+      decision: OmniLight3D attached to camera
+      rationale: |
+        Simulates player carrying torch.
+        omni_range controls visibility distance (8-12 meters).
+        Creates claustrophobic atmosphere with limited vision.
+
+    dungeon_size:
+      decision: Return to 31x31 after refactor verified working
+
+    gridmap_scope:
+      decision: Pure GridMap with 6 separate GridMaps
+      implementation:
+        - FloorGridMap: floor tiles + stairs markers
+        - CeilingGridMap: ceiling tiles
+        - NorthWallGridMap, SouthWallGridMap, EastWallGridMap, WestWallGridMap: walls
+      rationale: |
+        GridMap allows only 1 item per cell, so multiple GridMaps needed.
+        Data model is already cell-centric - each tile owns its walls.
+        Wall meshes use offset geometry to appear at cell edges.
+        No changes needed to generator or movement logic.
+        Full performance benefits via instanced rendering.
+
+# =============================================================================
+# PHASE 3: COMBAT
+# =============================================================================
+
+phase_3:
+  name: Combat
+  status: Complete
+  depends_on: Phase 2 refactor complete
+
+  components:
+    combat_scene:
+      file: scenes/combat/combat.tscn
+      status: Complete
+      structure:
+        Combat (Control):
+          children:
+            - Background (TextureRect)
+            - EnemyDisplay (Control) - 3x3 grid formation
+            - PartyStatus (Control)
+            - ActionMenu (VBoxContainer)
+            - MessageLog (RichTextLabel)
+
+    combat_system:
+      file: systems/combat/combat_system.gd
+      status: Complete
+      responsibilities:
+        - Turn management
+        - Action resolution
+        - Damage calculation
+        - Victory/defeat conditions
+        - 3x3 enemy grid positioning
+        - Splash/Row/Column targeting
+
+      formulas_preserved:
+        hit_roll: d20 + level + (AG/4) >= 10 + target_evasion
+        damage: weapon_damage + (ST/4) + bonuses - reduction
+        initiative: base + d20 + (AG/divisor) + weapon_speed
+
+    initiative_tracker:
+      file: systems/combat/initiative_tracker.gd
+      status: Complete
+      purpose: Sort combatants by initiative each round
+
+    status_effects:
+      file: systems/combat/status_effects.gd
+      status: Complete
+      effects: [poison, paralysis, sleep, confusion, stone, dead, ashed, lost]
+
+    monster_data:
+      files:
+        - resources/monster.gd
+        - data/monsters/monster_database.gd
+      status: Complete
+      properties: [name, hp, attack, defense, speed, abilities, loot_table]
+      monsters_implemented: [slime, goblin, kobold, orc, spider, witch]
+
+    spell_system:
+      files:
+        - resources/spell.gd
+        - resources/spell_effect.gd
+        - data/spells/spell_database.gd
+      status: Complete
+      schools: [Mage, Priest, Alchemist, Psionic]
+      targeting_types:
+        SELF: Caster only
+        SINGLE_ALLY: One party member
+        SINGLE_ENEMY: One enemy
+        ALL_ALLIES: Entire party
+        ALL_ENEMIES: All enemies
+        DEAD_ALLY: One dead party member
+        SPLASH: Target enemy + all adjacent (including diagonals)
+        ROW: All enemies in selected row (Front/Mid/Back)
+        COLUMN: All enemies in selected column (Left/Center/Right)
+      spell_count: 45 total across all schools
+      naming_convention: Plain English names themed by school
+
+  transitions:
+    enter_combat:
+      trigger: Random encounter or scripted event in dungeon
+      flow:
+        1: GameState.start_combat(encounter_data)
+        2: SceneManager.go_to_combat(encounter_data)
+        3: Combat scene _ready() sets up from encounter_data
+
+    exit_combat:
+      victory:
+        1: Award XP and loot
+        2: GameState.end_combat(true)
+        3: SceneManager.return_from_combat()
+        4: Return to dungeon at same position
+
+      defeat:
+        1: Handle party wipe logic
+        2: GameState.end_combat(false)
+        3: Return to town or game over
+
+# =============================================================================
+# PHASE 4: TOWN
+# =============================================================================
+
+phase_4:
+  name: Town
+  status: Partially complete
+  depends_on: Phase 3 complete
+
+  buildings:
+    tavern:
+      purpose: Assemble active party from roster
+      max_party_size: 6
+
+    training_grounds:
+      purpose: Create characters, manage roster
+      max_roster_size: 50
+      functions: [create_character, view_roster, delete_character]
+
+    shop:
+      purpose: Buy/sell equipment, upgrades, identification, uncursing
+      status: Complete
+      functions:
+        buy: Purchase items from shop inventory
+        sell: Sell items for gold (multi-select supported)
+        upgrade: Spend scrap to upgrade equipment stats (+1 to +5 cap)
+        scrap: Break down items for 1-2 scrap each (multi-select supported)
+        identify: Reveal unidentified item stats (50% of item value)
+        uncurse: Remove cursed equipment (100% of item value, destroys item)
+
+    inn:
+      purpose: Rest and heal
+      functions: [rest_party, heal_status]
+
+    temple:
+      purpose: Resurrect dead, cure conditions
+      functions: [resurrect, cure_status, tithe]
+
+  equipment_system:
+    status: Complete
+    files:
+      - resources/item.gd
+      - resources/party.gd (scrap tracking)
+      - resources/character.gd (cursed item handling)
+      - scenes/town/shop.gd
+      - scenes/town/equipment.gd
+      - scenes/common/inventory_screen.gd
+
+    identification:
+      unidentified_display: "??? Weapon" format
+      shop_identify_cost: 50% of item buy_price
+      bishop_identify: Free, from Inventory screen (press I)
+      equip_unidentified: Allowed (risky - might be cursed)
+
+    cursed_items:
+      behavior: Cannot unequip once worn
+      uncurse_cost: 100% of item buy_price
+      uncurse_result: Item destroyed, slot freed
+      equipment_screen: Shows [CURSED] marker, blocks unequip
+
+    upgrade_system:
+      resource: Scrap (party resource like gold)
+      scrap_yield: 1-2 per scrapped item (random)
+      upgrade_cap: +5 per stat
+      upgrade_costs: [2, 4, 8, 16, 32] scrap for +1 through +5
+      display_format: "Long Sword +2 [A1 D1]"
+      stats_by_type:
+        weapon: [accuracy, damage]
+        armor: [defense]
+        shield: [defense, evasion]
+        helmet: [defense]
+        gloves: [accuracy]
+        boots: [evasion]
+        accessory: [hp, mp, strength, intelligence, piety, vitality, agility, luck]
+      cursed_restriction: Cannot upgrade cursed items
+
+    equipment_restrictions:
+      status: Complete
+      class_categories:
+        HEAVY_MELEE: [Fighter, Valkyrie, Samurai, Lord, Ranger]
+        STAFF: [Mage, Priest, Psionic, Alchemist, Bishop, Bard, Monk]
+        HEAVY_ARMOR: [Fighter, Valkyrie, Samurai, Lord]
+        MEDIUM_ARMOR: [Fighter, Ranger, Thief, Ninja, Valkyrie, Samurai, Lord, Monk, Bard]
+        SHIELD: [Fighter, Ranger, Bishop, Valkyrie, Samurai, Lord]
+      race_categories:
+        LARGE_RACES: [Human, Elf, Dwarf, Lizman, Dracon, Rawulf, Mook, Felpurr]
+        SMALL_RACES: [Faerie, Hobbit, Gnome]
+      restrictions_applied:
+        - Daggers: No restrictions
+        - Swords/Axes/Maces/Spears/Bows: HEAVY_MELEE classes
+        - Staves: STAFF classes
+        - Heavy gear (Plate, Chain, Iron Helm/Boots/Shield): HEAVY_ARMOR + LARGE_RACES
+        - Medium armor (Leather): MEDIUM_ARMOR classes
+        - Light gear (Cloth, Leather Cap/Gloves/Boots): No restrictions
+
+  ui_system:
+    key_binding_helper:
+      status: Complete
+      file: systems/ui/key_binding_helper.gd
+      purpose: Dynamic help text based on actual key bindings
+      methods:
+        - get_action_key(action): Returns bound key as readable string
+        - get_nav_help(): "Up/Down: Navigate" style text
+        - get_horizontal_help(): "Left/Right: Switch" style text
+        - get_confirm_help(): "Enter: Select" style text
+        - get_cancel_help(): "Esc: Back" style text
+        - get_arrow_nav_help(): 4-way navigation text
+      used_in:
+        - scenes/town/shop.gd
+        - scenes/town/formation.gd
+        - scenes/town/equipment.gd
+        - scenes/common/party_menu.gd
+        - scenes/common/inventory_screen.gd
+
+  character_system:
+    character_resource:
+      file: resources/character.gd
+      properties:
+        identity: [id, name, race, class, alignment, gender, age]
+        stats: [strength, intelligence, piety, vitality, agility, luck]
+        combat: [level, experience, hp, max_hp, mp, max_mp, status]
+        equipment: [inventory, equipped, spells_known]
+        meta: [death_count, created_date]
+
+    roster_resource:
+      file: resources/character_roster.gd
+      purpose: All characters ever created
+      max_size: 50
+
+    party_resource:
+      file: resources/party.gd
+      purpose: Active adventuring party
+      max_size: 6
+      properties: [characters, gold, formation]
+
+  character_creation:
+    flow:
+      1: Choose race (11 options)
+      2: Choose class (14 options, filtered by race)
+      3: Choose alignment (good/neutral/evil)
+      4: Roll stats (reroll allowed)
+      5: Choose gender
+      6: Enter name
+      7: Add to roster
+
+# =============================================================================
+# PHASE 5: CONTENT AND POLISH
+# =============================================================================
+
+phase_5:
+  name: Content and Polish
+  status: Not started
+  depends_on: Phase 4 complete
+
+  systems_to_implement:
+    npc_system:
+      design_doc: drpg2/docs/dungeon-game-design.md Section 2.1
+      features:
+        - 2-4 NPCs per floor
+        - Types: information, quest, flavor, hostile
+        - Truthfulness varies
+
+    character_events:
+      design_doc: drpg2/docs/dungeon-game-design.md Section 2.3
+      features:
+        - Hand-authored narrative moments
+        - Categories: discovery, hard choice, memory
+        - 2-3 per floor
+
+    exploration_abilities:
+      design_doc: drpg2/docs/dungeon-game-design.md Section 2.2
+      features:
+        - Thief: secret detection
+        - Psionic: mind reading
+        - Charisma: social influence
+
+    banter_system:
+      features:
+        - LLM endpoint configurable
+        - Pre-written fallback responses
+        - Character personality influences dialogue
+
+  data_migration:
+    source_files:
+      - drpg2/src/data/monstersData.ts
+      - drpg2/src/data/items/
+      - drpg2/src/data/spells/
+      - drpg2/src/config/races/
+      - drpg2/src/config/classes/
+
+    approach:
+      1: Write Node.js scripts to parse TypeScript
+      2: Generate .tres Resource files
+      3: Manual verification
+      4: Test in-game
+
+  audio:
+    music: Background tracks for menu, town, dungeon, combat
+    sfx: UI sounds, combat sounds, ambient dungeon sounds
+    format: OGG (should work directly)
+
+  save_system:
+    timing:
+      - Before combat
+      - Before major choices
+      - After events
+      - Floor transitions
+      - Town entry
+    anti_save_scum: Save before risky moments enforces consequences
+
+# =============================================================================
+# KNOWN ISSUES
+# =============================================================================
+
+known_issues:
+  class_name_resolution:
+    severity: Medium
+    description: class_name not resolving, using preload() workarounds
+    affected_files:
+      - scenes/dungeon/dungeon.gd
+      - systems/dungeon/dungeon_renderer.gd
+    fix: Review for circular dependencies after GridMap refactor
+
+  stale_error_buffer:
+    severity: Low
+    description: Godot error buffer persists old errors across runs
+    workaround: Reload project to clear
+    note: MCP enhancement could add clear_errors action
+
+  test_signals_reference:
+    severity: Low
+    description: Stale reference to deleted test_signals.gd
+    fix: Find and remove reference in scene files
+
+# =============================================================================
+# IMPLEMENTATION ORDER
+# =============================================================================
+
+implementation_order:
+  completed:
+    - Phase 1 skeleton (autoloads, scenes, navigation)
+    - Phase 2 dungeon (GridMap rendering, generation, movement, caching)
+    - Phase 3 combat:
+      - Combat scene with 3x3 enemy grid
+      - Turn-based combat loop with initiative
+      - Attack/defend/flee/spell actions
+      - Enemy AI (basic targeting)
+      - Damage calculation formulas
+      - Status effects system
+      - Victory rewards (XP, gold)
+      - Defeat handling
+      - Random encounter triggering
+      - Spell system with 45 spells across 4 schools
+      - Advanced spell targeting (SPLASH, ROW, COLUMN)
+      - Starter monster set (6 monsters)
+    - Phase 4 partial:
+      - Character resource with stats, equipment, leveling
+      - Party resource with gold, inventory, scrap
+      - Equipment system with equip/unequip
+      - Shop with buy/sell/upgrade/scrap/identify/uncurse
+      - Identification system (shop + Bishop)
+      - Cursed item handling
+      - Item upgrade system (+1 to +5)
+      - Dynamic key binding display (KeyBindingHelper)
+      - Equipment class restrictions (HEAVY_MELEE, STAFF, etc.)
+      - Equipment race restrictions (LARGE_RACES for heavy gear)
+      - Basic character creation (training grounds)
+      - Formation reordering in Tavern (R key to enter reorder mode)
+      - Save/Load system (autosave on town/dungeon/combat entry, Continue from main menu)
+
+  next:
+    - Multiple save slots UI (currently autosave only)
+    - Manual save option in town
+
+  later:
+    - More monsters (boss monsters, higher levels)
+    - Loot generation from dungeons
+    - Dungeon traps and special tiles
+    - Treasure chests
+
+  final:
+    - Phase 5 content migration
+    - NPC and event systems
+    - Audio integration
+    - Save system completion
+    - Polish and testing
+
+# =============================================================================
+# FEATURES STILL NEEDED
+# =============================================================================
+
+features_remaining:
+
+  combat_system:
+    priority: High
+    status: Complete
+    components:
+      - Turn-based combat loop
+      - Initiative calculation
+      - Attack/defend/flee/spell actions
+      - Enemy AI (basic)
+      - Damage calculation formulas
+      - Status effects (poison, paralysis, sleep, confusion, stone, dead, ashed, lost)
+      - Victory rewards (XP, gold, loot)
+      - Defeat handling (party wipe)
+      - Random encounter triggering in dungeon
+      - 3x3 enemy grid formation with positional targeting
+
+  magic_system:
+    priority: High
+    status: Complete
+    components:
+      - Spell data resources (name, school, level, MP cost, effect)
+      - Spell schools (Mage, Priest, Alchemist, Psionic)
+      - Spell learning by class/level
+      - Combat spell casting
+      - Out-of-combat utility spells
+      - Advanced targeting (SPLASH, ROW, COLUMN, ALL_ENEMIES, etc.)
+    spell_names:
+      mage: Fire Bolt, Sleep, Mapping, Fire Wave, Fear, Fireball, Silence, Freeze, Firestorm, Blizzard, Terror, Disintegrate, Suffocate, Explosion
+      priest: Heal, Smite, Bless, Divine Favor, Light, Purify, Identify, Greater Heal, Greater Smite, Cure Poison, Major Heal, Major Smite, Resurrect, Restoration, Holy Blades, True Resurrect, Divine Wrath
+      alchemist: Alchemist's Fire, Stoneskin Tonic, Phasing Elixir, Poison Cloud, Bottled Lightning, Panic Philter, Flash Freeze, Paralysis Gas, Frost Bomb, Petrifying Serum, Dissolving Acid, Nullifying Solvent, Volatile Reaction
+      psionic: Psychic Shield, Mind Bolt, Mental Block, Blur Mind, Mind Cleanse, Psychic Surge, Mind Lock, Pyrokinesis, Death Thought, Teleport, Psychic Shards, Mass Death, Psychic Storm
+
+  character_creation:
+    priority: High
+    status: Complete (basic)
+    location: scenes/town/training.gd
+    flow:
+      - Race selection (11 races with stat modifiers)
+      - Class selection (14 classes, filtered by race requirements)
+      - Alignment selection (good/neutral/evil)
+      - Stat rolling (with reroll option)
+      - Gender selection
+      - Name entry
+      - Add to roster
+    missing:
+      - View full roster
+      - Change class (requires level reset)
+      - Rename characters
+      - Delete characters
+
+  monster_data:
+    priority: High
+    status: Complete (starter set)
+    components:
+      - Monster resource definition
+      - Monster stats (HP, attack, defense, speed, abilities)
+      - Loot tables (gold dice)
+      - Encounter groups per dungeon floor
+    monsters_implemented:
+      - Slime (L1): Basic tank, 15 HP
+      - Goblin (L2): Quick fighter, 12 HP
+      - Kobold (L2): Ranged attacker, 8 HP
+      - Orc (L3): Heavy hitter, 24 HP
+      - Giant Spider (L3): Poison attacks, 14 HP
+      - Witch (L4): Spellcaster, 16 HP
+    todo:
+      - Boss monsters
+      - More variety per floor
+      - Higher level monsters
+
+  loot_generation:
+    priority: Medium
+    status: Partial (Item system done, generation not done)
+    components:
+      - Dungeon drop tables by floor level
+      - Unidentified loot (always unidentified from dungeons)
+      - Curse chance (~10%)
+      - Natural upgrade chance based on floor level
+      - Treasure chests in dungeon
+
+  inn:
+    priority: High
+    status: Complete
+    files:
+      - scenes/town/inn.gd
+      - scenes/town/inn.tscn
+    functions:
+      - Cot Rest: 25% HP, 50% MP, 5 gold per person
+      - Room Rest: 50% HP, 75% MP, 25 gold per person
+      - Suite Rest: 100% HP, 100% MP, 100 gold per person
+      - All options cure minor status (Poison, Sleep, Confusion, Silence, Fear)
+      - Level-up processing: Characters with pending XP level up during rest
+        - Shows HP/MP gains, stat increases, new spell levels
+        - Automatic spell learning attempts (INT-based chance)
+        - Can gain multiple levels if enough XP
+        - Note: Inn is the ONLY place spells are learned (no re-learning elsewhere)
+    ui_features:
+      - Two-column layout matching Shop style
+      - Preview of HP/MP restoration per party member
+      - Party status display with color-coded health
+      - Level-up results display with stat gains
+      - Dynamic key binding help text
+
+  temple:
+    priority: High
+    status: Complete
+    files:
+      - scenes/town/temple.gd
+      - scenes/town/temple.tscn
+    functions:
+      - Resurrection: 200 + 50*level gold, may lose 1 Vitality
+      - Ashed characters: Double cost, 50% success, failure = LOST forever
+      - Cure Ailments: 50 + 10*level gold per status
+      - Curable: Poison, Paralysis, Silence, Blindness, Curse, Confusion, Stone
+      - Tithe: 100/500/1000 gold for 10+/15/20 turns of Blessed status
+      - Blessed grants: +2 accuracy, +2 evasion
+    ui_features:
+      - Two-column layout matching Shop/Inn style
+      - Service selection with member/action drill-down
+      - Detailed preview of resurrection risks and costs
+      - Party status display with Vitality tracking
+      - Color coding for Dead/Ashed/Lost states
+      - Dynamic key binding help text
+
+  training_grounds:
+    priority: High
+    status: Complete
+    files:
+      - scenes/town/training_grounds.gd
+      - scenes/town/training_grounds.tscn
+      - scenes/town/character_creation.gd
+      - scenes/town/character_creation.tscn
+    functions:
+      - Create Character: Full wizard (race, class, alignment, stats, gender, name)
+      - View Roster: Browse all characters with stats and status
+      - Manage Character hub with:
+        - Rename: Change character name
+        - Change Class: Switch class (level resets to 1)
+        - Delete: Remove from roster (with confirmation)
+    ui_features:
+      - Two-column layout matching Shop/Inn/Temple style
+      - Multi-level navigation (main menu -> select character -> action)
+      - Detailed character info panel with stats
+      - Roster overview on right panel
+      - Color coding for Dead/In-Party states
+      - Dynamic key binding help text
+
+  tavern:
+    priority: Medium
+    status: Complete
+    files:
+      - scenes/town/tavern.gd
+      - scenes/town/tavern.tscn
+    functions:
+      - Add characters to active party from roster
+      - Remove characters from party back to roster
+      - Party formation reordering (R key to enter reorder mode)
+      - Character inspection with full details:
+        - Stats (HP, MP, STR, INT, PIE, VIT, AGI, LCK)
+        - Equipment (all 7 slots with curse/empty indicators)
+        - Spell book (known spells grouped by level)
+        - Level-up ready indicator
+    ui_features:
+      - Two-panel layout (Party / Roster)
+      - Left/Right to switch between panels
+      - Reorder mode with Up/Down to move selected character
+      - Detailed character info in bottom panel
+      - Color coding for dead characters
+
+  dungeon_features:
+    priority: Medium
+    status: Partial
+    remaining:
+      - Treasure chests
+      - Traps (pit, teleport, spinner, darkness)
+      - Secret doors
+      - One-way doors
+      - Locked doors (keys)
+      - Special tiles (anti-magic, healing fountain)
+      - Encounter tiles (scripted battles)
+
+  npc_system:
+    priority: Low
+    status: Not started
+    components:
+      - NPC placement in dungeon
+      - NPC types (information, quest, flavor, hostile)
+      - Dialogue system
+      - Truthfulness variance
+
+  character_events:
+    priority: Low
+    status: Not started
+    components:
+      - Hand-authored narrative moments
+      - Event categories (discovery, hard choice, memory)
+      - Event triggers
+
+  exploration_abilities:
+    priority: Low
+    status: Not started
+    components:
+      - Thief secret detection
+      - Psionic mind reading
+      - Charisma social influence
+
+  banter_system:
+    priority: Low
+    status: Not started
+    components:
+      - LLM endpoint configuration
+      - Pre-written fallback responses
+      - Character personality influence
+
+  save_load_system:
+    priority: Medium
+    status: Basic implementation complete
+    files:
+      - resources/save_data.gd
+      - autoload/save_manager.gd
+    completed:
+      - SaveData resource with roster, party, dungeon state
+      - Save/load to .tres files in user://saves/
+      - Autosave on town entry, dungeon entry, before combat
+      - Continue button on main menu loads autosave
+    remaining:
+      - Multiple save slots UI
+      - Manual save option in town
+      - Save slot info display (level, floor, play time)
+
+  audio_system:
+    priority: Low
+    status: Stub only
+    components:
+      - Background music (menu, town, dungeon, combat)
+      - Sound effects (UI, combat, ambient)
+      - Volume controls
+
+  data_migration:
+    priority: Medium
+    status: Not started
+    source: drpg2 TypeScript data files
+    targets:
+      - Monster data
+      - Item data
+      - Spell data
+      - Race configuration
+      - Class configuration
+
+# =============================================================================
+# CODE AUDIT (2026-01-26)
+# =============================================================================
+
+code_audit:
+  date: 2026-01-26
+  summary: |
+    Comprehensive audit of codebase health, integration gaps, and code quality.
+    Findings prioritized by impact on gameplay and maintainability.
+
+  critical_gaps:
+    loot_generation:
+      status: COMPLETE
+      details: |
+        Implemented treasure chest system with:
+        - LootGenerator creates items from floor-based drop tables
+        - ChestSystem wraps loot in trapped chests (plain 10%, ornate 70%)
+        - Chest modal UI with Quick Open/Inspect/Disarm/Open/Leave
+        - Thief bonuses for inspection (70%) and disarm (85%)
+        - 5 trap types: Poison Needle, Falling Rock, Gas, Explosive, Alarm
+        - Alarm trap triggers new combat encounter
+      files:
+        - systems/loot/loot_generator.gd
+        - systems/loot/chest_system.gd
+        - resources/chest.gd
+        - resources/trap.gd
+        - data/traps/trap_database.gd
+        - scenes/combat/chest_modal.gd
+
+    spell_targeting:
+      status: COMPLETE
+      details: |
+        All spell targeting types fully implemented in combat.gd UI:
+        - SINGLE_ALLY: _populate_spell_ally_target_list()
+        - SINGLE_ENEMY: _populate_spell_enemy_target_list()
+        - SPLASH: _populate_spell_splash_target_list()
+        - ROW: _populate_spell_row_target_list()
+        - COLUMN: _populate_spell_column_target_list()
+        - DEAD_ALLY: _populate_spell_ally_target_list(true)
+        - ALL_ALLIES, ALL_ENEMIES, SELF: Direct cast
+        Note: get_spell_targets() in combat_system.gd is dead code (never called)
+
+  code_quality_issues:
+    monolithic_files:
+      severity: High
+      details: Large files mixing UI and logic, hard to test and maintain
+      files:
+        - scenes/combat/combat.gd (1320 lines)
+        - scenes/town/shop.gd (1216 lines)
+        - scenes/common/party_menu.gd (851 lines)
+        - scenes/town/training_grounds.gd (713 lines)
+      fix: Extract logic into separate system classes
+
+    dry_violations:
+      severity: Medium
+      items:
+        - ActiveStatus class duplicated in character.gd and monster.gd
+        - Six nearly-identical _get_equipment_*_bonus() methods in character.gd lines 227-266
+        - 257+ preload() calls due to broken class_name resolution
+      fix:
+        - Extract ActiveStatus to resources/active_status.gd
+        - Refactor equipment bonus to generic method
+        - Fix class_name resolution, migrate from preload()
+
+    magic_numbers:
+      severity: Medium
+      examples:
+        - Encounter rates hardcoded (0.4, 0.7, 0.9, 0.97) in dungeon.gd lines 445-456
+        - Combat speed divisor (11 - speed) * 0.1 in combat_system.gd line 119
+        - Torch range 12.0, cell size 2.0, camera height 1.6 scattered
+      fix: Centralize in configuration resource or constants file
+
+    class_name_resolution:
+      severity: Medium
+      status: Still broken (per known_issues section)
+      impact: 257+ fragile preload() calls
+      files:
+        - scenes/dungeon/dungeon.gd lines 3-5
+        - scenes/combat/combat.gd lines 3-7
+        - Most scene files
+      fix: Audit for circular dependencies, migrate to class_name
+
+  integration_issues:
+    monster_ai:
+      status: Minimal
+      details: |
+        _execute_monster_turn() only picks random attacks.
+        No tactical targeting (front vs back row).
+        No spell usage by spellcaster monsters.
+        No defensive action triggers.
+      file: systems/combat/combat_system.gd lines 377-446
+
+    state_inconsistency:
+      status: Risk
+      details: |
+        Multiple overlapping state trackers:
+        - GameState.in_combat (boolean)
+        - GameState.current_encounter (Dictionary)
+        - CombatSystem.is_active (boolean)
+        - CombatSystem.waiting_for_player (boolean)
+      fix: Consolidate to single source of truth
+
+    audio_manager:
+      status: Stub implemented but never called
+      file: autoload/audio_manager.gd
+      details: Full infrastructure exists, no scenes use it
+
+  incomplete_implementations:
+    multiple_save_slots:
+      status: Backend done, no UI
+      details: |
+        get_save_slots() supports multiple slots.
+        Only autosave slot used (hardcoded).
+        No UI to select/manage slots.
+      file: autoload/save_manager.gd
+
+    dungeon_features:
+      status: Not started
+      missing:
+        - Treasure chests
+        - Traps (pit, teleport, spinner, darkness)
+        - Secret doors
+        - One-way doors
+        - Locked doors
+        - Special tiles (anti-magic, healing fountain)
+
+  working_systems:
+    verified:
+      - Dungeon generation and GridMap rendering
+      - Grid-based movement with collision
+      - Combat turn system and initiative
+      - Character leveling (XP to level up at inn)
+      - Equipment system (equip/unequip/cursed handling)
+      - Shop (buy/sell/upgrade/scrap/identify/uncurse)
+      - Status effects system
+      - Spell learning during inn rest
+      - Save/load (autosave slot)
+      - Party formation management
+      - Character creation flow
+      - Random encounters in dungeon
+
+  prioritized_fixes:
+    completed:
+      - Loot generation (chest system with traps)
+      - Spell targeting (all targeting types working)
+      - Treasure chests (integrated with combat victory)
+      - Row advancement bug (party and enemies)
+      - Formation Enter key bug
+
+    high:
+      - More monsters (bosses, higher levels)
+      - More items for loot variety
+      - Dungeon traps (pit, teleport, spinner, darkness)
+
+    medium:
+      - Multiple save slots UI
+      - Improve monster AI targeting
+      - Resolve class_name resolution
+      - Extract ActiveStatus to shared resource
+
+    low:
+      - Split monolithic scene files
+      - Centralize magic numbers
+      - Wire up audio_manager
+      - Add NPC system

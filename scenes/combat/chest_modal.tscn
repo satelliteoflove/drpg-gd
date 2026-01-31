@@ -1,0 +1,58 @@
+[gd_scene load_steps=2 format=3 uid="uid://c6xr8qhk7t4de"]
+
+[ext_resource type="Script" uid="uid://d2vp7kj8cmnrv" path="res://scenes/combat/chest_modal.gd" id="1_chest"]
+
+[node name="ChestModal" type="PanelContainer"]
+custom_minimum_size = Vector2(400, 350)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -175.0
+offset_right = 200.0
+offset_bottom = 175.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_chest")
+
+[node name="ChestModalVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ChestModalHeader" type="Label" parent="ChestModalVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "A chest appears..."
+horizontal_alignment = 1
+
+[node name="DescriptionLabel" type="Label" parent="ChestModalVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+text = "What do you want to do?"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="TrapWarningLabel" type="Label" parent="ChestModalVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 14
+text = "Trap detected: Poison Needle"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="RichTextLabel" parent="ChestModalVBox"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+
+[node name="OptionsVBox" type="VBoxContainer" parent="ChestModalVBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LeaveButton" type="Button" parent="ChestModalVBox"]
+layout_mode = 2
+text = "Leave"

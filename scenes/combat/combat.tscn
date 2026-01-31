@@ -1,0 +1,401 @@
+[gd_scene load_steps=2 format=3 uid="uid://bqs867fu6bl5b"]
+
+[ext_resource type="Script" uid="uid://cfd0xgcoau40k" path="res://scenes/combat/combat.gd" id="1_5vqsm"]
+
+[node name="Combat" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_5vqsm")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0, 0.0, 0.05, 0.2)
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 6
+
+[node name="ContentArea" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="LeftColumn" type="VBoxContainer" parent="MainLayout/ContentArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="EnemySection" type="PanelContainer" parent="MainLayout/ContentArea/LeftColumn"]
+layout_mode = 2
+size_flags_vertical = 0
+self_modulate = Color(1, 1, 1, 0.7)
+
+[node name="EnemyMargin" type="MarginContainer" parent="MainLayout/ContentArea/LeftColumn/EnemySection"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="EnemyVBox" type="VBoxContainer" parent="MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="EnemyLabel" type="Label" parent="MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.5, 0.5, 1)
+text = "Enemies"
+horizontal_alignment = 1
+
+[node name="EnemyGridHBox" type="HBoxContainer" parent="MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 6
+
+[node name="RowLabels" type="VBoxContainer" parent="MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox"]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BackLabel" type="Label" parent="MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.7, 0.5, 1)
+theme_override_font_sizes/font_size = 11
+text = "Back"
+vertical_alignment = 1
+
+[node name="MiddleLabel" type="Label" parent="MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.7, 0.4, 1)
+theme_override_font_sizes/font_size = 11
+text = "Mid"
+vertical_alignment = 1
+
+[node name="FrontLabel" type="Label" parent="MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 11
+text = "Front"
+vertical_alignment = 1
+
+[node name="EnemyGrid" type="GridContainer" parent="MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 3
+
+[node name="PartySection" type="PanelContainer" parent="MainLayout/ContentArea/LeftColumn"]
+layout_mode = 2
+size_flags_vertical = 0
+self_modulate = Color(1, 1, 1, 0.7)
+
+[node name="PartyMargin" type="MarginContainer" parent="MainLayout/ContentArea/LeftColumn/PartySection"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="PartyVBox" type="VBoxContainer" parent="MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PartyLabel" type="Label" parent="MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.7, 0.9, 1)
+text = "Party"
+horizontal_alignment = 1
+
+[node name="PartyGridHBox" type="HBoxContainer" parent="MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 6
+
+[node name="RowLabels" type="VBoxContainer" parent="MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox"]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="FrontLabel" type="Label" parent="MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/RowLabels"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 11
+text = "Front"
+vertical_alignment = 1
+
+[node name="BackLabel" type="Label" parent="MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/RowLabels"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.7, 0.5, 1)
+theme_override_font_sizes/font_size = 11
+text = "Back"
+vertical_alignment = 1
+
+[node name="PartyGrid" type="VBoxContainer" parent="MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="FrontRow" type="HBoxContainer" parent="MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BackRow" type="HBoxContainer" parent="MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="MessageSection" type="PanelContainer" parent="MainLayout/ContentArea/LeftColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+self_modulate = Color(1, 1, 1, 0.7)
+
+[node name="MessageVBox" type="VBoxContainer" parent="MainLayout/ContentArea/LeftColumn/MessageSection"]
+layout_mode = 2
+
+[node name="MessageHeader" type="Label" parent="MainLayout/ContentArea/LeftColumn/MessageSection/MessageVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Combat Log"
+
+[node name="MessageLog" type="RichTextLabel" parent="MainLayout/ContentArea/LeftColumn/MessageSection/MessageVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+scroll_following = true
+
+[node name="TurnOrderPanel" type="PanelContainer" parent="MainLayout/ContentArea"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+self_modulate = Color(1, 1, 1, 0.7)
+
+[node name="TurnOrderVBox" type="VBoxContainer" parent="MainLayout/ContentArea/TurnOrderPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TurnOrderHeader" type="Label" parent="MainLayout/ContentArea/TurnOrderPanel/TurnOrderVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+text = "Turn Order"
+horizontal_alignment = 1
+
+[node name="TurnOrderList" type="VBoxContainer" parent="MainLayout/ContentArea/TurnOrderPanel/TurnOrderVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 2
+
+[node name="ActionSection" type="PanelContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 0
+self_modulate = Color(1, 1, 1, 0.7)
+
+[node name="ActionHBox" type="HBoxContainer" parent="MainLayout/ActionSection"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="AttackButton" type="Button" parent="MainLayout/ActionSection/ActionHBox"]
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+text = "Attack"
+
+[node name="DefendButton" type="Button" parent="MainLayout/ActionSection/ActionHBox"]
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+text = "Defend"
+
+[node name="SpellButton" type="Button" parent="MainLayout/ActionSection/ActionHBox"]
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+text = "Spell"
+
+[node name="ItemButton" type="Button" parent="MainLayout/ActionSection/ActionHBox"]
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+text = "Item"
+
+[node name="EscapeButton" type="Button" parent="MainLayout/ActionSection/ActionHBox"]
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+text = "Escape"
+
+[node name="ModalOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="ItemModal" type="PanelContainer" parent="."]
+visible = false
+custom_minimum_size = Vector2(350, 300)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -175.0
+offset_top = -150.0
+offset_right = 175.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ItemModalVBox" type="VBoxContainer" parent="ItemModal"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ItemModalHeader" type="Label" parent="ItemModal/ItemModalVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Select Item"
+horizontal_alignment = 1
+
+[node name="ItemScrollContainer" type="ScrollContainer" parent="ItemModal/ItemModalVBox"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ItemList" type="VBoxContainer" parent="ItemModal/ItemModalVBox/ItemScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ItemCancelButton" type="Button" parent="ItemModal/ItemModalVBox"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="SpellModal" type="PanelContainer" parent="."]
+visible = false
+custom_minimum_size = Vector2(350, 300)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -175.0
+offset_top = -150.0
+offset_right = 175.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SpellModalVBox" type="VBoxContainer" parent="SpellModal"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SpellModalHeader" type="Label" parent="SpellModal/SpellModalVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Select Spell"
+horizontal_alignment = 1
+
+[node name="SpellScrollContainer" type="ScrollContainer" parent="SpellModal/SpellModalVBox"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SpellList" type="VBoxContainer" parent="SpellModal/SpellModalVBox/SpellScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SpellCancelButton" type="Button" parent="SpellModal/SpellModalVBox"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="TargetModal" type="PanelContainer" parent="."]
+visible = false
+custom_minimum_size = Vector2(300, 250)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -125.0
+offset_right = 150.0
+offset_bottom = 125.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TargetModalVBox" type="VBoxContainer" parent="TargetModal"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TargetModalHeader" type="Label" parent="TargetModal/TargetModalVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Select Target"
+horizontal_alignment = 1
+
+[node name="TargetList" type="VBoxContainer" parent="TargetModal/TargetModalVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TargetCancelButton" type="Button" parent="TargetModal/TargetModalVBox"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="EnemyTargetModal" type="PanelContainer" parent="."]
+visible = false
+custom_minimum_size = Vector2(350, 300)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -175.0
+offset_top = -150.0
+offset_right = 175.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EnemyTargetModalVBox" type="VBoxContainer" parent="EnemyTargetModal"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="EnemyTargetModalHeader" type="Label" parent="EnemyTargetModal/EnemyTargetModalVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Select Enemy"
+horizontal_alignment = 1
+
+[node name="EnemyTargetScrollContainer" type="ScrollContainer" parent="EnemyTargetModal/EnemyTargetModalVBox"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EnemyTargetList" type="VBoxContainer" parent="EnemyTargetModal/EnemyTargetModalVBox/EnemyTargetScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EnemyTargetCancelButton" type="Button" parent="EnemyTargetModal/EnemyTargetModalVBox"]
+layout_mode = 2
+text = "Cancel"

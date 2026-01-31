@@ -1,0 +1,78 @@
+[gd_scene load_steps=3 format=3 uid="uid://cv7iqa0wfbf86"]
+
+[ext_resource type="Script" uid="uid://d1xw8a6pwhps6" path="res://scenes/dungeon/dungeon.gd" id="1_pf7w1"]
+
+[sub_resource type="Environment" id="Environment_dungeon"]
+background_mode = 1
+background_color = Color(0, 0, 0, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.05, 0.05, 0.08, 1)
+ambient_light_energy = 0.3
+
+[node name="Dungeon" type="Node3D"]
+script = ExtResource("1_pf7w1")
+
+[node name="FloorGridMap" type="GridMap" parent="."]
+
+[node name="CeilingGridMap" type="GridMap" parent="."]
+
+[node name="NorthWallGridMap" type="GridMap" parent="."]
+
+[node name="SouthWallGridMap" type="GridMap" parent="."]
+
+[node name="EastWallGridMap" type="GridMap" parent="."]
+
+[node name="WestWallGridMap" type="GridMap" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+fov = 75.0
+
+[node name="PlayerLight" type="OmniLight3D" parent="Camera3D"]
+light_color = Color(1, 0.95, 0.85, 1)
+light_energy = 1.2
+omni_range = 8.0
+omni_attenuation = 0.8
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_dungeon")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="TopBar" type="HBoxContainer" parent="UI"]
+offset_right = 200.0
+offset_bottom = 30.0
+
+[node name="FloorLabel" type="Label" parent="UI/TopBar"]
+layout_mode = 2
+text = "Floor 1"
+
+[node name="BottomBar" type="HBoxContainer" parent="UI"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -40.0
+offset_right = 150.0
+
+[node name="MenuButton" type="Button" parent="UI/BottomBar"]
+layout_mode = 2
+text = "Menu (M)"
+
+[node name="TownButton" type="Button" parent="UI/BottomBar"]
+layout_mode = 2
+text = "Town (T)"
+
+[node name="MenuOverlay" type="CanvasLayer" parent="."]
+visible = false
+layer = 10
+
+[node name="MapOverlay" type="CanvasLayer" parent="."]
+visible = false
+layer = 11
+
+[node name="CombatOverlay" type="CanvasLayer" parent="."]
+visible = false
+layer = 15

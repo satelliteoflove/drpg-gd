@@ -1,0 +1,181 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/common/party_menu.gd" id="1_script"]
+
+[node name="PartyMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.1, 0.1, 0.12, 0.95)
+
+[node name="MainPanel" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 20
+
+[node name="VBox" type="VBoxContainer" parent="MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TabBar" type="PanelContainer" parent="MainPanel/VBox"]
+layout_mode = 2
+
+[node name="TabContainer" type="HBoxContainer" parent="MainPanel/VBox/TabBar"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ContentPanel" type="PanelContainer" parent="MainPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StatusContent" type="ScrollContainer" parent="MainPanel/VBox/ContentPanel"]
+visible = false
+layout_mode = 2
+
+[node name="StatusList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="EquipmentContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="EquipHBox" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PartyPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PartyList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox/PartyPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="SlotsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SlotsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox/SlotsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ItemsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ItemsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox/ItemsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="InventoryContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="InvHBox" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ItemsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ItemsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/ItemsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="TargetsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TargetsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="FormationContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="FormVBox" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/FormationContent"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="FrontLabel" type="Label" parent="MainPanel/VBox/ContentPanel/FormationContent/FormVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.4, 0.4, 1)
+text = "FRONT ROW (Full range, targeted first)"
+horizontal_alignment = 1
+
+[node name="FrontRowHBox" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/FormationContent/FormVBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="FrontRow" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/FormationContent/FormVBox/FrontRowHBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Spacer" type="Control" parent="MainPanel/VBox/ContentPanel/FormationContent/FormVBox"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="BackLabel" type="Label" parent="MainPanel/VBox/ContentPanel/FormationContent/FormVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.7, 0.5, 1)
+text = "BACK ROW (-1 range, protected)"
+horizontal_alignment = 1
+
+[node name="BackRowHBox" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/FormationContent/FormVBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="BackRow" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/FormationContent/FormVBox/BackRowHBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="InfoPanel" type="PanelContainer" parent="MainPanel/VBox"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+
+[node name="InfoLabel" type="RichTextLabel" parent="MainPanel/VBox/InfoPanel"]
+layout_mode = 2
+bbcode_enabled = true
+text = "Select a tab to view party information."
+
+[node name="HelpLabel" type="Label" parent="MainPanel/VBox"]
+layout_mode = 2
+text = "1-4: Switch tabs | Arrows: Navigate | Enter: Select | Esc: Close"
+horizontal_alignment = 1
