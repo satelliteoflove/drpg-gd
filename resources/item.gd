@@ -1,7 +1,8 @@
+## Represents an item that can be equipped, consumed, or stored in inventory.
 class_name Item
 extends Resource
 
-const CharEnum = preload("res://resources/character_enums.gd")
+const Proficiencies = preload("res://data/equipment/class_proficiencies.gd")
 
 enum ItemType {
 	WEAPON,
@@ -39,6 +40,8 @@ enum ItemRarity {
 @export var description: String = ""
 @export var item_type: ItemType = ItemType.CONSUMABLE
 @export var weapon_type: WeaponType = WeaponType.NONE
+@export var armor_category: CharacterEnums.ArmorCategory = CharacterEnums.ArmorCategory.NONE
+@export var shield_category: CharacterEnums.ShieldCategory = CharacterEnums.ShieldCategory.NONE
 @export var rarity: ItemRarity = ItemRarity.COMMON
 
 @export_group("Economics")
@@ -50,6 +53,7 @@ enum ItemRarity {
 @export_group("Equipment Stats")
 @export var damage_dice: String = ""
 @export var weapon_range: int = 1
+@export var two_handed: bool = false
 @export var accuracy_bonus: int = 0
 @export var damage_bonus: int = 0
 @export var defense_bonus: int = 0
@@ -67,9 +71,9 @@ enum ItemRarity {
 
 @export_group("Requirements")
 @export var required_level: int = 1
-@export var required_classes: Array[CharEnum.CharacterClass] = []
-@export var required_alignment: Array[CharEnum.Alignment] = []
-@export var required_races: Array[CharEnum.Race] = []
+@export var required_classes: Array[CharacterEnums.CharacterClass] = []
+@export var required_alignment: Array[CharacterEnums.Alignment] = []
+@export var required_races: Array[CharacterEnums.Race] = []
 
 @export_group("Identification")
 @export var is_identified: bool = true
@@ -81,9 +85,18 @@ enum ItemRarity {
 @export_group("Consumable Effects")
 @export var heal_amount: int = 0
 @export var mp_restore: int = 0
-@export var cures_status: Array[CharEnum.StatusEffect] = []
+@export var cures_status: Array[CharacterEnums.StatusEffect] = []
 
 
+## Creates a new weapon item with the specified properties.
+## [param p_id]: Unique item identifier.
+## [param p_name]: Display name.
+## [param p_damage]: Damage dice notation (e.g., "1d8").
+## [param p_accuracy]: Accuracy bonus.
+## [param p_price]: Buy price (sell price is half).
+## [param p_weapon_type]: Type of weapon for range defaults.
+## [param p_range]: Override weapon range (-1 uses type default).
+## [return]: Configured weapon Item.
 static func create_weapon(
 	p_id: String,
 	p_name: String,
@@ -118,6 +131,14 @@ static func get_default_weapon_range(p_weapon_type: WeaponType) -> int:
 		_: return 1
 
 
+## Creates a new armor piece (armor, shield, helmet, gloves, or boots).
+## [param p_id]: Unique item identifier.
+## [param p_name]: Display name.
+## [param p_type]: Equipment slot type.
+## [param p_defense]: Defense bonus.
+## [param p_evasion]: Evasion bonus.
+## [param p_price]: Buy price (sell price is half).
+## [return]: Configured armor Item.
 static func create_armor(
 	p_id: String,
 	p_name: String,
@@ -137,6 +158,13 @@ static func create_armor(
 	return item
 
 
+## Creates a new consumable item (potion, elixir, etc.).
+## [param p_id]: Unique item identifier.
+## [param p_name]: Display name.
+## [param p_heal]: HP restored on use.
+## [param p_mp]: MP restored on use.
+## [param p_price]: Buy price (sell price is half).
+## [return]: Configured consumable Item.
 static func create_consumable(
 	p_id: String,
 	p_name: String,
@@ -156,6 +184,7 @@ static func create_consumable(
 	return item
 
 
+## Returns true if this item can be equipped (weapon, armor, accessory, etc.).
 func is_equipment() -> bool:
 	return item_type in [
 		ItemType.WEAPON,
@@ -168,23 +197,45 @@ func is_equipment() -> bool:
 	]
 
 
+## Checks if a character meets the requirements to equip this item.
+## [param character]: The character attempting to equip.
+## [return]: True if all requirements are met.
 func can_equip(character: Resource) -> bool:
-	if character.level < required_level:
+	var char_class: CharacterEnums.CharacterClass = character.character_class
+
+	if not _check_proficiency(char_class):
 		return false
 
 	if not required_classes.is_empty():
-		if not (character.character_class in required_classes):
-			return false
-
-	if not required_alignment.is_empty():
-		if not (character.alignment in required_alignment):
+		if not (char_class in required_classes):
 			return false
 
 	if not required_races.is_empty():
 		if not (character.race in required_races):
 			return false
 
+	if not required_alignment.is_empty():
+		if not (character.alignment in required_alignment):
+			return false
+
+	if character.level < required_level:
+		return false
+
 	return true
+
+
+func _check_proficiency(char_class: CharacterEnums.CharacterClass) -> bool:
+	match item_type:
+		ItemType.WEAPON:
+			return Proficiencies.can_use_weapon(char_class, weapon_type)
+		ItemType.SHIELD:
+			return Proficiencies.can_use_shield(char_class, shield_category)
+		ItemType.ARMOR, ItemType.HELMET, ItemType.GLOVES, ItemType.BOOTS:
+			return Proficiencies.can_use_armor(char_class, armor_category)
+		ItemType.ACCESSORY:
+			return true
+		_:
+			return true
 
 
 func get_slot_name() -> String:
@@ -323,6 +374,9 @@ func get_upgradeable_stats() -> Array[String]:
 const UPGRADE_CAP: int = 5
 
 
+## Checks if the item can be upgraded in the specified stat.
+## [param stat]: Stat name to upgrade (accuracy, damage, defense, etc.).
+## [return]: True if upgrade is possible.
 func can_upgrade(stat: String) -> bool:
 	if is_cursed:
 		return false
@@ -334,6 +388,8 @@ func can_upgrade(stat: String) -> bool:
 	return current_level < UPGRADE_CAP
 
 
+## Applies an upgrade to the specified stat.
+## [param stat]: Stat name to upgrade.
 func apply_upgrade(stat: String) -> void:
 	if not can_upgrade(stat):
 		return

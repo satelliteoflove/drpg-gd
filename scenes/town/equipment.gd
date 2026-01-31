@@ -1,9 +1,5 @@
 extends Control
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const KeyBindingHelperClass = preload("res://systems/ui/key_binding_helper.gd")
-
 enum FocusPanel { PARTY, SLOTS, ITEMS }
 
 var current_panel: FocusPanel = FocusPanel.PARTY
@@ -69,7 +65,7 @@ func _refresh_party_list() -> void:
 		party_list.add_child(btn)
 		party_buttons.append(btn)
 
-	party_nav = MenuNavigatorClass.new()
+	party_nav = MenuNavigator.new()
 	if not party_buttons.is_empty():
 		party_nav.setup(party_buttons, 0)
 
@@ -97,7 +93,7 @@ func _refresh_slots_list() -> void:
 		slots_list.add_child(btn)
 		slot_buttons.append(btn)
 
-	slots_nav = MenuNavigatorClass.new()
+	slots_nav = MenuNavigator.new()
 	if not slot_buttons.is_empty():
 		slots_nav.setup(slot_buttons, 0)
 
@@ -120,7 +116,7 @@ func _refresh_items_list() -> void:
 	item_buttons.append(unequip_btn)
 
 	if GameState.party.inventory == null:
-		items_nav = MenuNavigatorClass.new()
+		items_nav = MenuNavigator.new()
 		items_nav.setup(item_buttons, 0)
 		return
 
@@ -135,7 +131,7 @@ func _refresh_items_list() -> void:
 
 		available_items.append(item)
 		var btn := Button.new()
-		var can_equip := item.can_equip(selected_character)
+		var can_equip := selected_character.can_equip_item(item)
 		btn.text = item.get_display_name()
 		if not can_equip:
 			btn.text += " [X]"
@@ -147,7 +143,7 @@ func _refresh_items_list() -> void:
 		items_list.add_child(btn)
 		item_buttons.append(btn)
 
-	items_nav = MenuNavigatorClass.new()
+	items_nav = MenuNavigator.new()
 	if not item_buttons.is_empty():
 		items_nav.setup(item_buttons, 0)
 
@@ -168,7 +164,7 @@ func _set_panel(panel: FocusPanel) -> void:
 	current_panel = panel
 	_update_panel_highlights()
 
-	var h_nav := KeyBindingHelperClass.get_horizontal_help()
+	var h_nav := KeyBindingHelper.get_horizontal_help()
 
 	match panel:
 		FocusPanel.PARTY:
@@ -192,7 +188,7 @@ func _update_panel_highlights() -> void:
 		if current_panel == FocusPanel.ITEMS:
 			if i > 0 and i - 1 < available_items.size():
 				var item := available_items[i - 1]
-				if not item.can_equip(selected_character):
+				if not selected_character.can_equip_item(item):
 					btn.modulate = Color(0.6, 0.6, 0.6)
 				else:
 					btn.modulate = Color.WHITE
@@ -270,7 +266,7 @@ func _update_item_info() -> void:
 	if item.is_cursed:
 		text += "\n[color=orange]Warning: This item is cursed![/color]"
 
-	if not item.can_equip(selected_character):
+	if not selected_character.can_equip_item(item):
 		text += "\n[color=red]Cannot equip:[/color]\n"
 		if selected_character.level < item.required_level:
 			text += "- Requires level %d\n" % item.required_level
@@ -278,6 +274,8 @@ func _update_item_info() -> void:
 			text += "- Class cannot use\n"
 		if not item.required_races.is_empty() and not (selected_character.race in item.required_races):
 			text += "- Race cannot use\n"
+		if item.item_type == Item.ItemType.SHIELD and selected_character.equipped_weapon and selected_character.equipped_weapon.two_handed:
+			text += "- Using two-handed weapon\n"
 	info_label.text = text
 
 
@@ -300,7 +298,7 @@ func _on_item_selected(item: Item) -> void:
 	if selected_character == null:
 		return
 
-	if not item.can_equip(selected_character):
+	if not selected_character.can_equip_item(item):
 		message_label.text = "%s cannot equip %s!" % [selected_character.get_display_name(), item.get_display_name()]
 		return
 

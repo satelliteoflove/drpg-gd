@@ -1,28 +1,23 @@
+## Represents a playable character with stats, equipment, spells, and status effects.
 class_name Character
 extends Resource
-
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const ClassDataRef = preload("res://resources/class_data.gd")
-const XPTable = preload("res://resources/experience_table.gd")
-const SpellLearning = preload("res://systems/magic/spell_learning.gd")
 
 signal level_up_pending()
 signal level_up_completed(new_level: int)
 signal spells_learned(spell_names: Array[String])
 signal died()
 signal revived()
-signal status_applied(status: CharEnum.StatusEffect)
-signal status_removed(status: CharEnum.StatusEffect)
+signal status_applied(status: CharacterEnums.StatusEffect)
+signal status_removed(status: CharacterEnums.StatusEffect)
 
 
 class ActiveStatus:
-	var type: CharEnum.StatusEffect = CharEnum.StatusEffect.NONE
+	var type: CharacterEnums.StatusEffect = CharacterEnums.StatusEffect.NONE
 	var duration: int = -1
 	var source: String = ""
 	var power: int = 0
 
-	func _init(p_type: CharEnum.StatusEffect = CharEnum.StatusEffect.NONE, p_duration: int = -1, p_source: String = "", p_power: int = 0) -> void:
+	func _init(p_type: CharacterEnums.StatusEffect = CharacterEnums.StatusEffect.NONE, p_duration: int = -1, p_source: String = "", p_power: int = 0) -> void:
 		type = p_type
 		duration = p_duration
 		source = p_source
@@ -39,10 +34,10 @@ class ActiveStatus:
 @export_group("Identity")
 @export var id: String = ""
 @export var character_name: String = "Adventurer"
-@export var race: CharEnum.Race = CharEnum.Race.HUMAN
-@export var character_class: CharEnum.CharacterClass = CharEnum.CharacterClass.FIGHTER
-@export var alignment: CharEnum.Alignment = CharEnum.Alignment.NEUTRAL
-@export var gender: CharEnum.Gender = CharEnum.Gender.MALE
+@export var race: CharacterEnums.Race = CharacterEnums.Race.HUMAN
+@export var character_class: CharacterEnums.CharacterClass = CharacterEnums.CharacterClass.FIGHTER
+@export var alignment: CharacterEnums.Alignment = CharacterEnums.Alignment.NEUTRAL
+@export var gender: CharacterEnums.Gender = CharacterEnums.Gender.MALE
 @export var age: int = 18
 
 @export_group("Base Stats")
@@ -74,10 +69,20 @@ class ActiveStatus:
 
 @export_group("Status")
 @export var is_dead: bool = false
-@export var status_effects: Array[CharEnum.StatusEffect] = []
+@export var status_effects: Array[CharacterEnums.StatusEffect] = []
 @export var death_count: int = 0
 var is_defending: bool = false
 var active_statuses: Array[ActiveStatus] = []
+
+const SLOT_MAP: Dictionary = {
+	Item.ItemType.WEAPON: "equipped_weapon",
+	Item.ItemType.ARMOR: "equipped_armor",
+	Item.ItemType.SHIELD: "equipped_shield",
+	Item.ItemType.HELMET: "equipped_helmet",
+	Item.ItemType.GLOVES: "equipped_gloves",
+	Item.ItemType.BOOTS: "equipped_boots",
+	Item.ItemType.ACCESSORY: "equipped_accessory",
+}
 
 @export_group("Equipment Slots")
 @export var equipped_weapon: Item = null
@@ -100,12 +105,20 @@ var active_statuses: Array[ActiveStatus] = []
 @export var max_spell_level: int = 0
 
 
+## Creates a new character with the given attributes.
+## [param p_name]: Character's name.
+## [param p_race]: Character's race.
+## [param p_class]: Character's class.
+## [param p_alignment]: Character's alignment.
+## [param p_gender]: Character's gender.
+## [param p_stats]: Dictionary with strength, intelligence, piety, vitality, agility, luck.
+## [return]: Fully initialized Character resource.
 static func create_new(
 	p_name: String,
-	p_race: CharEnum.Race,
-	p_class: CharEnum.CharacterClass,
-	p_alignment: CharEnum.Alignment,
-	p_gender: CharEnum.Gender,
+	p_race: CharacterEnums.Race,
+	p_class: CharacterEnums.CharacterClass,
+	p_alignment: CharacterEnums.Alignment,
+	p_gender: CharacterEnums.Gender,
 	p_stats: Dictionary
 ) -> Character:
 	var character := Character.new()
@@ -115,7 +128,7 @@ static func create_new(
 	character.character_class = p_class
 	character.alignment = p_alignment
 	character.gender = p_gender
-	character.age = CharEnum.get_base_age(p_race) + CombatRNG.randi_range(0, 5)
+	character.age = CharacterEnums.get_base_age(p_race) + CombatRNG.randi_range(0, 5)
 
 	character.base_strength = p_stats.get("strength", 10)
 	character.base_intelligence = p_stats.get("intelligence", 10)
@@ -140,14 +153,17 @@ static func create_new(
 	return character
 
 
-static func roll_stats_for_race(p_race: CharEnum.Race) -> Dictionary:
+## Rolls random stats for a character of the given race.
+## [param p_race]: The race to roll stats for.
+## [return]: Dictionary with rolled stat values.
+static func roll_stats_for_race(p_race: CharacterEnums.Race) -> Dictionary:
 	return {
-		"strength": CharEnum.roll_stat(p_race, "strength"),
-		"intelligence": CharEnum.roll_stat(p_race, "intelligence"),
-		"piety": CharEnum.roll_stat(p_race, "piety"),
-		"vitality": CharEnum.roll_stat(p_race, "vitality"),
-		"agility": CharEnum.roll_stat(p_race, "agility"),
-		"luck": CharEnum.roll_stat(p_race, "luck")
+		"strength": CharacterEnums.roll_stat(p_race, "strength"),
+		"intelligence": CharacterEnums.roll_stat(p_race, "intelligence"),
+		"piety": CharacterEnums.roll_stat(p_race, "piety"),
+		"vitality": CharacterEnums.roll_stat(p_race, "vitality"),
+		"agility": CharacterEnums.roll_stat(p_race, "agility"),
+		"luck": CharacterEnums.roll_stat(p_race, "luck")
 	}
 
 
@@ -167,30 +183,30 @@ func _recalculate_derived_stats() -> void:
 
 
 func _calculate_max_hp() -> void:
-	var hp_base := ClassDataRef.get_hp_base(character_class)
+	var hp_base := ClassData.get_hp_base(character_class)
 	var vit_bonus := (vitality - 10) / 2
 	var equip_bonus := _get_equipment_hp_bonus()
 	max_hp = maxi(1, (hp_base + vit_bonus) * level + equip_bonus)
 
 
 func _calculate_max_mp() -> void:
-	if not ClassDataRef.can_use_magic(character_class):
+	if not ClassData.can_use_magic(character_class):
 		max_mp = 0
 		return
 
-	var mp_base := ClassDataRef.get_mp_base(character_class)
-	var class_data: Dictionary = ClassDataRef.get_class_data(character_class)
+	var mp_base := ClassData.get_mp_base(character_class)
+	var class_data: Dictionary = ClassData.get_class_data(character_class)
 
 	var stat_bonus := 0
 	var schools: Array = class_data.get("spell_schools", [])
 
 	if class_data.get("is_multiclass_caster", false):
 		stat_bonus = (intelligence - 10) / 4 + (piety - 10) / 4
-	elif CharEnum.SpellSchool.MAGE in schools or CharEnum.SpellSchool.ALCHEMIST in schools:
+	elif CharacterEnums.SpellSchool.MAGE in schools or CharacterEnums.SpellSchool.ALCHEMIST in schools:
 		stat_bonus = (intelligence - 10) / 4
-	elif CharEnum.SpellSchool.PRIEST in schools:
+	elif CharacterEnums.SpellSchool.PRIEST in schools:
 		stat_bonus = (piety - 10) / 4
-	elif CharEnum.SpellSchool.PSIONIC in schools:
+	elif CharacterEnums.SpellSchool.PSIONIC in schools:
 		stat_bonus = (intelligence - 10) / 4
 
 	var equip_bonus := _get_equipment_mp_bonus()
@@ -210,7 +226,7 @@ func _calculate_combat_stats() -> void:
 
 
 func _update_spell_level() -> void:
-	max_spell_level = ClassDataRef.get_spell_level_at_character_level(character_class, level)
+	max_spell_level = ClassData.get_spell_level_at_character_level(character_class, level)
 
 
 func _get_all_equipment() -> Array[Item]:
@@ -273,101 +289,57 @@ func _get_weapon_dice() -> String:
 	return "1d4"
 
 
-func equip_item(item: Item) -> Item:
+func _set_equipment_slot(slot_type: Item.ItemType, item: Item) -> Item:
+	var property: String = SLOT_MAP.get(slot_type, "")
+	if property == "":
+		return null
+	var old_item: Item = get(property)
+	set(property, item)
+	return old_item
+
+
+## Checks if an item can be equipped by this character.
+## [param item]: The item to check.
+## [return]: True if the item can be equipped.
+func can_equip_item(item: Item) -> bool:
 	if not item.is_equipment():
-		return null
+		return false
 	if not item.can_equip(self):
+		return false
+	if item.item_type == Item.ItemType.SHIELD and equipped_weapon and equipped_weapon.two_handed:
+		return false
+	return true
+
+
+## Equips an item in its appropriate slot.
+## [param item]: The item to equip.
+## [return]: Previously equipped item in that slot, or null.
+func equip_item(item: Item) -> Item:
+	if not can_equip_item(item):
 		return null
 
-	var old_item: Item = null
+	if item.item_type == Item.ItemType.WEAPON and item.two_handed and equipped_shield:
+		force_unequip_slot(Item.ItemType.SHIELD)
 
-	match item.item_type:
-		Item.ItemType.WEAPON:
-			old_item = equipped_weapon
-			equipped_weapon = item
-		Item.ItemType.ARMOR:
-			old_item = equipped_armor
-			equipped_armor = item
-		Item.ItemType.SHIELD:
-			old_item = equipped_shield
-			equipped_shield = item
-		Item.ItemType.HELMET:
-			old_item = equipped_helmet
-			equipped_helmet = item
-		Item.ItemType.GLOVES:
-			old_item = equipped_gloves
-			equipped_gloves = item
-		Item.ItemType.BOOTS:
-			old_item = equipped_boots
-			equipped_boots = item
-		Item.ItemType.ACCESSORY:
-			old_item = equipped_accessory
-			equipped_accessory = item
-
+	var old_item := _set_equipment_slot(item.item_type, item)
 	_recalculate_derived_stats()
 	return old_item
 
 
+## Unequips an item from a slot (fails for cursed items).
+## [param slot_type]: The equipment slot to unequip.
+## [return]: The unequipped item, or null if slot empty or item cursed.
 func unequip_slot(slot_type: Item.ItemType) -> Item:
 	var item := get_equipped_item(slot_type)
 	if item and item.is_cursed:
 		return null
-
-	var old_item: Item = null
-
-	match slot_type:
-		Item.ItemType.WEAPON:
-			old_item = equipped_weapon
-			equipped_weapon = null
-		Item.ItemType.ARMOR:
-			old_item = equipped_armor
-			equipped_armor = null
-		Item.ItemType.SHIELD:
-			old_item = equipped_shield
-			equipped_shield = null
-		Item.ItemType.HELMET:
-			old_item = equipped_helmet
-			equipped_helmet = null
-		Item.ItemType.GLOVES:
-			old_item = equipped_gloves
-			equipped_gloves = null
-		Item.ItemType.BOOTS:
-			old_item = equipped_boots
-			equipped_boots = null
-		Item.ItemType.ACCESSORY:
-			old_item = equipped_accessory
-			equipped_accessory = null
-
+	var old_item := _set_equipment_slot(slot_type, null)
 	_recalculate_derived_stats()
 	return old_item
 
 
 func force_unequip_slot(slot_type: Item.ItemType) -> Item:
-	var old_item: Item = null
-
-	match slot_type:
-		Item.ItemType.WEAPON:
-			old_item = equipped_weapon
-			equipped_weapon = null
-		Item.ItemType.ARMOR:
-			old_item = equipped_armor
-			equipped_armor = null
-		Item.ItemType.SHIELD:
-			old_item = equipped_shield
-			equipped_shield = null
-		Item.ItemType.HELMET:
-			old_item = equipped_helmet
-			equipped_helmet = null
-		Item.ItemType.GLOVES:
-			old_item = equipped_gloves
-			equipped_gloves = null
-		Item.ItemType.BOOTS:
-			old_item = equipped_boots
-			equipped_boots = null
-		Item.ItemType.ACCESSORY:
-			old_item = equipped_accessory
-			equipped_accessory = null
-
+	var old_item := _set_equipment_slot(slot_type, null)
 	_recalculate_derived_stats()
 	return old_item
 
@@ -398,15 +370,10 @@ func get_cursed_slots() -> Array[Item.ItemType]:
 
 
 func get_equipped_item(slot_type: Item.ItemType) -> Item:
-	match slot_type:
-		Item.ItemType.WEAPON: return equipped_weapon
-		Item.ItemType.ARMOR: return equipped_armor
-		Item.ItemType.SHIELD: return equipped_shield
-		Item.ItemType.HELMET: return equipped_helmet
-		Item.ItemType.GLOVES: return equipped_gloves
-		Item.ItemType.BOOTS: return equipped_boots
-		Item.ItemType.ACCESSORY: return equipped_accessory
-	return null
+	var property: String = SLOT_MAP.get(slot_type, "")
+	if property == "":
+		return null
+	return get(property)
 
 
 func get_display_name() -> String:
@@ -414,15 +381,15 @@ func get_display_name() -> String:
 
 
 func get_race_name() -> String:
-	return CharEnum.get_race_name(race)
+	return CharacterEnums.get_race_name(race)
 
 
 func get_class_name() -> String:
-	return CharEnum.get_class_name(character_class)
+	return CharacterEnums.get_class_name(character_class)
 
 
 func get_alignment_name() -> String:
-	return CharEnum.get_alignment_name(alignment)
+	return CharacterEnums.get_alignment_name(alignment)
 
 
 func init_combat() -> void:
@@ -432,6 +399,9 @@ func init_combat() -> void:
 	_recalculate_derived_stats()
 
 
+## Applies damage to the character, potentially killing them.
+## [param amount]: Raw damage before defense/defending reduction.
+## [return]: Actual damage dealt after reductions.
 func take_damage(amount: int) -> int:
 	var reduced_amount := amount
 	if is_defending:
@@ -444,6 +414,9 @@ func take_damage(amount: int) -> int:
 	return actual
 
 
+## Heals the character (no effect if dead).
+## [param amount]: HP to restore.
+## [return]: Actual HP restored (capped at max).
 func heal(amount: int) -> int:
 	if is_dead:
 		return 0
@@ -470,44 +443,51 @@ func _die() -> void:
 		return
 	is_dead = true
 	death_count += 1
-	add_status(CharEnum.StatusEffect.DEAD, -1, "", 0)
+	add_status(CharacterEnums.StatusEffect.DEAD, -1, "", 0)
 	died.emit()
 
 
+## Resurrects a dead character, restoring them to life with reduced vitality.
+## [param vitality_loss]: Amount of vitality to permanently lose.
+## [return]: True if resurrection succeeded.
 func resurrect(vitality_loss: int = 1) -> bool:
 	if not is_dead:
 		return false
 
-	if has_status(CharEnum.StatusEffect.LOST):
+	if has_status(CharacterEnums.StatusEffect.LOST):
 		return false
 
 	vitality = maxi(1, vitality - vitality_loss)
 	age += CombatRNG.randi_range(1, 5)
 	is_dead = false
-	remove_status(CharEnum.StatusEffect.DEAD)
-	remove_status(CharEnum.StatusEffect.ASHED)
+	remove_status(CharacterEnums.StatusEffect.DEAD)
+	remove_status(CharacterEnums.StatusEffect.ASHED)
 
 	_recalculate_derived_stats()
-	current_hp = maxi(1, max_hp / 4)
+	current_hp = maxi(1, int(max_hp * CombatConstants.RESURRECTION_HP_FRACTION))
 
 	revived.emit()
 	return true
 
 
+## Adds experience points and checks for level up eligibility.
+## [param amount]: XP to add.
 func add_experience(amount: int) -> void:
-	if is_dead or level >= XPTable.MAX_LEVEL:
+	if is_dead or level >= ExperienceTable.MAX_LEVEL:
 		return
 
 	experience += amount
 
-	var required := XPTable.get_required_xp(level + 1, race, character_class)
+	var required := ExperienceTable.get_required_xp(level + 1, race, character_class)
 	if experience >= required and not pending_level_up:
 		pending_level_up = true
 		level_up_pending.emit()
 
 
+## Confirms a pending level up, increasing stats and potentially learning spells.
+## [return]: True if level up was processed.
 func confirm_level_up() -> bool:
-	if not pending_level_up or level >= XPTable.MAX_LEVEL:
+	if not pending_level_up or level >= ExperienceTable.MAX_LEVEL:
 		return false
 
 	var old_max_hp := max_hp
@@ -516,7 +496,7 @@ func confirm_level_up() -> bool:
 	level += 1
 	pending_level_up = false
 
-	if CombatRNG.randf() < 0.3:
+	if CombatRNG.randf() < CombatConstants.STAT_GAIN_CHANCE:
 		_gain_random_stat()
 
 	_recalculate_derived_stats()
@@ -530,8 +510,8 @@ func confirm_level_up() -> bool:
 	if not learned_spells.is_empty():
 		spells_learned.emit(learned_spells)
 
-	var next_required := XPTable.get_required_xp(level + 1, race, character_class)
-	if experience >= next_required and level < XPTable.MAX_LEVEL:
+	var next_required := ExperienceTable.get_required_xp(level + 1, race, character_class)
+	if experience >= next_required and level < ExperienceTable.MAX_LEVEL:
 		pending_level_up = true
 		level_up_pending.emit()
 
@@ -545,29 +525,29 @@ func _gain_random_stat() -> void:
 
 	match chosen:
 		"strength":
-			strength = mini(strength + 1, 25)
+			strength = mini(strength + 1, CombatConstants.MAX_STAT_VALUE)
 		"intelligence":
-			intelligence = mini(intelligence + 1, 25)
+			intelligence = mini(intelligence + 1, CombatConstants.MAX_STAT_VALUE)
 		"piety":
-			piety = mini(piety + 1, 25)
+			piety = mini(piety + 1, CombatConstants.MAX_STAT_VALUE)
 		"vitality":
-			vitality = mini(vitality + 1, 25)
+			vitality = mini(vitality + 1, CombatConstants.MAX_STAT_VALUE)
 		"agility":
-			agility = mini(agility + 1, 25)
+			agility = mini(agility + 1, CombatConstants.MAX_STAT_VALUE)
 		"luck":
-			luck = mini(luck + 1, 25)
+			luck = mini(luck + 1, CombatConstants.MAX_STAT_VALUE)
 
 
 func get_xp_to_next_level() -> int:
-	return XPTable.get_xp_to_next_level(experience, level, race, character_class)
+	return ExperienceTable.get_xp_to_next_level(experience, level, race, character_class)
 
 
 func get_xp_progress_percent() -> float:
-	if level >= XPTable.MAX_LEVEL:
+	if level >= ExperienceTable.MAX_LEVEL:
 		return 100.0
 
-	var current_req := XPTable.get_required_xp(level, race, character_class)
-	var next_req := XPTable.get_required_xp(level + 1, race, character_class)
+	var current_req := ExperienceTable.get_required_xp(level, race, character_class)
+	var next_req := ExperienceTable.get_required_xp(level + 1, race, character_class)
 	var range_xp := next_req - current_req
 
 	if range_xp <= 0:
@@ -577,15 +557,21 @@ func get_xp_progress_percent() -> float:
 	return clampf(float(progress) / float(range_xp) * 100.0, 0.0, 100.0)
 
 
-func has_status(effect: CharEnum.StatusEffect) -> bool:
+func has_status(effect: CharacterEnums.StatusEffect) -> bool:
 	return status_effects.has(effect)
 
 
-func add_status(effect: CharEnum.StatusEffect, duration: int = -1, source: String = "", power: int = 0) -> bool:
+## Adds a status effect to the character.
+## [param effect]: The status effect to add.
+## [param duration]: Turns until expiry (-1 for permanent).
+## [param source]: Source identifier for tracking.
+## [param power]: Effect strength for certain statuses.
+## [return]: True if the status was applied, false if already present.
+func add_status(effect: CharacterEnums.StatusEffect, duration: int = -1, source: String = "", power: int = 0) -> bool:
 	if has_status(effect):
 		return false
 
-	var exclusive_group := CharEnum.get_exclusive_group(effect)
+	var exclusive_group := CharacterEnums.get_exclusive_group(effect)
 	for existing in exclusive_group:
 		if existing != effect and has_status(existing):
 			remove_status(existing)
@@ -596,7 +582,7 @@ func add_status(effect: CharEnum.StatusEffect, duration: int = -1, source: Strin
 	return true
 
 
-func remove_status(effect: CharEnum.StatusEffect) -> void:
+func remove_status(effect: CharacterEnums.StatusEffect) -> void:
 	status_effects.erase(effect)
 	for i in range(active_statuses.size() - 1, -1, -1):
 		if active_statuses[i].type == effect:
@@ -605,14 +591,14 @@ func remove_status(effect: CharEnum.StatusEffect) -> void:
 	status_removed.emit(effect)
 
 
-func get_active_status(effect: CharEnum.StatusEffect) -> ActiveStatus:
+func get_active_status(effect: CharacterEnums.StatusEffect) -> ActiveStatus:
 	for active in active_statuses:
 		if active.type == effect:
 			return active
 	return null
 
 
-func get_status_duration(effect: CharEnum.StatusEffect) -> int:
+func get_status_duration(effect: CharacterEnums.StatusEffect) -> int:
 	var active := get_active_status(effect)
 	return active.duration if active else 0
 
@@ -621,18 +607,18 @@ func clear_status_effects() -> void:
 	status_effects.clear()
 	active_statuses.clear()
 	if is_dead:
-		status_effects.append(CharEnum.StatusEffect.DEAD)
-		active_statuses.append(ActiveStatus.new(CharEnum.StatusEffect.DEAD, -1, "", 0))
+		status_effects.append(CharacterEnums.StatusEffect.DEAD)
+		active_statuses.append(ActiveStatus.new(CharacterEnums.StatusEffect.DEAD, -1, "", 0))
 
 
 func is_disabled() -> bool:
-	return has_status(CharEnum.StatusEffect.ASLEEP) or \
-		   has_status(CharEnum.StatusEffect.PARALYZED) or \
-		   has_status(CharEnum.StatusEffect.STONED)
+	return has_status(CharacterEnums.StatusEffect.ASLEEP) or \
+		   has_status(CharacterEnums.StatusEffect.PARALYZED) or \
+		   has_status(CharacterEnums.StatusEffect.STONED)
 
 
 func is_silenced() -> bool:
-	return has_status(CharEnum.StatusEffect.SILENCED)
+	return has_status(CharacterEnums.StatusEffect.SILENCED)
 
 
 func can_act() -> bool:

@@ -51,6 +51,20 @@ enum SpellSchool {
 	PSIONIC
 }
 
+enum ArmorCategory {
+	NONE,
+	CLOTH,
+	LEATHER,
+	CHAIN,
+	PLATE
+}
+
+enum ShieldCategory {
+	NONE,
+	LIGHT,
+	HEAVY
+}
+
 enum StatusEffect {
 	NONE,
 	POISONED,

@@ -1,10 +1,5 @@
 extends Control
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const ShopItemsRef = preload("res://data/items/shop_items.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const KeyBindingHelperClass = preload("res://systems/ui/key_binding_helper.gd")
-
 enum Mode { BUY, SELL, UPGRADE, SCRAP, IDENTIFY, UNCURSE }
 enum BuyState { BROWSING, QUANTITY_SELECT, EQUIP_SELECT }
 enum SellState { BROWSING, CONFIRM_SELL }
@@ -156,14 +151,14 @@ func _refresh_items_list() -> void:
 		Mode.UNCURSE:
 			_populate_uncurse_list()
 
-	nav = MenuNavigatorClass.new()
+	nav = MenuNavigator.new()
 	if not item_buttons.is_empty():
 		nav.setup(item_buttons, 0)
 		nav.selection_changed.connect(_on_selection_changed)
 
 
 func _populate_buy_list() -> void:
-	var shop_items := ShopItemsRef.get_shop_inventory()
+	var shop_items := ShopItems.get_shop_inventory()
 	shop_items.sort_custom(_sort_by_type_and_price)
 
 	for item in shop_items:
@@ -452,13 +447,13 @@ func _show_item_info(item: Item) -> void:
 		if not item.required_classes.is_empty():
 			var class_names: Array[String] = []
 			for c in item.required_classes:
-				class_names.append(CharEnum.get_class_name(c))
+				class_names.append(CharacterEnums.get_class_name(c))
 			text += "\nClasses: %s" % ", ".join(class_names)
 
 		if not item.required_races.is_empty():
 			var race_names: Array[String] = []
 			for r in item.required_races:
-				race_names.append(CharEnum.get_race_name(r))
+				race_names.append(CharacterEnums.get_race_name(r))
 			text += "\nRaces: %s" % ", ".join(race_names)
 	else:
 		text += "\n[color=gray]Unidentified - stats unknown[/color]\n"
@@ -527,7 +522,7 @@ func _create_comparison_row(member: Character, item: Item) -> HBoxContainer:
 	name_label.custom_minimum_size = Vector2(100, 0)
 	row.add_child(name_label)
 
-	var can_equip := item.can_equip(member)
+	var can_equip := member.can_equip_item(item)
 	var current_item: Item = member.get_equipped_item(item.item_type)
 
 	var diff_label := Label.new()
@@ -577,10 +572,10 @@ func _get_stat_diff(current: Item, new_item: Item) -> String:
 
 
 func _update_help() -> void:
-	var h_nav := KeyBindingHelperClass.get_horizontal_help()
-	var v_nav := KeyBindingHelperClass.get_nav_help()
-	var confirm := KeyBindingHelperClass.get_confirm_help()
-	var cancel := KeyBindingHelperClass.get_cancel_help()
+	var h_nav := KeyBindingHelper.get_horizontal_help()
+	var v_nav := KeyBindingHelper.get_nav_help()
+	var confirm := KeyBindingHelper.get_confirm_help()
+	var cancel := KeyBindingHelper.get_cancel_help()
 
 	match current_mode:
 		Mode.BUY:
@@ -694,7 +689,7 @@ func _show_equip_dialog(item: Item) -> void:
 
 	for member in GameState.party.get_members():
 		var btn := Button.new()
-		var can_equip := item.can_equip(member)
+		var can_equip := member.can_equip_item(item)
 		var old_item: Item = member.get_equipped_item(item.item_type)
 
 		var will_overflow := false
@@ -719,7 +714,7 @@ func _show_equip_dialog(item: Item) -> void:
 		equip_buttons.append(btn)
 		selected_members.append(member)
 
-	equip_nav = MenuNavigatorClass.new()
+	equip_nav = MenuNavigator.new()
 	equip_nav.setup(equip_buttons, 0)
 
 	modal_overlay.visible = true
@@ -735,7 +730,7 @@ func _on_equip_to_inventory() -> void:
 
 
 func _on_equip_to_member(member: Character) -> void:
-	if not selected_item.can_equip(member):
+	if not member.can_equip_item(selected_item):
 		return
 
 	var old_item: Item = member.get_equipped_item(selected_item.item_type)
@@ -909,7 +904,7 @@ func _show_upgrade_dialog(item: Item) -> void:
 		upgrade_options.add_child(btn)
 		upgrade_stat_buttons.append(btn)
 
-	upgrade_stat_nav = MenuNavigatorClass.new()
+	upgrade_stat_nav = MenuNavigator.new()
 	if not upgrade_stat_buttons.is_empty():
 		upgrade_stat_nav.setup(upgrade_stat_buttons, 0)
 
@@ -1131,6 +1126,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	elif event.is_action_pressed("menu_right"):
 		_cycle_mode(1)
+		return
+
+	if event is InputEventKey and event.pressed and event.keycode == KEY_EQUAL and event.shift_pressed:
+		GameState.party.add_gold(1000)
+		_refresh_display()
+		print("[DEBUG] Added 1000 gold. Total: %d" % GameState.party.gold)
 		return
 
 	if current_mode == Mode.SELL:

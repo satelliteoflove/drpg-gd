@@ -1,9 +1,5 @@
 extends Control
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const KeyBindingHelperClass = preload("res://systems/ui/key_binding_helper.gd")
-
 signal closed()
 
 enum Tab { STATUS, EQUIPMENT, INVENTORY, FORMATION }
@@ -79,7 +75,7 @@ func _setup_tabs() -> void:
 		tab_container.add_child(btn)
 		tab_buttons.append(btn)
 
-	tab_nav = MenuNavigatorClass.new()
+	tab_nav = MenuNavigator.new()
 	tab_nav.setup(tab_buttons, 0)
 
 
@@ -182,10 +178,10 @@ func _close() -> void:
 
 
 func _update_help() -> void:
-	var v_nav := KeyBindingHelperClass.get_nav_help()
-	var confirm := KeyBindingHelperClass.get_confirm_help()
-	var cancel := KeyBindingHelperClass.get_cancel_help()
-	var arrow_nav := KeyBindingHelperClass.get_arrow_nav_help()
+	var v_nav := KeyBindingHelper.get_nav_help()
+	var confirm := KeyBindingHelper.get_confirm_help()
+	var cancel := KeyBindingHelper.get_cancel_help()
+	var arrow_nav := KeyBindingHelper.get_arrow_nav_help()
 	var base := "1-4: Tabs | "
 
 	match current_tab:
@@ -232,7 +228,7 @@ func _refresh_status() -> void:
 		var btn := Button.new()
 		var row_marker := "[F]" if i < 3 else "[B]"
 		var status_indicator := _get_brief_status(member)
-		btn.text = "%s %s - L%d %s %s" % [row_marker, member.character_name, member.level, CharEnum.get_class_name(member.character_class), status_indicator]
+		btn.text = "%s %s - L%d %s %s" % [row_marker, member.character_name, member.level, CharacterEnums.get_class_name(member.character_class), status_indicator]
 		btn.custom_minimum_size = Vector2(350, 32)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		if member.is_dead:
@@ -243,7 +239,7 @@ func _refresh_status() -> void:
 		status_list.add_child(btn)
 		status_buttons.append(btn)
 
-	status_nav = MenuNavigatorClass.new()
+	status_nav = MenuNavigator.new()
 	status_nav.setup(status_buttons, 0)
 	status_nav.selection_changed.connect(_on_status_selection_changed)
 	_update_status_info(0)
@@ -264,8 +260,8 @@ func _update_status_info(index: int) -> void:
 	var member: Character = GameState.party.get_member_at(index)
 	var row := "Front Row" if index < 3 else "Back Row"
 	var text := "[b]%s[/b] (%s)\n" % [member.character_name, row]
-	text += "Level %d %s %s\n" % [member.level, CharEnum.get_race_name(member.race), CharEnum.get_class_name(member.character_class)]
-	text += "Alignment: %s\n\n" % CharEnum.get_alignment_name(member.alignment)
+	text += "Level %d %s %s\n" % [member.level, CharacterEnums.get_race_name(member.race), CharacterEnums.get_class_name(member.character_class)]
+	text += "Alignment: %s\n\n" % CharacterEnums.get_alignment_name(member.alignment)
 	text += "HP: %d/%d    MP: %d/%d\n" % [member.current_hp, member.max_hp, member.current_mp, member.max_mp]
 	text += "STR: %d  INT: %d  PIE: %d\n" % [member.strength, member.intelligence, member.piety]
 	text += "VIT: %d  AGI: %d  LCK: %d\n" % [member.vitality, member.agility, member.luck]
@@ -287,9 +283,9 @@ func _update_status_info(index: int) -> void:
 func _get_status_effects_text(member: Character) -> String:
 	var effects: Array[String] = []
 	for status in member.status_effects:
-		if status == CharEnum.StatusEffect.DEAD:
+		if status == CharacterEnums.StatusEffect.DEAD:
 			continue
-		effects.append(CharEnum.get_status_name(status))
+		effects.append(CharacterEnums.get_status_name(status))
 	if effects.is_empty():
 		return "OK"
 	return ", ".join(effects)
@@ -300,9 +296,9 @@ func _get_brief_status(member: Character) -> String:
 		return "[DEAD]"
 	var abbrevs: Array[String] = []
 	for status in member.status_effects:
-		if status == CharEnum.StatusEffect.DEAD:
+		if status == CharacterEnums.StatusEffect.DEAD:
 			continue
-		abbrevs.append(CharEnum.get_status_abbreviation(status))
+		abbrevs.append(CharacterEnums.get_status_abbreviation(status))
 	if abbrevs.is_empty():
 		return ""
 	return "[%s]" % "/".join(abbrevs)
@@ -310,7 +306,7 @@ func _get_brief_status(member: Character) -> String:
 
 func _has_negative_status(member: Character) -> bool:
 	for status in member.status_effects:
-		if status != CharEnum.StatusEffect.NONE and status != CharEnum.StatusEffect.DEAD and status != CharEnum.StatusEffect.BLESSED:
+		if status != CharacterEnums.StatusEffect.NONE and status != CharacterEnums.StatusEffect.DEAD and status != CharacterEnums.StatusEffect.BLESSED:
 			return true
 	return false
 
@@ -358,7 +354,7 @@ func _refresh_equip_party() -> void:
 		equip_party_list.add_child(btn)
 		equip_party_buttons.append(btn)
 
-	equip_party_nav = MenuNavigatorClass.new()
+	equip_party_nav = MenuNavigator.new()
 	equip_party_nav.setup(equip_party_buttons, 0)
 
 	if equip_panel == EquipPanel.PARTY:
@@ -389,7 +385,7 @@ func _refresh_equip_slots() -> void:
 		equip_slots_list.add_child(btn)
 		equip_slot_buttons.append(btn)
 
-	equip_slots_nav = MenuNavigatorClass.new()
+	equip_slots_nav = MenuNavigator.new()
 	equip_slots_nav.setup(equip_slot_buttons, 0)
 
 	if equip_panel == EquipPanel.SLOTS:
@@ -414,7 +410,7 @@ func _refresh_equip_items() -> void:
 	equip_item_buttons.append(unequip_btn)
 
 	if GameState.party.inventory == null:
-		equip_items_nav = MenuNavigatorClass.new()
+		equip_items_nav = MenuNavigator.new()
 		equip_items_nav.setup(equip_item_buttons, 0)
 		return
 
@@ -428,14 +424,14 @@ func _refresh_equip_items() -> void:
 		btn.text = item.item_name
 		btn.custom_minimum_size = Vector2(140, 28)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		if not item.can_equip(equip_selected_character):
+		if not equip_selected_character.can_equip_item(item):
 			btn.disabled = true
 			btn.modulate = Color(0.6, 0.6, 0.6)
 		btn.pressed.connect(_on_equip_item_selected.bind(item))
 		equip_items_list.add_child(btn)
 		equip_item_buttons.append(btn)
 
-	equip_items_nav = MenuNavigatorClass.new()
+	equip_items_nav = MenuNavigator.new()
 	equip_items_nav.setup(equip_item_buttons, 0)
 
 	if equip_panel == EquipPanel.ITEMS:
@@ -467,7 +463,7 @@ func _on_equip_slot_selected(slot_type: Item.ItemType) -> void:
 
 
 func _on_equip_item_selected(item: Item) -> void:
-	if equip_selected_character == null or not item.can_equip(equip_selected_character):
+	if equip_selected_character == null or not equip_selected_character.can_equip_item(item):
 		return
 
 	GameState.party.inventory.remove_item(item.id, 1)
@@ -499,7 +495,7 @@ func _update_equip_info() -> void:
 				var members := GameState.party.get_members()
 				if idx >= 0 and idx < members.size():
 					var m: Character = members[idx]
-					info_label.text = "[b]%s[/b]\nL%d %s\nWeapon: %s\nDefense: %d" % [m.character_name, m.level, CharEnum.get_class_name(m.character_class), m.weapon_dice, m.defense]
+					info_label.text = "[b]%s[/b]\nL%d %s\nWeapon: %s\nDefense: %d" % [m.character_name, m.level, CharacterEnums.get_class_name(m.character_class), m.weapon_dice, m.defense]
 					return
 			info_label.text = "Select a party member to manage equipment."
 		EquipPanel.SLOTS:
@@ -589,7 +585,7 @@ func _refresh_inv_items() -> void:
 		inv_list.add_child(btn)
 		inv_buttons.append(btn)
 
-	inv_nav = MenuNavigatorClass.new()
+	inv_nav = MenuNavigator.new()
 	inv_nav.setup(inv_buttons, 0)
 	inv_nav.selection_changed.connect(_on_inv_selection_changed)
 
@@ -622,7 +618,7 @@ func _refresh_inv_targets() -> void:
 		inv_targets.add_child(btn)
 		inv_target_buttons.append(btn)
 
-	inv_target_nav = MenuNavigatorClass.new()
+	inv_target_nav = MenuNavigator.new()
 	inv_target_nav.setup(inv_target_buttons, 0)
 	inv_target_nav._update_focus()
 
@@ -768,7 +764,7 @@ func _update_form_slot_button(btn: Button, slot_index: int) -> void:
 		character = GameState.party.get_member_at(slot_index)
 
 	if character:
-		btn.text = "%s\nL%d %s" % [character.character_name, character.level, CharEnum.get_class_name(character.character_class)]
+		btn.text = "%s\nL%d %s" % [character.character_name, character.level, CharacterEnums.get_class_name(character.character_class)]
 		btn.modulate = Color(0.7, 0.3, 0.3) if character.is_dead else Color.WHITE
 	else:
 		btn.text = "(Empty)"
@@ -799,7 +795,7 @@ func _update_form_info() -> void:
 	if character:
 		var row_name := "Front Row" if form_current_slot < 3 else "Back Row"
 		var text := "[b]%s[/b] (%s)\n" % [character.character_name, row_name]
-		text += "Level %d %s %s\n" % [character.level, CharEnum.get_race_name(character.race), CharEnum.get_class_name(character.character_class)]
+		text += "Level %d %s %s\n" % [character.level, CharacterEnums.get_race_name(character.race), CharacterEnums.get_class_name(character.character_class)]
 		text += "HP: %d/%d  MP: %d/%d\n" % [character.current_hp, character.max_hp, character.current_mp, character.max_mp]
 		text += "AGI: %d (affects turn order)\n\n" % character.agility
 
