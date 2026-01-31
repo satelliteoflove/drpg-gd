@@ -1,12 +1,5 @@
 extends SceneTree
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const BatchSimulator = preload("res://systems/simulation/batch_simulator.gd")
-const TestFixtures = preload("res://systems/simulation/test_fixtures.gd")
-const MonsterDatabase = preload("res://data/monsters/monster_database.gd")
-const SpellLearning = preload("res://systems/magic/spell_learning.gd")
-
 const BASE_SEED := 30000
 const NUM_RUNS := 50
 
@@ -96,12 +89,12 @@ func _run_level_scenario(party_level: int, monster_ids: Array) -> void:
 func _create_standard_party(level: int) -> Party:
 	var party := Party.new()
 
-	var fighter1 := _create_char("Fighter1", CharEnum.CharacterClass.FIGHTER, level)
-	var fighter2 := _create_char("Fighter2", CharEnum.CharacterClass.FIGHTER, level)
-	var priest := _create_char("Priest", CharEnum.CharacterClass.PRIEST, level)
-	var mage := _create_char("Mage", CharEnum.CharacterClass.MAGE, level)
-	var bishop := _create_char("Bishop", CharEnum.CharacterClass.BISHOP, level)
-	var thief := _create_char("Thief", CharEnum.CharacterClass.THIEF, level)
+	var fighter1 := _create_char("Fighter1", CharacterEnums.CharacterClass.FIGHTER, level)
+	var fighter2 := _create_char("Fighter2", CharacterEnums.CharacterClass.FIGHTER, level)
+	var priest := _create_char("Priest", CharacterEnums.CharacterClass.PRIEST, level)
+	var mage := _create_char("Mage", CharacterEnums.CharacterClass.MAGE, level)
+	var bishop := _create_char("Bishop", CharacterEnums.CharacterClass.BISHOP, level)
+	var thief := _create_char("Thief", CharacterEnums.CharacterClass.THIEF, level)
 
 	party.add_member(fighter1)
 	party.add_member(fighter2)
@@ -113,7 +106,7 @@ func _create_standard_party(level: int) -> Party:
 	return party
 
 
-func _create_char(char_name: String, char_class: CharEnum.CharacterClass, level: int) -> Character:
+func _create_char(char_name: String, char_class: CharacterEnums.CharacterClass, level: int) -> Character:
 	var stats := {
 		"strength": 12,
 		"intelligence": 12,
@@ -124,26 +117,26 @@ func _create_char(char_name: String, char_class: CharEnum.CharacterClass, level:
 	}
 
 	match char_class:
-		CharEnum.CharacterClass.FIGHTER:
+		CharacterEnums.CharacterClass.FIGHTER:
 			stats["strength"] = 16
 			stats["vitality"] = 14
-		CharEnum.CharacterClass.MAGE:
+		CharacterEnums.CharacterClass.MAGE:
 			stats["intelligence"] = 16
-		CharEnum.CharacterClass.PRIEST:
+		CharacterEnums.CharacterClass.PRIEST:
 			stats["piety"] = 16
-		CharEnum.CharacterClass.THIEF:
+		CharacterEnums.CharacterClass.THIEF:
 			stats["agility"] = 16
 			stats["luck"] = 14
-		CharEnum.CharacterClass.BISHOP:
+		CharacterEnums.CharacterClass.BISHOP:
 			stats["intelligence"] = 14
 			stats["piety"] = 14
 
 	var character := Character.create_new(
 		char_name,
-		CharEnum.Race.HUMAN,
+		CharacterEnums.Race.HUMAN,
 		char_class,
-		CharEnum.Alignment.NEUTRAL,
-		CharEnum.Gender.MALE,
+		CharacterEnums.Alignment.NEUTRAL,
+		CharacterEnums.Gender.MALE,
 		stats
 	)
 

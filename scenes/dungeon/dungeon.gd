@@ -1,14 +1,6 @@
 extends Node3D
 
-const DungeonTile = preload("res://resources/dungeon_tile.gd")
-const DungeonData = preload("res://resources/dungeon_data.gd")
-const DungeonGenerator = preload("res://systems/dungeon/dungeon_generator.gd")
 const PartyMenuScene = preload("res://scenes/common/party_menu.tscn")
-const MonsterDatabase = preload("res://data/monsters/monster_database.gd")
-const CombatSimulator = preload("res://systems/simulation/combat_simulator.gd")
-const BatchSimulator = preload("res://systems/simulation/batch_simulator.gd")
-const TestFixtures = preload("res://systems/simulation/test_fixtures.gd")
-const AIDecisionLog = preload("res://systems/simulation/ai_decision_log.gd")
 const DungeonMapScene = preload("res://scenes/dungeon/dungeon_map.tscn")
 const CombatScene = preload("res://scenes/combat/combat.tscn")
 var menu_open: bool = false

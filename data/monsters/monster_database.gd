@@ -1,9 +1,6 @@
 class_name MonsterDatabase
 extends RefCounted
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const LootDropRes = preload("res://resources/loot_drop.gd")
-
 static var _monsters: Dictionary = {}
 static var _initialized: bool = false
 
@@ -26,24 +23,10 @@ static func get_all_monster_ids() -> Array[String]:
 static func get_monsters_for_floor(floor_num: int) -> Array[String]:
 	_ensure_initialized()
 	var result: Array[String] = []
-
-	if floor_num <= 1:
-		result = ["slime", "goblin", "skeleton"]
-	elif floor_num <= 2:
-		result = ["slime", "goblin", "skeleton", "zombie", "wolf"]
-	elif floor_num <= 3:
-		result = ["goblin", "kobold", "spider", "wolf", "bandit"]
-	elif floor_num <= 4:
-		result = ["kobold", "spider", "orc", "bandit", "harpy"]
-	elif floor_num <= 5:
-		result = ["orc", "witch", "ghost", "harpy", "ogre"]
-	elif floor_num <= 6:
-		result = ["witch", "ghost", "dark_mage", "ogre", "troll"]
-	elif floor_num <= 8:
-		result = ["ghost", "dark_mage", "troll", "ogre", "minotaur"]
-	else:
-		result = ["dark_mage", "troll", "minotaur"]
-
+	for monster_id in _monsters.keys():
+		var monster: Monster = _monsters[monster_id]
+		if floor_num >= monster.min_floor and floor_num <= monster.max_floor:
+			result.append(monster_id)
 	return result
 
 
@@ -81,7 +64,7 @@ static func _create_slime() -> void:
 	monster.agility = 8
 	monster.defense = 0
 	monster.evasion = 0
-	monster.creature_type = CharEnum.CreatureType.CONSTRUCT
+	monster.creature_type = CharacterEnums.CreatureType.CONSTRUCT
 	monster.level = 1
 	monster.luck = 8
 	monster.exp_reward = 10
@@ -91,9 +74,11 @@ static func _create_slime() -> void:
 	monster.attacks = [attack]
 
 	monster.loot_drops = [
-		LootDropRes.create("healing_potion", 0.08),
+		LootDrop.create("healing_potion", 0.08),
 	]
 
+	monster.min_floor = 1
+	monster.max_floor = 2
 	_monsters["slime"] = monster
 
 
@@ -115,13 +100,15 @@ static func _create_goblin() -> void:
 	monster.attacks = [attack1, attack2]
 
 	monster.loot_drops = [
-		LootDropRes.create("dagger", 0.12),
-		LootDropRes.create("short_sword", 0.06),
-		LootDropRes.create("leather_cap", 0.08),
-		LootDropRes.create("leather_boots", 0.06),
-		LootDropRes.create("healing_potion", 0.10),
+		LootDrop.create("dagger", 0.12),
+		LootDrop.create("short_sword", 0.06),
+		LootDrop.create("leather_cap", 0.08),
+		LootDrop.create("leather_boots", 0.06),
+		LootDrop.create("healing_potion", 0.10),
 	]
 
+	monster.min_floor = 1
+	monster.max_floor = 3
 	_monsters["goblin"] = monster
 
 
@@ -143,12 +130,14 @@ static func _create_kobold() -> void:
 	monster.attacks = [attack1, attack1, attack2]
 
 	monster.loot_drops = [
-		LootDropRes.create("dagger", 0.15),
-		LootDropRes.create("leather_gloves", 0.08),
-		LootDropRes.create("healing_potion", 0.12),
-		LootDropRes.create("mana_potion", 0.06),
+		LootDrop.create("dagger", 0.15),
+		LootDrop.create("leather_gloves", 0.08),
+		LootDrop.create("healing_potion", 0.12),
+		LootDrop.create("mana_potion", 0.06),
 	]
 
+	monster.min_floor = 3
+	monster.max_floor = 4
 	_monsters["kobold"] = monster
 
 
@@ -170,14 +159,16 @@ static func _create_orc() -> void:
 	monster.attacks = [attack1, attack2]
 
 	monster.loot_drops = [
-		LootDropRes.create("battle_axe", 0.08),
-		LootDropRes.create("mace", 0.10),
-		LootDropRes.create("chain_mail", 0.05),
-		LootDropRes.create("iron_helm", 0.06),
-		LootDropRes.create("iron_shield", 0.05),
-		LootDropRes.create("greater_healing", 0.08),
+		LootDrop.create("battle_axe", 0.08),
+		LootDrop.create("mace", 0.10),
+		LootDrop.create("chain_mail", 0.05),
+		LootDrop.create("iron_helm", 0.06),
+		LootDrop.create("iron_shield", 0.05),
+		LootDrop.create("greater_healing", 0.08),
 	]
 
+	monster.min_floor = 4
+	monster.max_floor = 5
 	_monsters["orc"] = monster
 
 
@@ -189,7 +180,7 @@ static func _create_spider() -> void:
 	monster.agility = 12
 	monster.defense = 2
 	monster.evasion = 6
-	monster.creature_type = CharEnum.CreatureType.INSECT
+	monster.creature_type = CharacterEnums.CreatureType.INSECT
 	monster.level = 3
 	monster.luck = 10
 	monster.exp_reward = 18
@@ -199,7 +190,7 @@ static func _create_spider() -> void:
 		"Poison Bite",
 		"1d6",
 		3,
-		CharEnum.StatusEffect.POISONED,
+		CharacterEnums.StatusEffect.POISONED,
 		0.35,
 		"",
 		"physical",
@@ -210,11 +201,13 @@ static func _create_spider() -> void:
 	monster.attacks = [poison_bite, poison_bite, attack]
 
 	monster.loot_drops = [
-		LootDropRes.create("antidote", 0.15),
-		LootDropRes.create("healing_potion", 0.10),
-		LootDropRes.create("leather_armor", 0.06),
+		LootDrop.create("antidote", 0.15),
+		LootDrop.create("healing_potion", 0.10),
+		LootDrop.create("leather_armor", 0.06),
 	]
 
+	monster.min_floor = 3
+	monster.max_floor = 4
 	_monsters["spider"] = monster
 
 
@@ -234,14 +227,14 @@ static func _create_witch() -> void:
 	monster.exp_reward = 30
 	monster.gold_reward_dice = "3d8"
 
-	var fire_bolt := MonsterAttack.create_magical("Fire Bolt", "2d6", CharEnum.Element.FIRE, 4)
+	var fire_bolt := MonsterAttack.create_magical("Fire Bolt", "2d6", CharacterEnums.Element.FIRE, 4)
 	fire_bolt.is_magical = true
 
 	var curse := MonsterAttack.create_with_effect(
 		"Curse",
 		"1d4",
 		2,
-		CharEnum.StatusEffect.CURSED,
+		CharacterEnums.StatusEffect.CURSED,
 		0.50,
 		"",
 		"magical",
@@ -254,12 +247,14 @@ static func _create_witch() -> void:
 	monster.spells = ["m1_fire_bolt"]
 
 	monster.loot_drops = [
-		LootDropRes.create("staff", 0.12),
-		LootDropRes.create("cloth_armor", 0.10),
-		LootDropRes.create("mana_potion", 0.15),
-		LootDropRes.create("greater_healing", 0.08),
+		LootDrop.create("staff", 0.12),
+		LootDrop.create("cloth_armor", 0.10),
+		LootDrop.create("mana_potion", 0.15),
+		LootDrop.create("greater_healing", 0.08),
 	]
 
+	monster.min_floor = 5
+	monster.max_floor = 6
 	_monsters["witch"] = monster
 
 
@@ -271,7 +266,7 @@ static func _create_skeleton() -> void:
 	monster.agility = 10
 	monster.defense = 2
 	monster.evasion = 6
-	monster.creature_type = CharEnum.CreatureType.UNDEAD
+	monster.creature_type = CharacterEnums.CreatureType.UNDEAD
 	monster.level = 2
 	monster.luck = 6
 	monster.exp_reward = 12
@@ -281,11 +276,13 @@ static func _create_skeleton() -> void:
 	monster.attacks = [sword]
 
 	monster.loot_drops = [
-		LootDropRes.create("short_sword", 0.10),
-		LootDropRes.create("iron_shield", 0.06),
-		LootDropRes.create("healing_potion", 0.08),
+		LootDrop.create("short_sword", 0.10),
+		LootDrop.create("iron_shield", 0.06),
+		LootDrop.create("healing_potion", 0.08),
 	]
 
+	monster.min_floor = 1
+	monster.max_floor = 2
 	_monsters["skeleton"] = monster
 
 
@@ -297,7 +294,7 @@ static func _create_zombie() -> void:
 	monster.agility = 4
 	monster.defense = 3
 	monster.evasion = 0
-	monster.creature_type = CharEnum.CreatureType.UNDEAD
+	monster.creature_type = CharacterEnums.CreatureType.UNDEAD
 	monster.level = 2
 	monster.vitality = 14
 	monster.luck = 4
@@ -308,7 +305,7 @@ static func _create_zombie() -> void:
 		"Rotting Slam",
 		"1d6+1",
 		-1,
-		CharEnum.StatusEffect.POISONED,
+		CharacterEnums.StatusEffect.POISONED,
 		0.25,
 		"",
 		"physical",
@@ -317,10 +314,12 @@ static func _create_zombie() -> void:
 	monster.attacks = [slam]
 
 	monster.loot_drops = [
-		LootDropRes.create("antidote", 0.15),
-		LootDropRes.create("healing_potion", 0.10),
+		LootDrop.create("antidote", 0.15),
+		LootDrop.create("healing_potion", 0.10),
 	]
 
+	monster.min_floor = 2
+	monster.max_floor = 2
 	_monsters["zombie"] = monster
 
 
@@ -332,7 +331,7 @@ static func _create_wolf() -> void:
 	monster.agility = 16
 	monster.defense = 1
 	monster.evasion = 8
-	monster.creature_type = CharEnum.CreatureType.BEAST
+	monster.creature_type = CharacterEnums.CreatureType.BEAST
 	monster.level = 2
 	monster.luck = 12
 	monster.exp_reward = 14
@@ -343,10 +342,12 @@ static func _create_wolf() -> void:
 	monster.attacks = [bite, bite, claw]
 
 	monster.loot_drops = [
-		LootDropRes.create("leather_armor", 0.08),
-		LootDropRes.create("healing_potion", 0.10),
+		LootDrop.create("leather_armor", 0.08),
+		LootDrop.create("healing_potion", 0.10),
 	]
 
+	monster.min_floor = 2
+	monster.max_floor = 3
 	_monsters["wolf"] = monster
 
 
@@ -368,14 +369,16 @@ static func _create_bandit() -> void:
 	monster.attacks = [dagger, dagger, throwing]
 
 	monster.loot_drops = [
-		LootDropRes.create("dagger", 0.15),
-		LootDropRes.create("short_sword", 0.08),
-		LootDropRes.create("leather_armor", 0.10),
-		LootDropRes.create("leather_boots", 0.08),
-		LootDropRes.create("healing_potion", 0.12),
-		LootDropRes.create("mana_potion", 0.06),
+		LootDrop.create("dagger", 0.15),
+		LootDrop.create("short_sword", 0.08),
+		LootDrop.create("leather_armor", 0.10),
+		LootDrop.create("leather_boots", 0.08),
+		LootDrop.create("healing_potion", 0.12),
+		LootDrop.create("mana_potion", 0.06),
 	]
 
+	monster.min_floor = 3
+	monster.max_floor = 4
 	_monsters["bandit"] = monster
 
 
@@ -398,12 +401,14 @@ static func _create_troll() -> void:
 	monster.attacks = [club, claw]
 
 	monster.loot_drops = [
-		LootDropRes.create("battle_axe", 0.10),
-		LootDropRes.create("mace", 0.12),
-		LootDropRes.create("chain_mail", 0.06),
-		LootDropRes.create("greater_healing", 0.15),
+		LootDrop.create("battle_axe", 0.10),
+		LootDrop.create("mace", 0.12),
+		LootDrop.create("chain_mail", 0.06),
+		LootDrop.create("greater_healing", 0.15),
 	]
 
+	monster.min_floor = 6
+	monster.max_floor = 99
 	_monsters["troll"] = monster
 
 
@@ -415,7 +420,7 @@ static func _create_ghost() -> void:
 	monster.agility = 14
 	monster.defense = 0
 	monster.evasion = 20
-	monster.creature_type = CharEnum.CreatureType.UNDEAD
+	monster.creature_type = CharacterEnums.CreatureType.UNDEAD
 	monster.level = 4
 	monster.intelligence = 14
 	monster.piety = 12
@@ -424,29 +429,31 @@ static func _create_ghost() -> void:
 	monster.exp_reward = 35
 	monster.gold_reward_dice = "2d8"
 
-	var drain := MonsterAttack.create_magical("Life Drain", "1d8", CharEnum.Element.DARK, 4)
+	var drain := MonsterAttack.create_magical("Life Drain", "1d8", CharacterEnums.Element.DARK, 4)
 
 	var touch := MonsterAttack.create_with_effect(
 		"Chilling Touch",
 		"1d4",
 		2,
-		CharEnum.StatusEffect.PARALYZED,
+		CharacterEnums.StatusEffect.PARALYZED,
 		0.20,
 		"1+1d2",
 		"magical",
 		3
 	)
 	touch.is_magical = true
-	touch.element = CharEnum.Element.ICE
+	touch.element = CharacterEnums.Element.ICE
 
 	monster.attacks = [drain, touch]
 	monster.spells = ["m2_fear"]
 
 	monster.loot_drops = [
-		LootDropRes.create("mana_potion", 0.15),
-		LootDropRes.create("staff", 0.08),
+		LootDrop.create("mana_potion", 0.15),
+		LootDrop.create("staff", 0.08),
 	]
 
+	monster.min_floor = 5
+	monster.max_floor = 8
 	_monsters["ghost"] = monster
 
 
@@ -466,13 +473,13 @@ static func _create_dark_mage() -> void:
 	monster.exp_reward = 45
 	monster.gold_reward_dice = "4d8"
 
-	var bolt := MonsterAttack.create_magical("Shadow Bolt", "2d6", CharEnum.Element.DARK, 4)
+	var bolt := MonsterAttack.create_magical("Shadow Bolt", "2d6", CharacterEnums.Element.DARK, 4)
 
 	var curse := MonsterAttack.create_with_effect(
 		"Curse",
 		"1d4",
 		2,
-		CharEnum.StatusEffect.CURSED,
+		CharacterEnums.StatusEffect.CURSED,
 		0.40,
 		"",
 		"magical",
@@ -485,12 +492,14 @@ static func _create_dark_mage() -> void:
 	monster.spells = ["m1_fire_bolt", "m1_sleep", "m2_fear"]
 
 	monster.loot_drops = [
-		LootDropRes.create("staff", 0.15),
-		LootDropRes.create("cloth_armor", 0.10),
-		LootDropRes.create("mana_potion", 0.20),
-		LootDropRes.create("greater_healing", 0.10),
+		LootDrop.create("staff", 0.15),
+		LootDrop.create("cloth_armor", 0.10),
+		LootDrop.create("mana_potion", 0.20),
+		LootDrop.create("greater_healing", 0.10),
 	]
 
+	monster.min_floor = 6
+	monster.max_floor = 99
 	_monsters["dark_mage"] = monster
 
 
@@ -519,12 +528,14 @@ static func _create_ogre() -> void:
 	monster.attacks = [fist, fist, slam, stomp]
 
 	monster.loot_drops = [
-		LootDropRes.create("battle_axe", 0.12),
-		LootDropRes.create("chain_mail", 0.08),
-		LootDropRes.create("iron_helm", 0.08),
-		LootDropRes.create("greater_healing", 0.12),
+		LootDrop.create("battle_axe", 0.12),
+		LootDrop.create("chain_mail", 0.08),
+		LootDrop.create("iron_helm", 0.08),
+		LootDrop.create("greater_healing", 0.12),
 	]
 
+	monster.min_floor = 5
+	monster.max_floor = 8
 	_monsters["ogre"] = monster
 
 
@@ -537,7 +548,7 @@ static func _create_harpy() -> void:
 	monster.defense = 2
 	monster.evasion = 8
 	monster.is_flying = true
-	monster.creature_type = CharEnum.CreatureType.BEAST
+	monster.creature_type = CharacterEnums.CreatureType.BEAST
 	monster.level = 3
 	monster.luck = 14
 	monster.exp_reward = 25
@@ -549,7 +560,7 @@ static func _create_harpy() -> void:
 		"Terrifying Screech",
 		"1d4",
 		2,
-		CharEnum.StatusEffect.AFRAID,
+		CharacterEnums.StatusEffect.AFRAID,
 		0.35,
 		"2+1d3",
 		"mental",
@@ -560,11 +571,13 @@ static func _create_harpy() -> void:
 	monster.attacks = [talon, talon, screech]
 
 	monster.loot_drops = [
-		LootDropRes.create("leather_armor", 0.08),
-		LootDropRes.create("healing_potion", 0.12),
-		LootDropRes.create("mana_potion", 0.08),
+		LootDrop.create("leather_armor", 0.08),
+		LootDrop.create("healing_potion", 0.12),
+		LootDrop.create("mana_potion", 0.08),
 	]
 
+	monster.min_floor = 4
+	monster.max_floor = 5
 	_monsters["harpy"] = monster
 
 
@@ -592,11 +605,13 @@ static func _create_minotaur() -> void:
 	monster.attacks = [axe, axe, gore, charge]
 
 	monster.loot_drops = [
-		LootDropRes.create("battle_axe", 0.15),
-		LootDropRes.create("plate_mail", 0.06),
-		LootDropRes.create("iron_helm", 0.10),
-		LootDropRes.create("iron_shield", 0.08),
-		LootDropRes.create("greater_healing", 0.15),
+		LootDrop.create("battle_axe", 0.15),
+		LootDrop.create("plate_mail", 0.06),
+		LootDrop.create("iron_helm", 0.10),
+		LootDrop.create("iron_shield", 0.08),
+		LootDrop.create("greater_healing", 0.15),
 	]
 
+	monster.min_floor = 7
+	monster.max_floor = 99
 	_monsters["minotaur"] = monster

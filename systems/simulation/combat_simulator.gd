@@ -1,19 +1,6 @@
 class_name CombatSimulator
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const DamageCalculator = preload("res://systems/combat/damage_calculator.gd")
-const StatusEffectSystem = preload("res://systems/combat/status_effect_system.gd")
-const SpellCaster = preload("res://systems/magic/spell_caster.gd")
-const SpellDatabase = preload("res://data/spells/spell_database.gd")
-const MonsterAI = preload("res://systems/combat/monster_ai.gd")
-const PartyAIRef = preload("res://systems/simulation/party_ai.gd")
-const InitiativeTracker = preload("res://systems/combat/initiative_tracker.gd")
-const AIDecisionLogRef = preload("res://systems/simulation/ai_decision_log.gd")
-const MetricsCollectorRef = preload("res://systems/simulation/metrics_collector.gd")
-const DispelUndead = preload("res://systems/combat/dispel_undead.gd")
-
 signal turn_completed(turn_data: Dictionary)
 signal combat_completed(result: Dictionary)
 
@@ -21,10 +8,10 @@ var party: Party = null
 var enemies: Array[Monster] = []
 var rng_seed: int = 0
 var max_turns: int = 100
-var ai_log: AIDecisionLogRef = null
-var metrics: MetricsCollectorRef = null
-var party_strategy: PartyAIRef.Strategy = PartyAIRef.Strategy.BALANCED
-var cast_threshold: float = PartyAIRef.DEFAULT_CAST_THRESHOLD
+var ai_log: AIDecisionLog = null
+var metrics: MetricsCollector = null
+var party_strategy: PartyAI.Strategy = PartyAI.Strategy.BALANCED
+var cast_threshold: float = PartyAI.DEFAULT_CAST_THRESHOLD
 
 var _initiative: InitiativeTracker = null
 var _current_turn: int = 0
@@ -41,8 +28,8 @@ func setup(p_party: Party, p_enemies: Array[Monster], seed_value: int) -> void:
 		var combat_enemy := enemy.duplicate_for_combat()
 		enemies.append(combat_enemy)
 
-	ai_log = AIDecisionLogRef.new()
-	metrics = MetricsCollectorRef.new()
+	ai_log = AIDecisionLog.new()
+	metrics = MetricsCollector.new()
 	_initiative = InitiativeTracker.new()
 	_current_turn = 0
 	_combat_active = true
@@ -128,7 +115,7 @@ func _execute_player_turn(character_id: String) -> Dictionary:
 	if StatusEffectSystem.may_skip_turn_from_fear(character):
 		return {"skipped": true, "reason": "afraid", "messages": tick_messages}
 
-	var decision := PartyAIRef.decide_action(character, party, enemies, party_strategy, cast_threshold)
+	var decision := PartyAI.decide_action(character, party, enemies, party_strategy, cast_threshold)
 
 	ai_log.log_decision(_current_turn, character.get_display_name(), decision)
 
@@ -367,22 +354,22 @@ func _execute_monster_spell(monster: Monster, spell_id: String, targets: Array) 
 
 func _get_default_spell_targets(spell: Spell) -> Array:
 	match spell.target_type:
-		CharEnum.SpellTargetType.ALL_ENEMIES:
+		CharacterEnums.SpellTargetType.ALL_ENEMIES:
 			var targets: Array = []
 			for enemy in enemies:
 				if not enemy.is_dead:
 					targets.append(enemy)
 			return targets
-		CharEnum.SpellTargetType.ALL_ALLIES:
+		CharacterEnums.SpellTargetType.ALL_ALLIES:
 			var targets: Array = []
 			for member in party.get_alive_members():
 				targets.append(member)
 			return targets
-		CharEnum.SpellTargetType.SINGLE_ENEMY:
+		CharacterEnums.SpellTargetType.SINGLE_ENEMY:
 			for enemy in enemies:
 				if not enemy.is_dead:
 					return [enemy]
-		CharEnum.SpellTargetType.SINGLE_ALLY:
+		CharacterEnums.SpellTargetType.SINGLE_ALLY:
 			var members := party.get_alive_members()
 			if not members.is_empty():
 				return [members[0]]

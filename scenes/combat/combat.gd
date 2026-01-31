@@ -2,19 +2,12 @@ extends Control
 
 signal combat_closed(victory: bool)
 
-const CombatSystemClass = preload("res://systems/combat/combat_system.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const SpellValidatorClass = preload("res://systems/magic/spell_validator.gd")
-const SpellDatabaseClass = preload("res://data/spells/spell_database.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const ChestSystemClass = preload("res://systems/loot/chest_system.gd")
 const ChestModalScene = preload("res://scenes/combat/chest_modal.tscn")
-const ChestClass = preload("res://resources/chest.gd")
 
 var combat_system: CombatSystem = null
 var selected_item: Item = null
 var chest_modal: Control = null
-var current_chest: ChestClass = null
+var current_chest: Chest = null
 var pending_loot: Array[Item] = []
 var is_boss_encounter: bool = false
 var available_items: Array[Item] = []
@@ -110,7 +103,7 @@ func _ready() -> void:
 
 func _setup_action_nav() -> void:
 	action_buttons = [attack_button, defend_button, spell_button, item_button, escape_button]
-	action_nav = MenuNavigatorClass.new()
+	action_nav = MenuNavigator.new()
 	action_nav.setup(action_buttons, 0)
 
 
@@ -196,7 +189,7 @@ func _start_combat() -> void:
 		combat_closed.emit(false)
 		return
 
-	combat_system = CombatSystemClass.new()
+	combat_system = CombatSystem.new()
 	combat_system.turn_started.connect(_on_turn_started)
 	combat_system.action_performed.connect(_on_action_performed)
 	combat_system.combat_ended.connect(_on_combat_ended)
@@ -442,17 +435,17 @@ func _get_character_status_text(character: Character) -> String:
 
 	if character.is_defending:
 		statuses.append("DEF")
-	if character.has_status(CharEnum.StatusEffect.POISONED):
+	if character.has_status(CharacterEnums.StatusEffect.POISONED):
 		statuses.append("PSN")
-	if character.has_status(CharEnum.StatusEffect.PARALYZED):
+	if character.has_status(CharacterEnums.StatusEffect.PARALYZED):
 		statuses.append("PAR")
-	if character.has_status(CharEnum.StatusEffect.ASLEEP):
+	if character.has_status(CharacterEnums.StatusEffect.ASLEEP):
 		statuses.append("SLP")
-	if character.has_status(CharEnum.StatusEffect.CONFUSED):
+	if character.has_status(CharacterEnums.StatusEffect.CONFUSED):
 		statuses.append("CNF")
-	if character.has_status(CharEnum.StatusEffect.SILENCED):
+	if character.has_status(CharacterEnums.StatusEffect.SILENCED):
 		statuses.append("SIL")
-	if character.has_status(CharEnum.StatusEffect.BLINDED):
+	if character.has_status(CharacterEnums.StatusEffect.BLINDED):
 		statuses.append("BLD")
 
 	return " ".join(statuses)
@@ -584,7 +577,7 @@ func _exit_combat(victory: bool) -> void:
 
 
 func _show_chest_modal() -> void:
-	current_chest = ChestSystemClass.create_chest_from_loot(pending_loot, is_boss_encounter)
+	current_chest = ChestSystem.create_chest_from_loot(pending_loot, is_boss_encounter)
 
 	chest_modal = ChestModalScene.instantiate()
 	add_child(chest_modal)
@@ -622,7 +615,6 @@ func _on_chest_combat_triggered() -> void:
 
 
 func _generate_alarm_encounter() -> Dictionary:
-	var MonsterDatabase = preload("res://data/monsters/monster_database.gd")
 	var monsters: Array[Monster] = []
 
 	var floor_num := GameState.current_floor if GameState.current_floor > 0 else 1
@@ -710,7 +702,7 @@ func _populate_enemy_target_list(reachable_enemies: Array[Monster]) -> void:
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
-	enemy_target_nav = MenuNavigatorClass.new()
+	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
 
@@ -760,7 +752,7 @@ func _on_spell_pressed() -> void:
 		message_log.append_text("[color=#aaaaaa]>[/color] %s doesn't know any spells.\n" % caster.get_display_name())
 		return
 
-	available_spells = SpellValidatorClass.get_spells_by_level(caster, true)
+	available_spells = SpellValidator.get_spells_by_level(caster, true)
 
 	var has_any_spells := false
 	for level in available_spells:
@@ -835,7 +827,7 @@ func _populate_item_list() -> void:
 			item_list.add_child(btn)
 			item_buttons.append(btn)
 
-	item_nav = MenuNavigatorClass.new()
+	item_nav = MenuNavigator.new()
 	if not item_buttons.is_empty():
 		item_nav.setup(item_buttons, 0)
 
@@ -881,7 +873,7 @@ func _populate_target_list() -> void:
 		target_list.add_child(btn)
 		target_buttons.append(btn)
 
-	target_nav = MenuNavigatorClass.new()
+	target_nav = MenuNavigator.new()
 	if not target_buttons.is_empty():
 		target_nav.setup(target_buttons, 0)
 
@@ -943,12 +935,12 @@ func _on_target_selected(character: Character) -> void:
 
 func _get_status_name(status) -> String:
 	match status:
-		CharEnum.StatusEffect.POISONED: return "Poison"
-		CharEnum.StatusEffect.PARALYZED: return "Paralysis"
-		CharEnum.StatusEffect.ASLEEP: return "Sleep"
-		CharEnum.StatusEffect.CONFUSED: return "Confusion"
-		CharEnum.StatusEffect.SILENCED: return "Silence"
-		CharEnum.StatusEffect.BLINDED: return "Blindness"
+		CharacterEnums.StatusEffect.POISONED: return "Poison"
+		CharacterEnums.StatusEffect.PARALYZED: return "Paralysis"
+		CharacterEnums.StatusEffect.ASLEEP: return "Sleep"
+		CharacterEnums.StatusEffect.CONFUSED: return "Confusion"
+		CharacterEnums.StatusEffect.SILENCED: return "Silence"
+		CharacterEnums.StatusEffect.BLINDED: return "Blindness"
 		_: return "status"
 
 
@@ -1004,7 +996,7 @@ func _populate_spell_list_for_level(level: int) -> void:
 	for spell in spells:
 		var btn := Button.new()
 		var can_cast: bool = caster.current_mp >= spell.mp_cost
-		var fizzle: int = int(SpellValidatorClass.calculate_fizzle_chance(caster, spell))
+		var fizzle: int = int(SpellValidator.calculate_fizzle_chance(caster, spell))
 
 		btn.text = "%s (%d MP) [%d%% fizzle]" % [spell.name, spell.mp_cost, fizzle]
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -1019,7 +1011,7 @@ func _populate_spell_list_for_level(level: int) -> void:
 		spell_list.add_child(btn)
 		spell_buttons.append(btn)
 
-	spell_nav = MenuNavigatorClass.new()
+	spell_nav = MenuNavigator.new()
 	if not spell_buttons.is_empty():
 		var first_enabled := 0
 		for i in range(spell_buttons.size()):
@@ -1038,36 +1030,36 @@ func _on_spell_selected(spell: Spell) -> void:
 	spell_modal.visible = false
 
 	match spell.target_type:
-		CharEnum.SpellTargetType.SELF:
+		CharacterEnums.SpellTargetType.SELF:
 			_cast_spell_on_targets([caster])
-		CharEnum.SpellTargetType.SINGLE_ALLY:
+		CharacterEnums.SpellTargetType.SINGLE_ALLY:
 			spell_target_mode = "ally"
 			_populate_spell_ally_target_list(false)
-		CharEnum.SpellTargetType.SINGLE_ENEMY:
+		CharacterEnums.SpellTargetType.SINGLE_ENEMY:
 			spell_target_mode = "enemy"
 			_populate_spell_enemy_target_list()
-		CharEnum.SpellTargetType.ALL_ALLIES:
+		CharacterEnums.SpellTargetType.ALL_ALLIES:
 			var targets := combat_system.get_valid_ally_targets(false)
 			var typed_targets: Array = []
 			for t in targets:
 				typed_targets.append(t)
 			_cast_spell_on_targets(typed_targets)
-		CharEnum.SpellTargetType.ALL_ENEMIES:
+		CharacterEnums.SpellTargetType.ALL_ENEMIES:
 			var targets := combat_system.get_living_enemies()
 			var typed_targets: Array = []
 			for t in targets:
 				typed_targets.append(t)
 			_cast_spell_on_targets(typed_targets)
-		CharEnum.SpellTargetType.DEAD_ALLY:
+		CharacterEnums.SpellTargetType.DEAD_ALLY:
 			spell_target_mode = "dead"
 			_populate_spell_ally_target_list(true)
-		CharEnum.SpellTargetType.SPLASH:
+		CharacterEnums.SpellTargetType.SPLASH:
 			spell_target_mode = "splash"
 			_populate_spell_splash_target_list()
-		CharEnum.SpellTargetType.ROW:
+		CharacterEnums.SpellTargetType.ROW:
 			spell_target_mode = "row"
 			_populate_spell_row_target_list()
-		CharEnum.SpellTargetType.COLUMN:
+		CharacterEnums.SpellTargetType.COLUMN:
 			spell_target_mode = "column"
 			_populate_spell_column_target_list()
 		_:
@@ -1112,7 +1104,7 @@ func _populate_spell_ally_target_list(dead_only: bool) -> void:
 		spell_ally_list.add_child(btn)
 		spell_ally_buttons.append(btn)
 
-	spell_ally_nav = MenuNavigatorClass.new()
+	spell_ally_nav = MenuNavigator.new()
 	if not spell_ally_buttons.is_empty():
 		spell_ally_nav.setup(spell_ally_buttons, 0)
 
@@ -1149,7 +1141,7 @@ func _populate_spell_enemy_target_list() -> void:
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
-	enemy_target_nav = MenuNavigatorClass.new()
+	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
 
@@ -1201,7 +1193,7 @@ func _populate_spell_splash_target_list() -> void:
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
-	enemy_target_nav = MenuNavigatorClass.new()
+	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
 
@@ -1234,7 +1226,7 @@ func _populate_spell_row_target_list() -> void:
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
-	enemy_target_nav = MenuNavigatorClass.new()
+	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
 
@@ -1275,7 +1267,7 @@ func _populate_spell_column_target_list() -> void:
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
-	enemy_target_nav = MenuNavigatorClass.new()
+	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
 
@@ -1378,7 +1370,7 @@ func _can_character_cast_spells(character: Character) -> bool:
 		return false
 	if character.known_spells.is_empty():
 		return false
-	var spells_by_level := SpellValidatorClass.get_spells_by_level(character, true)
+	var spells_by_level := SpellValidator.get_spells_by_level(character, true)
 	for level in spells_by_level:
 		for spell in spells_by_level[level]:
 			if character.current_mp >= spell.mp_cost:
@@ -1515,7 +1507,6 @@ func _debug_win_with_alarm_trap() -> void:
 		enemy.current_hp = 0
 		enemy.is_dead = true
 
-	var TrapDatabase = preload("res://data/traps/trap_database.gd")
 	var alarm_trap := TrapDatabase.get_trap("alarm")
 	var loot: Array[Item] = []
 	var test_item := Item.new()
@@ -1526,7 +1517,7 @@ func _debug_win_with_alarm_trap() -> void:
 
 	pending_loot = loot
 	is_boss_encounter = false
-	current_chest = ChestClass.create(ChestClass.ChestType.PLAIN, loot, alarm_trap)
+	current_chest = Chest.create(Chest.ChestType.PLAIN, loot, alarm_trap)
 
 	_set_actions_enabled(false)
 	GameState.end_combat(true)
@@ -1544,7 +1535,6 @@ func _debug_win_with_poison_trap() -> void:
 		enemy.current_hp = 0
 		enemy.is_dead = true
 
-	var TrapDatabase = preload("res://data/traps/trap_database.gd")
 	var poison_trap := TrapDatabase.get_trap("poison_needle")
 	var loot: Array[Item] = []
 	var test_item := Item.new()
@@ -1555,7 +1545,7 @@ func _debug_win_with_poison_trap() -> void:
 
 	pending_loot = loot
 	is_boss_encounter = false
-	current_chest = ChestClass.create(ChestClass.ChestType.PLAIN, loot, poison_trap)
+	current_chest = Chest.create(Chest.ChestType.PLAIN, loot, poison_trap)
 
 	_set_actions_enabled(false)
 	GameState.end_combat(true)

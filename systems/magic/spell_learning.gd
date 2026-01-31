@@ -1,23 +1,18 @@
 class_name SpellLearning
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const ClassDataRef = preload("res://resources/class_data.gd")
-const SpellDatabase = preload("res://data/spells/spell_database.gd")
-
 const CLASS_SPELL_SCHOOLS: Dictionary = {
-	CharEnum.CharacterClass.MAGE: [CharEnum.SpellSchool.MAGE],
-	CharEnum.CharacterClass.PRIEST: [CharEnum.SpellSchool.PRIEST],
-	CharEnum.CharacterClass.ALCHEMIST: [CharEnum.SpellSchool.ALCHEMIST],
-	CharEnum.CharacterClass.PSIONIC: [CharEnum.SpellSchool.PSIONIC],
-	CharEnum.CharacterClass.BISHOP: [CharEnum.SpellSchool.MAGE, CharEnum.SpellSchool.PRIEST],
-	CharEnum.CharacterClass.RANGER: [CharEnum.SpellSchool.MAGE, CharEnum.SpellSchool.ALCHEMIST],
-	CharEnum.CharacterClass.BARD: [CharEnum.SpellSchool.MAGE],
-	CharEnum.CharacterClass.LORD: [CharEnum.SpellSchool.PRIEST],
-	CharEnum.CharacterClass.VALKYRIE: [CharEnum.SpellSchool.PRIEST],
-	CharEnum.CharacterClass.MONK: [CharEnum.SpellSchool.PSIONIC],
-	CharEnum.CharacterClass.SAMURAI: [CharEnum.SpellSchool.MAGE]
+	CharacterEnums.CharacterClass.MAGE: [CharacterEnums.SpellSchool.MAGE],
+	CharacterEnums.CharacterClass.PRIEST: [CharacterEnums.SpellSchool.PRIEST],
+	CharacterEnums.CharacterClass.ALCHEMIST: [CharacterEnums.SpellSchool.ALCHEMIST],
+	CharacterEnums.CharacterClass.PSIONIC: [CharacterEnums.SpellSchool.PSIONIC],
+	CharacterEnums.CharacterClass.BISHOP: [CharacterEnums.SpellSchool.MAGE, CharacterEnums.SpellSchool.PRIEST],
+	CharacterEnums.CharacterClass.RANGER: [CharacterEnums.SpellSchool.MAGE, CharacterEnums.SpellSchool.ALCHEMIST],
+	CharacterEnums.CharacterClass.BARD: [CharacterEnums.SpellSchool.MAGE],
+	CharacterEnums.CharacterClass.LORD: [CharacterEnums.SpellSchool.PRIEST],
+	CharacterEnums.CharacterClass.VALKYRIE: [CharacterEnums.SpellSchool.PRIEST],
+	CharacterEnums.CharacterClass.MONK: [CharacterEnums.SpellSchool.PSIONIC],
+	CharacterEnums.CharacterClass.SAMURAI: [CharacterEnums.SpellSchool.MAGE]
 }
 
 
@@ -51,7 +46,7 @@ static func try_learn_spells_on_level_up(character: Character) -> Array[String]:
 static func _try_learn_spell(character: Character, spell: Spell) -> bool:
 	var base_chance := 55 + (character.intelligence - 10) * 5
 
-	if character.character_class == CharEnum.CharacterClass.BISHOP:
+	if character.character_class == CharacterEnums.CharacterClass.BISHOP:
 		base_chance -= 15
 
 	var luck_bonus := (character.luck - 10) / 2
@@ -96,7 +91,7 @@ static func can_learn_spells(character: Character) -> bool:
 static func get_learning_chance(character: Character, spell: Spell) -> int:
 	var base_chance := 55 + (character.intelligence - 10) * 5
 
-	if character.character_class == CharEnum.CharacterClass.BISHOP:
+	if character.character_class == CharacterEnums.CharacterClass.BISHOP:
 		base_chance -= 15
 
 	var luck_bonus := (character.luck - 10) / 2
@@ -109,5 +104,5 @@ static func get_learning_chance(character: Character, spell: Spell) -> int:
 	return clampi(base_chance - level_penalty, 35, 95)
 
 
-static func get_spell_schools_for_class(char_class: CharEnum.CharacterClass) -> Array:
+static func get_spell_schools_for_class(char_class: CharacterEnums.CharacterClass) -> Array:
 	return CLASS_SPELL_SCHOOLS.get(char_class, [])

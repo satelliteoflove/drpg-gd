@@ -1,9 +1,5 @@
 extends Control
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const KeyBindingHelperClass = preload("res://systems/ui/key_binding_helper.gd")
-
 enum Mode { SERVICE_SELECT, MEMBER_SELECT }
 enum ServiceType { RESURRECT, CURE_STATUS, TITHE }
 
@@ -25,14 +21,14 @@ const SERVICES: Array[Dictionary] = [
 	}
 ]
 
-const CURABLE_STATUSES: Array[CharEnum.StatusEffect] = [
-	CharEnum.StatusEffect.POISONED,
-	CharEnum.StatusEffect.PARALYZED,
-	CharEnum.StatusEffect.SILENCED,
-	CharEnum.StatusEffect.BLINDED,
-	CharEnum.StatusEffect.CURSED,
-	CharEnum.StatusEffect.CONFUSED,
-	CharEnum.StatusEffect.STONED
+const CURABLE_STATUSES: Array[CharacterEnums.StatusEffect] = [
+	CharacterEnums.StatusEffect.POISONED,
+	CharacterEnums.StatusEffect.PARALYZED,
+	CharacterEnums.StatusEffect.SILENCED,
+	CharacterEnums.StatusEffect.BLINDED,
+	CharacterEnums.StatusEffect.CURSED,
+	CharacterEnums.StatusEffect.CONFUSED,
+	CharacterEnums.StatusEffect.STONED
 ]
 
 const RESURRECT_BASE_COST: int = 200
@@ -45,7 +41,7 @@ const BLESSING_DURATION: int = 10
 var current_mode: Mode = Mode.SERVICE_SELECT
 var selected_service: ServiceType = ServiceType.RESURRECT
 var selected_member: Character = null
-var selected_status: CharEnum.StatusEffect = CharEnum.StatusEffect.NONE
+var selected_status: CharacterEnums.StatusEffect = CharacterEnums.StatusEffect.NONE
 
 var nav: MenuNavigator = null
 var buttons: Array[Button] = []
@@ -149,10 +145,10 @@ func _populate_dead_members() -> void:
 		btn.custom_minimum_size = Vector2(350, 36)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 
-		if member.has_status(CharEnum.StatusEffect.ASHED):
+		if member.has_status(CharacterEnums.StatusEffect.ASHED):
 			btn.add_theme_color_override("font_color", Color(0.7, 0.4, 0.1))
 			btn.tooltip_text = "Ashed - lower success chance"
-		elif member.has_status(CharEnum.StatusEffect.LOST):
+		elif member.has_status(CharacterEnums.StatusEffect.LOST):
 			btn.disabled = true
 			btn.modulate = Color(0.4, 0.4, 0.4)
 			btn.tooltip_text = "Lost forever - cannot be resurrected"
@@ -178,7 +174,7 @@ func _populate_afflicted_members() -> void:
 
 		for status in curable:
 			var cost := _calculate_cure_cost(member)
-			var status_name := CharEnum.get_status_name(status)
+			var status_name := CharacterEnums.get_status_name(status)
 			var btn := Button.new()
 			btn.text = "%s - Cure %s - %d gold" % [member.character_name, status_name, cost]
 			btn.custom_minimum_size = Vector2(350, 36)
@@ -221,7 +217,7 @@ func _setup_nav() -> void:
 	if buttons.is_empty():
 		return
 
-	nav = MenuNavigatorClass.new()
+	nav = MenuNavigator.new()
 	nav.setup(buttons, 0)
 	nav.selection_changed.connect(_on_selection_changed)
 
@@ -230,7 +226,7 @@ func _is_service_available(service_type: ServiceType) -> bool:
 	match service_type:
 		ServiceType.RESURRECT:
 			for member in GameState.party.get_members():
-				if member.is_dead and not member.has_status(CharEnum.StatusEffect.LOST):
+				if member.is_dead and not member.has_status(CharacterEnums.StatusEffect.LOST):
 					return true
 			return false
 		ServiceType.CURE_STATUS:
@@ -248,7 +244,7 @@ func _is_service_available(service_type: ServiceType) -> bool:
 
 func _calculate_resurrect_cost(member: Character) -> int:
 	var base := RESURRECT_BASE_COST + member.level * RESURRECT_PER_LEVEL
-	if member.has_status(CharEnum.StatusEffect.ASHED):
+	if member.has_status(CharacterEnums.StatusEffect.ASHED):
 		base = int(base * 2.0)
 	return base
 
@@ -257,8 +253,8 @@ func _calculate_cure_cost(member: Character) -> int:
 	return CURE_BASE_COST + member.level * CURE_PER_LEVEL
 
 
-func _get_curable_statuses(member: Character) -> Array[CharEnum.StatusEffect]:
-	var result: Array[CharEnum.StatusEffect] = []
+func _get_curable_statuses(member: Character) -> Array[CharacterEnums.StatusEffect]:
+	var result: Array[CharacterEnums.StatusEffect] = []
 	for status in CURABLE_STATUSES:
 		if member.has_status(status):
 			result.append(status)
@@ -304,9 +300,9 @@ func _update_service_info(idx: int) -> void:
 			var ashed_count := 0
 			var lost_count := 0
 			for member in GameState.party.get_members():
-				if member.has_status(CharEnum.StatusEffect.LOST):
+				if member.has_status(CharacterEnums.StatusEffect.LOST):
 					lost_count += 1
-				elif member.has_status(CharEnum.StatusEffect.ASHED):
+				elif member.has_status(CharacterEnums.StatusEffect.ASHED):
 					ashed_count += 1
 				elif member.is_dead:
 					dead_count += 1
@@ -322,7 +318,7 @@ func _update_service_info(idx: int) -> void:
 			text += "[color=yellow]Cost:[/color] %d + %d per level\n\n" % [CURE_BASE_COST, CURE_PER_LEVEL]
 			text += "[color=cyan]Curable conditions:[/color]\n"
 			for status in CURABLE_STATUSES:
-				text += "  - %s\n" % CharEnum.get_status_name(status)
+				text += "  - %s\n" % CharacterEnums.get_status_name(status)
 
 		ServiceType.TITHE:
 			text += "[color=yellow]Offerings available:[/color]\n"
@@ -369,16 +365,16 @@ func _update_resurrect_info(idx: int) -> void:
 	var text := "[b]Resurrect %s[/b]\n\n" % member.character_name
 	text += "Level %d %s %s\n\n" % [
 		member.level,
-		CharEnum.get_race_name(member.race),
-		CharEnum.get_class_name(member.character_class)
+		CharacterEnums.get_race_name(member.race),
+		CharacterEnums.get_class_name(member.character_class)
 	]
 
 	text += "[color=yellow]Cost: %d gold[/color]\n" % cost
 	text += "[color=yellow]Current Vitality: %d[/color]\n\n" % member.vitality
 
-	if member.has_status(CharEnum.StatusEffect.LOST):
+	if member.has_status(CharacterEnums.StatusEffect.LOST):
 		text += "[color=red]This character is LOST FOREVER and cannot be resurrected.[/color]"
-	elif member.has_status(CharEnum.StatusEffect.ASHED):
+	elif member.has_status(CharacterEnums.StatusEffect.ASHED):
 		text += "[color=orange]This character has been reduced to ashes.[/color]\n"
 		text += "[color=orange]Success chance: 50%%[/color]\n"
 		text += "[color=orange]Failure turns ashes to dust (LOST).[/color]\n\n"
@@ -407,9 +403,9 @@ func _update_cure_info(idx: int) -> void:
 
 	var entry: Dictionary = cure_list[idx]
 	var member: Character = entry["member"]
-	var status: CharEnum.StatusEffect = entry["status"]
+	var status: CharacterEnums.StatusEffect = entry["status"]
 	var cost := _calculate_cure_cost(member)
-	var status_name := CharEnum.get_status_name(status)
+	var status_name := CharacterEnums.get_status_name(status)
 
 	var text := "[b]Cure %s[/b]\n\n" % member.character_name
 	text += "Remove: [color=orange]%s[/color]\n\n" % status_name
@@ -417,19 +413,19 @@ func _update_cure_info(idx: int) -> void:
 
 	text += "[color=cyan]Status effect:[/color]\n"
 	match status:
-		CharEnum.StatusEffect.POISONED:
+		CharacterEnums.StatusEffect.POISONED:
 			text += "Takes damage each turn in combat."
-		CharEnum.StatusEffect.PARALYZED:
+		CharacterEnums.StatusEffect.PARALYZED:
 			text += "Cannot act in combat."
-		CharEnum.StatusEffect.SILENCED:
+		CharacterEnums.StatusEffect.SILENCED:
 			text += "Cannot cast spells."
-		CharEnum.StatusEffect.BLINDED:
+		CharacterEnums.StatusEffect.BLINDED:
 			text += "-4 to hit in combat."
-		CharEnum.StatusEffect.CURSED:
+		CharacterEnums.StatusEffect.CURSED:
 			text += "-2 to hit and evasion, takes damage while exploring."
-		CharEnum.StatusEffect.CONFUSED:
+		CharacterEnums.StatusEffect.CONFUSED:
 			text += "May attack allies or act randomly."
-		CharEnum.StatusEffect.STONED:
+		CharacterEnums.StatusEffect.STONED:
 			text += "Turned to stone, cannot act."
 
 	info_label.text = text
@@ -487,10 +483,10 @@ func _create_party_row(member: Character) -> HBoxContainer:
 	var status_label := Label.new()
 	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	if member.has_status(CharEnum.StatusEffect.LOST):
+	if member.has_status(CharacterEnums.StatusEffect.LOST):
 		status_label.text = "[LOST]"
 		status_label.add_theme_color_override("font_color", Color(0.5, 0.2, 0.2))
-	elif member.has_status(CharEnum.StatusEffect.ASHED):
+	elif member.has_status(CharacterEnums.StatusEffect.ASHED):
 		status_label.text = "[ASHED]"
 		status_label.add_theme_color_override("font_color", Color(0.7, 0.4, 0.1))
 	elif member.is_dead:
@@ -501,7 +497,7 @@ func _create_party_row(member: Character) -> HBoxContainer:
 		if not statuses.is_empty():
 			var status_names: Array[String] = []
 			for s in statuses:
-				status_names.append(CharEnum.get_status_name(s))
+				status_names.append(CharacterEnums.get_status_name(s))
 			status_label.text = ", ".join(status_names)
 			status_label.add_theme_color_override("font_color", Color(1, 0.6, 0.2))
 		else:
@@ -528,7 +524,7 @@ func _on_service_selected(service_type: ServiceType) -> void:
 func _on_cancel_service() -> void:
 	current_mode = Mode.SERVICE_SELECT
 	selected_member = null
-	selected_status = CharEnum.StatusEffect.NONE
+	selected_status = CharacterEnums.StatusEffect.NONE
 	_refresh_display()
 
 
@@ -538,12 +534,12 @@ func _on_resurrect_member(member: Character) -> void:
 		message_label.text = "Not enough gold!"
 		return
 
-	var is_ashed := member.has_status(CharEnum.StatusEffect.ASHED)
+	var is_ashed := member.has_status(CharacterEnums.StatusEffect.ASHED)
 
 	if is_ashed:
 		if randf() < 0.5:
-			member.remove_status(CharEnum.StatusEffect.ASHED)
-			member.add_status(CharEnum.StatusEffect.LOST)
+			member.remove_status(CharacterEnums.StatusEffect.ASHED)
+			member.add_status(CharacterEnums.StatusEffect.LOST)
 			message_label.text = "%s's ashes crumble to dust... They are lost forever." % member.character_name
 			_refresh_display()
 			return
@@ -563,14 +559,14 @@ func _on_resurrect_member(member: Character) -> void:
 	_refresh_display()
 
 
-func _on_cure_member(member: Character, status: CharEnum.StatusEffect) -> void:
+func _on_cure_member(member: Character, status: CharacterEnums.StatusEffect) -> void:
 	var cost := _calculate_cure_cost(member)
 	if not GameState.party.spend_gold(cost):
 		message_label.text = "Not enough gold!"
 		return
 
 	member.remove_status(status)
-	var status_name := CharEnum.get_status_name(status)
+	var status_name := CharacterEnums.get_status_name(status)
 	message_label.text = "%s's %s has been cured!" % [member.character_name, status_name]
 
 	if _get_curable_statuses(member).is_empty() and not _is_service_available(ServiceType.CURE_STATUS):
@@ -589,16 +585,16 @@ func _on_tithe(amount: int) -> void:
 	for member in GameState.party.get_members():
 		if member.is_dead:
 			continue
-		member.add_status(CharEnum.StatusEffect.BLESSED, duration, "temple")
+		member.add_status(CharacterEnums.StatusEffect.BLESSED, duration, "temple")
 
 	message_label.text = "The Temple blesses your party for %d turns!" % duration
 	_on_cancel_service()
 
 
 func _update_help() -> void:
-	var v_nav := KeyBindingHelperClass.get_nav_help()
-	var confirm := KeyBindingHelperClass.get_confirm_help()
-	var cancel := KeyBindingHelperClass.get_cancel_help()
+	var v_nav := KeyBindingHelper.get_nav_help()
+	var confirm := KeyBindingHelper.get_confirm_help()
+	var cancel := KeyBindingHelper.get_cancel_help()
 
 	if current_mode == Mode.SERVICE_SELECT:
 		help_label.text = "%s | %s: Select | %s" % [v_nav, confirm.split(":")[0], cancel]

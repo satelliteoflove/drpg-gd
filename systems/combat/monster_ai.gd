@@ -1,11 +1,6 @@
 class_name MonsterAI
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const SpellDatabase = preload("res://data/spells/spell_database.gd")
-const SpellEffect = preload("res://resources/spell_effect.gd")
-
 enum AIBehavior {
 	AGGRESSIVE,
 	DEFENSIVE,
@@ -65,7 +60,7 @@ static func _get_behavior(monster: Monster) -> AIBehavior:
 	if has_ranged and monster.agility > monster.strength:
 		return AIBehavior.RANGED
 
-	if monster.strength >= 14:
+	if monster.strength >= CombatConstants.BERSERKER_STRENGTH_THRESHOLD:
 		return AIBehavior.BERSERKER
 
 	if monster.defense >= 6 or monster.vitality >= 14:
@@ -105,7 +100,7 @@ static func _decide_defensive(monster: Monster, party: Party, _allies: Array[Mon
 	var decision := AIDecision.new()
 
 	var hp_percent := float(monster.current_hp) / float(monster.max_hp)
-	if hp_percent < 0.3 and CombatRNG.randf() < 0.4:
+	if hp_percent < CombatConstants.DEFENSIVE_HP_THRESHOLD and CombatRNG.randf() < CombatConstants.DEFEND_CHANCE:
 		decision.action_type = ActionType.DEFEND
 		return decision
 
@@ -139,7 +134,7 @@ static func _decide_ranged(monster: Monster, party: Party, _allies: Array[Monste
 static func _decide_spellcaster(monster: Monster, party: Party, allies: Array[Monster]) -> AIDecision:
 	var decision := AIDecision.new()
 
-	if monster.current_mp > 0 and not monster.spells.is_empty() and CombatRNG.randf() < 0.6:
+	if monster.current_mp > 0 and not monster.spells.is_empty() and CombatRNG.randf() < CombatConstants.SPELLCASTER_CAST_CHANCE:
 		var spell_id := _select_spell(monster, party, allies)
 		if spell_id != "":
 			var spell := SpellDatabase.get_spell(spell_id)
@@ -207,7 +202,7 @@ static func _select_best_attack(monster: Monster, party: Party) -> MonsterAttack
 	for attack in monster.attacks:
 		var weight := 10.0
 
-		if attack.effect_type != CharEnum.StatusEffect.NONE:
+		if attack.effect_type != CharacterEnums.StatusEffect.NONE:
 			var any_affected := false
 			for member in alive:
 				if member.has_status(attack.effect_type):
@@ -302,7 +297,7 @@ static func _select_spell(monster: Monster, party: Party, _allies: Array[Monster
 		if monster.current_mp < spell.mp_cost:
 			continue
 
-		if spell.target_type == CharEnum.SpellTargetType.ALL_ENEMIES and alive_count >= 2:
+		if spell.target_type == CharacterEnums.SpellTargetType.ALL_ENEMIES and alive_count >= 2:
 			return spell_id
 
 		valid_spells.append(spell_id)
@@ -315,24 +310,24 @@ static func _select_spell(monster: Monster, party: Party, _allies: Array[Monster
 
 static func _get_spell_targets_for_monster(spell: Spell, party: Party, allies: Array[Monster], caster: Monster) -> Array:
 	match spell.target_type:
-		CharEnum.SpellTargetType.SELF:
+		CharacterEnums.SpellTargetType.SELF:
 			return [caster]
-		CharEnum.SpellTargetType.SINGLE_ALLY:
+		CharacterEnums.SpellTargetType.SINGLE_ALLY:
 			if not allies.is_empty():
 				return [allies[CombatRNG.randi() % allies.size()]]
 			return [caster]
-		CharEnum.SpellTargetType.SINGLE_ENEMY:
+		CharacterEnums.SpellTargetType.SINGLE_ENEMY:
 			var alive := party.get_alive_members()
 			if not alive.is_empty():
 				return [alive[CombatRNG.randi() % alive.size()]]
 			return []
-		CharEnum.SpellTargetType.ALL_ALLIES:
+		CharacterEnums.SpellTargetType.ALL_ALLIES:
 			var result: Array = []
 			for ally in allies:
 				if not ally.is_dead:
 					result.append(ally)
 			return result
-		CharEnum.SpellTargetType.ALL_ENEMIES:
+		CharacterEnums.SpellTargetType.ALL_ENEMIES:
 			var result: Array = []
 			for member in party.get_alive_members():
 				result.append(member)
@@ -343,7 +338,7 @@ static func _get_spell_targets_for_monster(spell: Spell, party: Party, allies: A
 
 static func _find_wounded_ally(allies: Array[Monster], exclude: Monster) -> Monster:
 	var wounded: Monster = null
-	var lowest_percent := 0.5
+	var lowest_percent := CombatConstants.WOUNDED_ALLY_THRESHOLD
 
 	for ally in allies:
 		if ally == exclude or ally.is_dead:

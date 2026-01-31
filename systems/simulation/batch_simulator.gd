@@ -1,10 +1,6 @@
 class_name BatchSimulator
 extends RefCounted
 
-const CombatSimulatorRef = preload("res://systems/simulation/combat_simulator.gd")
-const TestFixturesRef = preload("res://systems/simulation/test_fixtures.gd")
-const PartyAIRef = preload("res://systems/simulation/party_ai.gd")
-
 signal batch_progress(current: int, total: int)
 signal batch_completed(results: Array[Dictionary])
 
@@ -14,8 +10,8 @@ func run_batch(
 	enemies: Array[Monster],
 	num_runs: int,
 	base_seed: int = 0,
-	cast_threshold: float = PartyAIRef.DEFAULT_CAST_THRESHOLD,
-	strategy: PartyAIRef.Strategy = PartyAIRef.Strategy.BALANCED
+	cast_threshold: float = PartyAI.DEFAULT_CAST_THRESHOLD,
+	strategy: PartyAI.Strategy = PartyAI.Strategy.BALANCED
 ) -> Dictionary:
 	var results: Array[Dictionary] = []
 	var victories := 0
@@ -30,7 +26,7 @@ func run_batch(
 		var party_copy := _duplicate_party(party)
 		var enemies_copy := _duplicate_enemies(enemies)
 
-		var simulator := CombatSimulatorRef.new()
+		var simulator := CombatSimulator.new()
 		simulator.cast_threshold = cast_threshold
 		simulator.party_strategy = strategy
 		simulator.setup(party_copy, enemies_copy, seed_value)
@@ -133,11 +129,11 @@ func run_balance_test(
 	var results: Array[Dictionary] = []
 
 	for i in range(num_runs):
-		var party := TestFixturesRef.create_balanced_party(party_level)
-		var enemies := TestFixturesRef.create_floor_encounter(floor_level)
+		var party := TestFixtures.create_balanced_party(party_level)
+		var enemies := TestFixtures.create_floor_encounter(floor_level)
 		var seed_value := i * 7919
 
-		var simulator := CombatSimulatorRef.new()
+		var simulator := CombatSimulator.new()
 		simulator.setup(party, enemies, seed_value)
 		var result := simulator.run()
 		results.append(result)
@@ -180,7 +176,7 @@ func run_dps_analysis(
 		var party_copy := _duplicate_party(party)
 		var enemies_copy := _duplicate_enemies(enemies)
 
-		var simulator := CombatSimulatorRef.new()
+		var simulator := CombatSimulator.new()
 		simulator.setup(party_copy, enemies_copy, i)
 		var result := simulator.run()
 

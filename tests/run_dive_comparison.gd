@@ -1,10 +1,5 @@
 extends SceneTree
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const TestFixtures = preload("res://systems/simulation/test_fixtures.gd")
-const DiveSimulator = preload("res://systems/simulation/dive_simulator.gd")
-const PartyAI = preload("res://systems/simulation/party_ai.gd")
-
 const BASE_SEED := 50000
 const PARTY_LEVEL := 5
 const FLOOR_LEVEL := 5

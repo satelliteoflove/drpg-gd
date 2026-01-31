@@ -1,22 +1,16 @@
 class_name TestFixtures
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const MonsterDatabase = preload("res://data/monsters/monster_database.gd")
-const ShopItems = preload("res://data/items/shop_items.gd")
-const SpellLearning = preload("res://systems/magic/spell_learning.gd")
-
 
 static func create_balanced_party(level: int, equipped: bool = true) -> Party:
 	var party := Party.new()
 
-	var fighter1 := _create_character("Fighter1", CharEnum.CharacterClass.FIGHTER, level, equipped)
-	var fighter2 := _create_character("Fighter2", CharEnum.CharacterClass.FIGHTER, level, equipped)
-	var priest := _create_character("Priest", CharEnum.CharacterClass.PRIEST, level, equipped)
-	var thief := _create_character("Thief", CharEnum.CharacterClass.THIEF, level, equipped)
-	var mage := _create_character("Mage", CharEnum.CharacterClass.MAGE, level, equipped)
-	var bishop := _create_character("Bishop", CharEnum.CharacterClass.BISHOP, level, equipped)
+	var fighter1 := _create_character("Fighter1", CharacterEnums.CharacterClass.FIGHTER, level, equipped)
+	var fighter2 := _create_character("Fighter2", CharacterEnums.CharacterClass.FIGHTER, level, equipped)
+	var priest := _create_character("Priest", CharacterEnums.CharacterClass.PRIEST, level, equipped)
+	var thief := _create_character("Thief", CharacterEnums.CharacterClass.THIEF, level, equipped)
+	var mage := _create_character("Mage", CharacterEnums.CharacterClass.MAGE, level, equipped)
+	var bishop := _create_character("Bishop", CharacterEnums.CharacterClass.BISHOP, level, equipped)
 
 	party.add_member(fighter1)  # front row - tank
 	party.add_member(fighter2)  # front row - tank
@@ -31,12 +25,12 @@ static func create_balanced_party(level: int, equipped: bool = true) -> Party:
 static func create_fighter_heavy_party(level: int, equipped: bool = true) -> Party:
 	var party := Party.new()
 
-	var fighter1 := _create_character("Fighter1", CharEnum.CharacterClass.FIGHTER, level, equipped)
-	var fighter2 := _create_character("Fighter2", CharEnum.CharacterClass.FIGHTER, level, equipped)
-	var fighter3 := _create_character("Fighter3", CharEnum.CharacterClass.FIGHTER, level, equipped)
-	var samurai := _create_character("Samurai", CharEnum.CharacterClass.SAMURAI, level, equipped)
-	var priest := _create_character("Priest", CharEnum.CharacterClass.PRIEST, level, equipped)
-	var thief := _create_character("Thief", CharEnum.CharacterClass.THIEF, level, equipped)
+	var fighter1 := _create_character("Fighter1", CharacterEnums.CharacterClass.FIGHTER, level, equipped)
+	var fighter2 := _create_character("Fighter2", CharacterEnums.CharacterClass.FIGHTER, level, equipped)
+	var fighter3 := _create_character("Fighter3", CharacterEnums.CharacterClass.FIGHTER, level, equipped)
+	var samurai := _create_character("Samurai", CharacterEnums.CharacterClass.SAMURAI, level, equipped)
+	var priest := _create_character("Priest", CharacterEnums.CharacterClass.PRIEST, level, equipped)
+	var thief := _create_character("Thief", CharacterEnums.CharacterClass.THIEF, level, equipped)
 
 	party.add_member(fighter1)  # front row
 	party.add_member(fighter2)  # front row
@@ -51,12 +45,12 @@ static func create_fighter_heavy_party(level: int, equipped: bool = true) -> Par
 static func create_caster_heavy_party(level: int, equipped: bool = true) -> Party:
 	var party := Party.new()
 
-	var fighter := _create_character("Fighter", CharEnum.CharacterClass.FIGHTER, level, equipped)
-	var priest := _create_character("Priest", CharEnum.CharacterClass.PRIEST, level, equipped)
-	var bishop := _create_character("Bishop", CharEnum.CharacterClass.BISHOP, level, equipped)
-	var mage1 := _create_character("Mage1", CharEnum.CharacterClass.MAGE, level, equipped)
-	var mage2 := _create_character("Mage2", CharEnum.CharacterClass.MAGE, level, equipped)
-	var alchemist := _create_character("Alchemist", CharEnum.CharacterClass.ALCHEMIST, level, equipped)
+	var fighter := _create_character("Fighter", CharacterEnums.CharacterClass.FIGHTER, level, equipped)
+	var priest := _create_character("Priest", CharacterEnums.CharacterClass.PRIEST, level, equipped)
+	var bishop := _create_character("Bishop", CharacterEnums.CharacterClass.BISHOP, level, equipped)
+	var mage1 := _create_character("Mage1", CharacterEnums.CharacterClass.MAGE, level, equipped)
+	var mage2 := _create_character("Mage2", CharacterEnums.CharacterClass.MAGE, level, equipped)
+	var alchemist := _create_character("Alchemist", CharacterEnums.CharacterClass.ALCHEMIST, level, equipped)
 
 	party.add_member(fighter)   # front row - sole tank
 	party.add_member(priest)    # front row - off-tank
@@ -71,12 +65,12 @@ static func create_caster_heavy_party(level: int, equipped: bool = true) -> Part
 static func create_ranged_party(level: int, equipped: bool = true) -> Party:
 	var party := Party.new()
 
-	var fighter := _create_character("Fighter", CharEnum.CharacterClass.FIGHTER, level, equipped)
-	var ranger1 := _create_character("Ranger1", CharEnum.CharacterClass.RANGER, level, equipped)
-	var ranger2 := _create_character("Ranger2", CharEnum.CharacterClass.RANGER, level, equipped)
-	var priest := _create_character("Priest", CharEnum.CharacterClass.PRIEST, level, equipped)
-	var thief := _create_character("Thief", CharEnum.CharacterClass.THIEF, level, equipped)
-	var mage := _create_character("Mage", CharEnum.CharacterClass.MAGE, level, equipped)
+	var fighter := _create_character("Fighter", CharacterEnums.CharacterClass.FIGHTER, level, equipped)
+	var ranger1 := _create_character("Ranger1", CharacterEnums.CharacterClass.RANGER, level, equipped)
+	var ranger2 := _create_character("Ranger2", CharacterEnums.CharacterClass.RANGER, level, equipped)
+	var priest := _create_character("Priest", CharacterEnums.CharacterClass.PRIEST, level, equipped)
+	var thief := _create_character("Thief", CharacterEnums.CharacterClass.THIEF, level, equipped)
+	var mage := _create_character("Mage", CharacterEnums.CharacterClass.MAGE, level, equipped)
 
 	var bow := ShopItems.get_item("long_bow")
 	if bow:
@@ -93,7 +87,7 @@ static func create_ranged_party(level: int, equipped: bool = true) -> Party:
 	return party
 
 
-static func create_solo_character(class_type: CharEnum.CharacterClass, level: int, equipped: bool = true) -> Party:
+static func create_solo_character(class_type: CharacterEnums.CharacterClass, level: int, equipped: bool = true) -> Party:
 	var party := Party.new()
 	var character := _create_character("Solo", class_type, level, equipped)
 	party.add_member(character)
@@ -187,7 +181,7 @@ static func glass_cannon_scenario() -> Dictionary:
 	}
 
 
-static func _create_character(char_name: String, char_class: CharEnum.CharacterClass, level: int, equipped: bool = true) -> Character:
+static func _create_character(char_name: String, char_class: CharacterEnums.CharacterClass, level: int, equipped: bool = true) -> Character:
 	var stats := {
 		"strength": 12,
 		"intelligence": 12,
@@ -198,29 +192,29 @@ static func _create_character(char_name: String, char_class: CharEnum.CharacterC
 	}
 
 	match char_class:
-		CharEnum.CharacterClass.FIGHTER, CharEnum.CharacterClass.SAMURAI:
+		CharacterEnums.CharacterClass.FIGHTER, CharacterEnums.CharacterClass.SAMURAI:
 			stats["strength"] = 16
 			stats["vitality"] = 14
-		CharEnum.CharacterClass.MAGE, CharEnum.CharacterClass.ALCHEMIST:
+		CharacterEnums.CharacterClass.MAGE, CharacterEnums.CharacterClass.ALCHEMIST:
 			stats["intelligence"] = 16
-		CharEnum.CharacterClass.PRIEST:
+		CharacterEnums.CharacterClass.PRIEST:
 			stats["piety"] = 16
-		CharEnum.CharacterClass.THIEF, CharEnum.CharacterClass.NINJA:
+		CharacterEnums.CharacterClass.THIEF, CharacterEnums.CharacterClass.NINJA:
 			stats["agility"] = 16
 			stats["luck"] = 14
-		CharEnum.CharacterClass.BISHOP:
+		CharacterEnums.CharacterClass.BISHOP:
 			stats["intelligence"] = 14
 			stats["piety"] = 14
-		CharEnum.CharacterClass.RANGER:
+		CharacterEnums.CharacterClass.RANGER:
 			stats["strength"] = 14
 			stats["agility"] = 14
 
 	var character := Character.create_new(
 		char_name,
-		CharEnum.Race.HUMAN,
+		CharacterEnums.Race.HUMAN,
 		char_class,
-		CharEnum.Alignment.NEUTRAL,
-		CharEnum.Gender.MALE,
+		CharacterEnums.Alignment.NEUTRAL,
+		CharacterEnums.Gender.MALE,
 		stats
 	)
 
@@ -242,7 +236,7 @@ static func _create_character(char_name: String, char_class: CharEnum.CharacterC
 
 static func _equip_starter_gear(character: Character) -> void:
 	match character.character_class:
-		CharEnum.CharacterClass.FIGHTER, CharEnum.CharacterClass.SAMURAI, CharEnum.CharacterClass.LORD:
+		CharacterEnums.CharacterClass.FIGHTER, CharacterEnums.CharacterClass.SAMURAI, CharacterEnums.CharacterClass.LORD:
 			var sword := ShopItems.get_item("short_sword")
 			var armor := ShopItems.get_item("leather_armor")
 			var cap := ShopItems.get_item("leather_cap")
@@ -251,29 +245,29 @@ static func _equip_starter_gear(character: Character) -> void:
 			if armor: character.equip_item(armor.duplicate())
 			if cap: character.equip_item(cap.duplicate())
 			if shield: character.equip_item(shield.duplicate())
-		CharEnum.CharacterClass.PRIEST:
+		CharacterEnums.CharacterClass.PRIEST:
 			var staff := ShopItems.get_item("staff")
 			var armor := ShopItems.get_item("cloth_armor")
 			var shield := ShopItems.get_item("wooden_shield")
 			if staff: character.equip_item(staff.duplicate())
 			if armor: character.equip_item(armor.duplicate())
 			if shield: character.equip_item(shield.duplicate())
-		CharEnum.CharacterClass.THIEF, CharEnum.CharacterClass.NINJA:
+		CharacterEnums.CharacterClass.THIEF, CharacterEnums.CharacterClass.NINJA:
 			var dagger := ShopItems.get_item("dagger")
 			var armor := ShopItems.get_item("leather_armor")
 			if dagger: character.equip_item(dagger.duplicate())
 			if armor: character.equip_item(armor.duplicate())
-		CharEnum.CharacterClass.MAGE, CharEnum.CharacterClass.ALCHEMIST, CharEnum.CharacterClass.PSIONIC:
+		CharacterEnums.CharacterClass.MAGE, CharacterEnums.CharacterClass.ALCHEMIST, CharacterEnums.CharacterClass.PSIONIC:
 			var staff := ShopItems.get_item("staff")
 			var armor := ShopItems.get_item("cloth_armor")
 			if staff: character.equip_item(staff.duplicate())
 			if armor: character.equip_item(armor.duplicate())
-		CharEnum.CharacterClass.BISHOP:
+		CharacterEnums.CharacterClass.BISHOP:
 			var staff := ShopItems.get_item("staff")
 			var armor := ShopItems.get_item("cloth_armor")
 			if staff: character.equip_item(staff.duplicate())
 			if armor: character.equip_item(armor.duplicate())
-		CharEnum.CharacterClass.RANGER:
+		CharacterEnums.CharacterClass.RANGER:
 			var sword := ShopItems.get_item("short_sword")
 			var armor := ShopItems.get_item("leather_armor")
 			var cap := ShopItems.get_item("leather_cap")

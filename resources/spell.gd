@@ -1,8 +1,6 @@
 class_name Spell
 extends Resource
 
-const CharEnum = preload("res://resources/character_enums.gd")
-
 enum EffectType {
 	DAMAGE,
 	HEAL,
@@ -18,10 +16,10 @@ enum EffectType {
 @export var id: String = ""
 @export var name: String = ""
 @export var original_name: String = ""
-@export var school: CharEnum.SpellSchool = CharEnum.SpellSchool.MAGE
+@export var school: CharacterEnums.SpellSchool = CharacterEnums.SpellSchool.MAGE
 @export var level: int = 1
 @export var mp_cost: int = 3
-@export var target_type: CharEnum.SpellTargetType = CharEnum.SpellTargetType.SINGLE_ENEMY
+@export var target_type: CharacterEnums.SpellTargetType = CharacterEnums.SpellTargetType.SINGLE_ENEMY
 @export var in_combat: bool = true
 @export var out_of_combat: bool = false
 @export_multiline var description: String = ""
@@ -33,9 +31,9 @@ static func create(
 	p_id: String,
 	p_name: String,
 	p_original: String,
-	p_school: CharEnum.SpellSchool,
+	p_school: CharacterEnums.SpellSchool,
 	p_level: int,
-	p_target: CharEnum.SpellTargetType,
+	p_target: CharacterEnums.SpellTargetType,
 	p_desc: String
 ) -> Spell:
 	var spell := Spell.new()
@@ -62,7 +60,7 @@ static func _get_mp_cost_for_level(spell_level: int) -> int:
 		_: return 3
 
 
-func add_damage_effect(element: CharEnum.Element, dice: String, per_level: int = 0) -> Spell:
+func add_damage_effect(element: CharacterEnums.Element, dice: String, per_level: int = 0) -> Spell:
 	var effect := SpellEffect.create_damage(element, dice, per_level)
 	effects.append(effect)
 	return self
@@ -75,9 +73,9 @@ func add_healing_effect(dice: String, per_level: int = 0) -> Spell:
 
 
 func add_status_effect(
-	status: CharEnum.StatusEffect,
+	status: CharacterEnums.StatusEffect,
 	duration_dice: String,
-	save_type: CharEnum.SaveType,
+	save_type: CharacterEnums.SaveType,
 	power: int = 0
 ) -> Spell:
 	var effect := SpellEffect.create_status(status, duration_dice, save_type, power)
@@ -109,22 +107,22 @@ func set_in_combat(enabled: bool) -> Spell:
 
 func get_school_name() -> String:
 	match school:
-		CharEnum.SpellSchool.MAGE: return "Mage"
-		CharEnum.SpellSchool.PRIEST: return "Priest"
-		CharEnum.SpellSchool.ALCHEMIST: return "Alchemist"
-		CharEnum.SpellSchool.PSIONIC: return "Psionic"
+		CharacterEnums.SpellSchool.MAGE: return "Mage"
+		CharacterEnums.SpellSchool.PRIEST: return "Priest"
+		CharacterEnums.SpellSchool.ALCHEMIST: return "Alchemist"
+		CharacterEnums.SpellSchool.PSIONIC: return "Psionic"
 		_: return "Unknown"
 
 
 func get_target_description() -> String:
 	match target_type:
-		CharEnum.SpellTargetType.SELF: return "Self"
-		CharEnum.SpellTargetType.SINGLE_ALLY: return "One Ally"
-		CharEnum.SpellTargetType.SINGLE_ENEMY: return "One Enemy"
-		CharEnum.SpellTargetType.ALL_ALLIES: return "All Allies"
-		CharEnum.SpellTargetType.ALL_ENEMIES: return "All Enemies"
-		CharEnum.SpellTargetType.DEAD_ALLY: return "Dead Ally"
-		CharEnum.SpellTargetType.SPLASH: return "Area (Splash)"
-		CharEnum.SpellTargetType.ROW: return "Enemy Row"
-		CharEnum.SpellTargetType.COLUMN: return "Enemy Column"
+		CharacterEnums.SpellTargetType.SELF: return "Self"
+		CharacterEnums.SpellTargetType.SINGLE_ALLY: return "One Ally"
+		CharacterEnums.SpellTargetType.SINGLE_ENEMY: return "One Enemy"
+		CharacterEnums.SpellTargetType.ALL_ALLIES: return "All Allies"
+		CharacterEnums.SpellTargetType.ALL_ENEMIES: return "All Enemies"
+		CharacterEnums.SpellTargetType.DEAD_ALLY: return "Dead Ally"
+		CharacterEnums.SpellTargetType.SPLASH: return "Area (Splash)"
+		CharacterEnums.SpellTargetType.ROW: return "Enemy Row"
+		CharacterEnums.SpellTargetType.COLUMN: return "Enemy Column"
 		_: return "Unknown"

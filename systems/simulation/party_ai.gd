@@ -1,13 +1,6 @@
 class_name PartyAI
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const SpellDatabase = preload("res://data/spells/spell_database.gd")
-const SpellEffect = preload("res://resources/spell_effect.gd")
-const ClassDataRef = preload("res://resources/class_data.gd")
-const DispelUndead = preload("res://systems/combat/dispel_undead.gd")
-
 enum Strategy { AGGRESSIVE, DEFENSIVE, BALANCED }
 
 const DEFAULT_CAST_THRESHOLD := 0.2
@@ -38,11 +31,11 @@ static func decide_action(
 
 static func _determine_role(character: Character) -> String:
 	match character.character_class:
-		CharEnum.CharacterClass.PRIEST, CharEnum.CharacterClass.BISHOP:
+		CharacterEnums.CharacterClass.PRIEST, CharacterEnums.CharacterClass.BISHOP:
 			return "healer"
-		CharEnum.CharacterClass.MAGE, CharEnum.CharacterClass.ALCHEMIST, CharEnum.CharacterClass.PSIONIC:
+		CharacterEnums.CharacterClass.MAGE, CharacterEnums.CharacterClass.ALCHEMIST, CharacterEnums.CharacterClass.PSIONIC:
 			return "caster"
-		CharEnum.CharacterClass.BARD:
+		CharacterEnums.CharacterClass.BARD:
 			return "support"
 		_:
 			return "fighter"
@@ -254,11 +247,11 @@ static func _find_wounded_ally(party: Party, threshold: float) -> Character:
 
 static func _find_ally_with_curable_status(party: Party) -> Character:
 	var curable := [
-		CharEnum.StatusEffect.POISONED,
-		CharEnum.StatusEffect.PARALYZED,
-		CharEnum.StatusEffect.BLINDED,
-		CharEnum.StatusEffect.SILENCED,
-		CharEnum.StatusEffect.CONFUSED
+		CharacterEnums.StatusEffect.POISONED,
+		CharacterEnums.StatusEffect.PARALYZED,
+		CharacterEnums.StatusEffect.BLINDED,
+		CharacterEnums.StatusEffect.SILENCED,
+		CharacterEnums.StatusEffect.CONFUSED
 	]
 
 	for member in party.get_alive_members():
@@ -309,7 +302,7 @@ static func _find_damage_spell(character: Character) -> String:
 			continue
 		if character.current_mp < spell.mp_cost:
 			continue
-		if spell.target_type == CharEnum.SpellTargetType.SINGLE_ENEMY:
+		if spell.target_type == CharacterEnums.SpellTargetType.SINGLE_ENEMY:
 			for effect in spell.effects:
 				if effect.effect_type == SpellEffect.EffectType.DAMAGE:
 					return spell_id
@@ -323,7 +316,7 @@ static func _find_aoe_spell(character: Character) -> String:
 			continue
 		if character.current_mp < spell.mp_cost:
 			continue
-		if spell.target_type == CharEnum.SpellTargetType.ALL_ENEMIES:
+		if spell.target_type == CharacterEnums.SpellTargetType.ALL_ENEMIES:
 			for effect in spell.effects:
 				if effect.effect_type == SpellEffect.EffectType.DAMAGE:
 					return spell_id

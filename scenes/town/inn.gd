@@ -1,9 +1,5 @@
 extends Control
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const KeyBindingHelperClass = preload("res://systems/ui/key_binding_helper.gd")
-
 enum RestType { COT, ROOM, SUITE }
 
 const REST_OPTIONS: Array[Dictionary] = [
@@ -36,12 +32,12 @@ const REST_OPTIONS: Array[Dictionary] = [
 	}
 ]
 
-const MINOR_STATUSES: Array[CharEnum.StatusEffect] = [
-	CharEnum.StatusEffect.POISONED,
-	CharEnum.StatusEffect.ASLEEP,
-	CharEnum.StatusEffect.CONFUSED,
-	CharEnum.StatusEffect.SILENCED,
-	CharEnum.StatusEffect.AFRAID
+const MINOR_STATUSES: Array[CharacterEnums.StatusEffect] = [
+	CharacterEnums.StatusEffect.POISONED,
+	CharacterEnums.StatusEffect.ASLEEP,
+	CharacterEnums.StatusEffect.CONFUSED,
+	CharacterEnums.StatusEffect.SILENCED,
+	CharacterEnums.StatusEffect.AFRAID
 ]
 
 var nav: MenuNavigator = null
@@ -121,7 +117,7 @@ func _populate_rest_options() -> void:
 		options_list.add_child(btn)
 		rest_buttons.append(btn)
 
-	nav = MenuNavigatorClass.new()
+	nav = MenuNavigator.new()
 	if not rest_buttons.is_empty():
 		nav.setup(rest_buttons, 0)
 		nav.selection_changed.connect(_on_selection_changed)
@@ -269,7 +265,7 @@ func _get_status_text(member: Character) -> String:
 	var parts: Array[String] = []
 	for status in MINOR_STATUSES:
 		if member.has_status(status):
-			parts.append(CharEnum.get_status_name(status))
+			parts.append(CharacterEnums.get_status_name(status))
 	return ", ".join(parts)
 
 
@@ -390,9 +386,9 @@ func _show_level_up_results(results: Array[Dictionary]) -> void:
 
 
 func _update_help() -> void:
-	var v_nav := KeyBindingHelperClass.get_nav_help()
-	var confirm := KeyBindingHelperClass.get_confirm_help()
-	var cancel := KeyBindingHelperClass.get_cancel_help()
+	var v_nav := KeyBindingHelper.get_nav_help()
+	var confirm := KeyBindingHelper.get_confirm_help()
+	var cancel := KeyBindingHelper.get_cancel_help()
 	help_label.text = "%s | %s: Rest | %s" % [v_nav, confirm.split(":")[0], cancel]
 
 

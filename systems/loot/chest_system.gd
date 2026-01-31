@@ -1,14 +1,6 @@
 class_name ChestSystem
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const ChestClass = preload("res://resources/chest.gd")
-const TrapClass = preload("res://resources/trap.gd")
-const TrapDatabase = preload("res://data/traps/trap_database.gd")
-const DamageCalc = preload("res://systems/combat/damage_calculator.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const ItemClass = preload("res://resources/item.gd")
-
 const PLAIN_TRAP_CHANCE: float = 0.10
 const ORNATE_TRAP_CHANCE: float = 0.70
 
@@ -19,28 +11,28 @@ const BASE_DISARM_CHANCE: float = 0.40
 const THIEF_DISARM_CHANCE: float = 0.85
 
 
-static func create_chest_from_loot(loot: Array[Item], is_boss: bool) -> ChestClass:
+static func create_chest_from_loot(loot: Array[Item], is_boss: bool) -> Chest:
 	var chest_type := _determine_chest_type(loot, is_boss)
 	var trap := _maybe_generate_trap(chest_type)
-	return ChestClass.create(chest_type, loot, trap)
+	return Chest.create(chest_type, loot, trap)
 
 
-static func _determine_chest_type(loot: Array[Item], is_boss: bool) -> ChestClass.ChestType:
+static func _determine_chest_type(loot: Array[Item], is_boss: bool) -> Chest.ChestType:
 	if is_boss:
-		return ChestClass.ChestType.ORNATE
+		return Chest.ChestType.ORNATE
 
 	for item in loot:
-		if item.rarity == ItemClass.ItemRarity.LEGENDARY:
-			return ChestClass.ChestType.ORNATE
+		if item.rarity == Item.ItemRarity.LEGENDARY:
+			return Chest.ChestType.ORNATE
 
-	return ChestClass.ChestType.PLAIN
+	return Chest.ChestType.PLAIN
 
 
-static func _maybe_generate_trap(chest_type: ChestClass.ChestType) -> TrapClass:
-	var trap_chance := PLAIN_TRAP_CHANCE if chest_type == ChestClass.ChestType.PLAIN else ORNATE_TRAP_CHANCE
+static func _maybe_generate_trap(chest_type: Chest.ChestType) -> Trap:
+	var trap_chance := PLAIN_TRAP_CHANCE if chest_type == Chest.ChestType.PLAIN else ORNATE_TRAP_CHANCE
 
 	if CombatRNG.randf() < trap_chance:
-		if chest_type == ChestClass.ChestType.PLAIN:
+		if chest_type == Chest.ChestType.PLAIN:
 			return TrapDatabase.get_random_trap_excluding_alarm()
 		else:
 			return TrapDatabase.get_random_trap()
@@ -48,8 +40,8 @@ static func _maybe_generate_trap(chest_type: ChestClass.ChestType) -> TrapClass:
 	return null
 
 
-static func attempt_inspect(chest: ChestClass, inspector: Character) -> Dictionary:
-	var is_thief := inspector.character_class == CharEnum.CharacterClass.THIEF
+static func attempt_inspect(chest: Chest, inspector: Character) -> Dictionary:
+	var is_thief := inspector.character_class == CharacterEnums.CharacterClass.THIEF
 	var success_chance := THIEF_INSPECT_CHANCE if is_thief else BASE_INSPECT_CHANCE
 
 	success_chance += inspector.luck * 0.01
@@ -82,7 +74,7 @@ static func attempt_inspect(chest: ChestClass, inspector: Character) -> Dictiona
 		}
 
 
-static func attempt_disarm(chest: ChestClass, disarmer: Character) -> Dictionary:
+static func attempt_disarm(chest: Chest, disarmer: Character) -> Dictionary:
 	if not chest.is_trapped or chest.trap == null:
 		return {
 			"success": true,
@@ -95,7 +87,7 @@ static func attempt_disarm(chest: ChestClass, disarmer: Character) -> Dictionary
 			"message": "The trap has already been disarmed."
 		}
 
-	var is_thief := disarmer.character_class == CharEnum.CharacterClass.THIEF
+	var is_thief := disarmer.character_class == CharacterEnums.CharacterClass.THIEF
 	var success_chance := THIEF_DISARM_CHANCE if is_thief else BASE_DISARM_CHANCE
 
 	success_chance += disarmer.agility * 0.01
@@ -117,7 +109,7 @@ static func attempt_disarm(chest: ChestClass, disarmer: Character) -> Dictionary
 		}
 
 
-static func trigger_trap(chest: ChestClass, opener: Character, party: Party) -> Dictionary:
+static func trigger_trap(chest: Chest, opener: Character, party: Party) -> Dictionary:
 	if not chest.is_trapped or chest.trap == null or chest.trap_disarmed:
 		return {
 			"triggered": false,
@@ -126,7 +118,7 @@ static func trigger_trap(chest: ChestClass, opener: Character, party: Party) -> 
 			"party_wiped": false
 		}
 
-	var trap: TrapClass = chest.trap
+	var trap: Trap = chest.trap
 	var messages: Array[String] = []
 	var targets: Array[Character] = []
 	var combat_triggered := false
@@ -141,24 +133,24 @@ static func trigger_trap(chest: ChestClass, opener: Character, party: Party) -> 
 		}
 
 	match trap.damage_target:
-		TrapClass.DamageTarget.OPENER:
+		Trap.DamageTarget.OPENER:
 			targets = [opener]
-		TrapClass.DamageTarget.PARTY:
+		Trap.DamageTarget.PARTY:
 			targets = party.get_alive_members()
-		TrapClass.DamageTarget.FRONT_ROW:
+		Trap.DamageTarget.FRONT_ROW:
 			targets = party.get_front_row_alive()
 
 	if trap.damage_dice != "":
 		for target in targets:
-			var damage := DamageCalc.roll_dice(trap.damage_dice)
+			var damage := DamageCalculator.roll_dice(trap.damage_dice)
 			var actual_damage := target.take_damage(damage)
 			messages.append("%s takes %d damage from the %s!" % [target.get_display_name(), actual_damage, trap.trap_name])
 
-	if trap.status_effect != CharEnum.StatusEffect.NONE:
+	if trap.status_effect != CharacterEnums.StatusEffect.NONE:
 		for target in targets:
 			if not target.is_dead:
 				target.add_status(trap.status_effect, trap.status_duration, "trap", 0)
-				var status_name := CharEnum.get_status_name(trap.status_effect)
+				var status_name := CharacterEnums.get_status_name(trap.status_effect)
 				messages.append("%s is now %s!" % [target.get_display_name(), status_name])
 
 	var party_wiped := party.is_wiped()
@@ -171,8 +163,8 @@ static func trigger_trap(chest: ChestClass, opener: Character, party: Party) -> 
 	}
 
 
-static func quick_open(chest: ChestClass, thief: Character, party: Party) -> Dictionary:
-	if chest.chest_type != ChestClass.ChestType.PLAIN:
+static func quick_open(chest: Chest, thief: Character, party: Party) -> Dictionary:
+	if chest.chest_type != Chest.ChestType.PLAIN:
 		return {
 			"success": false,
 			"items": [],
@@ -209,7 +201,7 @@ static func quick_open(chest: ChestClass, thief: Character, party: Party) -> Dic
 	}
 
 
-static func open_chest(chest: ChestClass, opener: Character, party: Party) -> Dictionary:
+static func open_chest(chest: Chest, opener: Character, party: Party) -> Dictionary:
 	var messages: Array[String] = []
 	var combat_triggered := false
 	var party_wiped := false

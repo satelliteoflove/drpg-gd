@@ -3,11 +3,7 @@ extends PanelContainer
 signal chest_resolved(items: Array[Item], left_behind: bool)
 signal combat_triggered()
 
-const ChestSystem = preload("res://systems/loot/chest_system.gd")
-const ChestClass = preload("res://resources/chest.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-
-var chest: ChestClass = null
+var chest: Chest = null
 var party: Party = null
 var opener: Character = null
 var option_nav: MenuNavigator = null
@@ -25,7 +21,7 @@ func _ready() -> void:
 	leave_button.pressed.connect(_on_leave)
 
 
-func setup(p_chest: ChestClass, p_party: Party) -> void:
+func setup(p_chest: Chest, p_party: Party) -> void:
 	chest = p_chest
 	party = p_party
 	opener = party.get_alive_members()[0] if not party.get_alive_members().is_empty() else null
@@ -41,10 +37,10 @@ func setup(p_chest: ChestClass, p_party: Party) -> void:
 
 func _update_header() -> void:
 	match chest.chest_type:
-		ChestClass.ChestType.PLAIN:
+		Chest.ChestType.PLAIN:
 			header_label.text = "A small chest appears..."
 			description_label.text = "It looks ordinary, but may still be trapped."
-		ChestClass.ChestType.ORNATE:
+		Chest.ChestType.ORNATE:
 			header_label.text = "An ornate chest appears..."
 			description_label.text = "This chest appears valuable. It's likely trapped."
 
@@ -70,7 +66,7 @@ func _populate_options() -> void:
 	var thief: Character = party.get_living_thief()
 	var has_thief := thief != null
 
-	if has_thief and chest.chest_type == ChestClass.ChestType.PLAIN:
+	if has_thief and chest.chest_type == Chest.ChestType.PLAIN:
 		var quick_btn := Button.new()
 		quick_btn.text = "Quick Open (%s)" % thief.get_display_name()
 		quick_btn.custom_minimum_size = Vector2(0, 36)
@@ -102,7 +98,7 @@ func _populate_options() -> void:
 
 	option_buttons.append(leave_button)
 
-	option_nav = MenuNavigatorClass.new()
+	option_nav = MenuNavigator.new()
 	if not option_buttons.is_empty():
 		option_nav.setup(option_buttons, 0)
 

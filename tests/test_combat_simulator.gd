@@ -1,13 +1,5 @@
 extends SceneTree
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CombatSimulator = preload("res://systems/simulation/combat_simulator.gd")
-const BatchSimulator = preload("res://systems/simulation/batch_simulator.gd")
-const TestFixtures = preload("res://systems/simulation/test_fixtures.gd")
-const AIDecisionLog = preload("res://systems/simulation/ai_decision_log.gd")
-const MetricsCollector = preload("res://systems/simulation/metrics_collector.gd")
-const PartyAI = preload("res://systems/simulation/party_ai.gd")
-
 var _tests_passed := 0
 var _tests_failed := 0
 var _test_errors: Array[String] = []

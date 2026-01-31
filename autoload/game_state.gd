@@ -1,8 +1,6 @@
+## Global game state autoload managing party, dungeon, and combat state.
 class_name GameStateClass
 extends Node
-
-const PartyRes = preload("res://resources/party.gd")
-const RosterRes = preload("res://resources/character_roster.gd")
 
 signal floor_changed(new_floor: int)
 signal combat_started(encounter_data: Dictionary)
@@ -33,11 +31,17 @@ func clear_dungeon_floors() -> void:
 	dungeon_floors.clear()
 
 
-func get_dungeon_floor(floor_num: int):
+## Retrieves cached dungeon data for a floor.
+## [param floor_num]: Floor number to retrieve.
+## [return]: DungeonData or null if not cached.
+func get_dungeon_floor(floor_num: int) -> DungeonData:
 	return dungeon_floors.get(floor_num, null)
 
 
-func store_dungeon_floor(floor_num: int, dungeon_data) -> void:
+## Caches dungeon data for a floor.
+## [param floor_num]: Floor number to store.
+## [param dungeon_data]: The dungeon layout data.
+func store_dungeon_floor(floor_num: int, dungeon_data: DungeonData) -> void:
 	dungeon_floors[floor_num] = dungeon_data
 
 
@@ -47,15 +51,16 @@ func _ready() -> void:
 
 func _initialize_game_data() -> void:
 	if party == null:
-		party = PartyRes.new()
+		party = Party.new()
 	if roster == null:
-		roster = RosterRes.new()
+		roster = CharacterRoster.new()
 
 
+## Initializes a fresh game state with empty party and starting gold.
 func new_game() -> void:
-	party = PartyRes.new()
+	party = Party.new()
 	party.add_gold(100)
-	roster = RosterRes.new()
+	roster = CharacterRoster.new()
 	dungeon_floors.clear()
 	current_floor = 1
 	current_encounter = {}
@@ -80,6 +85,8 @@ func set_floor(floor_num: int) -> void:
 	floor_changed.emit(floor_num)
 
 
+## Initiates combat with the given encounter configuration.
+## [param encounter_data]: Dictionary with "enemies" array and optional flags.
 func start_combat(encounter_data: Dictionary) -> void:
 	current_encounter = encounter_data
 	in_combat = true
@@ -90,6 +97,8 @@ func clear_encounter() -> void:
 	current_encounter = {}
 
 
+## Ends the current combat encounter.
+## [param victory]: True if the party won.
 func end_combat(victory: bool) -> void:
 	in_combat = false
 	combat_ended.emit(victory)

@@ -1,10 +1,6 @@
 class_name DiveSimulator
 extends RefCounted
 
-const CombatSimulatorRef = preload("res://systems/simulation/combat_simulator.gd")
-const TestFixturesRef = preload("res://systems/simulation/test_fixtures.gd")
-const PartyAIRef = preload("res://systems/simulation/party_ai.gd")
-
 signal encounter_completed(encounter_num: int, result: Dictionary)
 signal dive_completed(result: Dictionary)
 
@@ -14,8 +10,8 @@ func run_dive(
 	floor_level: int,
 	max_encounters: int,
 	base_seed: int = 0,
-	cast_threshold: float = PartyAIRef.DEFAULT_CAST_THRESHOLD,
-	strategy: PartyAIRef.Strategy = PartyAIRef.Strategy.BALANCED,
+	cast_threshold: float = PartyAI.DEFAULT_CAST_THRESHOLD,
+	strategy: PartyAI.Strategy = PartyAI.Strategy.BALANCED,
 	rest_hp_percent: float = 0.0,
 	rest_mp_percent: float = 0.0
 ) -> Dictionary:
@@ -34,9 +30,9 @@ func run_dive(
 			break
 
 		var seed_value := base_seed + i * 100
-		var enemies := TestFixturesRef.create_floor_encounter(floor_level)
+		var enemies := TestFixtures.create_floor_encounter(floor_level)
 
-		var simulator := CombatSimulatorRef.new()
+		var simulator := CombatSimulator.new()
 		simulator.cast_threshold = cast_threshold
 		simulator.party_strategy = strategy
 		simulator.setup(party, enemies, seed_value)
@@ -97,8 +93,8 @@ func run_dive_batch(
 	max_encounters: int,
 	num_dives: int,
 	base_seed: int = 0,
-	cast_threshold: float = PartyAIRef.DEFAULT_CAST_THRESHOLD,
-	strategy: PartyAIRef.Strategy = PartyAIRef.Strategy.BALANCED,
+	cast_threshold: float = PartyAI.DEFAULT_CAST_THRESHOLD,
+	strategy: PartyAI.Strategy = PartyAI.Strategy.BALANCED,
 	rest_hp_percent: float = 0.0,
 	rest_mp_percent: float = 0.0
 ) -> Dictionary:

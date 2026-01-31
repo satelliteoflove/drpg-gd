@@ -1,15 +1,13 @@
 class_name MonsterAttack
 extends Resource
 
-const CharEnum = preload("res://resources/character_enums.gd")
-
 @export var attack_name: String = "Attack"
 @export var damage_dice: String = "1d4"
 @export var accuracy_bonus: int = 0
 @export var weapon_range: int = 1
 
 @export_group("Status Effect")
-@export var effect_type: CharEnum.StatusEffect = CharEnum.StatusEffect.NONE
+@export var effect_type: CharacterEnums.StatusEffect = CharacterEnums.StatusEffect.NONE
 @export var effect_chance: float = 0.0
 @export var effect_duration_dice: String = ""
 @export var effect_save_type: String = ""
@@ -18,7 +16,7 @@ const CharEnum = preload("res://resources/character_enums.gd")
 @export_group("Special Properties")
 @export var is_magical: bool = false
 @export var is_breath_weapon: bool = false
-@export var element: CharEnum.Element = CharEnum.Element.NONE
+@export var element: CharacterEnums.Element = CharacterEnums.Element.NONE
 @export var targets_row: bool = false
 @export var targets_all: bool = false
 
@@ -35,7 +33,7 @@ static func create_with_effect(
 	p_name: String,
 	p_dice: String,
 	p_accuracy: int,
-	p_effect: CharEnum.StatusEffect,
+	p_effect: CharacterEnums.StatusEffect,
 	p_chance: float,
 	p_duration: String = "3+1d3",
 	p_save: String = "physical",
@@ -65,7 +63,7 @@ static func create_ranged(p_name: String, p_dice: String, p_accuracy: int, p_ran
 static func create_magical(
 	p_name: String,
 	p_dice: String,
-	p_element: CharEnum.Element,
+	p_element: CharacterEnums.Element,
 	p_accuracy: int = 0
 ) -> MonsterAttack:
 	var attack := MonsterAttack.new()

@@ -1,9 +1,6 @@
 class_name DispelUndead
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-
 const BASE_SUCCESS_CHANCE: float = 0.5
 const LEVEL_MODIFIER: float = 0.05
 const DISPEL_XP_MULTIPLIER: float = 0.25
@@ -12,8 +9,8 @@ const DISPEL_XP_MULTIPLIER: float = 0.25
 static func can_dispel(character: Character) -> bool:
 	if character.is_dead or character.is_disabled():
 		return false
-	return character.character_class == CharEnum.CharacterClass.PRIEST or \
-		   character.character_class == CharEnum.CharacterClass.BISHOP
+	return character.character_class == CharacterEnums.CharacterClass.PRIEST or \
+		   character.character_class == CharacterEnums.CharacterClass.BISHOP
 
 
 static func get_valid_targets(enemies: Array[Monster]) -> Array[Monster]:

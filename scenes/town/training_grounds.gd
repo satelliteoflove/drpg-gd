@@ -1,10 +1,5 @@
 extends Control
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const ClassDataRef = preload("res://resources/class_data.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const KeyBindingHelperClass = preload("res://systems/ui/key_binding_helper.gd")
-
 enum Mode { MAIN_MENU, VIEW_ROSTER, SELECT_CHARACTER, CONFIRM_DELETE, RENAME_CHARACTER, CHANGE_CLASS }
 
 const MAIN_OPTIONS: Array[Dictionary] = [
@@ -110,8 +105,8 @@ func _populate_roster_view() -> void:
 		btn.text = "%s - L%d %s %s" % [
 			character.character_name,
 			character.level,
-			CharEnum.get_race_name(character.race),
-			CharEnum.get_class_name(character.character_class)
+			CharacterEnums.get_race_name(character.race),
+			CharacterEnums.get_class_name(character.character_class)
 		]
 		btn.custom_minimum_size = Vector2(350, 36)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -144,7 +139,7 @@ func _populate_character_select() -> void:
 		btn.text = "%s - L%d %s%s" % [
 			character.character_name,
 			character.level,
-			CharEnum.get_class_name(character.character_class),
+			CharacterEnums.get_class_name(character.character_class),
 			" [IN PARTY]" if in_party else ""
 		]
 		btn.custom_minimum_size = Vector2(350, 36)
@@ -248,12 +243,12 @@ func _populate_class_change() -> void:
 		"luck": selected_character.luck
 	}
 
-	for class_id: int in CharEnum.CharacterClass.values():
-		var char_class: CharEnum.CharacterClass = class_id as CharEnum.CharacterClass
-		var meets_reqs := ClassDataRef.meets_requirements(char_class, stats)
+	for class_id: int in CharacterEnums.CharacterClass.values():
+		var char_class: CharacterEnums.CharacterClass = class_id as CharacterEnums.CharacterClass
+		var meets_reqs := ClassData.meets_requirements(char_class, stats)
 
 		var btn := Button.new()
-		btn.text = CharEnum.get_class_name(char_class)
+		btn.text = CharacterEnums.get_class_name(char_class)
 		btn.custom_minimum_size = Vector2(350, 36)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 
@@ -293,7 +288,7 @@ func _setup_nav() -> void:
 	if buttons.is_empty():
 		return
 
-	nav = MenuNavigatorClass.new()
+	nav = MenuNavigator.new()
 	nav.setup(buttons, 0)
 	nav.selection_changed.connect(_on_selection_changed)
 
@@ -371,8 +366,8 @@ func _update_character_info(idx: int) -> void:
 
 	var c: Character = characters[idx]
 	var text := "[b]%s[/b]\n" % c.character_name
-	text += "Level %d %s %s\n" % [c.level, CharEnum.get_race_name(c.race), CharEnum.get_class_name(c.character_class)]
-	text += "Alignment: %s\n\n" % CharEnum.get_alignment_name(c.alignment)
+	text += "Level %d %s %s\n" % [c.level, CharacterEnums.get_race_name(c.race), CharacterEnums.get_class_name(c.character_class)]
+	text += "Alignment: %s\n\n" % CharacterEnums.get_alignment_name(c.alignment)
 
 	text += "[color=cyan]Stats:[/color]\n"
 	text += "  STR: %d  INT: %d  PIE: %d\n" % [c.strength, c.intelligence, c.piety]
@@ -383,9 +378,9 @@ func _update_character_info(idx: int) -> void:
 	text += "  XP: %d\n\n" % c.experience
 
 	if c.is_dead:
-		if c.has_status(CharEnum.StatusEffect.LOST):
+		if c.has_status(CharacterEnums.StatusEffect.LOST):
 			text += "[color=red]Status: LOST FOREVER[/color]\n"
-		elif c.has_status(CharEnum.StatusEffect.ASHED):
+		elif c.has_status(CharacterEnums.StatusEffect.ASHED):
 			text += "[color=orange]Status: ASHED[/color]\n"
 		else:
 			text += "[color=red]Status: DEAD[/color]\n"
@@ -403,8 +398,8 @@ func _update_delete_info() -> void:
 	var text := "[b]Delete %s?[/b]\n\n" % selected_character.character_name
 	text += "Level %d %s %s\n\n" % [
 		selected_character.level,
-		CharEnum.get_race_name(selected_character.race),
-		CharEnum.get_class_name(selected_character.character_class)
+		CharacterEnums.get_race_name(selected_character.race),
+		CharacterEnums.get_class_name(selected_character.character_class)
 	]
 	text += "[color=red]WARNING: This action cannot be undone![/color]\n\n"
 	text += "The character will be permanently removed\nfrom the roster."
@@ -423,8 +418,8 @@ func _update_rename_info() -> void:
 	var text := "[b]Rename %s[/b]\n\n" % selected_character.character_name
 	text += "Level %d %s %s\n\n" % [
 		selected_character.level,
-		CharEnum.get_race_name(selected_character.race),
-		CharEnum.get_class_name(selected_character.character_class)
+		CharacterEnums.get_race_name(selected_character.race),
+		CharacterEnums.get_class_name(selected_character.character_class)
 	]
 	text += "Enter a new name in the text field.\n"
 	text += "Maximum 20 characters."
@@ -437,16 +432,16 @@ func _update_class_change_info(idx: int) -> void:
 		info_label.text = "No character selected."
 		return
 
-	var class_count := CharEnum.CharacterClass.values().size()
+	var class_count := CharacterEnums.CharacterClass.values().size()
 	if idx < 0 or idx >= class_count:
 		info_label.text = "Press Enter to cancel."
 		return
 
-	var char_class: CharEnum.CharacterClass = idx as CharEnum.CharacterClass
-	var data: Dictionary = ClassDataRef.get_class_data(char_class)
-	var reqs: Dictionary = ClassDataRef.get_requirements(char_class)
+	var char_class: CharacterEnums.CharacterClass = idx as CharacterEnums.CharacterClass
+	var data: Dictionary = ClassData.get_class_data(char_class)
+	var reqs: Dictionary = ClassData.get_requirements(char_class)
 
-	var text := "[b]%s[/b]\n\n" % CharEnum.get_class_name(char_class)
+	var text := "[b]%s[/b]\n\n" % CharacterEnums.get_class_name(char_class)
 	text += "HP Base: %d  MP Base: %d\n\n" % [data.get("hp_base", 0), data.get("mp_base", 0)]
 
 	if not reqs.is_empty():
@@ -500,12 +495,12 @@ func _create_roster_row(c: Character) -> HBoxContainer:
 	row.add_child(name_label)
 
 	var class_label := Label.new()
-	class_label.text = "L%d %s" % [c.level, CharEnum.get_class_name(c.character_class)]
+	class_label.text = "L%d %s" % [c.level, CharacterEnums.get_class_name(c.character_class)]
 	class_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(class_label)
 
 	var status_label := Label.new()
-	if c.has_status(CharEnum.StatusEffect.LOST):
+	if c.has_status(CharacterEnums.StatusEffect.LOST):
 		status_label.text = "[LOST]"
 		status_label.add_theme_color_override("font_color", Color(0.5, 0.2, 0.2))
 	elif c.is_dead:
@@ -635,7 +630,7 @@ func _do_rename(new_name: String) -> void:
 	_refresh_display()
 
 
-func _on_class_change_selected(new_class: CharEnum.CharacterClass) -> void:
+func _on_class_change_selected(new_class: CharacterEnums.CharacterClass) -> void:
 	if selected_character == null:
 		_on_mode_back()
 		return
@@ -645,7 +640,7 @@ func _on_class_change_selected(new_class: CharEnum.CharacterClass) -> void:
 	selected_character.level = 1
 	selected_character.experience = 0
 
-	var class_data: Dictionary = ClassDataRef.get_class_data(new_class)
+	var class_data: Dictionary = ClassData.get_class_data(new_class)
 	selected_character.max_hp = class_data.get("hp_base", 10) + selected_character.vitality
 	selected_character.current_hp = selected_character.max_hp
 	selected_character.max_mp = class_data.get("mp_base", 0) + (selected_character.intelligence + selected_character.piety) / 4
@@ -653,8 +648,8 @@ func _on_class_change_selected(new_class: CharEnum.CharacterClass) -> void:
 
 	message_label.text = "%s changed class from %s to %s (now Level 1)." % [
 		selected_character.character_name,
-		CharEnum.get_class_name(old_class),
-		CharEnum.get_class_name(new_class)
+		CharacterEnums.get_class_name(old_class),
+		CharacterEnums.get_class_name(new_class)
 	]
 	selected_character = null
 	current_mode = Mode.MAIN_MENU
@@ -672,9 +667,9 @@ func _on_mode_back() -> void:
 
 
 func _update_help() -> void:
-	var v_nav := KeyBindingHelperClass.get_nav_help()
-	var confirm := KeyBindingHelperClass.get_confirm_help()
-	var cancel := KeyBindingHelperClass.get_cancel_help()
+	var v_nav := KeyBindingHelper.get_nav_help()
+	var confirm := KeyBindingHelper.get_confirm_help()
+	var cancel := KeyBindingHelper.get_cancel_help()
 
 	match current_mode:
 		Mode.MAIN_MENU:

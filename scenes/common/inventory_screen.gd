@@ -1,8 +1,5 @@
 extends Control
 
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const KeyBindingHelperClass = preload("res://systems/ui/key_binding_helper.gd")
-
 signal closed()
 
 enum FocusPanel { ITEMS, TARGETS }
@@ -64,7 +61,7 @@ func _refresh_items_list() -> void:
 		items_list.add_child(btn)
 		item_buttons.append(btn)
 
-	items_nav = MenuNavigatorClass.new()
+	items_nav = MenuNavigator.new()
 	if not item_buttons.is_empty():
 		items_nav.setup(item_buttons, 0)
 		items_nav.selection_changed.connect(_on_item_highlight_changed)
@@ -103,7 +100,7 @@ func _refresh_targets_list() -> void:
 		targets_list.add_child(btn)
 		target_buttons.append(btn)
 
-	targets_nav = MenuNavigatorClass.new()
+	targets_nav = MenuNavigator.new()
 	if not target_buttons.is_empty():
 		targets_nav.setup(target_buttons, 0)
 
@@ -133,7 +130,7 @@ func _can_use_item_on(item: Item, character: Character) -> bool:
 
 func _set_panel(panel: FocusPanel) -> void:
 	current_panel = panel
-	var cancel := KeyBindingHelperClass.get_cancel_help()
+	var cancel := KeyBindingHelper.get_cancel_help()
 
 	match panel:
 		FocusPanel.ITEMS:
@@ -228,14 +225,13 @@ func _on_target_selected(character: Character) -> void:
 
 
 func _get_status_name(status) -> String:
-	var CharEnum = preload("res://resources/character_enums.gd")
 	match status:
-		CharEnum.StatusEffect.POISONED: return "Poison"
-		CharEnum.StatusEffect.PARALYZED: return "Paralysis"
-		CharEnum.StatusEffect.ASLEEP: return "Sleep"
-		CharEnum.StatusEffect.CONFUSED: return "Confusion"
-		CharEnum.StatusEffect.SILENCED: return "Silence"
-		CharEnum.StatusEffect.BLINDED: return "Blindness"
+		CharacterEnums.StatusEffect.POISONED: return "Poison"
+		CharacterEnums.StatusEffect.PARALYZED: return "Paralysis"
+		CharacterEnums.StatusEffect.ASLEEP: return "Sleep"
+		CharacterEnums.StatusEffect.CONFUSED: return "Confusion"
+		CharacterEnums.StatusEffect.SILENCED: return "Silence"
+		CharacterEnums.StatusEffect.BLINDED: return "Blindness"
 		_: return "status"
 
 

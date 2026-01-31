@@ -1,8 +1,6 @@
 class_name Targeting
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-
 enum TargetPattern {
 	SINGLE,
 	ROW,

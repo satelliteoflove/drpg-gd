@@ -1,10 +1,6 @@
 class_name LootGenerator
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const ShopItemsData = preload("res://data/items/shop_items.gd")
-const LootDropRes = preload("res://resources/loot_drop.gd")
-
 const BASE_UPGRADE_CHANCE_PER_FLOOR: float = 0.08
 const UPGRADE_DECAY_FACTOR: float = 0.4
 const MAX_UPGRADE_LEVEL: int = 5
@@ -41,7 +37,7 @@ static func _generate_monster_loot(
 	if monster.loot_drops.is_empty():
 		return loot
 
-	for drop: LootDropRes in monster.loot_drops:
+	for drop: LootDrop in monster.loot_drops:
 		var modified_chance: float = drop.chance + luck_bonus
 		modified_chance = minf(1.0, modified_chance)
 
@@ -54,7 +50,7 @@ static func _generate_monster_loot(
 
 
 static func _create_loot_item(item_id: String, floor_level: int) -> Item:
-	var base_item: Item = ShopItemsData.get_item(item_id)
+	var base_item: Item = ShopItems.get_item(item_id)
 	if base_item == null:
 		push_error("[LootGenerator] Unknown item_id: " + item_id)
 		return null

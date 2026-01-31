@@ -1,9 +1,5 @@
 extends Control
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const KeyBindingHelperClass = preload("res://systems/ui/key_binding_helper.gd")
-
 var selected_index: int = -1
 var slot_buttons: Array[Button] = []
 var current_slot: int = 0
@@ -58,7 +54,7 @@ func _update_slot_button(btn: Button, slot_index: int) -> void:
 		btn.text = "%s\nL%d %s" % [
 			character.character_name,
 			character.level,
-			CharEnum.get_class_name(character.character_class)
+			CharacterEnums.get_class_name(character.character_class)
 		]
 		if character.is_dead:
 			btn.modulate = Color(0.7, 0.3, 0.3)
@@ -93,8 +89,8 @@ func _update_info() -> void:
 		var text := "[b]%s[/b] (%s)\n" % [character.character_name, row_name]
 		text += "Level %d %s %s\n" % [
 			character.level,
-			CharEnum.get_race_name(character.race),
-			CharEnum.get_class_name(character.character_class)
+			CharacterEnums.get_race_name(character.race),
+			CharacterEnums.get_class_name(character.character_class)
 		]
 		text += "HP: %d/%d  MP: %d/%d\n" % [
 			character.current_hp, character.max_hp,
@@ -117,9 +113,9 @@ func _update_info() -> void:
 
 
 func _update_help() -> void:
-	var confirm := KeyBindingHelperClass.get_confirm_help()
-	var cancel := KeyBindingHelperClass.get_cancel_help()
-	var nav := KeyBindingHelperClass.get_arrow_nav_help()
+	var confirm := KeyBindingHelper.get_confirm_help()
+	var cancel := KeyBindingHelper.get_cancel_help()
+	var nav := KeyBindingHelper.get_arrow_nav_help()
 
 	if selected_index >= 0:
 		help_label.text = "Select slot to swap | %s" % cancel

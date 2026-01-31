@@ -1,8 +1,5 @@
 extends Control
 
-const DungeonTile = preload("res://resources/dungeon_tile.gd")
-const DungeonData = preload("res://resources/dungeon_data.gd")
-
 signal closed
 
 const TILE_SIZE: int = 12

@@ -1,3 +1,4 @@
+## Manages the player's adventuring party including members, formation, gold, and inventory.
 class_name Party
 extends Resource
 
@@ -21,6 +22,9 @@ func _init() -> void:
 		inventory = Inventory.new()
 
 
+## Adds a character to the party at the last position.
+## [param character]: Character to add.
+## [return]: True if added, false if party is full or character already present.
 func add_member(character: Character) -> bool:
 	if members.size() >= MAX_SIZE:
 		return false
@@ -32,6 +36,9 @@ func add_member(character: Character) -> bool:
 	return true
 
 
+## Removes a character from the party by ID.
+## [param character_id]: ID of the character to remove.
+## [return]: The removed character, or null if not found.
 func remove_member(character_id: String) -> Character:
 	var index := _find_member_index(character_id)
 	if index < 0:
@@ -143,6 +150,10 @@ func is_in_back_row(character: Character) -> bool:
 	return is_back_row(character.id)
 
 
+## Swaps the positions of two party members.
+## [param index_a]: First position index.
+## [param index_b]: Second position index.
+## [return]: True if swap succeeded.
 func swap_positions(index_a: int, index_b: int) -> bool:
 	if index_a < 0 or index_a >= members.size():
 		return false
@@ -213,6 +224,8 @@ func has_scrap(amount: int) -> bool:
 	return scrap >= amount
 
 
+## Distributes experience points to all living party members.
+## [param total_xp]: Total XP to give each living member.
 func distribute_experience(total_xp: int) -> void:
 	var alive := get_alive_members()
 	if alive.is_empty():
@@ -290,25 +303,22 @@ func has_living_caster() -> bool:
 
 
 func has_living_bishop() -> bool:
-	const CharEnum = preload("res://resources/character_enums.gd")
 	for member in members:
-		if not member.is_dead and member.character_class == CharEnum.CharacterClass.BISHOP:
+		if not member.is_dead and member.character_class == CharacterEnums.CharacterClass.BISHOP:
 			return true
 	return false
 
 
 func has_living_thief() -> bool:
-	const CharEnum = preload("res://resources/character_enums.gd")
 	for member in members:
-		if not member.is_dead and member.character_class == CharEnum.CharacterClass.THIEF:
+		if not member.is_dead and member.character_class == CharacterEnums.CharacterClass.THIEF:
 			return true
 	return false
 
 
 func get_living_thief() -> Character:
-	const CharEnum = preload("res://resources/character_enums.gd")
 	for member in members:
-		if not member.is_dead and member.character_class == CharEnum.CharacterClass.THIEF:
+		if not member.is_dead and member.character_class == CharacterEnums.CharacterClass.THIEF:
 			return member
 	return null
 
@@ -328,6 +338,8 @@ func is_front_row_wiped() -> bool:
 	return true
 
 
+## Moves the back row to front row positions if all front row members are dead.
+## [return]: True if row advancement occurred.
 func advance_back_row_if_front_wiped() -> bool:
 	if members.size() <= FRONT_ROW_SIZE:
 		return false

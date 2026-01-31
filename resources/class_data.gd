@@ -1,125 +1,123 @@
 class_name ClassData
 extends RefCounted
 
-const CharEnum = preload("res://resources/character_enums.gd")
-
 const CLASS_DEFINITIONS: Dictionary = {
-	CharEnum.CharacterClass.FIGHTER: {
-		"tier": CharEnum.ClassTier.BASIC,
+	CharacterEnums.CharacterClass.FIGHTER: {
+		"tier": CharacterEnums.ClassTier.BASIC,
 		"hp_base": 10,
 		"mp_base": 0,
 		"spell_schools": [],
 		"requirements": {},
 		"can_use_magic": false
 	},
-	CharEnum.CharacterClass.MAGE: {
-		"tier": CharEnum.ClassTier.BASIC,
+	CharacterEnums.CharacterClass.MAGE: {
+		"tier": CharacterEnums.ClassTier.BASIC,
 		"hp_base": 4,
 		"mp_base": 4,
-		"spell_schools": [CharEnum.SpellSchool.MAGE],
+		"spell_schools": [CharacterEnums.SpellSchool.MAGE],
 		"requirements": {"intelligence": 11},
 		"can_use_magic": true
 	},
-	CharEnum.CharacterClass.PRIEST: {
-		"tier": CharEnum.ClassTier.BASIC,
+	CharacterEnums.CharacterClass.PRIEST: {
+		"tier": CharacterEnums.ClassTier.BASIC,
 		"hp_base": 6,
 		"mp_base": 3,
-		"spell_schools": [CharEnum.SpellSchool.PRIEST],
+		"spell_schools": [CharacterEnums.SpellSchool.PRIEST],
 		"requirements": {"piety": 11},
 		"can_use_magic": true
 	},
-	CharEnum.CharacterClass.THIEF: {
-		"tier": CharEnum.ClassTier.BASIC,
+	CharacterEnums.CharacterClass.THIEF: {
+		"tier": CharacterEnums.ClassTier.BASIC,
 		"hp_base": 6,
 		"mp_base": 0,
 		"spell_schools": [],
 		"requirements": {"agility": 11},
 		"can_use_magic": false
 	},
-	CharEnum.CharacterClass.ALCHEMIST: {
-		"tier": CharEnum.ClassTier.BASIC,
+	CharacterEnums.CharacterClass.ALCHEMIST: {
+		"tier": CharacterEnums.ClassTier.BASIC,
 		"hp_base": 6,
 		"mp_base": 3,
-		"spell_schools": [CharEnum.SpellSchool.ALCHEMIST],
+		"spell_schools": [CharacterEnums.SpellSchool.ALCHEMIST],
 		"requirements": {"intelligence": 10},
 		"can_use_magic": true
 	},
-	CharEnum.CharacterClass.BISHOP: {
-		"tier": CharEnum.ClassTier.ADVANCED,
+	CharacterEnums.CharacterClass.BISHOP: {
+		"tier": CharacterEnums.ClassTier.ADVANCED,
 		"hp_base": 4,
 		"mp_base": 4,
-		"spell_schools": [CharEnum.SpellSchool.MAGE, CharEnum.SpellSchool.PRIEST],
+		"spell_schools": [CharacterEnums.SpellSchool.MAGE, CharacterEnums.SpellSchool.PRIEST],
 		"requirements": {"intelligence": 12, "piety": 12},
 		"can_use_magic": true,
 		"is_multiclass_caster": true
 	},
-	CharEnum.CharacterClass.BARD: {
-		"tier": CharEnum.ClassTier.ADVANCED,
+	CharacterEnums.CharacterClass.BARD: {
+		"tier": CharacterEnums.ClassTier.ADVANCED,
 		"hp_base": 5,
 		"mp_base": 2,
-		"spell_schools": [CharEnum.SpellSchool.MAGE],
+		"spell_schools": [CharacterEnums.SpellSchool.MAGE],
 		"requirements": {"intelligence": 10, "agility": 10},
 		"can_use_magic": true,
 		"is_hybrid_caster": true
 	},
-	CharEnum.CharacterClass.RANGER: {
-		"tier": CharEnum.ClassTier.ADVANCED,
+	CharacterEnums.CharacterClass.RANGER: {
+		"tier": CharacterEnums.ClassTier.ADVANCED,
 		"hp_base": 7,
 		"mp_base": 2,
-		"spell_schools": [CharEnum.SpellSchool.PRIEST, CharEnum.SpellSchool.ALCHEMIST],
+		"spell_schools": [CharacterEnums.SpellSchool.PRIEST, CharacterEnums.SpellSchool.ALCHEMIST],
 		"requirements": {"strength": 10, "piety": 10, "vitality": 10},
 		"can_use_magic": true,
 		"is_hybrid_caster": true
 	},
-	CharEnum.CharacterClass.PSIONIC: {
-		"tier": CharEnum.ClassTier.ADVANCED,
+	CharacterEnums.CharacterClass.PSIONIC: {
+		"tier": CharacterEnums.ClassTier.ADVANCED,
 		"hp_base": 3,
 		"mp_base": 3,
-		"spell_schools": [CharEnum.SpellSchool.PSIONIC],
+		"spell_schools": [CharacterEnums.SpellSchool.PSIONIC],
 		"requirements": {"intelligence": 11, "piety": 11},
 		"can_use_magic": true
 	},
-	CharEnum.CharacterClass.VALKYRIE: {
-		"tier": CharEnum.ClassTier.ELITE,
+	CharacterEnums.CharacterClass.VALKYRIE: {
+		"tier": CharacterEnums.ClassTier.ELITE,
 		"hp_base": 7,
 		"mp_base": 2,
-		"spell_schools": [CharEnum.SpellSchool.PRIEST],
+		"spell_schools": [CharacterEnums.SpellSchool.PRIEST],
 		"requirements": {"strength": 12, "piety": 12, "vitality": 12},
 		"can_use_magic": true,
 		"is_hybrid_caster": true
 	},
-	CharEnum.CharacterClass.SAMURAI: {
-		"tier": CharEnum.ClassTier.ELITE,
+	CharacterEnums.CharacterClass.SAMURAI: {
+		"tier": CharacterEnums.ClassTier.ELITE,
 		"hp_base": 8,
 		"mp_base": 2,
-		"spell_schools": [CharEnum.SpellSchool.MAGE],
+		"spell_schools": [CharacterEnums.SpellSchool.MAGE],
 		"requirements": {"strength": 13, "intelligence": 11, "piety": 10, "vitality": 14, "agility": 10},
 		"can_use_magic": true,
 		"is_hybrid_caster": true
 	},
-	CharEnum.CharacterClass.LORD: {
-		"tier": CharEnum.ClassTier.ELITE,
+	CharacterEnums.CharacterClass.LORD: {
+		"tier": CharacterEnums.ClassTier.ELITE,
 		"hp_base": 8,
 		"mp_base": 2,
-		"spell_schools": [CharEnum.SpellSchool.PRIEST],
+		"spell_schools": [CharacterEnums.SpellSchool.PRIEST],
 		"requirements": {"strength": 13, "intelligence": 10, "piety": 12, "vitality": 13},
 		"can_use_magic": true,
 		"is_hybrid_caster": true
 	},
-	CharEnum.CharacterClass.MONK: {
-		"tier": CharEnum.ClassTier.ELITE,
+	CharacterEnums.CharacterClass.MONK: {
+		"tier": CharacterEnums.ClassTier.ELITE,
 		"hp_base": 6,
 		"mp_base": 2,
-		"spell_schools": [CharEnum.SpellSchool.PRIEST, CharEnum.SpellSchool.PSIONIC],
+		"spell_schools": [CharacterEnums.SpellSchool.PRIEST, CharacterEnums.SpellSchool.PSIONIC],
 		"requirements": {"strength": 10, "piety": 12, "agility": 12},
 		"can_use_magic": true,
 		"is_late_caster": true
 	},
-	CharEnum.CharacterClass.NINJA: {
-		"tier": CharEnum.ClassTier.ELITE,
+	CharacterEnums.CharacterClass.NINJA: {
+		"tier": CharacterEnums.ClassTier.ELITE,
 		"hp_base": 6,
 		"mp_base": 2,
-		"spell_schools": [CharEnum.SpellSchool.MAGE, CharEnum.SpellSchool.ALCHEMIST],
+		"spell_schools": [CharacterEnums.SpellSchool.MAGE, CharacterEnums.SpellSchool.ALCHEMIST],
 		"requirements": {"strength": 12, "intelligence": 10, "agility": 14},
 		"can_use_magic": true,
 		"is_late_caster": true
@@ -132,41 +130,41 @@ const BISHOP_SPELL_LEVELS: Array[int] = [1, 5, 9, 13, 17, 21, 25, 33]
 const LATE_CASTER_SPELL_LEVELS: Array[int] = [7, 10, 13, 16, 19, 22, 25, 33]
 
 
-static func get_class_data(char_class: CharEnum.CharacterClass) -> Dictionary:
+static func get_class_data(char_class: CharacterEnums.CharacterClass) -> Dictionary:
 	return CLASS_DEFINITIONS.get(char_class, {})
 
 
-static func get_hp_base(char_class: CharEnum.CharacterClass) -> int:
+static func get_hp_base(char_class: CharacterEnums.CharacterClass) -> int:
 	var data: Dictionary = get_class_data(char_class)
 	return data.get("hp_base", 6)
 
 
-static func get_mp_base(char_class: CharEnum.CharacterClass) -> int:
+static func get_mp_base(char_class: CharacterEnums.CharacterClass) -> int:
 	var data: Dictionary = get_class_data(char_class)
 	return data.get("mp_base", 0)
 
 
-static func can_use_magic(char_class: CharEnum.CharacterClass) -> bool:
+static func can_use_magic(char_class: CharacterEnums.CharacterClass) -> bool:
 	var data: Dictionary = get_class_data(char_class)
 	return data.get("can_use_magic", false)
 
 
-static func get_spell_schools(char_class: CharEnum.CharacterClass) -> Array:
+static func get_spell_schools(char_class: CharacterEnums.CharacterClass) -> Array:
 	var data: Dictionary = get_class_data(char_class)
 	return data.get("spell_schools", [])
 
 
-static func get_requirements(char_class: CharEnum.CharacterClass) -> Dictionary:
+static func get_requirements(char_class: CharacterEnums.CharacterClass) -> Dictionary:
 	var data: Dictionary = get_class_data(char_class)
 	return data.get("requirements", {})
 
 
-static func get_tier(char_class: CharEnum.CharacterClass) -> CharEnum.ClassTier:
+static func get_tier(char_class: CharacterEnums.CharacterClass) -> CharacterEnums.ClassTier:
 	var data: Dictionary = get_class_data(char_class)
-	return data.get("tier", CharEnum.ClassTier.BASIC)
+	return data.get("tier", CharacterEnums.ClassTier.BASIC)
 
 
-static func meets_requirements(char_class: CharEnum.CharacterClass, stats: Dictionary) -> bool:
+static func meets_requirements(char_class: CharacterEnums.CharacterClass, stats: Dictionary) -> bool:
 	var reqs: Dictionary = get_requirements(char_class)
 	for stat_name: String in reqs:
 		var required: int = reqs[stat_name]
@@ -176,14 +174,14 @@ static func meets_requirements(char_class: CharEnum.CharacterClass, stats: Dicti
 	return true
 
 
-static func get_spell_level_at_character_level(char_class: CharEnum.CharacterClass, char_level: int) -> int:
+static func get_spell_level_at_character_level(char_class: CharacterEnums.CharacterClass, char_level: int) -> int:
 	var data: Dictionary = get_class_data(char_class)
 
 	if not data.get("can_use_magic", false):
 		return 0
 
 	var levels: Array[int]
-	if char_class == CharEnum.CharacterClass.BISHOP:
+	if char_class == CharacterEnums.CharacterClass.BISHOP:
 		levels = BISHOP_SPELL_LEVELS
 	elif data.get("is_late_caster", false):
 		levels = LATE_CASTER_SPELL_LEVELS
@@ -202,8 +200,8 @@ static func get_spell_level_at_character_level(char_class: CharEnum.CharacterCla
 	return spell_level
 
 
-static func get_available_classes_for_race(_race: CharEnum.Race) -> Array[CharEnum.CharacterClass]:
-	var available: Array[CharEnum.CharacterClass] = []
+static func get_available_classes_for_race(_race: CharacterEnums.Race) -> Array[CharacterEnums.CharacterClass]:
+	var available: Array[CharacterEnums.CharacterClass] = []
 	for char_class: int in CLASS_DEFINITIONS:
-		available.append(char_class as CharEnum.CharacterClass)
+		available.append(char_class as CharacterEnums.CharacterClass)
 	return available

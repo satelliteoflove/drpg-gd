@@ -1,15 +1,12 @@
 extends Control
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const ClassDataRef = preload("res://resources/class_data.gd")
-
 enum Step { RACE, STATS, CLASS, ALIGNMENT, GENDER, NAME, CONFIRM }
 
 var current_step: Step = Step.RACE
-var selected_race: CharEnum.Race = CharEnum.Race.HUMAN
-var selected_class: CharEnum.CharacterClass = CharEnum.CharacterClass.FIGHTER
-var selected_alignment: CharEnum.Alignment = CharEnum.Alignment.NEUTRAL
-var selected_gender: CharEnum.Gender = CharEnum.Gender.MALE
+var selected_race: CharacterEnums.Race = CharacterEnums.Race.HUMAN
+var selected_class: CharacterEnums.CharacterClass = CharacterEnums.CharacterClass.FIGHTER
+var selected_alignment: CharacterEnums.Alignment = CharacterEnums.Alignment.NEUTRAL
+var selected_gender: CharacterEnums.Gender = CharacterEnums.Gender.MALE
 var character_name: String = ""
 var rolled_stats: Dictionary = {}
 
@@ -80,10 +77,10 @@ func _show_race_step() -> void:
 	grid.columns = 3
 	content_container.add_child(grid)
 
-	for race_id: int in CharEnum.Race.values():
-		var race: CharEnum.Race = race_id as CharEnum.Race
+	for race_id: int in CharacterEnums.Race.values():
+		var race: CharacterEnums.Race = race_id as CharacterEnums.Race
 		var btn := Button.new()
-		btn.text = CharEnum.get_race_name(race)
+		btn.text = CharacterEnums.get_race_name(race)
 		btn.custom_minimum_size = Vector2(120, 40)
 		btn.toggle_mode = true
 		btn.button_pressed = (race == selected_race)
@@ -99,8 +96,8 @@ func _add_race_info() -> void:
 	info.fit_content = true
 	info.custom_minimum_size = Vector2(0, 100)
 
-	var ranges: Dictionary = CharEnum.RACE_STAT_RANGES.get(selected_race, {})
-	var text := "[b]%s[/b]\n" % CharEnum.get_race_name(selected_race)
+	var ranges: Dictionary = CharacterEnums.RACE_STAT_RANGES.get(selected_race, {})
+	var text := "[b]%s[/b]\n" % CharacterEnums.get_race_name(selected_race)
 	text += "STR: %d-%d  INT: %d-%d  PIE: %d-%d\n" % [
 		ranges.get("strength", Vector2i(8,18)).x, ranges.get("strength", Vector2i(8,18)).y,
 		ranges.get("intelligence", Vector2i(8,18)).x, ranges.get("intelligence", Vector2i(8,18)).y,
@@ -115,7 +112,7 @@ func _add_race_info() -> void:
 	content_container.add_child(info)
 
 
-func _on_race_selected(race: CharEnum.Race) -> void:
+func _on_race_selected(race: CharacterEnums.Race) -> void:
 	selected_race = race
 	rolled_stats = {}
 	_show_step()
@@ -168,13 +165,13 @@ func _show_class_step() -> void:
 	grid.columns = 3
 	content_container.add_child(grid)
 
-	for class_id: int in CharEnum.CharacterClass.values():
-		var char_class: CharEnum.CharacterClass = class_id as CharEnum.CharacterClass
+	for class_id: int in CharacterEnums.CharacterClass.values():
+		var char_class: CharacterEnums.CharacterClass = class_id as CharacterEnums.CharacterClass
 		var btn := Button.new()
-		btn.text = CharEnum.get_class_name(char_class)
+		btn.text = CharacterEnums.get_class_name(char_class)
 		btn.custom_minimum_size = Vector2(120, 40)
 
-		var meets_reqs := ClassDataRef.meets_requirements(char_class, rolled_stats)
+		var meets_reqs := ClassData.meets_requirements(char_class, rolled_stats)
 		btn.disabled = not meets_reqs
 		btn.toggle_mode = true
 		btn.button_pressed = (char_class == selected_class and meets_reqs)
@@ -193,10 +190,10 @@ func _add_class_info() -> void:
 	info.fit_content = true
 	info.custom_minimum_size = Vector2(0, 80)
 
-	var data: Dictionary = ClassDataRef.get_class_data(selected_class)
-	var reqs: Dictionary = ClassDataRef.get_requirements(selected_class)
+	var data: Dictionary = ClassData.get_class_data(selected_class)
+	var reqs: Dictionary = ClassData.get_requirements(selected_class)
 
-	var text := "[b]%s[/b]\n" % CharEnum.get_class_name(selected_class)
+	var text := "[b]%s[/b]\n" % CharacterEnums.get_class_name(selected_class)
 	text += "HP Base: %d  MP Base: %d\n" % [data.get("hp_base", 0), data.get("mp_base", 0)]
 
 	if not reqs.is_empty():
@@ -210,7 +207,7 @@ func _add_class_info() -> void:
 	content_container.add_child(info)
 
 
-func _on_class_selected(char_class: CharEnum.CharacterClass) -> void:
+func _on_class_selected(char_class: CharacterEnums.CharacterClass) -> void:
 	selected_class = char_class
 	_show_step()
 
@@ -221,10 +218,10 @@ func _show_alignment_step() -> void:
 	var vbox := VBoxContainer.new()
 	content_container.add_child(vbox)
 
-	for align_id: int in CharEnum.Alignment.values():
-		var alignment: CharEnum.Alignment = align_id as CharEnum.Alignment
+	for align_id: int in CharacterEnums.Alignment.values():
+		var alignment: CharacterEnums.Alignment = align_id as CharacterEnums.Alignment
 		var btn := Button.new()
-		btn.text = CharEnum.get_alignment_name(alignment)
+		btn.text = CharacterEnums.get_alignment_name(alignment)
 		btn.custom_minimum_size = Vector2(150, 40)
 		btn.toggle_mode = true
 		btn.button_pressed = (alignment == selected_alignment)
@@ -232,7 +229,7 @@ func _show_alignment_step() -> void:
 		vbox.add_child(btn)
 
 
-func _on_alignment_selected(alignment: CharEnum.Alignment) -> void:
+func _on_alignment_selected(alignment: CharacterEnums.Alignment) -> void:
 	selected_alignment = alignment
 	_show_step()
 
@@ -244,10 +241,10 @@ func _show_gender_step() -> void:
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	content_container.add_child(hbox)
 
-	for gender_id: int in CharEnum.Gender.values():
-		var gender: CharEnum.Gender = gender_id as CharEnum.Gender
+	for gender_id: int in CharacterEnums.Gender.values():
+		var gender: CharacterEnums.Gender = gender_id as CharacterEnums.Gender
 		var btn := Button.new()
-		btn.text = "Male" if gender == CharEnum.Gender.MALE else "Female"
+		btn.text = "Male" if gender == CharacterEnums.Gender.MALE else "Female"
 		btn.custom_minimum_size = Vector2(120, 40)
 		btn.toggle_mode = true
 		btn.button_pressed = (gender == selected_gender)
@@ -255,7 +252,7 @@ func _show_gender_step() -> void:
 		hbox.add_child(btn)
 
 
-func _on_gender_selected(gender: CharEnum.Gender) -> void:
+func _on_gender_selected(gender: CharacterEnums.Gender) -> void:
 	selected_gender = gender
 	_show_step()
 
@@ -299,10 +296,10 @@ Vitality: %d
 Agility: %d
 Luck: %d""" % [
 		character_name if character_name else "(unnamed)",
-		CharEnum.get_race_name(selected_race),
-		CharEnum.get_class_name(selected_class),
-		CharEnum.get_alignment_name(selected_alignment),
-		"Male" if selected_gender == CharEnum.Gender.MALE else "Female",
+		CharacterEnums.get_race_name(selected_race),
+		CharacterEnums.get_class_name(selected_class),
+		CharacterEnums.get_alignment_name(selected_alignment),
+		"Male" if selected_gender == CharacterEnums.Gender.MALE else "Female",
 		rolled_stats.get("strength", 10),
 		rolled_stats.get("intelligence", 10),
 		rolled_stats.get("piety", 10),
@@ -328,7 +325,7 @@ func _on_next_pressed() -> void:
 		return
 
 	if current_step == Step.CLASS:
-		if not ClassDataRef.meets_requirements(selected_class, rolled_stats):
+		if not ClassData.meets_requirements(selected_class, rolled_stats):
 			return
 
 	if current_step < Step.CONFIRM:

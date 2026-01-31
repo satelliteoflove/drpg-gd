@@ -1,16 +1,21 @@
+## Manages application, removal, and effects of status conditions on combatants.
 class_name StatusEffectSystem
 extends RefCounted
-
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const DamageCalculator = preload("res://systems/combat/damage_calculator.gd")
 
 const RESISTANCE_CHANCE: float = 0.5
 
 
+## Attempts to apply a status effect to a target.
+## [param target]: Character or Monster to affect.
+## [param status]: The status effect to apply.
+## [param duration]: Turns until expiry (-1 for permanent).
+## [param source]: Source identifier for tracking.
+## [param power]: Effect strength for certain statuses.
+## [param ignore_resistance]: If true, bypasses racial immunity/resistance checks.
+## [return]: Dictionary with success, resisted, immune, and message fields.
 static func apply_status(
 	target: Resource,
-	status: CharEnum.StatusEffect,
+	status: CharacterEnums.StatusEffect,
 	duration: int = -1,
 	source: String = "",
 	power: int = 0,
@@ -23,53 +28,61 @@ static func apply_status(
 		"message": ""
 	}
 
-	if target.is_dead and status != CharEnum.StatusEffect.DEAD:
+	if target.is_dead and status != CharacterEnums.StatusEffect.DEAD:
 		result.message = "%s is dead." % target.get_display_name()
 		return result
 
 	if target.has_status(status):
-		result.message = "%s already has %s." % [target.get_display_name(), CharEnum.get_status_name(status)]
+		result.message = "%s already has %s." % [target.get_display_name(), CharacterEnums.get_status_name(status)]
 		return result
 
 	if not ignore_resistance:
 		if _has_racial_immunity(target, status):
 			result.immune = true
-			result.message = "%s is immune to %s!" % [target.get_display_name(), CharEnum.get_status_name(status)]
+			result.message = "%s is immune to %s!" % [target.get_display_name(), CharacterEnums.get_status_name(status)]
 			return result
 
 		if _check_racial_resistance(target, status):
 			result.resisted = true
-			result.message = "%s resists %s!" % [target.get_display_name(), CharEnum.get_status_name(status)]
+			result.message = "%s resists %s!" % [target.get_display_name(), CharacterEnums.get_status_name(status)]
 			return result
 
 	var applied: bool = target.add_status(status, duration, source, power)
 	if applied:
 		result.success = true
 		if duration > 0:
-			result.message = "%s is %s for %d turns!" % [target.get_display_name(), CharEnum.get_status_name(status).to_lower(), duration]
+			result.message = "%s is %s for %d turns!" % [target.get_display_name(), CharacterEnums.get_status_name(status).to_lower(), duration]
 		else:
-			result.message = "%s is %s!" % [target.get_display_name(), CharEnum.get_status_name(status).to_lower()]
+			result.message = "%s is %s!" % [target.get_display_name(), CharacterEnums.get_status_name(status).to_lower()]
 	else:
 		result.message = "%s was not affected." % target.get_display_name()
 
 	return result
 
 
-static func remove_status(target: Resource, status: CharEnum.StatusEffect) -> String:
+## Removes a status effect from the target.
+## [param target]: Character or Monster to cure.
+## [param status]: The status effect to remove.
+## [return]: Message describing the removal, or empty string if not present.
+static func remove_status(target: Resource, status: CharacterEnums.StatusEffect) -> String:
 	if not target.has_status(status):
 		return ""
 
 	target.remove_status(status)
-	return "%s is no longer %s." % [target.get_display_name(), CharEnum.get_status_name(status).to_lower()]
+	return "%s is no longer %s." % [target.get_display_name(), CharacterEnums.get_status_name(status).to_lower()]
 
 
+## Processes turn-based effects like poison damage and natural recovery.
+## [param target]: Character or Monster to process.
+## [param context]: Either "combat" or "exploration" for context-specific effects.
+## [return]: Array of messages describing effects that occurred.
 static func tick_effects(target: Resource, context: String = "combat") -> Array[String]:
 	var messages: Array[String] = []
 
 	if target.is_dead:
 		return messages
 
-	var statuses_to_remove: Array[CharEnum.StatusEffect] = []
+	var statuses_to_remove: Array[CharacterEnums.StatusEffect] = []
 
 	for active in target.active_statuses:
 		var tick_result := _process_status_tick(target, active, context)
@@ -78,10 +91,10 @@ static func tick_effects(target: Resource, context: String = "combat") -> Array[
 
 		if _check_natural_recovery(target, active.type):
 			statuses_to_remove.append(active.type)
-			messages.append("%s recovered from %s!" % [target.get_display_name(), CharEnum.get_status_name(active.type).to_lower()])
+			messages.append("%s recovered from %s!" % [target.get_display_name(), CharacterEnums.get_status_name(active.type).to_lower()])
 		elif active.tick():
 			statuses_to_remove.append(active.type)
-			messages.append("%s's %s wore off." % [target.get_display_name(), CharEnum.get_status_name(active.type).to_lower()])
+			messages.append("%s's %s wore off." % [target.get_display_name(), CharacterEnums.get_status_name(active.type).to_lower()])
 
 	for status in statuses_to_remove:
 		target.remove_status(status)
@@ -91,22 +104,22 @@ static func tick_effects(target: Resource, context: String = "combat") -> Array[
 
 static func _process_status_tick(target: Resource, active: Character.ActiveStatus, context: String) -> String:
 	match active.type:
-		CharEnum.StatusEffect.POISONED:
-			var damage: int = DamageCalculator.roll_dice("1d4")
+		CharacterEnums.StatusEffect.POISONED:
+			var damage: int = DamageCalculator.roll_dice(CombatConstants.POISON_DAMAGE_DICE)
 			damage = maxi(1, damage)
 			var actual: int = target.take_damage(damage)
 			if target.is_dead:
 				return "%s takes %d poison damage and dies!" % [target.get_display_name(), actual]
 			return "%s takes %d poison damage." % [target.get_display_name(), actual]
 
-		CharEnum.StatusEffect.AFRAID:
+		CharacterEnums.StatusEffect.AFRAID:
 			if target.current_mp > 0:
 				target.current_mp = maxi(0, target.current_mp - 1)
 				return "%s loses 1 MP from fear." % target.get_display_name()
 
-		CharEnum.StatusEffect.CURSED:
+		CharacterEnums.StatusEffect.CURSED:
 			if context == "exploration":
-				var damage: int = DamageCalculator.roll_dice("1d2")
+				var damage: int = DamageCalculator.roll_dice(CombatConstants.CURSE_DAMAGE_DICE)
 				damage = maxi(1, damage)
 				var actual: int = target.take_damage(damage)
 				return "%s takes %d curse damage." % [target.get_display_name(), actual]
@@ -114,18 +127,18 @@ static func _process_status_tick(target: Resource, active: Character.ActiveStatu
 	return ""
 
 
-static func _check_natural_recovery(target: Resource, status: CharEnum.StatusEffect) -> bool:
+static func _check_natural_recovery(target: Resource, status: CharacterEnums.StatusEffect) -> bool:
 	var recovery_chance := 0.0
 
 	match status:
-		CharEnum.StatusEffect.CONFUSED:
-			recovery_chance = 0.15
-		CharEnum.StatusEffect.SILENCED:
-			recovery_chance = minf(0.6, 0.20 + target.level * 0.02)
-		CharEnum.StatusEffect.BLINDED:
-			recovery_chance = 0.10
-		CharEnum.StatusEffect.AFRAID:
-			recovery_chance = 0.10 + target.level * 0.01
+		CharacterEnums.StatusEffect.CONFUSED:
+			recovery_chance = CombatConstants.CONFUSED_RECOVERY_CHANCE
+		CharacterEnums.StatusEffect.SILENCED:
+			recovery_chance = minf(CombatConstants.SILENCED_MAX_RECOVERY, CombatConstants.SILENCED_BASE_RECOVERY + target.level * CombatConstants.SILENCED_LEVEL_BONUS)
+		CharacterEnums.StatusEffect.BLINDED:
+			recovery_chance = CombatConstants.BLINDED_RECOVERY_CHANCE
+		CharacterEnums.StatusEffect.AFRAID:
+			recovery_chance = CombatConstants.AFRAID_BASE_RECOVERY + target.level * CombatConstants.AFRAID_LEVEL_BONUS
 
 	if recovery_chance > 0:
 		return CombatRNG.randf() < recovery_chance
@@ -137,9 +150,15 @@ static func is_disabled(target: Resource) -> bool:
 	return target.is_disabled()
 
 
+## Rolls a saving throw to resist an effect.
+## [param target]: Character or Monster making the save.
+## [param save_type]: Type of save (PHYSICAL, MENTAL, MAGICAL, DEATH).
+## [param dc]: Difficulty class to beat.
+## [param power_modifier]: Additional DC modifier.
+## [return]: True if the save succeeds.
 static func roll_saving_throw(
 	target: Resource,
-	save_type: CharEnum.SaveType,
+	save_type: CharacterEnums.SaveType,
 	dc: int,
 	power_modifier: int = 0
 ) -> bool:
@@ -153,28 +172,28 @@ static func roll_saving_throw(
 	return total >= actual_dc
 
 
-static func _get_save_bonus(target: Resource, save_type: CharEnum.SaveType) -> int:
+static func _get_save_bonus(target: Resource, save_type: CharacterEnums.SaveType) -> int:
 	var level_bonus: int = target.level / 2
 
 	match save_type:
-		CharEnum.SaveType.PHYSICAL:
+		CharacterEnums.SaveType.PHYSICAL:
 			return level_bonus + (target.vitality - 10) / 4
-		CharEnum.SaveType.MENTAL:
+		CharacterEnums.SaveType.MENTAL:
 			return level_bonus + (target.intelligence - 10) / 4
-		CharEnum.SaveType.MAGICAL:
+		CharacterEnums.SaveType.MAGICAL:
 			return level_bonus + (target.piety - 10) / 4
-		CharEnum.SaveType.DEATH:
+		CharacterEnums.SaveType.DEATH:
 			return level_bonus + (target.luck - 10) / 4
 
 	return level_bonus
 
 
-static func _has_racial_immunity(target: Resource, status: CharEnum.StatusEffect) -> bool:
-	return CharEnum.has_racial_immunity(target.race, status)
+static func _has_racial_immunity(target: Resource, status: CharacterEnums.StatusEffect) -> bool:
+	return CharacterEnums.has_racial_immunity(target.race, status)
 
 
-static func _check_racial_resistance(target: Resource, status: CharEnum.StatusEffect) -> bool:
-	var immunities: Array = CharEnum.RACIAL_IMMUNITIES.get(target.race, [])
+static func _check_racial_resistance(target: Resource, status: CharacterEnums.StatusEffect) -> bool:
+	var immunities: Array = CharacterEnums.RACIAL_IMMUNITIES.get(target.race, [])
 	if status in immunities:
 		return true
 
@@ -185,13 +204,13 @@ static func get_status_for_display(target: Resource) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 
 	for active in target.active_statuses:
-		if active.type == CharEnum.StatusEffect.NONE:
+		if active.type == CharacterEnums.StatusEffect.NONE:
 			continue
 
 		result.append({
 			"type": active.type,
-			"name": CharEnum.get_status_name(active.type),
-			"abbreviation": CharEnum.get_status_abbreviation(active.type),
+			"name": CharacterEnums.get_status_name(active.type),
+			"abbreviation": CharacterEnums.get_status_abbreviation(active.type),
 			"duration": active.duration,
 			"is_permanent": active.is_permanent()
 		})
@@ -199,43 +218,47 @@ static func get_status_for_display(target: Resource) -> Array[Dictionary]:
 	return result
 
 
+## Cures all statuses in a category (e.g., "poison", "mental", "all").
+## [param target]: Character or Monster to cure.
+## [param group]: Status group name.
+## [return]: Array of messages for each status cured.
 static func cure_status_group(target: Resource, group: String) -> Array[String]:
 	var messages: Array[String] = []
-	var to_cure: Array[CharEnum.StatusEffect] = []
+	var to_cure: Array[CharacterEnums.StatusEffect] = []
 
 	match group:
 		"poison":
-			to_cure = [CharEnum.StatusEffect.POISONED]
+			to_cure = [CharacterEnums.StatusEffect.POISONED]
 		"paralysis":
-			to_cure = [CharEnum.StatusEffect.PARALYZED]
+			to_cure = [CharacterEnums.StatusEffect.PARALYZED]
 		"petrification":
-			to_cure = [CharEnum.StatusEffect.STONED]
+			to_cure = [CharacterEnums.StatusEffect.STONED]
 		"mental":
 			to_cure = [
-				CharEnum.StatusEffect.ASLEEP,
-				CharEnum.StatusEffect.CONFUSED,
-				CharEnum.StatusEffect.AFRAID,
-				CharEnum.StatusEffect.CHARMED,
-				CharEnum.StatusEffect.BERSERK
+				CharacterEnums.StatusEffect.ASLEEP,
+				CharacterEnums.StatusEffect.CONFUSED,
+				CharacterEnums.StatusEffect.AFRAID,
+				CharacterEnums.StatusEffect.CHARMED,
+				CharacterEnums.StatusEffect.BERSERK
 			]
 		"blindness":
-			to_cure = [CharEnum.StatusEffect.BLINDED]
+			to_cure = [CharacterEnums.StatusEffect.BLINDED]
 		"silence":
-			to_cure = [CharEnum.StatusEffect.SILENCED]
+			to_cure = [CharacterEnums.StatusEffect.SILENCED]
 		"curse":
-			to_cure = [CharEnum.StatusEffect.CURSED]
+			to_cure = [CharacterEnums.StatusEffect.CURSED]
 		"all":
 			to_cure = [
-				CharEnum.StatusEffect.POISONED,
-				CharEnum.StatusEffect.PARALYZED,
-				CharEnum.StatusEffect.ASLEEP,
-				CharEnum.StatusEffect.CONFUSED,
-				CharEnum.StatusEffect.SILENCED,
-				CharEnum.StatusEffect.BLINDED,
-				CharEnum.StatusEffect.AFRAID,
-				CharEnum.StatusEffect.CHARMED,
-				CharEnum.StatusEffect.BERSERK,
-				CharEnum.StatusEffect.CURSED
+				CharacterEnums.StatusEffect.POISONED,
+				CharacterEnums.StatusEffect.PARALYZED,
+				CharacterEnums.StatusEffect.ASLEEP,
+				CharacterEnums.StatusEffect.CONFUSED,
+				CharacterEnums.StatusEffect.SILENCED,
+				CharacterEnums.StatusEffect.BLINDED,
+				CharacterEnums.StatusEffect.AFRAID,
+				CharacterEnums.StatusEffect.CHARMED,
+				CharacterEnums.StatusEffect.BERSERK,
+				CharacterEnums.StatusEffect.CURSED
 			]
 
 	for status in to_cure:
@@ -248,54 +271,63 @@ static func cure_status_group(target: Resource, group: String) -> Array[String]:
 
 
 static func wake_on_damage(target: Resource) -> String:
-	if target.has_status(CharEnum.StatusEffect.ASLEEP):
-		target.remove_status(CharEnum.StatusEffect.ASLEEP)
+	if target.has_status(CharacterEnums.StatusEffect.ASLEEP):
+		target.remove_status(CharacterEnums.StatusEffect.ASLEEP)
 		return "%s wakes up!" % target.get_display_name()
 	return ""
 
 
+## Returns accuracy bonus/penalty from status effects.
+## [param target]: Character or Monster to check.
+## [return]: Net accuracy modifier.
 static func get_accuracy_modifier(target: Resource) -> int:
 	var modifier := 0
 
-	if target.has_status(CharEnum.StatusEffect.BLINDED):
-		modifier -= 4
+	if target.has_status(CharacterEnums.StatusEffect.BLINDED):
+		modifier += CombatConstants.BLINDED_ACCURACY_PENALTY
 
-	if target.has_status(CharEnum.StatusEffect.BLESSED):
-		modifier += 2
+	if target.has_status(CharacterEnums.StatusEffect.BLESSED):
+		modifier += CombatConstants.BLESSED_ACCURACY_BONUS
 
-	if target.has_status(CharEnum.StatusEffect.CURSED):
-		modifier -= 2
+	if target.has_status(CharacterEnums.StatusEffect.CURSED):
+		modifier += CombatConstants.CURSED_ACCURACY_PENALTY
 
 	return modifier
 
 
+## Returns evasion bonus/penalty from status effects.
+## [param target]: Character or Monster to check.
+## [return]: Net evasion modifier.
 static func get_evasion_modifier(target: Resource) -> int:
 	var modifier := 0
 
-	if target.has_status(CharEnum.StatusEffect.BLESSED):
+	if target.has_status(CharacterEnums.StatusEffect.BLESSED):
 		modifier += 2
 
-	if target.has_status(CharEnum.StatusEffect.CURSED):
+	if target.has_status(CharacterEnums.StatusEffect.CURSED):
 		modifier -= 2
 
 	return modifier
 
 
 static func should_attack_allies(target: Resource) -> bool:
-	return target.has_status(CharEnum.StatusEffect.CHARMED)
+	return target.has_status(CharacterEnums.StatusEffect.CHARMED)
 
 
 static func should_attack_randomly(target: Resource) -> bool:
-	return target.has_status(CharEnum.StatusEffect.BERSERK)
+	return target.has_status(CharacterEnums.StatusEffect.BERSERK)
 
 
 static func may_skip_turn_from_fear(target: Resource) -> bool:
-	if target.has_status(CharEnum.StatusEffect.AFRAID):
-		return CombatRNG.randf() < 0.3
+	if target.has_status(CharacterEnums.StatusEffect.AFRAID):
+		return CombatRNG.randf() < CombatConstants.FEAR_TURN_SKIP_CHANCE
 	return false
 
 
+## Returns damage multiplier for attacks against sleeping targets.
+## [param target]: Target being attacked.
+## [return]: 2.0 if asleep, 1.0 otherwise.
 static func get_damage_multiplier_for_sleeping(target: Resource) -> float:
-	if target.has_status(CharEnum.StatusEffect.ASLEEP):
-		return 2.0
+	if target.has_status(CharacterEnums.StatusEffect.ASLEEP):
+		return CombatConstants.SLEEP_DAMAGE_MULTIPLIER
 	return 1.0

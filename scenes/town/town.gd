@@ -1,7 +1,5 @@
 extends Control
 
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-
 var nav: MenuNavigator = null
 
 
@@ -32,7 +30,7 @@ func _setup_navigation() -> void:
 		$VBoxContainer/MainMenuButton
 	]
 
-	nav = MenuNavigatorClass.new()
+	nav = MenuNavigator.new()
 	nav.setup(buttons, 0)
 
 

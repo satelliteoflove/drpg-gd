@@ -1,10 +1,6 @@
 class_name DungeonGenerator
 extends RefCounted
 
-const DungeonTile = preload("res://resources/dungeon_tile.gd")
-const DungeonRoom = preload("res://resources/dungeon_room.gd")
-const DungeonData = preload("res://resources/dungeon_data.gd")
-
 const MIN_ROOM_SIZE: int = 3
 const MAX_ROOM_EXTRA: int = 5
 const ROOM_ATTEMPTS: int = 50

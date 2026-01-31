@@ -1,10 +1,5 @@
 extends SceneTree
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CombatSimulator = preload("res://systems/simulation/combat_simulator.gd")
-const BatchSimulator = preload("res://systems/simulation/batch_simulator.gd")
-const TestFixtures = preload("res://systems/simulation/test_fixtures.gd")
-
 const BASE_SEED := 10000
 const NUM_RUNS := 100
 const PARTY_LEVEL := 5

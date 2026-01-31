@@ -1,14 +1,6 @@
 class_name CombatSystem
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const StatusEffectSystem = preload("res://systems/combat/status_effect_system.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const SpellCaster = preload("res://systems/magic/spell_caster.gd")
-const SpellDatabase = preload("res://data/spells/spell_database.gd")
-const LootGenerator = preload("res://systems/loot/loot_generator.gd")
-const MonsterAI = preload("res://systems/combat/monster_ai.gd")
-
 signal turn_started(combatant_id: String, is_player: bool)
 signal action_performed(message: String)
 signal combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Array[Item])
@@ -26,6 +18,9 @@ var waiting_for_target: bool = false
 var processing_monster_turn: bool = false
 
 
+## Initializes and starts a new combat encounter.
+## [param p_party]: The player's party participating in combat.
+## [param enemy_list]: Array of monsters to fight against.
 func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 	party = p_party
 	party_members = party.get_members()
@@ -110,6 +105,7 @@ func _advance_turn() -> void:
 			_execute_monster_turn(entry.id)
 
 
+## Called after monster turn delay to execute the pending monster action.
 func execute_delayed_monster_turn() -> void:
 	if not is_active or processing_monster_turn:
 		return
@@ -124,15 +120,17 @@ func _get_combat_delay() -> float:
 
 
 func _get_disabling_status_name(character: Character) -> String:
-	if character.has_status(CharEnum.StatusEffect.ASLEEP):
+	if character.has_status(CharacterEnums.StatusEffect.ASLEEP):
 		return "asleep"
-	if character.has_status(CharEnum.StatusEffect.PARALYZED):
+	if character.has_status(CharacterEnums.StatusEffect.PARALYZED):
 		return "paralyzed"
-	if character.has_status(CharEnum.StatusEffect.STONED):
+	if character.has_status(CharacterEnums.StatusEffect.STONED):
 		return "petrified"
 	return "incapacitated"
 
 
+## Executes a player attack action against a target monster.
+## [param target]: The monster to attack. If null and only one enemy is reachable, auto-targets.
 func player_attack(target: Monster = null) -> void:
 	if not waiting_for_player or not is_active:
 		return
@@ -203,6 +201,7 @@ func _execute_player_attack(attacker: Character, target: Monster) -> void:
 	_check_combat_end()
 
 
+## Executes a player defend action, reducing incoming damage by half until next turn.
 func player_defend() -> void:
 	if not waiting_for_player or not is_active:
 		return
@@ -221,6 +220,7 @@ func player_defend() -> void:
 	_check_combat_end()
 
 
+## Attempts to escape from combat. Success chance based on party's average agility.
 func player_escape() -> void:
 	if not waiting_for_player or not is_active:
 		return
@@ -238,6 +238,9 @@ func player_escape() -> void:
 		_advance_turn()
 
 
+## Casts a spell from the current player character.
+## [param spell_id]: The ID of the spell to cast.
+## [param targets]: Array of valid targets for the spell (Character or Monster).
 func player_cast_spell(spell_id: String, targets: Array) -> void:
 	if not waiting_for_player or not is_active:
 		return
@@ -280,38 +283,44 @@ func player_cast_spell(spell_id: String, targets: Array) -> void:
 	_check_combat_end()
 
 
+## Returns auto-selected targets for spells with predetermined targeting.
+## [param spell]: The spell to get targets for.
+## [return]: Array of targets, empty if manual selection required.
 func get_spell_targets(spell: Spell) -> Array:
 	match spell.target_type:
-		CharEnum.SpellTargetType.SELF:
+		CharacterEnums.SpellTargetType.SELF:
 			var caster := _get_character(current_combatant_id)
 			return [caster] if caster else []
-		CharEnum.SpellTargetType.SINGLE_ALLY:
+		CharacterEnums.SpellTargetType.SINGLE_ALLY:
 			return []
-		CharEnum.SpellTargetType.SINGLE_ENEMY:
+		CharacterEnums.SpellTargetType.SINGLE_ENEMY:
 			return []
-		CharEnum.SpellTargetType.ALL_ALLIES:
+		CharacterEnums.SpellTargetType.ALL_ALLIES:
 			var result: Array = []
 			for member in party_members:
 				if not member.is_dead:
 					result.append(member)
 			return result
-		CharEnum.SpellTargetType.ALL_ENEMIES:
+		CharacterEnums.SpellTargetType.ALL_ENEMIES:
 			var result: Array = []
 			for enemy in enemies:
 				if not enemy.is_dead:
 					result.append(enemy)
 			return result
-		CharEnum.SpellTargetType.DEAD_ALLY:
+		CharacterEnums.SpellTargetType.DEAD_ALLY:
 			return []
-		CharEnum.SpellTargetType.SPLASH:
+		CharacterEnums.SpellTargetType.SPLASH:
 			return []
-		CharEnum.SpellTargetType.ROW:
+		CharacterEnums.SpellTargetType.ROW:
 			return []
-		CharEnum.SpellTargetType.COLUMN:
+		CharacterEnums.SpellTargetType.COLUMN:
 			return []
 	return []
 
 
+## Returns all enemies adjacent to the center enemy for splash damage spells.
+## [param center_enemy]: The central target of the splash.
+## [return]: Array of monsters within 1 tile of the center.
 func get_splash_targets(center_enemy: Monster) -> Array[Monster]:
 	var result: Array[Monster] = []
 	var center_pos := center_enemy.grid_position
@@ -328,6 +337,9 @@ func get_splash_targets(center_enemy: Monster) -> Array[Monster]:
 	return result
 
 
+## Returns all living enemies in the specified row.
+## [param row]: Row index (0=front, 1=middle, 2=back).
+## [return]: Array of monsters in that row.
 func get_row_targets(row: int) -> Array[Monster]:
 	var result: Array[Monster] = []
 	for enemy in enemies:
@@ -338,6 +350,9 @@ func get_row_targets(row: int) -> Array[Monster]:
 	return result
 
 
+## Returns all living enemies in the specified column.
+## [param column]: Column index (0=left, 1=center, 2=right).
+## [return]: Array of monsters in that column.
 func get_column_targets(column: int) -> Array[Monster]:
 	var result: Array[Monster] = []
 	for enemy in enemies:
@@ -372,6 +387,9 @@ func get_available_columns() -> Array[int]:
 	return cols
 
 
+## Returns party members valid for targeting with ally spells.
+## [param include_dead]: If true, includes dead characters (for resurrection spells).
+## [return]: Array of valid character targets.
 func get_valid_ally_targets(include_dead: bool = false) -> Array[Character]:
 	var result: Array[Character] = []
 	for member in party_members:
@@ -380,6 +398,8 @@ func get_valid_ally_targets(include_dead: bool = false) -> Array[Character]:
 	return result
 
 
+## Returns all dead party members (for resurrection spell targeting).
+## [return]: Array of dead characters.
 func get_dead_allies() -> Array[Character]:
 	var result: Array[Character] = []
 	for member in party_members:
@@ -567,7 +587,7 @@ func _try_apply_attack_effect(attack: MonsterAttack, target: Character) -> void:
 
 	if save_type >= 0:
 		if StatusEffectSystem.roll_saving_throw(target, save_type, dc):
-			action_performed.emit("%s resists the %s!" % [target.get_display_name(), CharEnum.get_status_name(attack.effect_type).to_lower()])
+			action_performed.emit("%s resists the %s!" % [target.get_display_name(), CharacterEnums.get_status_name(attack.effect_type).to_lower()])
 			return
 
 	var effect_result := StatusEffectSystem.apply_status(target, attack.effect_type, duration, "monster_attack", attack.effect_power)
@@ -575,21 +595,21 @@ func _try_apply_attack_effect(attack: MonsterAttack, target: Character) -> void:
 		action_performed.emit(effect_result.message)
 
 
-func _get_save_type_from_string(save_str: String) -> CharEnum.SaveType:
+func _get_save_type_from_string(save_str: String) -> CharacterEnums.SaveType:
 	match save_str.to_lower():
-		"physical": return CharEnum.SaveType.PHYSICAL
-		"mental": return CharEnum.SaveType.MENTAL
-		"magical": return CharEnum.SaveType.MAGICAL
-		"death": return CharEnum.SaveType.DEATH
-	return -1 as CharEnum.SaveType
+		"physical": return CharacterEnums.SaveType.PHYSICAL
+		"mental": return CharacterEnums.SaveType.MENTAL
+		"magical": return CharacterEnums.SaveType.MAGICAL
+		"death": return CharacterEnums.SaveType.DEATH
+	return -1 as CharacterEnums.SaveType
 
 
 func _get_monster_disabling_status_name(monster: Monster) -> String:
-	if monster.has_status(CharEnum.StatusEffect.ASLEEP):
+	if monster.has_status(CharacterEnums.StatusEffect.ASLEEP):
 		return "asleep"
-	if monster.has_status(CharEnum.StatusEffect.PARALYZED):
+	if monster.has_status(CharacterEnums.StatusEffect.PARALYZED):
 		return "paralyzed"
-	if monster.has_status(CharEnum.StatusEffect.STONED):
+	if monster.has_status(CharacterEnums.StatusEffect.STONED):
 		return "petrified"
 	return "incapacitated"
 
@@ -678,14 +698,21 @@ func _get_random_alive_front_party_member() -> Character:
 	return null
 
 
+## Returns all enemies in the current combat (including dead ones).
+## [return]: Array of all monsters.
 func get_enemies() -> Array[Monster]:
 	return enemies
 
 
+## Returns only living enemies in the current combat.
+## [return]: Array of living monsters.
 func get_living_enemies() -> Array[Monster]:
 	return Targeting.get_living_enemies(enemies)
 
 
+## Returns the enemy at a specific grid position.
+## [param pos]: Grid coordinates (x=column, y=row).
+## [return]: Monster at that position or null.
 func get_enemy_at(pos: Vector2i) -> Monster:
 	for enemy in enemies:
 		if enemy.grid_position == pos:
@@ -709,6 +736,8 @@ func get_party_resource() -> Party:
 	return party
 
 
+## Returns true if the system is waiting for player input.
+## [return]: Whether it's currently a player's turn.
 func is_player_turn() -> bool:
 	return waiting_for_player
 
@@ -717,10 +746,12 @@ func is_waiting_for_target() -> bool:
 	return waiting_for_target
 
 
+## Cancels the current target selection request.
 func cancel_target_selection() -> void:
 	waiting_for_target = false
 
 
+## Ends the current player's turn after item use or other non-standard actions.
 func end_player_turn() -> void:
 	if not waiting_for_player or not is_active:
 		return

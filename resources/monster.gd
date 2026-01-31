@@ -1,8 +1,6 @@
+## Represents an enemy monster in combat with stats, attacks, and loot drops.
 class_name Monster
 extends Resource
-
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
 
 @export var monster_name: String = "Monster"
 @export var max_hp: int = 10
@@ -11,7 +9,7 @@ const CharEnum = preload("res://resources/character_enums.gd")
 @export var defense: int = 0
 @export var evasion: int = 0
 @export var is_flying: bool = false
-@export var creature_type: CharEnum.CreatureType = CharEnum.CreatureType.HUMANOID
+@export var creature_type: CharacterEnums.CreatureType = CharacterEnums.CreatureType.HUMANOID
 @export var exp_reward: int = 10
 @export var gold_reward_dice: String = "1d10"
 @export var attacks: Array[MonsterAttack] = []
@@ -22,8 +20,12 @@ const CharEnum = preload("res://resources/character_enums.gd")
 @export var intelligence: int = 10
 @export var piety: int = 10
 @export var vitality: int = 10
-@export var race: CharEnum.Race = CharEnum.Race.HUMAN
+@export var race: CharacterEnums.Race = CharacterEnums.Race.HUMAN
 @export var loot_drops: Array[LootDrop] = []
+
+@export_group("Spawn Info")
+@export var min_floor: int = 1
+@export var max_floor: int = 99
 
 var current_hp: int = 0
 var current_mp: int = 0
@@ -31,17 +33,17 @@ var is_dead: bool = false
 var is_defending: bool = false
 var grid_position: Vector2i = Vector2i.ZERO
 var combat_id: String = ""
-var status_effects: Array[CharEnum.StatusEffect] = []
+var status_effects: Array[CharacterEnums.StatusEffect] = []
 var active_statuses: Array = []
 
 
 class ActiveStatus:
-	var type: CharEnum.StatusEffect = CharEnum.StatusEffect.NONE
+	var type: CharacterEnums.StatusEffect = CharacterEnums.StatusEffect.NONE
 	var duration: int = -1
 	var source: String = ""
 	var power: int = 0
 
-	func _init(p_type: CharEnum.StatusEffect = CharEnum.StatusEffect.NONE, p_duration: int = -1, p_source: String = "", p_power: int = 0) -> void:
+	func _init(p_type: CharacterEnums.StatusEffect = CharacterEnums.StatusEffect.NONE, p_duration: int = -1, p_source: String = "", p_power: int = 0) -> void:
 		type = p_type
 		duration = p_duration
 		source = p_source
@@ -56,6 +58,7 @@ class ActiveStatus:
 		return duration == 0
 
 
+## Initializes the monster for combat, resetting HP/MP and generating combat ID.
 func init_combat() -> void:
 	current_hp = max_hp
 	current_mp = max_mp
@@ -75,6 +78,9 @@ static func _generate_combat_id() -> String:
 	return result
 
 
+## Applies damage to the monster, potentially killing it.
+## [param amount]: Raw damage before defense/defending reduction.
+## [return]: Actual damage dealt.
 func take_damage(amount: int) -> int:
 	var reduced_amount := amount
 	if is_defending:
@@ -93,6 +99,8 @@ func get_random_attack() -> MonsterAttack:
 	return attacks[CombatRNG.randi() % attacks.size()]
 
 
+## Creates a combat-ready copy of this monster template.
+## [return]: New Monster instance initialized for combat.
 func duplicate_for_combat() -> Monster:
 	var copy := duplicate(true) as Monster
 	copy.grid_position = grid_position
@@ -112,15 +120,15 @@ func get_display_name() -> String:
 	return monster_name
 
 
-func has_status(effect: CharEnum.StatusEffect) -> bool:
+func has_status(effect: CharacterEnums.StatusEffect) -> bool:
 	return status_effects.has(effect)
 
 
-func add_status(effect: CharEnum.StatusEffect, duration: int = -1, source: String = "", power: int = 0) -> bool:
+func add_status(effect: CharacterEnums.StatusEffect, duration: int = -1, source: String = "", power: int = 0) -> bool:
 	if has_status(effect):
 		return false
 
-	var exclusive_group := CharEnum.get_exclusive_group(effect)
+	var exclusive_group := CharacterEnums.get_exclusive_group(effect)
 	for existing in exclusive_group:
 		if existing != effect and has_status(existing):
 			remove_status(existing)
@@ -130,7 +138,7 @@ func add_status(effect: CharEnum.StatusEffect, duration: int = -1, source: Strin
 	return true
 
 
-func remove_status(effect: CharEnum.StatusEffect) -> void:
+func remove_status(effect: CharacterEnums.StatusEffect) -> void:
 	status_effects.erase(effect)
 	for i in range(active_statuses.size() - 1, -1, -1):
 		if active_statuses[i].type == effect:
@@ -138,7 +146,7 @@ func remove_status(effect: CharEnum.StatusEffect) -> void:
 			break
 
 
-func get_active_status(effect: CharEnum.StatusEffect) -> ActiveStatus:
+func get_active_status(effect: CharacterEnums.StatusEffect) -> ActiveStatus:
 	for active in active_statuses:
 		if active.type == effect:
 			return active
@@ -146,9 +154,9 @@ func get_active_status(effect: CharEnum.StatusEffect) -> ActiveStatus:
 
 
 func is_disabled() -> bool:
-	return has_status(CharEnum.StatusEffect.ASLEEP) or \
-		   has_status(CharEnum.StatusEffect.PARALYZED) or \
-		   has_status(CharEnum.StatusEffect.STONED)
+	return has_status(CharacterEnums.StatusEffect.ASLEEP) or \
+		   has_status(CharacterEnums.StatusEffect.PARALYZED) or \
+		   has_status(CharacterEnums.StatusEffect.STONED)
 
 
 func can_act() -> bool:
@@ -156,4 +164,4 @@ func can_act() -> bool:
 
 
 func is_undead() -> bool:
-	return creature_type == CharEnum.CreatureType.UNDEAD
+	return creature_type == CharacterEnums.CreatureType.UNDEAD

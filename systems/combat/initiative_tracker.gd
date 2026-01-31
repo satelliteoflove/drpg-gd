@@ -1,8 +1,6 @@
 class_name InitiativeTracker
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-
 class CombatantEntry:
 	var id: String
 	var is_player: bool
@@ -62,9 +60,9 @@ func apply_action_delay(id: String) -> void:
 
 
 func _calculate_initial_delay(agility: int) -> float:
-	var base_delay := CombatRNG.randi_range(10, 40)
-	return base_delay * (20.0 / (10 + agility))
+	var base_delay := CombatRNG.randi_range(CombatConstants.INITIAL_DELAY_MIN, CombatConstants.INITIAL_DELAY_MAX)
+	return base_delay * (CombatConstants.AGILITY_SCALE_FACTOR / (CombatConstants.BASE_STAT_VALUE + agility))
 
 
 func _calculate_attack_delay(agility: int) -> float:
-	return 30.0 * (20.0 / (10 + agility))
+	return CombatConstants.BASE_ATTACK_DELAY * (CombatConstants.AGILITY_SCALE_FACTOR / (CombatConstants.BASE_STAT_VALUE + agility))

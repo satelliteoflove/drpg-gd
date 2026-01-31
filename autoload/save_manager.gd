@@ -1,3 +1,4 @@
+## Handles saving and loading game state to/from disk.
 class_name SaveManagerClass
 extends Node
 
@@ -7,9 +8,6 @@ signal load_completed(success: bool)
 const SAVE_DIR: String = "user://saves/"
 const SAVE_EXTENSION: String = ".tres"
 const AUTOSAVE_SLOT: String = "autosave"
-
-const SaveDataRes = preload("res://resources/save_data.gd")
-const PartyRes = preload("res://resources/party.gd")
 
 var current_slot: String = ""
 var play_start_time: int = 0
@@ -31,10 +29,15 @@ func get_save_path(slot: String) -> String:
 	return SAVE_DIR + slot + SAVE_EXTENSION
 
 
+## Checks if a save file exists for the given slot.
+## [param slot]: Save slot name.
+## [return]: True if the save file exists.
 func save_exists(slot: String) -> bool:
 	return FileAccess.file_exists(get_save_path(slot))
 
 
+## Returns a list of all available save slot names.
+## [return]: Sorted array of slot names.
 func get_save_slots() -> Array[String]:
 	var slots: Array[String] = []
 	var dir: DirAccess = DirAccess.open(SAVE_DIR)
@@ -49,6 +52,9 @@ func get_save_slots() -> Array[String]:
 	return slots
 
 
+## Gets metadata about a save file for display in save/load menus.
+## [param slot]: Save slot name.
+## [return]: Dictionary with timestamp, floor, party_size, highest_level, gold, play_time.
 func get_save_info(slot: String) -> Dictionary:
 	if not save_exists(slot):
 		return {}
@@ -75,6 +81,9 @@ func get_save_info(slot: String) -> Dictionary:
 	}
 
 
+## Saves the current game state to the specified slot.
+## [param slot]: Save slot name.
+## [return]: True if save succeeded.
 func save_game(slot: String) -> bool:
 	current_slot = slot
 	var save_path: String = get_save_path(slot)
@@ -93,6 +102,9 @@ func save_game(slot: String) -> bool:
 	return success
 
 
+## Loads game state from the specified slot.
+## [param slot]: Save slot name.
+## [return]: True if load succeeded.
 func load_game(slot: String) -> bool:
 	var save_path: String = get_save_path(slot)
 
@@ -102,7 +114,7 @@ func load_game(slot: String) -> bool:
 		return false
 
 	var save_data: Resource = ResourceLoader.load(save_path)
-	if save_data == null or not save_data is SaveDataRes:
+	if save_data == null or not save_data is SaveData:
 		push_error("[SaveManager] Failed to load save file: " + save_path)
 		load_completed.emit(false)
 		return false
@@ -119,6 +131,9 @@ func load_game(slot: String) -> bool:
 	return true
 
 
+## Deletes the save file for the specified slot.
+## [param slot]: Save slot name.
+## [return]: True if deletion succeeded.
 func delete_save(slot: String) -> bool:
 	if not save_exists(slot):
 		return false
@@ -130,12 +145,14 @@ func delete_save(slot: String) -> bool:
 	return false
 
 
+## Saves to the autosave slot.
+## [return]: True if save succeeded.
 func autosave() -> bool:
 	return save_game(AUTOSAVE_SLOT)
 
 
 func _create_save_data() -> Resource:
-	var data := SaveDataRes.new()
+	var data := SaveData.new()
 
 	data.roster = GameState.roster.duplicate(true)
 
@@ -171,7 +188,7 @@ func _duplicate_dungeon_floors() -> Dictionary:
 func _apply_save_data(data) -> void:
 	GameState.roster = data.roster.duplicate(true)
 
-	GameState.party = PartyRes.new()
+	GameState.party = Party.new()
 	for char_id in data.party_member_ids:
 		var character: Character = GameState.roster.get_character(char_id)
 		if character:

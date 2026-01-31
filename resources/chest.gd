@@ -1,8 +1,6 @@
 class_name Chest
 extends Resource
 
-const TrapClass = preload("res://resources/trap.gd")
-
 enum ChestType {
 	PLAIN,
 	ORNATE
@@ -10,13 +8,13 @@ enum ChestType {
 
 @export var chest_type: ChestType = ChestType.PLAIN
 @export var contents: Array[Item] = []
-@export var trap: TrapClass = null
+@export var trap: Trap = null
 @export var is_trapped: bool = false
 @export var trap_identified: bool = false
 @export var trap_disarmed: bool = false
 
 
-static func create(p_type: ChestType, p_contents: Array[Item], p_trap: TrapClass = null) -> Chest:
+static func create(p_type: ChestType, p_contents: Array[Item], p_trap: Trap = null) -> Chest:
 	var chest := Chest.new()
 	chest.chest_type = p_type
 	chest.contents = p_contents

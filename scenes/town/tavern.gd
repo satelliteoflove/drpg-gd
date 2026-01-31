@@ -1,9 +1,5 @@
 extends Control
 
-const CharEnum = preload("res://resources/character_enums.gd")
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const SpellDatabaseClass = preload("res://data/spells/spell_database.gd")
-
 enum Mode { PARTY, ROSTER, REORDER }
 
 var current_mode: Mode = Mode.PARTY
@@ -32,8 +28,8 @@ func _ready() -> void:
 
 
 func _setup_navigation() -> void:
-	party_nav = MenuNavigatorClass.new()
-	roster_nav = MenuNavigatorClass.new()
+	party_nav = MenuNavigator.new()
+	roster_nav = MenuNavigator.new()
 
 	if not party_buttons.is_empty():
 		party_nav.setup(party_buttons, 0)
@@ -237,7 +233,7 @@ func _create_character_button(character: Character, front_row: bool) -> Button:
 		row_marker if GameState.party.get_member(character.id) else "",
 		character.character_name,
 		character.level,
-		CharEnum.get_class_name(character.character_class)
+		CharacterEnums.get_class_name(character.character_class)
 	]
 	btn.text = btn.text.strip_edges()
 	btn.custom_minimum_size = Vector2(200, 30)
@@ -310,10 +306,10 @@ func _show_character_info(character: Character) -> void:
 	var text := "[b]%s[/b]\n" % character.character_name
 	text += "Level %d %s %s\n" % [
 		character.level,
-		CharEnum.get_race_name(character.race),
-		CharEnum.get_class_name(character.character_class)
+		CharacterEnums.get_race_name(character.race),
+		CharacterEnums.get_class_name(character.character_class)
 	]
-	text += "Alignment: %s\n\n" % CharEnum.get_alignment_name(character.alignment)
+	text += "Alignment: %s\n\n" % CharacterEnums.get_alignment_name(character.alignment)
 
 	text += "[color=cyan]Stats:[/color]\n"
 	text += "HP: %d/%d  MP: %d/%d\n" % [
@@ -377,7 +373,7 @@ func _format_spell_book(character: Character) -> String:
 
 	var spells_by_level: Dictionary = {}
 	for spell_id in character.known_spells:
-		var spell: Spell = SpellDatabaseClass.get_spell(spell_id)
+		var spell: Spell = SpellDatabase.get_spell(spell_id)
 		if spell == null:
 			continue
 		if not spells_by_level.has(spell.level):

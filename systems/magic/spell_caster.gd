@@ -1,13 +1,14 @@
+## Executes spell casting logic for both player characters and monsters.
 class_name SpellCaster
 extends RefCounted
 
-const CombatRNG = preload("res://autoload/combat_rng.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const SpellValidator = preload("res://systems/magic/spell_validator.gd")
-const StatusEffectSystem = preload("res://systems/combat/status_effect_system.gd")
-const DamageCalculator = preload("res://systems/combat/damage_calculator.gd")
 
-
+## Casts a spell from a character to specified targets.
+## [param caster]: The character casting the spell.
+## [param spell]: The spell being cast.
+## [param targets]: Array of valid targets (Character or Monster).
+## [param in_combat]: Whether this is combat or exploration context.
+## [return]: Dictionary with success, fizzled, messages, damage, healing, and mp_consumed.
 static func cast_spell(
 	caster: Character,
 	spell: Spell,
@@ -99,7 +100,7 @@ static func _process_damage(
 		var actual: int = target.take_damage(damage)
 		result.damage += actual
 
-		var element_name := CharEnum.get_element_name(effect.element)
+		var element_name := CharacterEnums.get_element_name(effect.element)
 		if target.is_dead:
 			result.messages.append("%s takes %d %s damage and is defeated!" % [
 				target.get_display_name(), actual, element_name
@@ -249,12 +250,12 @@ static func _process_resurrection(
 			result.messages.append("%s is not dead." % target.get_display_name())
 			continue
 
-		if target.has_status(CharEnum.StatusEffect.ASHED):
+		if target.has_status(CharacterEnums.StatusEffect.ASHED):
 			if CombatRNG.randf() > effect.resurrection_chance * 0.5:
 				result.messages.append("Failed to resurrect %s from ashes!" % target.get_display_name())
 				continue
 
-		if target.has_status(CharEnum.StatusEffect.LOST):
+		if target.has_status(CharacterEnums.StatusEffect.LOST):
 			result.messages.append("%s is lost forever." % target.get_display_name())
 			continue
 
@@ -284,7 +285,7 @@ static func _process_instant_death(
 		if target.is_dead:
 			continue
 
-		if StatusEffectSystem.roll_saving_throw(target, CharEnum.SaveType.DEATH, dc):
+		if StatusEffectSystem.roll_saving_throw(target, CharacterEnums.SaveType.DEATH, dc):
 			result.messages.append("%s resists death!" % target.get_display_name())
 			continue
 
@@ -295,29 +296,34 @@ static func _process_instant_death(
 
 
 static func _calculate_spell_power(caster: Character) -> int:
-	var base := 100
-	var level_bonus := caster.level * 5
-	var int_bonus := maxi(0, caster.intelligence - 10) * 3
+	var base := CombatConstants.BASE_SPELL_POWER
+	var level_bonus := caster.level * CombatConstants.SPELL_LEVEL_BONUS_MULTIPLIER
+	var int_bonus := maxi(0, caster.intelligence - CombatConstants.BASE_STAT_VALUE) * CombatConstants.SPELL_INT_BONUS_MULTIPLIER
 
 	var class_bonus := 0
 	match caster.character_class:
-		CharEnum.CharacterClass.MAGE, \
-		CharEnum.CharacterClass.PRIEST, \
-		CharEnum.CharacterClass.ALCHEMIST, \
-		CharEnum.CharacterClass.PSIONIC:
-			class_bonus = 20
-		CharEnum.CharacterClass.BISHOP, \
-		CharEnum.CharacterClass.RANGER, \
-		CharEnum.CharacterClass.BARD, \
-		CharEnum.CharacterClass.LORD, \
-		CharEnum.CharacterClass.VALKYRIE, \
-		CharEnum.CharacterClass.MONK, \
-		CharEnum.CharacterClass.SAMURAI:
-			class_bonus = 10
+		CharacterEnums.CharacterClass.MAGE, \
+		CharacterEnums.CharacterClass.PRIEST, \
+		CharacterEnums.CharacterClass.ALCHEMIST, \
+		CharacterEnums.CharacterClass.PSIONIC:
+			class_bonus = CombatConstants.PURE_CASTER_SPELL_BONUS
+		CharacterEnums.CharacterClass.BISHOP, \
+		CharacterEnums.CharacterClass.RANGER, \
+		CharacterEnums.CharacterClass.BARD, \
+		CharacterEnums.CharacterClass.LORD, \
+		CharacterEnums.CharacterClass.VALKYRIE, \
+		CharacterEnums.CharacterClass.MONK, \
+		CharacterEnums.CharacterClass.SAMURAI:
+			class_bonus = CombatConstants.HYBRID_CASTER_SPELL_BONUS
 
 	return base + level_bonus + int_bonus + class_bonus
 
 
+## Casts a spell from a monster to specified targets.
+## [param caster]: The monster casting the spell.
+## [param spell]: The spell being cast.
+## [param targets]: Array of valid targets (Character or Monster).
+## [return]: Dictionary with success, messages, damage, healing, and mp_consumed.
 static func cast_spell_by_monster(
 	caster: Monster,
 	spell: Spell,
@@ -393,7 +399,7 @@ static func _process_monster_damage(
 		var actual: int = target.take_damage(damage)
 		result.damage += actual
 
-		var element_name := CharEnum.get_element_name(effect.element)
+		var element_name := CharacterEnums.get_element_name(effect.element)
 		if target.is_dead:
 			result.messages.append("%s takes %d %s damage and is defeated!" % [
 				target.get_display_name(), actual, element_name
@@ -486,7 +492,7 @@ static func _process_monster_instant_death(
 		if target.is_dead:
 			continue
 
-		if StatusEffectSystem.roll_saving_throw(target, CharEnum.SaveType.DEATH, dc):
+		if StatusEffectSystem.roll_saving_throw(target, CharacterEnums.SaveType.DEATH, dc):
 			result.messages.append("%s resists death!" % target.get_display_name())
 			continue
 
@@ -497,7 +503,7 @@ static func _process_monster_instant_death(
 
 
 static func _calculate_monster_spell_power(caster: Monster) -> int:
-	var base := 100
-	var level_bonus := caster.level * 5
-	var int_bonus := maxi(0, caster.intelligence - 10) * 3
+	var base := CombatConstants.BASE_SPELL_POWER
+	var level_bonus := caster.level * CombatConstants.SPELL_LEVEL_BONUS_MULTIPLIER
+	var int_bonus := maxi(0, caster.intelligence - CombatConstants.BASE_STAT_VALUE) * CombatConstants.SPELL_INT_BONUS_MULTIPLIER
 	return base + level_bonus + int_bonus

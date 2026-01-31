@@ -1,9 +1,5 @@
 extends Control
 
-const MenuNavigatorClass = preload("res://systems/ui/menu_navigator.gd")
-const CharEnum = preload("res://resources/character_enums.gd")
-const ClassData = preload("res://resources/class_data.gd")
-
 var nav: MenuNavigator = null
 
 
@@ -27,7 +23,7 @@ func _setup_navigation() -> void:
 		$VBoxContainer/QuitButton
 	]
 
-	nav = MenuNavigatorClass.new()
+	nav = MenuNavigator.new()
 	nav.setup(buttons, 0)
 
 
@@ -58,12 +54,12 @@ func _on_quit_pressed() -> void:
 
 func _generate_quick_party() -> void:
 	var party_templates: Array[Dictionary] = [
-		{"name": "Roland", "race": CharEnum.Race.HUMAN, "class": CharEnum.CharacterClass.FIGHTER, "alignment": CharEnum.Alignment.GOOD, "gender": CharEnum.Gender.MALE},
-		{"name": "Elara", "race": CharEnum.Race.ELF, "class": CharEnum.CharacterClass.MAGE, "alignment": CharEnum.Alignment.NEUTRAL, "gender": CharEnum.Gender.FEMALE},
-		{"name": "Marcus", "race": CharEnum.Race.HUMAN, "class": CharEnum.CharacterClass.PRIEST, "alignment": CharEnum.Alignment.GOOD, "gender": CharEnum.Gender.MALE},
-		{"name": "Pip", "race": CharEnum.Race.HOBBIT, "class": CharEnum.CharacterClass.THIEF, "alignment": CharEnum.Alignment.NEUTRAL, "gender": CharEnum.Gender.MALE},
-		{"name": "Gilda", "race": CharEnum.Race.GNOME, "class": CharEnum.CharacterClass.ALCHEMIST, "alignment": CharEnum.Alignment.NEUTRAL, "gender": CharEnum.Gender.FEMALE},
-		{"name": "Thorin", "race": CharEnum.Race.DWARF, "class": CharEnum.CharacterClass.FIGHTER, "alignment": CharEnum.Alignment.GOOD, "gender": CharEnum.Gender.MALE},
+		{"name": "Roland", "race": CharacterEnums.Race.HUMAN, "class": CharacterEnums.CharacterClass.FIGHTER, "alignment": CharacterEnums.Alignment.GOOD, "gender": CharacterEnums.Gender.MALE},
+		{"name": "Elara", "race": CharacterEnums.Race.ELF, "class": CharacterEnums.CharacterClass.MAGE, "alignment": CharacterEnums.Alignment.NEUTRAL, "gender": CharacterEnums.Gender.FEMALE},
+		{"name": "Marcus", "race": CharacterEnums.Race.HUMAN, "class": CharacterEnums.CharacterClass.PRIEST, "alignment": CharacterEnums.Alignment.GOOD, "gender": CharacterEnums.Gender.MALE},
+		{"name": "Pip", "race": CharacterEnums.Race.HOBBIT, "class": CharacterEnums.CharacterClass.THIEF, "alignment": CharacterEnums.Alignment.NEUTRAL, "gender": CharacterEnums.Gender.MALE},
+		{"name": "Gilda", "race": CharacterEnums.Race.GNOME, "class": CharacterEnums.CharacterClass.ALCHEMIST, "alignment": CharacterEnums.Alignment.NEUTRAL, "gender": CharacterEnums.Gender.FEMALE},
+		{"name": "Thorin", "race": CharacterEnums.Race.DWARF, "class": CharacterEnums.CharacterClass.FIGHTER, "alignment": CharacterEnums.Alignment.GOOD, "gender": CharacterEnums.Gender.MALE},
 	]
 
 	for template in party_templates:
@@ -73,8 +69,8 @@ func _generate_quick_party() -> void:
 
 
 func _create_character_from_template(template: Dictionary) -> Character:
-	var char_class: CharEnum.CharacterClass = template["class"]
-	var race: CharEnum.Race = template["race"]
+	var char_class: CharacterEnums.CharacterClass = template["class"]
+	var race: CharacterEnums.Race = template["race"]
 
 	var stats := _roll_valid_stats_for_class(race, char_class)
 
@@ -88,7 +84,7 @@ func _create_character_from_template(template: Dictionary) -> Character:
 	)
 
 
-func _roll_valid_stats_for_class(race: CharEnum.Race, char_class: CharEnum.CharacterClass) -> Dictionary:
+func _roll_valid_stats_for_class(race: CharacterEnums.Race, char_class: CharacterEnums.CharacterClass) -> Dictionary:
 	var stats := Character.roll_stats_for_race(race)
 	var max_attempts := 100
 
