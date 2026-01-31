@@ -1,0 +1,49 @@
+class_name CombatConstants
+extends RefCounted
+
+const STAT_GAIN_CHANCE: float = 0.3
+const MAX_STAT_VALUE: int = 25
+const RESURRECTION_HP_FRACTION: float = 0.25
+const BASE_STAT_VALUE: int = 10
+const STAT_BONUS_DIVISOR: int = 4
+
+const ESCAPE_BASE_CHANCE: float = 0.5
+const ESCAPE_AGILITY_MODIFIER: float = 0.02
+const ESCAPE_MIN_CHANCE: float = 0.1
+const ESCAPE_MAX_CHANCE: float = 0.9
+
+const INITIAL_DELAY_MIN: int = 10
+const INITIAL_DELAY_MAX: int = 40
+const BASE_ATTACK_DELAY: float = 30.0
+const AGILITY_SCALE_FACTOR: float = 20.0
+
+const POISON_DAMAGE_DICE: String = "1d4"
+const CURSE_DAMAGE_DICE: String = "1d2"
+const SLEEP_DAMAGE_MULTIPLIER: float = 2.0
+const FEAR_TURN_SKIP_CHANCE: float = 0.3
+const BLINDED_ACCURACY_PENALTY: int = -4
+const BLESSED_ACCURACY_BONUS: int = 2
+const CURSED_ACCURACY_PENALTY: int = -2
+
+const CONFUSED_RECOVERY_CHANCE: float = 0.15
+const BLINDED_RECOVERY_CHANCE: float = 0.10
+const AFRAID_BASE_RECOVERY: float = 0.10
+const AFRAID_LEVEL_BONUS: float = 0.01
+const SILENCED_BASE_RECOVERY: float = 0.20
+const SILENCED_LEVEL_BONUS: float = 0.02
+const SILENCED_MAX_RECOVERY: float = 0.60
+
+const BERSERKER_STRENGTH_THRESHOLD: int = 14
+const DEFENSIVE_HP_THRESHOLD: float = 0.3
+const DEFEND_CHANCE: float = 0.4
+const SPELLCASTER_CAST_CHANCE: float = 0.6
+const WOUNDED_ALLY_THRESHOLD: float = 0.5
+
+const COMBAT_DELAY_MULTIPLIER: float = 0.1
+const ATTACK_EFFECT_BASE_DC: int = 10
+
+const BASE_SPELL_POWER: int = 100
+const SPELL_LEVEL_BONUS_MULTIPLIER: int = 5
+const SPELL_INT_BONUS_MULTIPLIER: int = 3
+const PURE_CASTER_SPELL_BONUS: int = 20
+const HYBRID_CASTER_SPELL_BONUS: int = 10
