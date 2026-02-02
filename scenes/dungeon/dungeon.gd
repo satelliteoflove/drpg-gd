@@ -3,6 +3,7 @@ extends Node3D
 const PartyMenuScene = preload("res://scenes/common/party_menu.tscn")
 const DungeonMapScene = preload("res://scenes/dungeon/dungeon_map.tscn")
 const CombatScene = preload("res://scenes/combat/combat.tscn")
+const EnemySpriteScene = preload("res://scenes/dungeon/enemy_sprite_3d.tscn")
 var menu_open: bool = false
 var map_open: bool = false
 var combat_open: bool = false
@@ -30,10 +31,14 @@ enum CeilingMeshItem { CEILING = 0 }
 enum WallMeshItem { WALL = 0 }
 
 var grid_position: Vector2i = Vector2i.ZERO
+var previous_grid_position: Vector2i = Vector2i.ZERO
 var facing: Facing = Facing.NORTH
 var dungeon_data: DungeonData = null
 var is_moving: bool = false
 var move_tween: Tween = null
+var enemy_manager: EnemyManager = null
+var enemy_sprites: Dictionary = {}
+var _enemy_container: Node3D = null
 
 @onready var floor_grid: GridMap = $FloorGridMap
 @onready var ceiling_grid: GridMap = $CeilingGridMap
@@ -64,6 +69,7 @@ func _ready() -> void:
 	_load_or_generate_dungeon()
 	_render_dungeon()
 	_spawn_player()
+	_initialize_enemy_system()
 	_update_ui()
 
 	$UI/BottomBar/TownButton.pressed.connect(_on_town_pressed)
@@ -302,6 +308,118 @@ func _spawn_player() -> void:
 	_mark_current_tile_discovered()
 
 
+func _initialize_enemy_system() -> void:
+	_enemy_container = Node3D.new()
+	_enemy_container.name = "EnemyContainer"
+	add_child(_enemy_container)
+
+	if GameState.floor_tracker == null:
+		GameState.floor_tracker = FloorTracker.new()
+	GameState.floor_tracker.set_floor(GameState.current_floor)
+
+	enemy_manager = EnemyManager.new()
+	enemy_manager.initialize(dungeon_data, GameState.floor_tracker)
+	enemy_manager.combat_triggered.connect(_on_enemy_combat_triggered)
+	enemy_manager.enemy_group_spawned.connect(_on_enemy_spawned)
+	enemy_manager.enemy_group_defeated.connect(_on_enemy_defeated)
+	enemy_manager.zone_cleared.connect(_on_zone_cleared)
+
+	if dungeon_data.enemy_groups.is_empty():
+		enemy_manager.spawn_initial_enemies()
+	else:
+		for group in dungeon_data.enemy_groups:
+			enemy_manager.enemy_groups.append(group)
+
+	_create_enemy_sprites()
+	_update_enemy_sprites()
+
+
+func _create_enemy_sprites() -> void:
+	for group in enemy_manager.enemy_groups:
+		_create_sprite_for_group(group)
+
+
+func _create_sprite_for_group(group: EnemyGroup) -> void:
+	var sprite := EnemySpriteScene.instantiate()
+	sprite.setup(group)
+	_enemy_container.add_child(sprite)
+	enemy_sprites[group.id] = sprite
+
+
+func _update_enemy_sprites() -> void:
+	var player_pos := grid_position
+	var is_revealed := GameState.floor_tracker.is_revealed()
+
+	for group_id in enemy_sprites:
+		var sprite: Sprite3D = enemy_sprites[group_id]
+		var group := _get_group_by_id(group_id)
+
+		if group == null or not group.is_alive():
+			sprite.visible = false
+			continue
+
+		sprite.update_world_position()
+
+		var dist: int = abs(group.grid_position.x - player_pos.x) + abs(group.grid_position.y - player_pos.y)
+		var has_los := _check_los_to_enemy(group)
+
+		if has_los or GameState.floor_tracker.is_spotted(group_id) or is_revealed:
+			sprite.visible = true
+			sprite.update_visibility(dist, is_revealed)
+
+			if group.state == EnemyGroup.State.CHASE:
+				sprite.set_chase_indicator(true)
+			else:
+				sprite.set_chase_indicator(false)
+		else:
+			sprite.visible = false
+
+
+func _check_los_to_enemy(group: EnemyGroup) -> bool:
+	var los := LOSCalculator.new()
+	return los.has_line_of_sight(dungeon_data, grid_position, group.grid_position)
+
+
+func _get_group_by_id(group_id: String) -> EnemyGroup:
+	for group in enemy_manager.enemy_groups:
+		if group.id == group_id:
+			return group
+	return null
+
+
+func _on_enemy_combat_triggered(group: EnemyGroup) -> void:
+	var encounter := _create_encounter_from_group(group)
+	_open_combat(encounter)
+
+
+func _on_enemy_spawned(group: EnemyGroup) -> void:
+	_create_sprite_for_group(group)
+
+
+func _on_enemy_defeated(group: EnemyGroup) -> void:
+	if enemy_sprites.has(group.id):
+		var sprite: Sprite3D = enemy_sprites[group.id]
+		sprite.queue_free()
+		enemy_sprites.erase(group.id)
+
+
+func _on_zone_cleared(_zone: EncounterZone) -> void:
+	print("The area grows quiet...")
+
+
+func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
+	var enemies: Array[Monster] = []
+	var positions := _get_formation_positions(group.monsters.size())
+
+	for i in range(group.monsters.size()):
+		var monster := group.monsters[i].duplicate_for_combat()
+		monster.grid_position = positions[i]
+		monster.init_combat()
+		enemies.append(monster)
+
+	return {"enemies": enemies, "enemy_group": group}
+
+
 func _update_ui() -> void:
 	floor_label.text = "Floor " + str(GameState.current_floor)
 
@@ -399,6 +517,7 @@ func _move_forward() -> void:
 	var new_pos: Vector2i = grid_position + direction
 
 	if _can_move_to(grid_position, new_pos):
+		previous_grid_position = grid_position
 		grid_position = new_pos
 		_animate_move_to(new_pos)
 
@@ -408,6 +527,7 @@ func _move_backward() -> void:
 	var new_pos: Vector2i = grid_position - direction
 
 	if _can_move_to(grid_position, new_pos):
+		previous_grid_position = grid_position
 		grid_position = new_pos
 		_animate_move_to(new_pos)
 
@@ -540,7 +660,7 @@ func _on_move_complete() -> void:
 	is_moving = false
 	_mark_current_tile_discovered()
 	_check_special_tile()
-	_check_random_encounter()
+	_process_enemy_turn()
 	_check_held_movement()
 
 
@@ -568,6 +688,17 @@ func _on_town_pressed() -> void:
 	SceneManager.go_to_town()
 
 
+func _process_enemy_turn() -> void:
+	if enemy_manager == null:
+		return
+
+	var combat_group := enemy_manager.on_player_move(grid_position, facing)
+	_update_enemy_sprites()
+
+	if combat_group != null:
+		return
+
+
 func _check_random_encounter() -> void:
 	if randf() < GameState.encounter_chance:
 		var encounter := _generate_encounter()
@@ -592,7 +723,14 @@ func _open_combat(encounter: Dictionary) -> void:
 
 
 func _on_combat_closed(victory: bool) -> void:
+	var encounter := GameState.current_encounter
 	_close_combat()
+
+	if victory and encounter.has("enemy_group"):
+		var group: EnemyGroup = encounter.enemy_group
+		if enemy_manager != null:
+			enemy_manager.remove_defeated_group(group)
+
 	if not victory:
 		var all_dead := true
 		if GameState.party:
@@ -602,6 +740,10 @@ func _on_combat_closed(victory: bool) -> void:
 					break
 		if all_dead:
 			SceneManager.go_to_town()
+		else:
+			grid_position = previous_grid_position
+			_update_camera_transform()
+			_update_enemy_sprites()
 
 
 func _close_combat() -> void:
@@ -714,9 +856,13 @@ func _open_map() -> void:
 	map_open = true
 	map_overlay.visible = true
 
+	var map_enemy_data := {}
+	if enemy_manager != null:
+		map_enemy_data = enemy_manager.get_minimap_data()
+
 	dungeon_map = DungeonMapScene.instantiate()
 	dungeon_map.closed.connect(_close_map)
-	dungeon_map.update_map(dungeon_data, grid_position, facing)
+	dungeon_map.update_map(dungeon_data, grid_position, facing, map_enemy_data)
 	map_overlay.add_child(dungeon_map)
 
 

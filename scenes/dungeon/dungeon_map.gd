@@ -16,10 +16,15 @@ const COLOR_UNDISCOVERED := Color(0.05, 0.05, 0.05)
 const COLOR_BACKGROUND := Color(0.0, 0.0, 0.0, 0.85)
 const COLOR_LEGEND_BG := Color(0.1, 0.1, 0.1, 0.9)
 const COLOR_TEXT := Color(0.8, 0.8, 0.8)
+const COLOR_ENEMY_LOS := Color(0.9, 0.2, 0.2)
+const COLOR_ENEMY_SPOTTED := Color(0.7, 0.4, 0.4)
+const COLOR_ENEMY_REVEALED := Color(0.5, 0.3, 0.3, 0.7)
+const COLOR_ZONE_CLEARED := Color(0.2, 0.4, 0.2, 0.3)
 
 var dungeon_data: DungeonData = null
 var player_position: Vector2i = Vector2i.ZERO
 var player_facing: int = 0
+var enemy_data: Dictionary = {}
 
 
 func _ready() -> void:
@@ -71,6 +76,8 @@ func _draw() -> void:
 
 			_draw_walls(tile, tile_pos)
 
+	_draw_zone_overlays(offset_x, offset_y)
+	_draw_enemies(offset_x, offset_y)
 	_draw_player(offset_x, offset_y)
 	_draw_legend(screen_size)
 
@@ -162,6 +169,8 @@ func _draw_legend(screen_size: Vector2) -> void:
 		{"color": COLOR_STAIRS_UP, "label": "Stairs Up"},
 		{"color": COLOR_STAIRS_DOWN, "label": "Stairs Down"},
 		{"color": COLOR_PLAYER, "label": "You"},
+		{"color": COLOR_ENEMY_LOS, "label": "Enemy (Visible)"},
+		{"color": COLOR_ENEMY_SPOTTED, "label": "Enemy (Tracked)"},
 	]
 
 	for item in items:
@@ -179,8 +188,80 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-func update_map(data: DungeonData, pos: Vector2i, facing: int) -> void:
+func update_map(data: DungeonData, pos: Vector2i, facing: int, p_enemy_data: Dictionary = {}) -> void:
 	dungeon_data = data
 	player_position = pos
 	player_facing = facing
+	enemy_data = p_enemy_data
 	queue_redraw()
+
+
+func _draw_zone_overlays(offset_x: float, offset_y: float) -> void:
+	if dungeon_data == null:
+		return
+
+	var cleared_zones: Array = enemy_data.get("cleared_zones", [])
+
+	for zone in dungeon_data.zones:
+		if not zone.id in cleared_zones:
+			continue
+
+		for pos in zone.tile_positions:
+			var tile := dungeon_data.get_tile(pos.x, pos.y)
+			if tile == null or not tile.discovered:
+				continue
+
+			var tile_pos := Vector2(offset_x + pos.x * TILE_SIZE, offset_y + pos.y * TILE_SIZE)
+			var tile_rect := Rect2(tile_pos, Vector2(TILE_SIZE, TILE_SIZE))
+			draw_rect(tile_rect, COLOR_ZONE_CLEARED)
+
+
+func _draw_enemies(offset_x: float, offset_y: float) -> void:
+	var groups: Array = enemy_data.get("groups", [])
+
+	for group_data in groups:
+		var pos: Vector2i = group_data.get("position", Vector2i.ZERO)
+		var is_spotted: bool = group_data.get("spotted", false)
+		var is_revealed: bool = group_data.get("revealed", false)
+
+		var has_los := _check_los_to_position(pos)
+		var dist: int = abs(pos.x - player_position.x) + abs(pos.y - player_position.y)
+		print("[Map] Enemy at %s dist=%d LOS=%s spotted=%s" % [pos, dist, has_los, is_spotted])
+		var should_draw := has_los or is_spotted or is_revealed
+		if not should_draw:
+			continue
+
+		var tile_pos := Vector2(offset_x + pos.x * TILE_SIZE, offset_y + pos.y * TILE_SIZE)
+		var center := tile_pos + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+		var radius := TILE_SIZE * 0.35
+
+		var color: Color
+		if has_los:
+			color = COLOR_ENEMY_LOS
+		elif is_spotted:
+			color = COLOR_ENEMY_SPOTTED
+		else:
+			color = COLOR_ENEMY_REVEALED
+
+		if has_los or is_revealed:
+			draw_circle(center, radius, color)
+		else:
+			_draw_circle_outline(center, radius, color)
+
+
+func _draw_circle_outline(center: Vector2, radius: float, color: Color) -> void:
+	var points := 12
+	for i in range(points):
+		var angle1 := float(i) / points * TAU
+		var angle2 := float(i + 1) / points * TAU
+		var p1 := center + Vector2(cos(angle1), sin(angle1)) * radius
+		var p2 := center + Vector2(cos(angle2), sin(angle2)) * radius
+		draw_line(p1, p2, color, 2.0)
+
+
+func _check_los_to_position(target: Vector2i) -> bool:
+	if dungeon_data == null:
+		return false
+
+	var los := LOSCalculator.new()
+	return los.has_line_of_sight(dungeon_data, player_position, target)
