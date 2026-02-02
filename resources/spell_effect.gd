@@ -10,7 +10,8 @@ enum EffectType {
 	DEBUFF,
 	RESURRECTION,
 	INSTANT_DEATH,
-	UTILITY
+	UTILITY,
+	REVEAL_ENEMIES
 }
 
 @export var effect_type: EffectType = EffectType.DAMAGE
@@ -46,6 +47,9 @@ enum EffectType {
 
 @export_group("Instant Death")
 @export var death_save_modifier: int = 0
+
+@export_group("Reveal")
+@export var reveal_duration: int = 40
 
 
 static func create_damage(p_element: CharacterEnums.Element, p_dice: String, p_per_level: int = 0) -> SpellEffect:
@@ -126,4 +130,11 @@ static func create_instant_death(p_save_modifier: int = 0) -> SpellEffect:
 	effect.effect_type = EffectType.INSTANT_DEATH
 	effect.death_save_modifier = p_save_modifier
 	effect.save_type = CharacterEnums.SaveType.DEATH
+	return effect
+
+
+static func create_reveal_enemies(p_duration: int = 40) -> SpellEffect:
+	var effect := SpellEffect.new()
+	effect.effect_type = EffectType.REVEAL_ENEMIES
+	effect.reveal_duration = p_duration
 	return effect

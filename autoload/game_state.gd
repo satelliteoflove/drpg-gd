@@ -20,11 +20,12 @@ var roster: CharacterRoster = null
 var dungeon_floors: Dictionary = {}
 var dungeon_spawn_at_stairs_up: bool = true
 var current_encounter: Dictionary = {}
-var encounter_chance: float = 0.0
+var encounter_chance: float = 0.15
 var dungeon_player_position: Vector2i = Vector2i.ZERO
 var dungeon_player_facing: int = 0
 var returning_from_combat: bool = false
 var combat_speed: int = 5
+var floor_tracker: FloorTracker = null
 
 
 func clear_dungeon_floors() -> void:
@@ -54,6 +55,8 @@ func _initialize_game_data() -> void:
 		party = Party.new()
 	if roster == null:
 		roster = CharacterRoster.new()
+	if floor_tracker == null:
+		floor_tracker = FloorTracker.new()
 
 
 ## Initializes a fresh game state with empty party and starting gold.
@@ -61,6 +64,7 @@ func new_game() -> void:
 	party = Party.new()
 	party.add_gold(100)
 	roster = CharacterRoster.new()
+	floor_tracker = FloorTracker.new()
 	dungeon_floors.clear()
 	current_floor = 1
 	current_encounter = {}

@@ -86,6 +86,7 @@ enum ItemRarity {
 @export var heal_amount: int = 0
 @export var mp_restore: int = 0
 @export var cures_status: Array[CharacterEnums.StatusEffect] = []
+@export var reveal_duration: int = 0
 
 
 ## Creates a new weapon item with the specified properties.

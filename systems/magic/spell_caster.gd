@@ -72,6 +72,8 @@ static func _process_effect(
 			return _process_resurrection(effect, targets)
 		SpellEffect.EffectType.INSTANT_DEATH:
 			return _process_instant_death(caster, effect, targets)
+		SpellEffect.EffectType.REVEAL_ENEMIES:
+			return _process_reveal_enemies(effect)
 		_:
 			return {"messages": [], "damage": 0, "healing": 0}
 
@@ -291,6 +293,18 @@ static func _process_instant_death(
 
 		target.take_damage(target.current_hp + 100)
 		result.messages.append("%s is slain instantly!" % target.get_display_name())
+
+	return result
+
+
+static func _process_reveal_enemies(effect: SpellEffect) -> Dictionary:
+	var result := {"messages": [] as Array[String]}
+
+	if GameState.floor_tracker != null:
+		GameState.floor_tracker.activate_reveal(effect.reveal_duration)
+		result.messages.append("All enemies on this floor are revealed for %d steps." % effect.reveal_duration)
+	else:
+		result.messages.append("No enemies to reveal.")
 
 	return result
 

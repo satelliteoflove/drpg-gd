@@ -10,6 +10,8 @@ extends Resource
 @export var rooms: Array[DungeonRoom] = []
 @export var stairs_up_pos: Vector2i = Vector2i.ZERO
 @export var stairs_down_pos: Vector2i = Vector2i.ZERO
+@export var zones: Array[EncounterZone] = []
+@export var enemy_groups: Array[EnemyGroup] = []
 
 
 func get_tile(x: int, y: int) -> DungeonTile:
@@ -36,3 +38,26 @@ func is_in_bounds(x: int, y: int) -> bool:
 func is_walkable(x: int, y: int) -> bool:
 	var tile: DungeonTile = get_tile(x, y)
 	return tile != null and tile.is_walkable()
+
+
+func get_zone_at(x: int, y: int) -> EncounterZone:
+	var pos := Vector2i(x, y)
+	for zone in zones:
+		if zone.contains_position(pos):
+			return zone
+	return null
+
+
+func get_zone_by_id(zone_id: String) -> EncounterZone:
+	for zone in zones:
+		if zone.id == zone_id:
+			return zone
+	return null
+
+
+func add_zone(zone: EncounterZone) -> void:
+	zones.append(zone)
+	for pos in zone.tile_positions:
+		var tile := get_tile(pos.x, pos.y)
+		if tile != null:
+			tile.encounter_zone_id = zone.id

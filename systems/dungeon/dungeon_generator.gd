@@ -5,7 +5,7 @@ const MIN_ROOM_SIZE: int = 3
 const MAX_ROOM_EXTRA: int = 5
 const ROOM_ATTEMPTS: int = 50
 const WINDING_PERCENT: int = 60
-const EXTRA_CONNECTOR_CHANCE: float = 0.04
+const EXTRA_CONNECTOR_CHANCE: float = 0.20
 const DOOR_CHANCE: float = 0.70
 
 var width: int = 31
@@ -33,6 +33,7 @@ func generate(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> Dun
 	_place_rooms()
 	_fill_mazes()
 	_connect_regions()
+	_remove_dead_ends()
 	_update_walls()
 
 	var dungeon: DungeonData = DungeonData.new()
@@ -44,6 +45,7 @@ func generate(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> Dun
 	dungeon.rooms = _rooms.duplicate()
 
 	_place_stairs(dungeon)
+	_assign_zones(dungeon)
 
 	return dungeon
 
@@ -259,6 +261,42 @@ func _find_root(merged: Array[int], region: int) -> int:
 	return region
 
 
+func _remove_dead_ends() -> void:
+	var done := false
+	while not done:
+		done = true
+		for y in range(1, height - 1):
+			for x in range(1, width - 1):
+				var tile := _get_tile(x, y)
+				if tile == null or tile.type != DungeonTile.TileType.FLOOR:
+					continue
+
+				if _is_in_room(x, y):
+					continue
+
+				var exits := 0
+				if not _is_solid(x, y - 1):
+					exits += 1
+				if not _is_solid(x, y + 1):
+					exits += 1
+				if not _is_solid(x - 1, y):
+					exits += 1
+				if not _is_solid(x + 1, y):
+					exits += 1
+
+				if exits <= 1:
+					tile.type = DungeonTile.TileType.SOLID
+					done = false
+
+
+func _is_in_room(x: int, y: int) -> bool:
+	for room in _rooms:
+		if x >= room.x and x < room.x + room.width:
+			if y >= room.y and y < room.y + room.height:
+				return true
+	return false
+
+
 func _update_walls() -> void:
 	for y in range(height):
 		for x in range(width):
@@ -304,3 +342,110 @@ func _place_stairs(dungeon: DungeonData) -> void:
 	var down_tile: DungeonTile = dungeon.get_tile(stairs_down.x, stairs_down.y)
 	if down_tile:
 		down_tile.special = DungeonTile.SpecialType.STAIRS_DOWN
+
+
+func _assign_zones(dungeon: DungeonData) -> void:
+	var safe_up := EncounterZone.create_safe_zone("safe_up", dungeon.stairs_up_pos, 2)
+	dungeon.add_zone(safe_up)
+
+	var safe_down := EncounterZone.create_safe_zone("safe_down", dungeon.stairs_down_pos, 2)
+	dungeon.add_zone(safe_down)
+
+	for room in _rooms:
+		var room_center := room.get_center()
+
+		if safe_up.contains_position(room_center) or safe_down.contains_position(room_center):
+			continue
+
+		var zone_type := _determine_zone_type(room, dungeon)
+		var tiles := _get_room_tiles(room, dungeon, safe_up, safe_down)
+
+		if tiles.is_empty():
+			continue
+
+		var zone := EncounterZone.create(
+			"zone_%s" % room.id,
+			zone_type,
+			tiles
+		)
+		zone.monster_pool = MonsterDatabase.get_monsters_for_floor(floor_level)
+		dungeon.add_zone(zone)
+
+	_assign_corridor_zones(dungeon, safe_up, safe_down)
+
+
+func _determine_zone_type(room: DungeonRoom, dungeon: DungeonData) -> EncounterZone.ZoneType:
+	var dist_up := room.get_center().distance_to(dungeon.stairs_up_pos)
+	var dist_down := room.get_center().distance_to(dungeon.stairs_down_pos)
+	var min_dist := minf(dist_up, dist_down)
+
+	if room.size_type == DungeonRoom.RoomSize.LARGE:
+		if min_dist > 15:
+			return EncounterZone.ZoneType.BOSS
+		return EncounterZone.ZoneType.HIGH_SPAWN
+
+	if min_dist < 8:
+		return EncounterZone.ZoneType.LOW_SPAWN
+
+	if min_dist > 15:
+		return EncounterZone.ZoneType.HIGH_SPAWN
+
+	return EncounterZone.ZoneType.NORMAL
+
+
+func _get_room_tiles(
+	room: DungeonRoom,
+	dungeon: DungeonData,
+	safe_up: EncounterZone,
+	safe_down: EncounterZone
+) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
+
+	for ry in range(room.y, room.y + room.height):
+		for rx in range(room.x, room.x + room.width):
+			var pos := Vector2i(rx, ry)
+
+			if safe_up.contains_position(pos) or safe_down.contains_position(pos):
+				continue
+
+			var tile := dungeon.get_tile(rx, ry)
+			if tile == null or not tile.is_walkable():
+				continue
+
+			tiles.append(pos)
+
+	return tiles
+
+
+func _assign_corridor_zones(
+	dungeon: DungeonData,
+	safe_up: EncounterZone,
+	safe_down: EncounterZone
+) -> void:
+	var unassigned_tiles: Array[Vector2i] = []
+
+	for y in range(height):
+		for x in range(width):
+			var tile := dungeon.get_tile(x, y)
+			if tile == null or not tile.is_walkable():
+				continue
+
+			if tile.encounter_zone_id != "":
+				continue
+
+			var pos := Vector2i(x, y)
+			if safe_up.contains_position(pos) or safe_down.contains_position(pos):
+				continue
+
+			unassigned_tiles.append(pos)
+
+	if unassigned_tiles.is_empty():
+		return
+
+	var corridor_zone := EncounterZone.create(
+		"corridor_zone",
+		EncounterZone.ZoneType.LOW_SPAWN,
+		unassigned_tiles
+	)
+	corridor_zone.monster_pool = MonsterDatabase.get_monsters_for_floor(floor_level)
+	dungeon.add_zone(corridor_zone)

@@ -43,9 +43,9 @@ func _calculate_initial_spawn_count(zone: EncounterZone) -> int:
 		EncounterZone.ZoneType.NORMAL:
 			return randi_range(1, 2)
 		EncounterZone.ZoneType.LOW_SPAWN:
-			return randi_range(0, 1)
+			return randi_range(1, 2)
 		EncounterZone.ZoneType.HIGH_SPAWN:
-			return randi_range(2, 4)
+			return randi_range(2, 3)
 		EncounterZone.ZoneType.BOSS:
 			return 1
 		_:
@@ -269,11 +269,18 @@ func _move_group(group: EnemyGroup, target: Vector2i) -> void:
 	if target == group.grid_position:
 		return
 
-	if not _is_position_valid_for_move(target, group):
+	if _is_position_valid_for_move(target, group):
+		group.grid_position = target
+		group.steps_from_home = abs(target.x - group.home_position.x) + abs(target.y - group.home_position.y)
 		return
 
-	group.grid_position = target
-	group.steps_from_home = abs(target.x - group.home_position.x) + abs(target.y - group.home_position.y)
+	var alternatives := _pathfinding.get_all_adjacent(group.grid_position)
+	alternatives.shuffle()
+	for alt in alternatives:
+		if _is_position_valid_for_move(alt, group):
+			group.grid_position = alt
+			group.steps_from_home = abs(alt.x - group.home_position.x) + abs(alt.y - group.home_position.y)
+			return
 
 
 func _is_position_valid_for_move(pos: Vector2i, moving_group: EnemyGroup) -> bool:

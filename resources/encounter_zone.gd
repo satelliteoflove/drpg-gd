@@ -6,8 +6,8 @@ enum ZoneType { SAFE, NORMAL, LOW_SPAWN, HIGH_SPAWN, BOSS, SPECIAL }
 const ZONE_CONFIG := {
 	ZoneType.SAFE: {respawn_steps = -1, clear_steps = -1, max_groups = 0},
 	ZoneType.NORMAL: {respawn_steps = 90, clear_steps = 70, max_groups = 3},
-	ZoneType.LOW_SPAWN: {respawn_steps = 150, clear_steps = 100, max_groups = 2},
-	ZoneType.HIGH_SPAWN: {respawn_steps = 40, clear_steps = 25, max_groups = 5},
+	ZoneType.LOW_SPAWN: {respawn_steps = 80, clear_steps = 100, max_groups = 2},
+	ZoneType.HIGH_SPAWN: {respawn_steps = 50, clear_steps = 25, max_groups = 4},
 	ZoneType.BOSS: {respawn_steps = 400, clear_steps = 175, max_groups = 1},
 	ZoneType.SPECIAL: {respawn_steps = 200, clear_steps = 150, max_groups = 2}
 }

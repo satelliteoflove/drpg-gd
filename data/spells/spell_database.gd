@@ -262,6 +262,11 @@ static func _create_psionic_spells() -> void:
 	spell.add_buff_effect("evasion", 4, -1)
 	_spells["s2_blur_mind"] = spell
 
+	spell = Spell.create("s2_mind_sense", "Mind Sense", "", CharacterEnums.SpellSchool.PSIONIC, 2, CharacterEnums.SpellTargetType.SELF, "Senses all enemy minds on the current floor.")
+	spell.effects.append(SpellEffect.create_reveal_enemies(40))
+	spell.set_in_combat(false).set_out_of_combat(true)
+	_spells["s2_mind_sense"] = spell
+
 	spell = Spell.create("s3_mind_cleanse", "Mind Cleanse", "", CharacterEnums.SpellSchool.PSIONIC, 3, CharacterEnums.SpellTargetType.SINGLE_ALLY, "Cures mental afflictions.")
 	spell.add_cure_effect("mental")
 	spell.set_out_of_combat(true)

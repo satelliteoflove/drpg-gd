@@ -340,6 +340,8 @@ func _create_enemy_sprites() -> void:
 
 
 func _create_sprite_for_group(group: EnemyGroup) -> void:
+	if enemy_sprites.has(group.id):
+		return
 	var sprite := EnemySpriteScene.instantiate()
 	sprite.setup(group)
 	_enemy_container.add_child(sprite)
@@ -442,7 +444,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if menu_open or map_open or combat_open or is_moving:
 		return
 
-	if event.is_action_pressed("menu_up"):
+	if event.is_action_pressed("strafe_left"):
+		_strafe_left()
+	elif event.is_action_pressed("strafe_right"):
+		_strafe_right()
+	elif event.is_action_pressed("menu_up"):
 		_move_forward()
 	elif event.is_action_pressed("menu_down"):
 		_move_backward()
@@ -525,6 +531,26 @@ func _move_forward() -> void:
 func _move_backward() -> void:
 	var direction: Vector2i = _get_facing_vector()
 	var new_pos: Vector2i = grid_position - direction
+
+	if _can_move_to(grid_position, new_pos):
+		previous_grid_position = grid_position
+		grid_position = new_pos
+		_animate_move_to(new_pos)
+
+
+func _strafe_left() -> void:
+	var direction: Vector2i = _get_strafe_vector(-1)
+	var new_pos: Vector2i = grid_position + direction
+
+	if _can_move_to(grid_position, new_pos):
+		previous_grid_position = grid_position
+		grid_position = new_pos
+		_animate_move_to(new_pos)
+
+
+func _strafe_right() -> void:
+	var direction: Vector2i = _get_strafe_vector(1)
+	var new_pos: Vector2i = grid_position + direction
 
 	if _can_move_to(grid_position, new_pos):
 		previous_grid_position = grid_position
@@ -647,6 +673,19 @@ func _get_facing_vector() -> Vector2i:
 	return Vector2i.ZERO
 
 
+func _get_strafe_vector(direction: int) -> Vector2i:
+	match facing:
+		Facing.NORTH:
+			return Vector2i(direction, 0)
+		Facing.EAST:
+			return Vector2i(0, direction)
+		Facing.SOUTH:
+			return Vector2i(-direction, 0)
+		Facing.WEST:
+			return Vector2i(0, -direction)
+	return Vector2i.ZERO
+
+
 func _update_camera_transform() -> void:
 	camera.position = Vector3(
 		grid_position.x * CELL_SIZE + CELL_SIZE / 2.0,
@@ -674,7 +713,11 @@ func _check_held_movement() -> void:
 	if menu_open or map_open or combat_open:
 		return
 
-	if Input.is_action_pressed("menu_up"):
+	if Input.is_action_pressed("strafe_left"):
+		_strafe_left()
+	elif Input.is_action_pressed("strafe_right"):
+		_strafe_right()
+	elif Input.is_action_pressed("menu_up"):
 		_move_forward()
 	elif Input.is_action_pressed("menu_down"):
 		_move_backward()

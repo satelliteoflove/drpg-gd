@@ -45,6 +45,17 @@ func is_revealed() -> bool:
 	return reveal_active
 
 
+func toggle_debug_reveal() -> bool:
+	if reveal_active and reveal_steps_remaining == 999999:
+		reveal_active = false
+		reveal_steps_remaining = 0
+		return false
+	else:
+		reveal_active = true
+		reveal_steps_remaining = 999999
+		return true
+
+
 func get_reveal_remaining() -> int:
 	if not reveal_active:
 		return 0

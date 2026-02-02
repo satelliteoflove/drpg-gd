@@ -130,6 +130,10 @@ static func _create_items() -> void:
 	_items["antidote"] = Item.create_consumable("antidote", "Antidote", 0, 0, 20)
 	_items["antidote"].cures_status.append(CharacterEnums.StatusEffect.POISONED)
 
+	_items["scroll_revelation"] = Item.create_consumable("scroll_revelation", "Scroll of Revelation", 0, 0, 150)
+	_items["scroll_revelation"].reveal_duration = 40
+	_items["scroll_revelation"].description = "Reveals all enemies on the floor for 40 steps."
+
 
 static func get_item(item_id: String) -> Item:
 	_ensure_initialized()

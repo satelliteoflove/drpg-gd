@@ -56,6 +56,11 @@ func _process_idle(group: EnemyGroup, player_pos: Vector2i, can_see: bool) -> Di
 			"type": "chase",
 			"target": _get_chase_move(group, player_pos)
 		}
+	if group.ai_type == EnemyGroup.AIType.GUARDIAN and randf() < 0.15:
+		var target := _pathfinding.get_random_adjacent(group.grid_position)
+		var dist_from_home: int = abs(target.x - group.home_position.x) + abs(target.y - group.home_position.y)
+		if dist_from_home <= 2:
+			return {"type": "move", "target": target}
 	return {"type": "idle"}
 
 
@@ -128,10 +133,15 @@ func _process_return(group: EnemyGroup, dungeon: DungeonData) -> Dictionary:
 
 
 func _get_wander_move(group: EnemyGroup, _dungeon: DungeonData) -> Vector2i:
-	if randf() < 0.3:
+	if randf() < 0.10:
 		return group.grid_position
 
-	return _pathfinding.get_random_adjacent(group.grid_position)
+	var candidates := _pathfinding.get_all_adjacent(group.grid_position)
+	if candidates.is_empty():
+		return group.grid_position
+
+	candidates.shuffle()
+	return candidates[0]
 
 
 func _get_patrol_move(group: EnemyGroup, dungeon: DungeonData) -> Vector2i:

@@ -20,15 +20,123 @@ const COLOR_ENEMY_LOS := Color(0.9, 0.2, 0.2)
 const COLOR_ENEMY_SPOTTED := Color(0.7, 0.4, 0.4)
 const COLOR_ENEMY_REVEALED := Color(0.5, 0.3, 0.3, 0.7)
 const COLOR_ZONE_CLEARED := Color(0.2, 0.4, 0.2, 0.3)
+const COLOR_ZONE_SAFE := Color(0.2, 0.6, 0.2, 0.25)
+const COLOR_ZONE_NORMAL := Color(0.4, 0.4, 0.5, 0.25)
+const COLOR_ZONE_LOW := Color(0.3, 0.5, 0.6, 0.25)
+const COLOR_ZONE_HIGH := Color(0.6, 0.4, 0.2, 0.25)
+const COLOR_ZONE_BOSS := Color(0.7, 0.2, 0.3, 0.25)
+
+const COLOR_LEGEND_ZONE_SAFE := Color(0.2, 0.3, 0.22)
+const COLOR_LEGEND_ZONE_NORMAL := Color(0.25, 0.25, 0.31)
+const COLOR_LEGEND_ZONE_LOW := Color(0.23, 0.28, 0.34)
+const COLOR_LEGEND_ZONE_HIGH := Color(0.3, 0.25, 0.2)
+const COLOR_LEGEND_ZONE_BOSS := Color(0.33, 0.2, 0.24)
 
 var dungeon_data: DungeonData = null
 var player_position: Vector2i = Vector2i.ZERO
 var player_facing: int = 0
 var enemy_data: Dictionary = {}
+var show_zones: bool = false
+var reveal_button: Button = null
+var show_enemies_button: Button = null
+var show_zones_button: Button = null
+var close_button: Button = null
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_create_map_buttons()
+
+
+func _create_map_buttons() -> void:
+	var button_style := StyleBoxFlat.new()
+	button_style.bg_color = Color(0.15, 0.15, 0.18)
+	button_style.border_color = Color(0.5, 0.5, 0.55)
+	button_style.set_border_width_all(1)
+	button_style.set_corner_radius_all(3)
+	button_style.set_content_margin_all(8)
+
+	var button_hover := StyleBoxFlat.new()
+	button_hover.bg_color = Color(0.22, 0.22, 0.26)
+	button_hover.border_color = Color(0.6, 0.6, 0.65)
+	button_hover.set_border_width_all(1)
+	button_hover.set_corner_radius_all(3)
+	button_hover.set_content_margin_all(8)
+
+	reveal_button = _create_styled_button("[R] Reveal Map", button_style, button_hover)
+	reveal_button.pressed.connect(_on_reveal_pressed)
+
+	show_enemies_button = _create_styled_button("[E] Show Enemies", button_style, button_hover)
+	show_enemies_button.pressed.connect(_on_show_enemies_pressed)
+
+	show_zones_button = _create_styled_button("[Z] Show Zones", button_style, button_hover)
+	show_zones_button.pressed.connect(_on_show_zones_pressed)
+
+	close_button = _create_styled_button("[N] Close Map", button_style, button_hover)
+	close_button.pressed.connect(_on_close_pressed)
+
+	_update_enemy_button_text()
+	_update_zones_button_text()
+
+
+func _create_styled_button(text: String, normal_style: StyleBoxFlat, hover_style: StyleBoxFlat) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.custom_minimum_size = Vector2(130, 32)
+	btn.add_theme_stylebox_override("normal", normal_style)
+	btn.add_theme_stylebox_override("hover", hover_style)
+	btn.add_theme_stylebox_override("pressed", hover_style)
+	btn.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
+	btn.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
+	add_child(btn)
+	return btn
+
+
+func _on_close_pressed() -> void:
+	closed.emit()
+
+
+func _on_reveal_pressed() -> void:
+	if dungeon_data == null:
+		return
+	for y in range(dungeon_data.height):
+		for x in range(dungeon_data.width):
+			var tile := dungeon_data.get_tile(x, y)
+			if tile != null:
+				tile.discovered = true
+	queue_redraw()
+
+
+func _on_show_enemies_pressed() -> void:
+	if GameState.floor_tracker == null:
+		return
+	GameState.floor_tracker.toggle_debug_reveal()
+	_update_enemy_button_text()
+	queue_redraw()
+
+
+func _update_enemy_button_text() -> void:
+	if show_enemies_button == null:
+		return
+	if GameState.floor_tracker != null and GameState.floor_tracker.is_revealed():
+		show_enemies_button.text = "[E] Hide Enemies"
+	else:
+		show_enemies_button.text = "[E] Show Enemies"
+
+
+func _on_show_zones_pressed() -> void:
+	show_zones = not show_zones
+	_update_zones_button_text()
+	queue_redraw()
+
+
+func _update_zones_button_text() -> void:
+	if show_zones_button == null:
+		return
+	if show_zones:
+		show_zones_button.text = "[Z] Hide Zones"
+	else:
+		show_zones_button.text = "[Z] Show Zones"
 
 
 func _draw() -> void:
@@ -171,6 +279,11 @@ func _draw_legend(screen_size: Vector2) -> void:
 		{"color": COLOR_PLAYER, "label": "You"},
 		{"color": COLOR_ENEMY_LOS, "label": "Enemy (Visible)"},
 		{"color": COLOR_ENEMY_SPOTTED, "label": "Enemy (Tracked)"},
+		{"color": COLOR_LEGEND_ZONE_SAFE, "label": "Zone: Safe"},
+		{"color": COLOR_LEGEND_ZONE_LOW, "label": "Zone: Low"},
+		{"color": COLOR_LEGEND_ZONE_NORMAL, "label": "Zone: Normal"},
+		{"color": COLOR_LEGEND_ZONE_HIGH, "label": "Zone: High"},
+		{"color": COLOR_LEGEND_ZONE_BOSS, "label": "Zone: Boss"},
 	]
 
 	for item in items:
@@ -178,14 +291,33 @@ func _draw_legend(screen_size: Vector2) -> void:
 		draw_string(font, Vector2(legend_x + padding + 20, y_pos), item.label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, COLOR_TEXT)
 		y_pos += line_height
 
-	y_pos = int(screen_size.y) - 40
-	draw_string(font, Vector2(legend_x + padding, y_pos), "N/Esc: Close", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, COLOR_TEXT)
+	var button_spacing := 40
+	var bottom_y := int(screen_size.y) - padding - 36
+
+	if close_button:
+		close_button.position = Vector2(legend_x + padding, bottom_y)
+	if show_zones_button:
+		show_zones_button.position = Vector2(legend_x + padding, bottom_y - button_spacing)
+	if show_enemies_button:
+		show_enemies_button.position = Vector2(legend_x + padding, bottom_y - button_spacing * 2)
+	if reveal_button:
+		reveal_button.position = Vector2(legend_x + padding, bottom_y - button_spacing * 3)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_map") or event.is_action_pressed("menu_cancel"):
 		closed.emit()
 		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed:
+		if event.keycode == KEY_R or event.unicode == 114 or event.unicode == 82:
+			_on_reveal_pressed()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_E or event.unicode == 101 or event.unicode == 69:
+			_on_show_enemies_pressed()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_Z or event.unicode == 122 or event.unicode == 90:
+			_on_show_zones_pressed()
+			get_viewport().set_input_as_handled()
 
 
 func update_map(data: DungeonData, pos: Vector2i, facing: int, p_enemy_data: Dictionary = {}) -> void:
@@ -203,8 +335,17 @@ func _draw_zone_overlays(offset_x: float, offset_y: float) -> void:
 	var cleared_zones: Array = enemy_data.get("cleared_zones", [])
 
 	for zone in dungeon_data.zones:
-		if not zone.id in cleared_zones:
+		var is_cleared := zone.id in cleared_zones
+		var should_draw := is_cleared or show_zones
+
+		if not should_draw:
 			continue
+
+		var zone_color: Color
+		if is_cleared:
+			zone_color = COLOR_ZONE_CLEARED
+		else:
+			zone_color = _get_zone_color(zone.zone_type)
 
 		for pos in zone.tile_positions:
 			var tile := dungeon_data.get_tile(pos.x, pos.y)
@@ -213,20 +354,32 @@ func _draw_zone_overlays(offset_x: float, offset_y: float) -> void:
 
 			var tile_pos := Vector2(offset_x + pos.x * TILE_SIZE, offset_y + pos.y * TILE_SIZE)
 			var tile_rect := Rect2(tile_pos, Vector2(TILE_SIZE, TILE_SIZE))
-			draw_rect(tile_rect, COLOR_ZONE_CLEARED)
+			draw_rect(tile_rect, zone_color)
+
+
+func _get_zone_color(zone_type: EncounterZone.ZoneType) -> Color:
+	match zone_type:
+		EncounterZone.ZoneType.SAFE:
+			return COLOR_ZONE_SAFE
+		EncounterZone.ZoneType.LOW_SPAWN:
+			return COLOR_ZONE_LOW
+		EncounterZone.ZoneType.HIGH_SPAWN:
+			return COLOR_ZONE_HIGH
+		EncounterZone.ZoneType.BOSS:
+			return COLOR_ZONE_BOSS
+		_:
+			return COLOR_ZONE_NORMAL
 
 
 func _draw_enemies(offset_x: float, offset_y: float) -> void:
 	var groups: Array = enemy_data.get("groups", [])
+	var is_revealed := GameState.floor_tracker != null and GameState.floor_tracker.is_revealed()
 
 	for group_data in groups:
 		var pos: Vector2i = group_data.get("position", Vector2i.ZERO)
 		var is_spotted: bool = group_data.get("spotted", false)
-		var is_revealed: bool = group_data.get("revealed", false)
 
 		var has_los := _check_los_to_position(pos)
-		var dist: int = abs(pos.x - player_position.x) + abs(pos.y - player_position.y)
-		print("[Map] Enemy at %s dist=%d LOS=%s spotted=%s" % [pos, dist, has_los, is_spotted])
 		var should_draw := has_los or is_spotted or is_revealed
 		if not should_draw:
 			continue
