@@ -209,12 +209,18 @@ func _update_help() -> void:
 
 # === STATUS TAB ===
 
-@onready var status_list: VBoxContainer = $MainPanel/VBox/ContentPanel/StatusContent/StatusList
+@onready var status_list: VBoxContainer = $MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/StatusListPanel/StatusList
+@onready var attribute_bars: AttributeBars = $MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/AttributePanel/AttributeVBox/AttributeBars
+@onready var radar_chart: RadarChart = $MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/ChartPanel/ChartVBox/RadarChart
+@onready var party_summary: Control = $MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/SummaryPanel/PartySummary
 
 func _refresh_status() -> void:
 	for child in status_list.get_children():
 		child.queue_free()
 	status_buttons.clear()
+
+	if party_summary:
+		party_summary.set_party(GameState.party)
 
 	if GameState.party == null or GameState.party.is_empty():
 		var label := Label.new()
@@ -260,24 +266,92 @@ func _update_status_info(index: int) -> void:
 	var member: Character = GameState.party.get_member_at(index)
 	var row := "Front Row" if index < 3 else "Back Row"
 	var text := "[b]%s[/b] (%s)\n" % [member.character_name, row]
-	text += "Level %d %s %s\n" % [member.level, CharacterEnums.get_race_name(member.race), CharacterEnums.get_class_name(member.character_class)]
-	text += "Alignment: %s\n\n" % CharacterEnums.get_alignment_name(member.alignment)
-	text += "HP: %d/%d    MP: %d/%d\n" % [member.current_hp, member.max_hp, member.current_mp, member.max_mp]
-	text += "STR: %d  INT: %d  PIE: %d\n" % [member.strength, member.intelligence, member.piety]
-	text += "VIT: %d  AGI: %d  LCK: %d\n" % [member.vitality, member.agility, member.luck]
-	text += "XP: %d\n" % member.experience
-	text += "Weapon: %s  Defense: %d  Accuracy: %+d" % [member.weapon_dice, member.defense, member.accuracy]
+	text += "Level %d %s %s  |  %s\n" % [member.level, CharacterEnums.get_race_name(member.race), CharacterEnums.get_class_name(member.character_class), CharacterEnums.get_alignment_name(member.alignment)]
+	text += "HP: %d/%d    MP: %d/%d    XP: %d\n" % [member.current_hp, member.max_hp, member.current_mp, member.max_mp, member.experience]
+	text += "Weapon: %s  |  Defense: %d  |  Accuracy: %+d" % [member.weapon_dice, member.defense, member.accuracy]
 
 	var status_text := _get_status_effects_text(member)
 	if status_text == "OK":
-		text += "\n\nStatus: [color=green]OK[/color]"
+		text += "\nStatus: [color=green]OK[/color]"
 	else:
-		text += "\n\nStatus: [color=yellow]%s[/color]" % status_text
+		text += "\nStatus: [color=yellow]%s[/color]" % status_text
 
 	if member.is_dead:
-		text += "\n\n[color=red]DEAD - Visit the Temple for resurrection[/color]"
+		text += "\n[color=red]DEAD - Visit the Temple for resurrection[/color]"
 
 	info_label.text = text
+	_update_combat_radar(member)
+
+
+func _update_combat_radar(member: Character) -> void:
+	if attribute_bars:
+		attribute_bars.set_character(member)
+
+	if radar_chart:
+		var combat_stats := _calculate_combat_stats(member)
+		radar_chart.set_data(combat_stats)
+
+
+func _calculate_combat_stats(member: Character) -> Array[Dictionary]:
+	var stats: Array[Dictionary] = []
+
+	var dpt_val := _calculate_expected_dpt(member)
+	var dpt_max := 25.0
+
+	var mitigation_val := _calculate_mitigation(member)
+	var mitigation_max := 40.0
+
+	var evasion_val := float(member.evasion) + float(member.agility) / 4.0
+	var evasion_max := 20.0
+
+	var speed_val := float(member.agility)
+	var speed_max := 25.0
+
+	var survivability_val := _calculate_survivability(member)
+	var survivability_max := 50.0
+
+	stats.append({ "label": "DPT", "value": dpt_val, "max_value": dpt_max })
+	stats.append({ "label": "MIT", "value": mitigation_val, "max_value": mitigation_max })
+	stats.append({ "label": "EVA", "value": evasion_val, "max_value": evasion_max })
+	stats.append({ "label": "SPD", "value": speed_val, "max_value": speed_max })
+	stats.append({ "label": "SRV", "value": survivability_val, "max_value": survivability_max })
+
+	return stats
+
+
+func _calculate_mitigation(member: Character) -> float:
+	return float(member.defense) + float(member.vitality) / 4.0
+
+
+func _calculate_survivability(member: Character) -> float:
+	return float(member.max_hp) + float(member.vitality) / 2.0
+
+
+func _calculate_expected_dpt(member: Character) -> float:
+	var dice_str := member.weapon_dice
+	var expected := _parse_dice_expected(dice_str)
+	var str_bonus := float(member.strength - 10) / 4.0
+	var dmg_bonus := float(member.damage_bonus)
+	return expected + str_bonus + dmg_bonus
+
+
+func _parse_dice_expected(dice_str: String) -> float:
+	if dice_str.is_empty():
+		return 1.0
+
+	var parts := dice_str.to_lower().split("d")
+	if parts.size() != 2:
+		return 1.0
+
+	var num_dice := parts[0].to_int()
+	if num_dice <= 0:
+		num_dice = 1
+
+	var die_sides := parts[1].to_int()
+	if die_sides <= 0:
+		die_sides = 4
+
+	return num_dice * (die_sides + 1.0) / 2.0
 
 
 func _get_status_effects_text(member: Character) -> String:
