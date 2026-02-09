@@ -6,29 +6,7 @@ A Wizardry-style first-person dungeon crawler built in Godot 4.6 with GDScript.
 
 A classic dungeon RPG inspired by Wizardry and its descendants. You create a party of adventurers, descend into procedurally generated dungeons, fight turn-based battles, and manage your crew back in town.
 
-### Current Features
-
-- Procedurally generated multi-floor dungeons with GridMap-based 3D rendering
-- Grid-based first-person movement (step and turn, classic Wizardry style)
-- Turn-based combat with 3x3 enemy formation grid and positional targeting
-- 14 character classes, 11 races, alignment system
-- 45 spells across 4 schools (Mage, Priest, Alchemist, Psionic)
-- 6 monster types with encounter scaling by floor
-- Equipment system with identification, cursed items, and upgrades (+1 to +5)
-- Full town with Shop, Inn, Temple, Tavern, and Training Grounds
-- Treasure chests with traps and thief disarm mechanics
-- Loot generation with floor-based drop tables
-- Visible enemies in the dungeon with AI pathfinding
-- Autosave system
-- Party formation management
-
-### Not Yet Implemented
-
-- Audio (no music or sound effects yet)
-- Multiple save slots (autosave only)
-- Boss monsters
-- NPCs and narrative events
-- Additional dungeon features (secret doors, locked doors, special tiles)
+Many features are not yet implemented, but you're welcome to play around with it if you like. This serves as a primary test bed for my [Godot MCP server](https://github.com/satelliteoflove/godot-mcp).
 
 ## Requirements
 
