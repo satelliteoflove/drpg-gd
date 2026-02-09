@@ -25,6 +25,11 @@ func setup(group: EnemyGroup) -> void:
 
 func _load_texture() -> void:
 	var texture_path := "res://textures/monsters/goblin.png"
+	if enemy_group and not enemy_group.monsters.is_empty():
+		var lead_monster := enemy_group.monsters[0]
+		var specific_path := "res://textures/monsters/%s.png" % lead_monster.monster_name.to_lower().replace(" ", "_")
+		if ResourceLoader.exists(specific_path):
+			texture_path = specific_path
 	if ResourceLoader.exists(texture_path):
 		texture = load(texture_path)
 	else:

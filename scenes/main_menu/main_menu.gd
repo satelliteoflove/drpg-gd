@@ -105,10 +105,20 @@ func _roll_valid_stats_for_class(race: CharacterEnums.Race, char_class: Characte
 
 
 func _level_up_character(character: Character, target_level: int) -> void:
-	character.level = target_level
-	character._recalculate_derived_stats()
+	for i in range(target_level - 1):
+		character.level += 1
+		character._recalculate_derived_stats()
+		SpellLearning.try_learn_spells_on_level_up(character)
+	_guarantee_core_spells(character)
 	character.current_hp = character.max_hp
 	character.current_mp = character.max_mp
+
+
+func _guarantee_core_spells(character: Character) -> void:
+	var learnable := SpellLearning.get_learnable_spells(character)
+	for spell in learnable:
+		if not character.known_spells.has(spell.id):
+			character.known_spells.append(spell.id)
 
 
 func _equip_character(character: Character) -> void:
@@ -130,7 +140,7 @@ func _equip_character(character: Character) -> void:
 			_try_equip(character, "mace")
 			_try_equip(character, "cloth_armor")
 		CharacterEnums.CharacterClass.THIEF:
-			_try_equip(character, "dagger")
+			_try_equip(character, "short_bow")
 			_try_equip(character, "leather_armor")
 			_try_equip(character, "leather_cap")
 			_try_equip(character, "leather_boots")

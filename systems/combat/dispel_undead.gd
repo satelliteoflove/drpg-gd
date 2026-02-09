@@ -10,7 +10,8 @@ static func can_dispel(character: Character) -> bool:
 	if character.is_dead or character.is_disabled():
 		return false
 	return character.character_class == CharacterEnums.CharacterClass.PRIEST or \
-		   character.character_class == CharacterEnums.CharacterClass.BISHOP
+		   character.character_class == CharacterEnums.CharacterClass.BISHOP or \
+		   character.character_class == CharacterEnums.CharacterClass.LORD
 
 
 static func get_valid_targets(enemies: Array[Monster]) -> Array[Monster]:
@@ -57,6 +58,7 @@ static func attempt_dispel(character: Character, target: Monster) -> Dictionary:
 		var reduced_xp := int(target.exp_reward * DISPEL_XP_MULTIPLIER)
 		target.current_hp = 0
 		target.is_dead = true
+		target.exp_reward = reduced_xp
 		return {
 			"success": true,
 			"target": target.monster_name,

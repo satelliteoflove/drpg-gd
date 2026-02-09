@@ -133,7 +133,7 @@ func should_flee(party_power: int) -> bool:
 	if ai_type == AIType.BOSS or ai_type == AIType.GUARDIAN:
 		return false
 	var group_power := get_total_level()
-	return party_power > group_power * 3
+	return party_power > group_power * 5
 
 
 func get_next_patrol_point() -> Vector2i:

@@ -229,6 +229,11 @@ custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
 text = "Spell"
 
+[node name="DispelButton" type="Button" parent="MainLayout/ActionSection/ActionHBox"]
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+text = "Dispel"
+
 [node name="ItemButton" type="Button" parent="MainLayout/ActionSection/ActionHBox"]
 custom_minimum_size = Vector2(90, 36)
 layout_mode = 2

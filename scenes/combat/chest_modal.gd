@@ -124,7 +124,8 @@ func _on_quick_open() -> void:
 
 	if result.get("party_wiped", false):
 		await get_tree().create_timer(1.0).timeout
-		chest_resolved.emit([], false)
+		var no_items: Array[Item] = []
+		chest_resolved.emit(no_items, false)
 		return
 
 	if result.success:
@@ -159,7 +160,8 @@ func _on_disarm() -> void:
 
 		if trap_result.get("party_wiped", false):
 			await get_tree().create_timer(1.0).timeout
-			chest_resolved.emit([], false)
+			var no_items: Array[Item] = []
+		chest_resolved.emit(no_items, false)
 			return
 
 	_update_trap_warning()
@@ -179,7 +181,8 @@ func _on_open() -> void:
 
 	if result.get("party_wiped", false):
 		await get_tree().create_timer(1.0).timeout
-		chest_resolved.emit([], false)
+		var no_items: Array[Item] = []
+		chest_resolved.emit(no_items, false)
 		return
 
 	if result.success:
@@ -188,7 +191,8 @@ func _on_open() -> void:
 
 
 func _on_leave() -> void:
-	chest_resolved.emit([], true)
+	var empty_items: Array[Item] = []
+	chest_resolved.emit(empty_items, true)
 
 
 func _collect_items() -> void:

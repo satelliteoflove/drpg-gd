@@ -2,7 +2,7 @@ extends Control
 
 signal closed()
 
-enum Tab { STATUS, EQUIPMENT, INVENTORY, FORMATION }
+enum Tab { STATUS, EQUIPMENT, INVENTORY, FORMATION, SPELLS }
 
 var current_tab: Tab = Tab.STATUS
 var tab_buttons: Array[Button] = []
@@ -34,6 +34,19 @@ var form_slot_buttons: Array[Button] = []
 var form_selected_index: int = -1
 var form_current_slot: int = 0
 
+var spell_party_nav: MenuNavigator = null
+var spell_list_nav: MenuNavigator = null
+var spell_target_nav: MenuNavigator = null
+var spell_party_buttons: Array[Button] = []
+var spell_list_buttons: Array[Button] = []
+var spell_target_buttons: Array[Button] = []
+var spell_selected_character: Character = null
+var spell_selected_spell: Spell = null
+var spell_current_level: int = 1
+var spell_all_spells: Dictionary = {}
+enum SpellPanel { PARTY, LIST, TARGETS }
+var spell_panel: SpellPanel = SpellPanel.PARTY
+
 const EQUIPMENT_SLOTS: Array[Item.ItemType] = [
 	Item.ItemType.WEAPON,
 	Item.ItemType.ARMOR,
@@ -50,6 +63,12 @@ const EQUIPMENT_SLOTS: Array[Item.ItemType] = [
 @onready var equipment_content: Control = $MainPanel/VBox/ContentPanel/EquipmentContent
 @onready var inventory_content: Control = $MainPanel/VBox/ContentPanel/InventoryContent
 @onready var formation_content: Control = $MainPanel/VBox/ContentPanel/FormationContent
+@onready var spells_content: Control = $MainPanel/VBox/ContentPanel/SpellsContent
+@onready var spell_party_list: VBoxContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellPartyPanel/SpellPartyList
+@onready var spell_level_tabs: HBoxContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellListPanel/SpellListVBox/SpellLevelTabs
+@onready var spell_list: VBoxContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellListPanel/SpellListVBox/SpellList
+@onready var spell_target_panel: PanelContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellTargetPanel
+@onready var spell_target_list: VBoxContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellTargetPanel/SpellTargetList
 @onready var info_panel: PanelContainer = $MainPanel/VBox/InfoPanel
 @onready var info_label: RichTextLabel = $MainPanel/VBox/InfoPanel/InfoLabel
 @onready var help_label: Label = $MainPanel/VBox/HelpLabel
@@ -65,7 +84,7 @@ func _setup_tabs() -> void:
 		child.queue_free()
 	tab_buttons.clear()
 
-	var tab_names := ["1: Status", "2: Equipment", "3: Inventory", "4: Formation"]
+	var tab_names := ["1: Status", "2: Equipment", "3: Inventory", "4: Formation", "5: Spells"]
 	for i in range(tab_names.size()):
 		var btn := Button.new()
 		btn.text = tab_names[i]
@@ -89,6 +108,7 @@ func _switch_tab(tab: Tab) -> void:
 	equipment_content.visible = (tab == Tab.EQUIPMENT)
 	inventory_content.visible = (tab == Tab.INVENTORY)
 	formation_content.visible = (tab == Tab.FORMATION)
+	spells_content.visible = (tab == Tab.SPELLS)
 
 	match tab:
 		Tab.STATUS:
@@ -99,6 +119,8 @@ func _switch_tab(tab: Tab) -> void:
 			_refresh_inventory()
 		Tab.FORMATION:
 			_refresh_formation()
+		Tab.SPELLS:
+			_refresh_spells()
 
 	_update_help()
 
@@ -130,6 +152,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_4:
 				_switch_tab(Tab.FORMATION)
 				return
+			KEY_5:
+				_switch_tab(Tab.SPELLS)
+				return
 
 	match current_tab:
 		Tab.STATUS:
@@ -140,6 +165,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_handle_inventory_input(event)
 		Tab.FORMATION:
 			_handle_formation_input(event)
+		Tab.SPELLS:
+			_handle_spells_input(event)
 
 
 func _handle_back() -> bool:
@@ -165,6 +192,18 @@ func _handle_back() -> bool:
 				form_selected_index = -1
 				_refresh_formation()
 				return true
+		Tab.SPELLS:
+			if spell_panel == SpellPanel.TARGETS:
+				spell_panel = SpellPanel.LIST
+				spell_selected_spell = null
+				_refresh_spells()
+				return true
+			elif spell_panel == SpellPanel.LIST:
+				spell_panel = SpellPanel.PARTY
+				spell_selected_character = null
+				spell_all_spells.clear()
+				_refresh_spells()
+				return true
 
 	_close()
 	return true
@@ -182,7 +221,8 @@ func _update_help() -> void:
 	var confirm := KeyBindingHelper.get_confirm_help()
 	var cancel := KeyBindingHelper.get_cancel_help()
 	var arrow_nav := KeyBindingHelper.get_arrow_nav_help()
-	var base := "1-4: Tabs | "
+	var h_nav := KeyBindingHelper.get_horizontal_help()
+	var base := "1-5: Tabs | "
 
 	match current_tab:
 		Tab.STATUS:
@@ -205,6 +245,14 @@ func _update_help() -> void:
 				help_label.text = base + "%s | %s: Swap | %s" % [arrow_nav, confirm.split(":")[0], cancel]
 			else:
 				help_label.text = base + "%s | %s | %s" % [arrow_nav, confirm, cancel]
+		Tab.SPELLS:
+			match spell_panel:
+				SpellPanel.PARTY:
+					help_label.text = base + "%s | %s | %s" % [v_nav, confirm, cancel]
+				SpellPanel.LIST:
+					help_label.text = base + "%s | %s: Spell Level | %s: Cast | %s" % [v_nav, h_nav, confirm.split(":")[0], cancel]
+				SpellPanel.TARGETS:
+					help_label.text = base + "%s | %s: Cast | %s" % [v_nav, confirm.split(":")[0], cancel]
 
 
 # === STATUS TAB ===
@@ -963,3 +1011,331 @@ func _move_form_selection(dx: int, dy: int) -> void:
 
 	form_current_slot = row * 3 + col
 	_update_formation_selection()
+
+
+# === SPELLS TAB ===
+
+func _refresh_spells() -> void:
+	_refresh_spell_party()
+	_refresh_spell_level_tabs()
+	_refresh_spell_list()
+	_refresh_spell_targets()
+	_update_spell_info()
+	_update_help()
+
+
+func _refresh_spell_party() -> void:
+	for child in spell_party_list.get_children():
+		child.queue_free()
+	spell_party_buttons.clear()
+
+	if GameState.party == null or GameState.party.is_empty():
+		var label := Label.new()
+		label.text = "(No party)"
+		spell_party_list.add_child(label)
+		return
+
+	for i in range(GameState.party.size()):
+		var member: Character = GameState.party.get_member_at(i)
+		var btn := Button.new()
+		var status_text := ""
+		if member.is_dead:
+			status_text = " [DEAD]"
+		elif member.is_silenced():
+			status_text = " [SIL]"
+		btn.text = "%s - MP: %d/%d%s" % [member.character_name, member.current_mp, member.max_mp, status_text]
+		btn.custom_minimum_size = Vector2(180, 28)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if member.is_dead:
+			btn.modulate = Color(0.7, 0.3, 0.3)
+		elif member.is_silenced():
+			btn.modulate = Color(0.6, 0.6, 0.6)
+		btn.pressed.connect(_on_spell_party_selected.bind(member))
+		spell_party_list.add_child(btn)
+		spell_party_buttons.append(btn)
+
+	spell_party_nav = MenuNavigator.new()
+	spell_party_nav.setup(spell_party_buttons, 0)
+	spell_party_nav.selection_changed.connect(_on_spell_party_nav_changed)
+
+	if spell_panel == SpellPanel.PARTY:
+		spell_party_nav._update_focus()
+
+
+func _on_spell_party_selected(character: Character) -> void:
+	spell_selected_character = character
+	spell_current_level = 1
+	spell_panel = SpellPanel.LIST
+	_load_character_spells()
+	_auto_select_first_level()
+	_refresh_spells()
+
+
+func _on_spell_party_nav_changed(_index: int) -> void:
+	_update_spell_info()
+
+
+func _load_character_spells() -> void:
+	spell_all_spells.clear()
+	if spell_selected_character == null:
+		return
+	for i in range(1, 8):
+		spell_all_spells[i] = []
+	for spell_id in spell_selected_character.known_spells:
+		var spell: Spell = SpellDatabase.get_spell(spell_id)
+		if spell == null:
+			continue
+		if spell_all_spells.has(spell.level):
+			spell_all_spells[spell.level].append(spell)
+
+
+func _auto_select_first_level() -> void:
+	for lvl in range(1, 8):
+		if spell_all_spells.has(lvl) and not spell_all_spells[lvl].is_empty():
+			spell_current_level = lvl
+			return
+	spell_current_level = 1
+
+
+func _refresh_spell_level_tabs() -> void:
+	for child in spell_level_tabs.get_children():
+		child.queue_free()
+
+	if spell_selected_character == null:
+		return
+
+	for lvl in range(1, 8):
+		var btn := Button.new()
+		btn.text = "L%d" % lvl
+		btn.custom_minimum_size = Vector2(36, 24)
+		btn.toggle_mode = true
+		btn.button_pressed = (lvl == spell_current_level)
+		var has_spells: bool = spell_all_spells.has(lvl) and not spell_all_spells[lvl].is_empty()
+		if not has_spells:
+			btn.modulate = Color(0.4, 0.4, 0.4)
+		btn.pressed.connect(_on_spell_level_selected.bind(lvl))
+		spell_level_tabs.add_child(btn)
+
+
+func _on_spell_level_selected(lvl: int) -> void:
+	spell_current_level = lvl
+	_refresh_spell_level_tabs()
+	_refresh_spell_list()
+	_update_spell_info()
+
+
+func _refresh_spell_list() -> void:
+	for child in spell_list.get_children():
+		child.queue_free()
+	spell_list_buttons.clear()
+
+	if spell_selected_character == null:
+		var label := Label.new()
+		label.text = "Select a character"
+		spell_list.add_child(label)
+		return
+
+	var spells_at_level: Array = spell_all_spells.get(spell_current_level, [])
+	if spells_at_level.is_empty():
+		var label := Label.new()
+		label.text = "(No spells at this level)"
+		spell_list.add_child(label)
+		return
+
+	for spell: Spell in spells_at_level:
+		var btn := Button.new()
+		btn.text = "%s  (%d MP)" % [spell.name, spell.mp_cost]
+		btn.custom_minimum_size = Vector2(200, 28)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+
+		if not spell.out_of_combat:
+			btn.modulate = Color(0.5, 0.5, 0.5)
+		elif spell_selected_character.current_mp < spell.mp_cost:
+			btn.modulate = Color(0.6, 0.5, 0.4)
+		elif spell_selected_character.is_dead or spell_selected_character.is_silenced():
+			btn.modulate = Color(0.5, 0.5, 0.5)
+
+		btn.pressed.connect(_on_spell_selected.bind(spell))
+		spell_list.add_child(btn)
+		spell_list_buttons.append(btn)
+
+	spell_list_nav = MenuNavigator.new()
+	spell_list_nav.setup(spell_list_buttons, 0)
+	spell_list_nav.selection_changed.connect(_on_spell_list_nav_changed)
+
+	if spell_panel == SpellPanel.LIST:
+		spell_list_nav._update_focus()
+
+
+func _on_spell_list_nav_changed(_index: int) -> void:
+	_update_spell_info()
+
+
+func _on_spell_selected(spell: Spell) -> void:
+	if not spell.out_of_combat:
+		info_label.text = "[b]%s[/b]\nCan only be cast in combat." % spell.name
+		return
+
+	var validation := SpellValidator.can_cast(spell_selected_character, spell, false)
+	if not validation.can_cast:
+		info_label.text = "[b]%s[/b]\n%s" % [spell.name, validation.reason]
+		return
+
+	match spell.target_type:
+		CharacterEnums.SpellTargetType.SELF:
+			_cast_spell_on_targets(spell, [spell_selected_character])
+		CharacterEnums.SpellTargetType.ALL_ALLIES:
+			_cast_spell_on_targets(spell, _get_living_party_members())
+		_:
+			spell_selected_spell = spell
+			spell_panel = SpellPanel.TARGETS
+			_refresh_spells()
+
+
+func _refresh_spell_targets() -> void:
+	for child in spell_target_list.get_children():
+		child.queue_free()
+	spell_target_buttons.clear()
+
+	spell_target_panel.visible = (spell_panel == SpellPanel.TARGETS)
+
+	if spell_panel != SpellPanel.TARGETS or spell_selected_spell == null:
+		return
+
+	var is_dead_target := spell_selected_spell.target_type == CharacterEnums.SpellTargetType.DEAD_ALLY
+
+	for member in GameState.party.get_members():
+		var btn := Button.new()
+		var hp_text := "%d/%d HP" % [member.current_hp, member.max_hp]
+		var status := ""
+		if member.is_dead:
+			status = " [DEAD]"
+		btn.text = "%s: %s%s" % [member.character_name, hp_text, status]
+		btn.custom_minimum_size = Vector2(200, 28)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+
+		var valid_target := false
+		if is_dead_target:
+			valid_target = member.is_dead
+		else:
+			valid_target = not member.is_dead
+
+		if not valid_target:
+			btn.disabled = true
+			btn.modulate = Color(0.5, 0.5, 0.5)
+
+		btn.pressed.connect(_on_spell_target_selected.bind(member))
+		spell_target_list.add_child(btn)
+		spell_target_buttons.append(btn)
+
+	spell_target_nav = MenuNavigator.new()
+	spell_target_nav.setup(spell_target_buttons, 0)
+	spell_target_nav._update_focus()
+
+
+func _on_spell_target_selected(target: Character) -> void:
+	if spell_selected_spell == null:
+		return
+	_cast_spell_on_targets(spell_selected_spell, [target])
+
+
+func _cast_spell_on_targets(spell: Spell, targets: Array) -> void:
+	var result := SpellCaster.cast_spell(spell_selected_character, spell, targets, false)
+	var msg := "\n".join(result.messages)
+	info_label.text = msg
+
+	spell_selected_spell = null
+	if spell_panel == SpellPanel.TARGETS:
+		spell_panel = SpellPanel.LIST
+	_refresh_spells()
+
+
+func _get_living_party_members() -> Array:
+	var members: Array = []
+	for member in GameState.party.get_members():
+		if not member.is_dead:
+			members.append(member)
+	return members
+
+
+func _update_spell_info() -> void:
+	match spell_panel:
+		SpellPanel.PARTY:
+			if spell_party_nav and not spell_party_buttons.is_empty():
+				var idx := spell_party_nav.get_current_index()
+				var members := GameState.party.get_members()
+				if idx >= 0 and idx < members.size():
+					var m: Character = members[idx]
+					var class_name_str := CharacterEnums.get_class_name(m.character_class)
+					var spell_count := m.known_spells.size()
+					var text := "[b]%s[/b]\nL%d %s\nMP: %d/%d\nKnown spells: %d" % [m.character_name, m.level, class_name_str, m.current_mp, m.max_mp, spell_count]
+					if m.is_dead:
+						text += "\n[color=red]DEAD[/color]"
+					elif m.is_silenced():
+						text += "\n[color=yellow]SILENCED - Cannot cast[/color]"
+					info_label.text = text
+					return
+			info_label.text = "Select a party member to view spells."
+		SpellPanel.LIST:
+			if spell_list_nav and not spell_list_buttons.is_empty():
+				var idx := spell_list_nav.get_current_index()
+				var spells_at_level: Array = spell_all_spells.get(spell_current_level, [])
+				if idx >= 0 and idx < spells_at_level.size():
+					var spell: Spell = spells_at_level[idx]
+					var text := "[b]%s[/b] (L%d %s)\n" % [spell.name, spell.level, spell.get_school_name()]
+					text += "MP Cost: %d  |  Target: %s\n" % [spell.mp_cost, spell.get_target_description()]
+					text += "%s" % spell.description
+					if not spell.out_of_combat:
+						text += "\n[color=gray]Combat only[/color]"
+					else:
+						var fizzle := SpellValidator.calculate_fizzle_chance(spell_selected_character, spell)
+						text += "\nFizzle: %d%%" % int(fizzle)
+					info_label.text = text
+					return
+			info_label.text = "No spells at this level."
+		SpellPanel.TARGETS:
+			if spell_selected_spell:
+				info_label.text = "Select target for [b]%s[/b]." % spell_selected_spell.name
+
+
+func _handle_spells_input(event: InputEvent) -> void:
+	if spell_panel == SpellPanel.LIST:
+		if event.is_action_pressed("menu_left"):
+			_cycle_spell_level(-1)
+			return
+		elif event.is_action_pressed("menu_right"):
+			_cycle_spell_level(1)
+			return
+
+	var nav: MenuNavigator = null
+	match spell_panel:
+		SpellPanel.PARTY:
+			nav = spell_party_nav
+		SpellPanel.LIST:
+			nav = spell_list_nav
+		SpellPanel.TARGETS:
+			nav = spell_target_nav
+
+	if nav == null:
+		return
+
+	if event.is_action_pressed("menu_up"):
+		nav._move(-1)
+		_update_spell_info()
+	elif event.is_action_pressed("menu_down"):
+		nav._move(1)
+		_update_spell_info()
+	elif event.is_action_pressed("menu_confirm"):
+		nav._confirm()
+
+
+func _cycle_spell_level(direction: int) -> void:
+	var new_level := spell_current_level + direction
+	if new_level < 1:
+		new_level = 7
+	elif new_level > 7:
+		new_level = 1
+	spell_current_level = new_level
+	_refresh_spell_level_tabs()
+	_refresh_spell_list()
+	_update_spell_info()

@@ -127,6 +127,9 @@ func _pick_ai_type(zone: EncounterZone) -> EnemyGroup.AIType:
 
 
 func _generate_monsters(zone: EncounterZone) -> Array[Monster]:
+	if zone.zone_type == EncounterZone.ZoneType.BOSS:
+		return _generate_boss_encounter()
+
 	var monsters: Array[Monster] = []
 	var count := _roll_enemy_count()
 
@@ -145,6 +148,32 @@ func _generate_monsters(zone: EncounterZone) -> Array[Monster]:
 		if monster != null:
 			monster.init_combat()
 			monsters.append(monster)
+
+	return monsters
+
+
+func _generate_boss_encounter() -> Array[Monster]:
+	var monsters: Array[Monster] = []
+	var boss := MonsterDatabase.get_boss_for_floor(dungeon_data.floor_level)
+	if boss == null:
+		var fallback_ids := MonsterDatabase.get_monsters_for_floor(dungeon_data.floor_level)
+		if fallback_ids.is_empty():
+			fallback_ids = ["slime"]
+		var monster := MonsterDatabase.get_monster(fallback_ids[randi() % fallback_ids.size()])
+		if monster != null:
+			monster.init_combat()
+			monsters.append(monster)
+		return monsters
+
+	boss.init_combat()
+	monsters.append(boss)
+
+	var minion_ids := MonsterDatabase.get_boss_minions(dungeon_data.floor_level)
+	for minion_id in minion_ids:
+		var minion := MonsterDatabase.get_monster(minion_id)
+		if minion != null:
+			minion.init_combat()
+			monsters.append(minion)
 
 	return monsters
 

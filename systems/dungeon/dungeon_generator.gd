@@ -2,8 +2,8 @@ class_name DungeonGenerator
 extends RefCounted
 
 const MIN_ROOM_SIZE: int = 3
-const MAX_ROOM_EXTRA: int = 5
-const ROOM_ATTEMPTS: int = 50
+const MAX_ROOM_EXTRA: int = 3
+const ROOM_ATTEMPTS: int = 80
 const WINDING_PERCENT: int = 60
 const EXTRA_CONNECTOR_CHANCE: float = 0.20
 const DOOR_CHANCE: float = 0.70
@@ -250,9 +250,6 @@ func _connect_regions() -> void:
 				merged[root] = dest
 				open_regions -= 1
 
-		if open_regions <= 1:
-			break
-
 
 func _find_root(merged: Array[int], region: int) -> int:
 	while merged[region] != region:
@@ -345,11 +342,13 @@ func _place_stairs(dungeon: DungeonData) -> void:
 
 
 func _assign_zones(dungeon: DungeonData) -> void:
-	var safe_up := EncounterZone.create_safe_zone("safe_up", dungeon.stairs_up_pos, 2)
+	var safe_up := EncounterZone.create_safe_zone("safe_up", dungeon.stairs_up_pos, 1)
 	dungeon.add_zone(safe_up)
 
-	var safe_down := EncounterZone.create_safe_zone("safe_down", dungeon.stairs_down_pos, 2)
+	var safe_down := EncounterZone.create_safe_zone("safe_down", dungeon.stairs_down_pos, 1)
 	dungeon.add_zone(safe_down)
+
+	var has_boss_zone := false
 
 	for room in _rooms:
 		var room_center := room.get_center()
@@ -368,10 +367,82 @@ func _assign_zones(dungeon: DungeonData) -> void:
 			zone_type,
 			tiles
 		)
-		zone.monster_pool = MonsterDatabase.get_monsters_for_floor(floor_level)
+		if zone_type == EncounterZone.ZoneType.BOSS:
+			zone.monster_pool = []
+			has_boss_zone = true
+		else:
+			zone.monster_pool = MonsterDatabase.get_monsters_for_floor(floor_level)
 		dungeon.add_zone(zone)
 
+	if not has_boss_zone and MonsterDatabase.get_boss_for_floor(floor_level) != null:
+		_create_boss_zone_near_stairs_down(dungeon, safe_down)
+
 	_assign_corridor_zones(dungeon, safe_up, safe_down)
+
+
+func _create_boss_zone_near_stairs_down(dungeon: DungeonData, safe_down: EncounterZone) -> void:
+	var walk_distances := _flood_fill_distances(dungeon, dungeon.stairs_down_pos)
+
+	var candidates: Array[Vector2i] = []
+	for pos: Vector2i in walk_distances:
+		var dist: int = walk_distances[pos]
+		if dist < 3 or dist > 6:
+			continue
+		if safe_down.contains_position(pos):
+			continue
+		var tile := dungeon.get_tile(pos.x, pos.y)
+		if tile.encounter_zone_id != "":
+			continue
+		candidates.append(pos)
+
+	if candidates.is_empty():
+		for pos: Vector2i in walk_distances:
+			var dist: int = walk_distances[pos]
+			if dist < 3 or dist > 10:
+				continue
+			if safe_down.contains_position(pos):
+				continue
+			var tile := dungeon.get_tile(pos.x, pos.y)
+			if tile.encounter_zone_id != "":
+				continue
+			candidates.append(pos)
+
+	if candidates.is_empty():
+		return
+
+	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return walk_distances[a] < walk_distances[b]
+	)
+
+	var boss_tiles: Array[Vector2i] = []
+	for i in range(mini(candidates.size(), 4)):
+		boss_tiles.append(candidates[i])
+
+	var zone := EncounterZone.create("boss_zone", EncounterZone.ZoneType.BOSS, boss_tiles)
+	zone.monster_pool = []
+	dungeon.add_zone(zone)
+
+
+func _flood_fill_distances(dungeon: DungeonData, start: Vector2i) -> Dictionary:
+	var distances := {}
+	var queue: Array[Vector2i] = [start]
+	distances[start] = 0
+	var directions: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+
+	while not queue.is_empty():
+		var pos: Vector2i = queue.pop_front()
+		var dist: int = distances[pos]
+		for dir in directions:
+			var next := pos + dir
+			if distances.has(next):
+				continue
+			var tile := dungeon.get_tile(next.x, next.y)
+			if tile == null or not tile.is_walkable():
+				continue
+			distances[next] = dist + 1
+			queue.append(next)
+
+	return distances
 
 
 func _determine_zone_type(room: DungeonRoom, dungeon: DungeonData) -> EncounterZone.ZoneType:
@@ -380,8 +451,6 @@ func _determine_zone_type(room: DungeonRoom, dungeon: DungeonData) -> EncounterZ
 	var min_dist := minf(dist_up, dist_down)
 
 	if room.size_type == DungeonRoom.RoomSize.LARGE:
-		if min_dist > 15:
-			return EncounterZone.ZoneType.BOSS
 		return EncounterZone.ZoneType.HIGH_SPAWN
 
 	if min_dist < 8:

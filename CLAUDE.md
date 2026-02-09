@@ -37,6 +37,11 @@ Note: Reload only triggers when the Godot editor window gains focus.
 3. Use Quick Start for fast dungeon entry
 4. Only restart when necessary
 
+### Python Scripts
+
+Always use `uv run --with <package>` to run Python scripts. Never use `pip install` directly.
+Example: `uv run --with Pillow python3 script.py`
+
 ## Project Structure
 
 ### Key Directories

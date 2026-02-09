@@ -411,7 +411,12 @@ func _on_zone_cleared(_zone: EncounterZone) -> void:
 
 func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
 	var enemies: Array[Monster] = []
-	var positions := _get_formation_positions(group.monsters.size())
+	var is_boss := group.ai_type == EnemyGroup.AIType.BOSS
+	var positions: Array[Vector2i]
+	if is_boss:
+		positions = _get_boss_formation_positions(group.monsters.size())
+	else:
+		positions = _get_formation_positions(group.monsters.size())
 
 	for i in range(group.monsters.size()):
 		var monster := group.monsters[i].duplicate_for_combat()
@@ -419,7 +424,10 @@ func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
 		monster.init_combat()
 		enemies.append(monster)
 
-	return {"enemies": enemies, "enemy_group": group}
+	var encounter := {"enemies": enemies, "enemy_group": group}
+	if is_boss:
+		encounter["is_boss"] = true
+	return encounter
 
 
 func _update_ui() -> void:
@@ -861,6 +869,24 @@ func _get_formation_positions(count: int) -> Array[Vector2i]:
 				var row := i / 3
 				positions.append(Vector2i(col, row))
 
+	return positions
+
+
+func _get_boss_formation_positions(count: int) -> Array[Vector2i]:
+	var positions: Array[Vector2i] = []
+	match count:
+		1:
+			positions = [Vector2i(1, 1)]
+		2:
+			positions = [Vector2i(1, 1), Vector2i(0, 0)]
+		3:
+			positions = [Vector2i(1, 1), Vector2i(0, 0), Vector2i(2, 0)]
+		_:
+			positions = [Vector2i(1, 1), Vector2i(0, 0), Vector2i(2, 0)]
+			for i in range(3, count):
+				var col := (i - 3) % 3
+				var row := (i - 3) / 3 + 2
+				positions.append(Vector2i(col, row))
 	return positions
 
 

@@ -22,6 +22,7 @@ extends Resource
 @export var vitality: int = 10
 @export var race: CharacterEnums.Race = CharacterEnums.Race.HUMAN
 @export var loot_drops: Array[LootDrop] = []
+@export var is_boss: bool = false
 
 @export_group("Spawn Info")
 @export var min_floor: int = 1

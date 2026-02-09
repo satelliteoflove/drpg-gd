@@ -16,6 +16,7 @@ var current_combatant_id: String = ""
 var waiting_for_player: bool = false
 var waiting_for_target: bool = false
 var processing_monster_turn: bool = false
+var is_boss_encounter: bool = false
 
 
 ## Initializes and starts a new combat encounter.
@@ -44,7 +45,17 @@ func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 		initiative.add_combatant(enemy.combat_id, false, enemy.agility)
 
 	var enemy_count := enemies.size()
-	if enemy_count == 1:
+	if is_boss_encounter:
+		var boss_name := ""
+		for enemy in enemies:
+			if enemy.is_boss:
+				boss_name = enemy.monster_name
+				break
+		if boss_name != "":
+			action_performed.emit("A powerful foe bars your path - %s!" % boss_name)
+		else:
+			action_performed.emit("A powerful foe bars your path!")
+	elif enemy_count == 1:
 		action_performed.emit("A %s appears!" % enemies[0].monster_name)
 	else:
 		action_performed.emit("%d enemies appear!" % enemy_count)
@@ -225,6 +236,10 @@ func player_escape() -> void:
 	if not waiting_for_player or not is_active:
 		return
 
+	if is_boss_encounter:
+		action_performed.emit("There is no escape from this battle!")
+		return
+
 	waiting_for_player = false
 	waiting_for_target = false
 	var avg_agility := party.get_average_agility()
@@ -241,6 +256,30 @@ func player_escape() -> void:
 ## Casts a spell from the current player character.
 ## [param spell_id]: The ID of the spell to cast.
 ## [param targets]: Array of valid targets for the spell (Character or Monster).
+func player_dispel(target: Monster) -> void:
+	if not waiting_for_player or not is_active:
+		return
+
+	var character := _get_character(current_combatant_id)
+	if character == null or character.is_dead:
+		waiting_for_player = false
+		_advance_turn()
+		return
+
+	waiting_for_player = false
+	waiting_for_target = false
+
+	var result := DispelUndead.attempt_dispel(character, target)
+	action_performed.emit(result["message"])
+
+	if result["success"]:
+		initiative.remove_combatant(target.combat_id)
+		_check_enemy_row_advance()
+
+	initiative.apply_action_delay(current_combatant_id)
+	_check_combat_end()
+
+
 func player_cast_spell(spell_id: String, targets: Array) -> void:
 	if not waiting_for_player or not is_active:
 		return
@@ -622,6 +661,10 @@ func _check_combat_end() -> void:
 			total_exp += enemy.exp_reward
 			total_gold += DamageCalculator.roll_dice(enemy.gold_reward_dice)
 
+		if is_boss_encounter:
+			total_exp = int(total_exp * 1.5)
+			total_gold = int(total_gold * 2.0)
+
 		var floor_level: int = GameState.current_floor
 		var party_luck: int = party.get_average_luck() if party else 10
 		var loot: Array[Item] = LootGenerator.generate_combat_loot(enemies, floor_level, party_luck)
@@ -771,21 +814,12 @@ func _check_party_row_advance() -> void:
 
 func _check_enemy_row_advance() -> void:
 	var front_row := _get_enemy_front_row()
-	if front_row < 0:
-		return
-
-	var has_living_in_front := false
-	for enemy in enemies:
-		if not enemy.is_dead and enemy.grid_position.y == front_row:
-			has_living_in_front = true
-			break
-
-	if has_living_in_front:
+	if front_row <= 0:
 		return
 
 	for enemy in enemies:
 		if not enemy.is_dead:
-			enemy.grid_position.y -= 1
+			enemy.grid_position.y -= front_row
 
 
 func _get_enemy_front_row() -> int:

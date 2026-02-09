@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://c6xr8qhk7t4de"]
 
-[ext_resource type="Script" uid="uid://d2vp7kj8cmnrv" path="res://scenes/combat/chest_modal.gd" id="1_chest"]
+[ext_resource type="Script" uid="uid://3dlvniivyb6l" path="res://scenes/combat/chest_modal.gd" id="1_chest"]
 
 [node name="ChestModal" type="PanelContainer"]
 custom_minimum_size = Vector2(400, 350)

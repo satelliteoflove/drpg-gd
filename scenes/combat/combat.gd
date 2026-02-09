@@ -4,6 +4,22 @@ signal combat_closed(victory: bool)
 
 const ChestModalScene = preload("res://scenes/combat/chest_modal.tscn")
 
+const STATUS_ICON_PATHS: Dictionary = {
+	CharacterEnums.StatusEffect.POISONED: "res://textures/ui/status_icons/poison.png",
+	CharacterEnums.StatusEffect.PARALYZED: "res://textures/ui/status_icons/stunned.png",
+	CharacterEnums.StatusEffect.ASLEEP: "res://textures/ui/status_icons/sleep.png",
+	CharacterEnums.StatusEffect.STONED: "res://textures/ui/status_icons/stone.png",
+	CharacterEnums.StatusEffect.CONFUSED: "res://textures/ui/status_icons/confuse.png",
+	CharacterEnums.StatusEffect.SILENCED: "res://textures/ui/status_icons/silence.png",
+	CharacterEnums.StatusEffect.BLINDED: "res://textures/ui/status_icons/blind.png",
+	CharacterEnums.StatusEffect.AFRAID: "res://textures/ui/status_icons/alert.png",
+	CharacterEnums.StatusEffect.CHARMED: "res://textures/ui/status_icons/charm.png",
+	CharacterEnums.StatusEffect.BERSERK: "res://textures/ui/status_icons/berserk.png",
+	CharacterEnums.StatusEffect.CURSED: "res://textures/ui/status_icons/debuff.png",
+	CharacterEnums.StatusEffect.BLESSED: "res://textures/ui/status_icons/buff.png",
+}
+var _status_icon_cache: Dictionary = {}
+
 var combat_system: CombatSystem = null
 var selected_item: Item = null
 var chest_modal: Control = null
@@ -15,6 +31,7 @@ var selected_spell: Spell = null
 var current_spell_level: int = 1
 var available_spells: Dictionary = {}
 var spell_target_mode: String = ""
+var dispel_target_mode: bool = false
 
 var action_nav: MenuNavigator = null
 var item_nav: MenuNavigator = null
@@ -47,6 +64,7 @@ class PartyMemberUI:
 	var mp_bar: ProgressBar
 	var mp_text: Label
 	var status_label: Label
+	var status_icons_hbox: HBoxContainer
 
 
 class EnemyUI:
@@ -55,8 +73,13 @@ class EnemyUI:
 	var hp_bar: ProgressBar
 	var hp_text: Label
 	var status_label: Label
+	var status_icons_hbox: HBoxContainer
 
 @onready var enemy_grid: GridContainer = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/EnemyGrid
+@onready var row_labels: VBoxContainer = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels
+@onready var back_label: Label = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/BackLabel
+@onready var middle_label: Label = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/MiddleLabel
+@onready var front_label: Label = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/FrontLabel
 @onready var party_front_row: HBoxContainer = $MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/FrontRow
 @onready var party_back_row: HBoxContainer = $MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/BackRow
 @onready var turn_order_list: VBoxContainer = $MainLayout/ContentArea/TurnOrderPanel/TurnOrderVBox/TurnOrderList
@@ -65,6 +88,7 @@ class EnemyUI:
 @onready var attack_button: Button = $MainLayout/ActionSection/ActionHBox/AttackButton
 @onready var defend_button: Button = $MainLayout/ActionSection/ActionHBox/DefendButton
 @onready var spell_button: Button = $MainLayout/ActionSection/ActionHBox/SpellButton
+@onready var dispel_button: Button = $MainLayout/ActionSection/ActionHBox/DispelButton
 @onready var item_button: Button = $MainLayout/ActionSection/ActionHBox/ItemButton
 @onready var escape_button: Button = $MainLayout/ActionSection/ActionHBox/EscapeButton
 
@@ -87,6 +111,7 @@ func _ready() -> void:
 	attack_button.pressed.connect(_on_attack_pressed)
 	defend_button.pressed.connect(_on_defend_pressed)
 	spell_button.pressed.connect(_on_spell_pressed)
+	dispel_button.pressed.connect(_on_dispel_pressed)
 	item_button.pressed.connect(_on_item_pressed)
 	escape_button.pressed.connect(_on_escape_pressed)
 	item_cancel_button.pressed.connect(_on_cancel_item)
@@ -102,7 +127,7 @@ func _ready() -> void:
 
 
 func _setup_action_nav() -> void:
-	action_buttons = [attack_button, defend_button, spell_button, item_button, escape_button]
+	action_buttons = [attack_button, defend_button, spell_button, dispel_button, item_button, escape_button]
 	action_nav = MenuNavigator.new()
 	action_nav.setup(action_buttons, 0)
 
@@ -189,7 +214,10 @@ func _start_combat() -> void:
 		combat_closed.emit(false)
 		return
 
+	is_boss_encounter = encounter.get("is_boss", false)
+
 	combat_system = CombatSystem.new()
+	combat_system.is_boss_encounter = is_boss_encounter
 	combat_system.turn_started.connect(_on_turn_started)
 	combat_system.action_performed.connect(_on_action_performed)
 	combat_system.combat_ended.connect(_on_combat_ended)
@@ -203,18 +231,33 @@ func _start_combat() -> void:
 
 
 func _build_enemy_display() -> void:
-	for child in enemy_grid.get_children():
+	var children := enemy_grid.get_children()
+	for child in children:
+		enemy_grid.remove_child(child)
 		child.queue_free()
 	enemy_panels.clear()
 
 	if combat_system == null:
 		return
 
-	for display_row in range(3):
-		var actual_row := 2 - display_row
+	var occupied_rows: Array[int] = []
+	for row in range(3):
+		for col in range(3):
+			var enemy := _get_living_enemy_at(Vector2i(col, row))
+			if enemy != null:
+				if not occupied_rows.has(row):
+					occupied_rows.append(row)
+				break
+
+	var row_labels_list: Array[Label] = [front_label, middle_label, back_label]
+	for i in range(3):
+		row_labels_list[i].visible = occupied_rows.has(i)
+
+	for display_row in range(occupied_rows.size() - 1, -1, -1):
+		var actual_row: int = occupied_rows[display_row]
 		for col in range(3):
 			var pos := Vector2i(col, actual_row)
-			var enemy := combat_system.get_enemy_at(pos)
+			var enemy := _get_living_enemy_at(pos)
 
 			var cell := PanelContainer.new()
 			cell.custom_minimum_size = Vector2(100, 50)
@@ -233,6 +276,13 @@ func _build_enemy_display() -> void:
 				cell.modulate = Color(0.5, 0.5, 0.5, 0.3)
 
 			enemy_grid.add_child(cell)
+
+
+func _get_living_enemy_at(pos: Vector2i) -> Monster:
+	var enemy := combat_system.get_enemy_at(pos)
+	if enemy != null and not enemy.is_dead:
+		return enemy
+	return null
 
 
 func _create_enemy_panel(enemy: Monster) -> EnemyUI:
@@ -264,6 +314,11 @@ func _create_enemy_panel(enemy: Monster) -> EnemyUI:
 	ui.hp_text.custom_minimum_size = Vector2(28, 0)
 	ui.hp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hp_hbox.add_child(ui.hp_text)
+
+	ui.status_icons_hbox = HBoxContainer.new()
+	ui.status_icons_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	ui.status_icons_hbox.add_theme_constant_override("separation", 2)
+	ui.panel.add_child(ui.status_icons_hbox)
 
 	ui.status_label = Label.new()
 	ui.status_label.text = ""
@@ -358,6 +413,11 @@ func _create_party_member_panel(character: Character, _is_front: bool) -> PartyM
 	ui.mp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	mp_hbox.add_child(ui.mp_text)
 
+	ui.status_icons_hbox = HBoxContainer.new()
+	ui.status_icons_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	ui.status_icons_hbox.add_theme_constant_override("separation", 2)
+	vbox.add_child(ui.status_icons_hbox)
+
 	ui.status_label = Label.new()
 	ui.status_label.text = ""
 	ui.status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -371,6 +431,7 @@ func _update_display() -> void:
 	if combat_system == null:
 		return
 
+	_build_enemy_display()
 	_update_enemy_display()
 	_update_party_stats()
 	_update_turn_order()
@@ -386,6 +447,8 @@ func _update_enemy_display() -> void:
 		ui.hp_bar.max_value = enemy.max_hp
 		ui.hp_bar.value = enemy.current_hp
 		ui.hp_text.text = "%d" % enemy.current_hp
+
+		_update_status_icons(ui.status_icons_hbox, enemy.status_effects)
 
 		if enemy.is_dead:
 			ui.status_label.text = "DEAD"
@@ -415,6 +478,8 @@ func _update_party_stats() -> void:
 		ui.mp_bar.max_value = max(character.max_mp, 1)
 		ui.mp_bar.value = character.current_mp
 		ui.mp_text.text = "%d" % character.current_mp
+
+		_update_status_icons(ui.status_icons_hbox, character.status_effects)
 
 		if character.is_dead:
 			ui.status_label.text = "DEAD"
@@ -449,6 +514,38 @@ func _get_character_status_text(character: Character) -> String:
 		statuses.append("BLD")
 
 	return " ".join(statuses)
+
+
+func _update_status_icons(hbox: HBoxContainer, effects: Array[CharacterEnums.StatusEffect]) -> void:
+	var children := hbox.get_children()
+	for child in children:
+		hbox.remove_child(child)
+		child.queue_free()
+
+	for effect in effects:
+		if effect == CharacterEnums.StatusEffect.NONE or effect == CharacterEnums.StatusEffect.DEAD:
+			continue
+		if not STATUS_ICON_PATHS.has(effect):
+			continue
+		var tex: Texture2D = _get_status_icon(effect)
+		if tex == null:
+			continue
+		var icon := TextureRect.new()
+		icon.texture = tex
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.custom_minimum_size = Vector2(16, 16)
+		hbox.add_child(icon)
+
+
+func _get_status_icon(effect: CharacterEnums.StatusEffect) -> Texture2D:
+	if _status_icon_cache.has(effect):
+		return _status_icon_cache[effect]
+	var path: String = STATUS_ICON_PATHS.get(effect, "")
+	if path.is_empty():
+		return null
+	var tex: Texture2D = load(path)
+	_status_icon_cache[effect] = tex
+	return tex
 
 
 func _update_turn_order() -> void:
@@ -713,7 +810,11 @@ func _on_enemy_target_selected(enemy: Monster) -> void:
 
 
 func _on_cancel_enemy_target() -> void:
-	if spell_target_mode in ["enemy", "splash", "row", "column"]:
+	if dispel_target_mode:
+		dispel_target_mode = false
+		_close_all_modals()
+		_set_actions_enabled(true)
+	elif spell_target_mode in ["enemy", "splash", "row", "column"]:
 		enemy_target_modal.visible = false
 		spell_modal.visible = true
 		selected_spell = null
@@ -779,6 +880,59 @@ func _on_spell_pressed() -> void:
 func _on_escape_pressed() -> void:
 	if combat_system and combat_system.is_player_turn():
 		combat_system.player_escape()
+
+
+func _on_dispel_pressed() -> void:
+	if not combat_system or not combat_system.is_player_turn():
+		return
+
+	var character := _get_character_by_id(combat_system.current_combatant_id)
+	if character == null or not DispelUndead.can_dispel(character):
+		return
+
+	var undead_targets := DispelUndead.get_valid_targets(combat_system.get_living_enemies())
+	if undead_targets.is_empty():
+		message_log.append_text("[color=#aaaaaa]>[/color] No undead to dispel.\n")
+		return
+
+	if undead_targets.size() == 1:
+		combat_system.player_dispel(undead_targets[0])
+		return
+
+	_set_actions_enabled(false)
+	for child in enemy_target_list.get_children():
+		child.queue_free()
+	enemy_target_buttons.clear()
+
+	for enemy in undead_targets:
+		var btn := Button.new()
+		var row_names: Array[String] = ["Front", "Middle", "Back"]
+		var row_label: String = row_names[enemy.get_row()]
+		var chance := int(DispelUndead.calculate_success_chance(character.level, enemy.level) * 100)
+		btn.text = "%s (%s Row) - %d%% chance" % [
+			enemy.monster_name,
+			row_label,
+			chance
+		]
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.custom_minimum_size = Vector2(0, 32)
+		btn.pressed.connect(_on_dispel_target_selected.bind(enemy))
+		enemy_target_list.add_child(btn)
+		enemy_target_buttons.append(btn)
+
+	enemy_target_nav = MenuNavigator.new()
+	if not enemy_target_buttons.is_empty():
+		enemy_target_nav.setup(enemy_target_buttons, 0)
+
+	dispel_target_mode = true
+	modal_overlay.visible = true
+	enemy_target_modal.visible = true
+
+
+func _on_dispel_target_selected(enemy: Monster) -> void:
+	_close_all_modals()
+	dispel_target_mode = false
+	combat_system.player_dispel(enemy)
 
 
 func _on_item_pressed() -> void:
@@ -1336,6 +1490,7 @@ func _close_all_modals() -> void:
 func _set_actions_enabled(enabled: bool) -> void:
 	var can_attack := enabled
 	var can_cast := enabled
+	var can_dispel := false
 	if enabled and combat_system:
 		var current_char := _get_character_by_id(combat_system.current_combatant_id)
 		if current_char:
@@ -1344,6 +1499,8 @@ func _set_actions_enabled(enabled: bool) -> void:
 			var reachable := Targeting.get_reachable_enemies(current_char, party, enemies)
 			can_attack = not reachable.is_empty()
 			can_cast = _can_character_cast_spells(current_char)
+			can_dispel = DispelUndead.can_dispel(current_char) and \
+				not DispelUndead.get_valid_targets(combat_system.get_living_enemies()).is_empty()
 
 	attack_button.disabled = not can_attack
 	if not can_attack and enabled:
@@ -1357,11 +1514,20 @@ func _set_actions_enabled(enabled: bool) -> void:
 		spell_button.modulate = Color(0.5, 0.5, 0.5)
 	else:
 		spell_button.modulate = Color.WHITE
+	dispel_button.disabled = not can_dispel
+	if not can_dispel and enabled:
+		dispel_button.modulate = Color(0.5, 0.5, 0.5)
+	else:
+		dispel_button.modulate = Color.WHITE
 	item_button.disabled = not enabled
-	escape_button.disabled = not enabled
+	if is_boss_encounter:
+		escape_button.disabled = true
+		escape_button.modulate = Color(0.5, 0.5, 0.5)
+	else:
+		escape_button.disabled = not enabled
 
 	if enabled and action_nav:
-		var start_index := _get_first_available_action_index(can_attack, can_cast)
+		var start_index := _get_first_available_action_index(can_attack, can_cast, can_dispel)
 		action_nav.setup(action_buttons, start_index)
 
 
@@ -1378,11 +1544,13 @@ func _can_character_cast_spells(character: Character) -> bool:
 	return false
 
 
-func _get_first_available_action_index(can_attack: bool, can_cast: bool) -> int:
+func _get_first_available_action_index(can_attack: bool, can_cast: bool, can_dispel: bool) -> int:
 	if can_attack:
 		return 0
 	if can_cast:
 		return 2
+	if can_dispel:
+		return 3
 	return 1
 
 
