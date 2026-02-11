@@ -32,6 +32,9 @@ var current_spell_level: int = 1
 var available_spells: Dictionary = {}
 var spell_target_mode: String = ""
 var dispel_target_mode: bool = false
+var _display_dirty: bool = false
+var _effect_cache: Dictionary = {}
+var _turn_order_labels: Array[Label] = []
 
 var action_nav: MenuNavigator = null
 var item_nav: MenuNavigator = null
@@ -223,6 +226,7 @@ func _start_combat() -> void:
 	combat_system.combat_ended.connect(_on_combat_ended)
 	combat_system.target_selection_requested.connect(_on_target_selection_requested)
 	combat_system.monster_turn_delay_requested.connect(_on_monster_turn_delay)
+	combat_system.layout_changed.connect(_on_layout_changed)
 
 	combat_system.start_combat(GameState.party, typed_enemies)
 	_build_enemy_display()
@@ -431,10 +435,26 @@ func _update_display() -> void:
 	if combat_system == null:
 		return
 
-	_build_enemy_display()
 	_update_enemy_display()
 	_update_party_stats()
 	_update_turn_order()
+
+
+func _schedule_display_update() -> void:
+	if not _display_dirty:
+		_display_dirty = true
+		_deferred_update_display.call_deferred()
+
+
+func _deferred_update_display() -> void:
+	_display_dirty = false
+	_update_display()
+
+
+func _on_layout_changed() -> void:
+	_effect_cache.clear()
+	_build_enemy_display()
+	_build_party_display()
 
 
 func _update_enemy_display() -> void:
@@ -517,6 +537,11 @@ func _get_character_status_text(character: Character) -> String:
 
 
 func _update_status_icons(hbox: HBoxContainer, effects: Array[CharacterEnums.StatusEffect]) -> void:
+	var key := hbox.get_instance_id()
+	if _effect_cache.has(key) and _effects_match(_effect_cache[key], effects):
+		return
+	_effect_cache[key] = effects.duplicate()
+
 	var children := hbox.get_children()
 	for child in children:
 		hbox.remove_child(child)
@@ -537,6 +562,15 @@ func _update_status_icons(hbox: HBoxContainer, effects: Array[CharacterEnums.Sta
 		hbox.add_child(icon)
 
 
+func _effects_match(cached: Array, current: Array[CharacterEnums.StatusEffect]) -> bool:
+	if cached.size() != current.size():
+		return false
+	for i in range(cached.size()):
+		if cached[i] != current[i]:
+			return false
+	return true
+
+
 func _get_status_icon(effect: CharacterEnums.StatusEffect) -> Texture2D:
 	if _status_icon_cache.has(effect):
 		return _status_icon_cache[effect]
@@ -549,18 +583,15 @@ func _get_status_icon(effect: CharacterEnums.StatusEffect) -> Texture2D:
 
 
 func _update_turn_order() -> void:
-	for child in turn_order_list.get_children():
-		child.queue_free()
-
 	if combat_system == null or combat_system.initiative == null:
 		return
 
 	var entries := _get_sorted_turn_order()
-	var shown := 0
 	var max_shown := 10
+	var idx := 0
 
 	for i in range(entries.size()):
-		if shown >= max_shown:
+		if idx >= max_shown:
 			break
 
 		var entry = entries[i]
@@ -580,15 +611,26 @@ func _update_turn_order() -> void:
 		if name_text == "":
 			continue
 
-		var label := Label.new()
+		var label: Label
+		if idx < _turn_order_labels.size():
+			label = _turn_order_labels[idx]
+			label.visible = true
+		else:
+			label = Label.new()
+			turn_order_list.add_child(label)
+			_turn_order_labels.append(label)
+
 		if is_current:
 			label.text = "> %s" % name_text
 			label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
 		else:
 			label.text = "  %s" % name_text
+			label.remove_theme_color_override("font_color")
 
-		turn_order_list.add_child(label)
-		shown += 1
+		idx += 1
+
+	for i in range(idx, _turn_order_labels.size()):
+		_turn_order_labels[i].visible = false
 
 
 func _get_sorted_turn_order() -> Array:
@@ -619,7 +661,7 @@ func _get_enemy_by_combat_id(combat_id: String) -> Monster:
 
 func _on_turn_started(_combatant_id: String, is_player: bool) -> void:
 	_set_actions_enabled(is_player)
-	_update_display()
+	_schedule_display_update()
 
 
 func _on_monster_turn_delay(delay: float) -> void:
@@ -630,7 +672,7 @@ func _on_monster_turn_delay(delay: float) -> void:
 
 func _on_action_performed(message: String) -> void:
 	message_log.append_text("[color=#aaaaaa]>[/color] " + message + "\n")
-	_update_display()
+	_schedule_display_update()
 
 
 func _on_combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Array[Item]) -> void:
@@ -1081,7 +1123,6 @@ func _on_target_selected(character: Character) -> void:
 	message_log.append_text("[color=#aaaaaa]>[/color] " + message + "\n")
 
 	selected_item = null
-	_update_display()
 
 	if combat_system:
 		combat_system.end_player_turn()
@@ -1446,7 +1487,6 @@ func _cast_spell_on_targets(targets: Array) -> void:
 	combat_system.player_cast_spell(selected_spell.id, targets)
 	selected_spell = null
 	spell_target_mode = ""
-	_update_display()
 
 
 func _on_cancel_spell_ally_target() -> void:

@@ -15,6 +15,8 @@ var _los_calculator: LOSCalculator
 var _next_group_id: int = 0
 
 var allow_spawn_near_stairs: bool = true
+var _pending_door_closes: Array[Dictionary] = []
+var changed_doors: Array[Dictionary] = []
 
 
 func initialize(data: DungeonData, tracker: FloorTracker) -> void:
@@ -259,13 +261,21 @@ func on_player_move(new_pos: Vector2i, facing: int) -> EnemyGroup:
 
 
 func _update_all_enemies(player_pos: Vector2i, player_facing: int) -> void:
+	_pending_door_closes.clear()
+	changed_doors.clear()
 	for group in enemy_groups:
 		var action: Dictionary = _enemy_ai.decide_action(group, player_pos, dungeon_data, floor_tracker)
 		_execute_action(group, action, player_pos)
+	_apply_pending_door_closes()
 
 
 func _execute_action(group: EnemyGroup, action: Dictionary, player_pos: Vector2i) -> void:
 	var action_type: String = action.get("type", "idle")
+
+	if action_type != "chase":
+		group.door_wait_turns = 0
+		group.door_wait_direction = ""
+		group.door_wait_position = Vector2i.ZERO
 
 	match action_type:
 		"move":
@@ -274,7 +284,7 @@ func _execute_action(group: EnemyGroup, action: Dictionary, player_pos: Vector2i
 		"chase":
 			group.start_chase(player_pos)
 			var move_target: Vector2i = action.get("target", group.grid_position)
-			_move_group(group, move_target)
+			_move_group_chase(group, move_target)
 			floor_tracker.register_spotted(group.id)
 		"pursue":
 			var move_target: Vector2i = action.get("target", group.grid_position)
@@ -310,6 +320,101 @@ func _move_group(group: EnemyGroup, target: Vector2i) -> void:
 			group.grid_position = alt
 			group.steps_from_home = abs(alt.x - group.home_position.x) + abs(alt.y - group.home_position.y)
 			return
+
+
+func _move_group_chase(group: EnemyGroup, target: Vector2i) -> void:
+	if target == group.grid_position:
+		return
+
+	var blocked_dir := _is_blocked_by_closed_door(group.grid_position, target)
+	if blocked_dir != "":
+		_handle_enemy_door_wait(group, target, blocked_dir)
+		return
+
+	var old_pos := group.grid_position
+	if _is_position_valid_for_move(target, group):
+		group.grid_position = target
+		group.steps_from_home = abs(target.x - group.home_position.x) + abs(target.y - group.home_position.y)
+		_maybe_schedule_door_close(old_pos, target)
+		return
+
+	var alternatives := _pathfinding.get_all_adjacent(group.grid_position)
+	alternatives.shuffle()
+	for alt in alternatives:
+		if _is_position_valid_for_move(alt, group):
+			group.grid_position = alt
+			group.steps_from_home = abs(alt.x - group.home_position.x) + abs(alt.y - group.home_position.y)
+			_maybe_schedule_door_close(old_pos, alt)
+			return
+
+
+func _is_blocked_by_closed_door(from: Vector2i, to: Vector2i) -> String:
+	var dir := _get_direction_between(from, to)
+	if dir == "":
+		return ""
+	var tile := dungeon_data.get_tile(from.x, from.y)
+	if tile == null:
+		return ""
+	if tile.get_wall_type(dir) == DungeonTile.WallType.DOOR and not tile.is_door_open(dir):
+		return dir
+	return ""
+
+
+func _get_direction_between(from: Vector2i, to: Vector2i) -> String:
+	var dx := to.x - from.x
+	var dy := to.y - from.y
+	if dy < 0: return "north"
+	if dy > 0: return "south"
+	if dx > 0: return "east"
+	if dx < 0: return "west"
+	return ""
+
+
+func _handle_enemy_door_wait(group: EnemyGroup, target: Vector2i, direction: String) -> void:
+	if group.door_wait_position == group.grid_position and group.door_wait_direction == direction:
+		group.door_wait_turns += 1
+	else:
+		group.door_wait_turns = 1
+		group.door_wait_direction = direction
+		group.door_wait_position = group.grid_position
+
+	var threshold := randi_range(1, 2)
+	if group.door_wait_turns >= threshold:
+		dungeon_data.sync_door_open(group.grid_position.x, group.grid_position.y, direction, true)
+		_record_door_change(group.grid_position.x, group.grid_position.y, direction)
+		group.door_wait_turns = 0
+		group.door_wait_direction = ""
+		group.door_wait_position = Vector2i.ZERO
+
+		var old_pos := group.grid_position
+		if _is_position_valid_for_move(target, group):
+			group.grid_position = target
+			group.steps_from_home = abs(target.x - group.home_position.x) + abs(target.y - group.home_position.y)
+			_maybe_schedule_door_close(old_pos, target)
+
+
+func _maybe_schedule_door_close(old_pos: Vector2i, new_pos: Vector2i) -> void:
+	var dir := _get_direction_between(old_pos, new_pos)
+	if dir == "":
+		return
+	var tile := dungeon_data.get_tile(old_pos.x, old_pos.y)
+	if tile == null:
+		return
+	if tile.get_wall_type(dir) == DungeonTile.WallType.DOOR and tile.is_door_open(dir):
+		_pending_door_closes.append({"x": old_pos.x, "y": old_pos.y, "direction": dir})
+
+
+func _apply_pending_door_closes() -> void:
+	for close_data in _pending_door_closes:
+		dungeon_data.sync_door_open(close_data.x, close_data.y, close_data.direction, false)
+		_record_door_change(close_data.x, close_data.y, close_data.direction)
+	_pending_door_closes.clear()
+
+
+func _record_door_change(x: int, y: int, direction: String) -> void:
+	changed_doors.append({"x": x, "y": y, "direction": direction})
+	var offset: Vector2i = DungeonData.DIR_OFFSET[direction]
+	changed_doors.append({"x": x + offset.x, "y": y + offset.y, "direction": DungeonData.OPPOSITE_DIR[direction]})
 
 
 func _is_position_valid_for_move(pos: Vector2i, moving_group: EnemyGroup) -> bool:

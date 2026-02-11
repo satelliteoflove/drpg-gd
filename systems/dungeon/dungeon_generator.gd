@@ -35,6 +35,7 @@ func generate(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> Dun
 	_connect_regions()
 	_remove_dead_ends()
 	_update_walls()
+	_place_doors()
 
 	var dungeon: DungeonData = DungeonData.new()
 	dungeon.width = width
@@ -45,6 +46,7 @@ func generate(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> Dun
 	dungeon.rooms = _rooms.duplicate()
 
 	_place_stairs(dungeon)
+	_lock_doors(dungeon)
 	_assign_zones(dungeon)
 
 	return dungeon
@@ -309,6 +311,192 @@ func _update_walls() -> void:
 				tile.west_wall = DungeonTile.WallType.SOLID
 			if x == width - 1 or _is_solid(x + 1, y):
 				tile.east_wall = DungeonTile.WallType.SOLID
+
+
+func _place_doors() -> void:
+	for y in range(1, height - 1):
+		for x in range(1, width - 1):
+			var tile := _get_tile(x, y)
+			if tile == null or not tile.is_walkable():
+				continue
+
+			if _is_in_room(x, y):
+				continue
+
+			var open_n := not _is_solid(x, y - 1)
+			var open_s := not _is_solid(x, y + 1)
+			var open_e := not _is_solid(x + 1, y)
+			var open_w := not _is_solid(x - 1, y)
+
+			var openings := int(open_n) + int(open_s) + int(open_e) + int(open_w)
+			if openings != 2:
+				continue
+
+			var is_ns := open_n and open_s
+			var is_ew := open_e and open_w
+			if not is_ns and not is_ew:
+				continue
+
+			var door_dir := ""
+			if is_ns:
+				if _is_in_room(x, y - 1):
+					door_dir = "north"
+				elif _is_in_room(x, y + 1):
+					door_dir = "south"
+			else:
+				if _is_in_room(x + 1, y):
+					door_dir = "east"
+				elif _is_in_room(x - 1, y):
+					door_dir = "west"
+
+			if door_dir == "":
+				continue
+
+			if _rng.randf() > DOOR_CHANCE:
+				continue
+
+			var offset: Vector2i = DungeonData.DIR_OFFSET[door_dir]
+			var neighbor := _get_tile(x + offset.x, y + offset.y)
+			tile.set_wall(door_dir, DungeonTile.WallType.DOOR)
+			if neighbor:
+				neighbor.set_wall(DungeonData.OPPOSITE_DIR[door_dir], DungeonTile.WallType.DOOR)
+
+
+func _lock_doors(dungeon: DungeonData) -> void:
+	var target_room: DungeonRoom = null
+	for room in _rooms:
+		if room.contains(dungeon.stairs_down_pos.x, dungeon.stairs_down_pos.y):
+			target_room = room
+			break
+
+	if target_room == null:
+		return
+
+	var openings: Array[Dictionary] = []
+	var dir_names := ["north", "south", "east", "west"]
+	for ry in range(target_room.y, target_room.y + target_room.height):
+		for rx in range(target_room.x, target_room.x + target_room.width):
+			var tile := dungeon.get_tile(rx, ry)
+			if tile == null or not tile.is_walkable():
+				continue
+			for dir in dir_names:
+				var offset: Vector2i = DungeonData.DIR_OFFSET[dir]
+				var nx := rx + offset.x
+				var ny := ry + offset.y
+				if target_room.contains(nx, ny):
+					continue
+				var wall_type := tile.get_wall_type(dir)
+				if wall_type != DungeonTile.WallType.SOLID:
+					openings.append({"x": rx, "y": ry, "direction": dir})
+
+	if openings.is_empty():
+		return
+
+	var keep_idx := _rng.randi() % openings.size()
+	var sealed_neighbors: Array[Vector2i] = []
+	for i in range(openings.size()):
+		var o: Dictionary = openings[i]
+		if i == keep_idx:
+			var tile := dungeon.get_tile(o.x, o.y)
+			if tile.get_wall_type(o.direction) != DungeonTile.WallType.DOOR:
+				var offset: Vector2i = DungeonData.DIR_OFFSET[o.direction]
+				var neighbor := dungeon.get_tile(o.x + offset.x, o.y + offset.y)
+				tile.set_wall(o.direction, DungeonTile.WallType.DOOR)
+				if neighbor:
+					neighbor.set_wall(DungeonData.OPPOSITE_DIR[o.direction], DungeonTile.WallType.DOOR)
+			dungeon.sync_door_locked(o.x, o.y, o.direction, true)
+		else:
+			var tile := dungeon.get_tile(o.x, o.y)
+			var offset: Vector2i = DungeonData.DIR_OFFSET[o.direction]
+			var neighbor := dungeon.get_tile(o.x + offset.x, o.y + offset.y)
+			tile.set_wall(o.direction, DungeonTile.WallType.SOLID)
+			if neighbor:
+				neighbor.set_wall(DungeonData.OPPOSITE_DIR[o.direction], DungeonTile.WallType.SOLID)
+			sealed_neighbors.append(Vector2i(o.x + offset.x, o.y + offset.y))
+
+	_remove_new_dead_ends(dungeon, sealed_neighbors)
+
+
+func _remove_new_dead_ends(dungeon: DungeonData, starting_tiles: Array[Vector2i]) -> void:
+	var queue := starting_tiles.duplicate()
+	var dirs: Array[Vector2i] = [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]
+	while not queue.is_empty():
+		var pos: Vector2i = queue.pop_front()
+		var tile := dungeon.get_tile(pos.x, pos.y)
+		if tile == null or not tile.is_walkable():
+			continue
+		if _is_in_room(pos.x, pos.y):
+			continue
+		var exits := 0
+		for d in dirs:
+			var neighbor := dungeon.get_tile(pos.x + d.x, pos.y + d.y)
+			if neighbor != null and neighbor.is_walkable():
+				var dir_name := _direction_between(pos, pos + d)
+				if dir_name != "" and tile.get_wall_type(dir_name) != DungeonTile.WallType.SOLID:
+					exits += 1
+		if exits <= 1:
+			tile.type = DungeonTile.TileType.SOLID
+			tile.north_wall = DungeonTile.WallType.NONE
+			tile.south_wall = DungeonTile.WallType.NONE
+			tile.east_wall = DungeonTile.WallType.NONE
+			tile.west_wall = DungeonTile.WallType.NONE
+			for d in dirs:
+				var npos := pos + d
+				var neighbor := dungeon.get_tile(npos.x, npos.y)
+				if neighbor != null and neighbor.is_walkable():
+					var neighbor_dir := _direction_between(npos, pos)
+					if neighbor_dir != "":
+						neighbor.set_wall(neighbor_dir, DungeonTile.WallType.SOLID)
+				queue.append(npos)
+
+
+func _bfs_path(dungeon: DungeonData, start: Vector2i, goal: Vector2i) -> Array[Vector2i]:
+	var came_from := {}
+	var queue: Array[Vector2i] = [start]
+	came_from[start] = start
+	var dirs: Array[Vector2i] = [Vector2i(0, -1), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0)]
+
+	while not queue.is_empty():
+		var pos: Vector2i = queue.pop_front()
+		if pos == goal:
+			break
+		var tile := dungeon.get_tile(pos.x, pos.y)
+		if tile == null:
+			continue
+		for dir in dirs:
+			var next := pos + dir
+			if came_from.has(next):
+				continue
+			var next_tile := dungeon.get_tile(next.x, next.y)
+			if next_tile == null or not next_tile.is_walkable():
+				continue
+			var wall_dir := _direction_between(pos, next)
+			if wall_dir != "" and tile.get_wall_type(wall_dir) == DungeonTile.WallType.SOLID:
+				continue
+			came_from[next] = pos
+			queue.append(next)
+
+	if not came_from.has(goal):
+		return []
+
+	var path: Array[Vector2i] = []
+	var current := goal
+	while current != start:
+		path.append(current)
+		current = came_from[current]
+	path.append(start)
+	path.reverse()
+	return path
+
+
+func _direction_between(from: Vector2i, to: Vector2i) -> String:
+	var dx := to.x - from.x
+	var dy := to.y - from.y
+	if dy < 0: return "north"
+	if dy > 0: return "south"
+	if dx > 0: return "east"
+	if dx < 0: return "west"
+	return ""
 
 
 func _place_stairs(dungeon: DungeonData) -> void:

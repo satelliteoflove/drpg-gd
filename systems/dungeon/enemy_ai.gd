@@ -57,7 +57,8 @@ func _process_idle(group: EnemyGroup, player_pos: Vector2i, can_see: bool) -> Di
 			"target": _get_chase_move(group, player_pos)
 		}
 	if group.ai_type == EnemyGroup.AIType.GUARDIAN and randf() < 0.15:
-		var target := _pathfinding.get_random_adjacent(group.grid_position)
+		var adj := _pathfinding.get_all_adjacent(group.grid_position, true)
+		var target := adj[randi() % adj.size()] if not adj.is_empty() else group.grid_position
 		var dist_from_home: int = abs(target.x - group.home_position.x) + abs(target.y - group.home_position.y)
 		if dist_from_home <= 2:
 			return {"type": "move", "target": target}
@@ -118,7 +119,8 @@ func _process_search(group: EnemyGroup, dungeon: DungeonData) -> Dictionary:
 		return {"type": "return", "target": _get_return_move(group, dungeon)}
 
 	if randf() < 0.5:
-		var random_adjacent := _pathfinding.get_random_adjacent(group.grid_position)
+		var adj := _pathfinding.get_all_adjacent(group.grid_position, true)
+		var random_adjacent := adj[randi() % adj.size()] if not adj.is_empty() else group.grid_position
 		return {"type": "move", "target": random_adjacent}
 
 	return {"type": "search"}
@@ -136,7 +138,7 @@ func _get_wander_move(group: EnemyGroup, _dungeon: DungeonData) -> Vector2i:
 	if randf() < 0.10:
 		return group.grid_position
 
-	var candidates := _pathfinding.get_all_adjacent(group.grid_position)
+	var candidates := _pathfinding.get_all_adjacent(group.grid_position, true)
 	if candidates.is_empty():
 		return group.grid_position
 
@@ -153,7 +155,7 @@ func _get_patrol_move(group: EnemyGroup, dungeon: DungeonData) -> Vector2i:
 	if group.grid_position == target:
 		target = group.get_next_patrol_point()
 
-	return _pathfinding.get_next_step(group.grid_position, target, false)
+	return _pathfinding.get_next_step(group.grid_position, target, true)
 
 
 func _get_chase_move(group: EnemyGroup, player_pos: Vector2i) -> Vector2i:
@@ -161,11 +163,11 @@ func _get_chase_move(group: EnemyGroup, player_pos: Vector2i) -> Vector2i:
 
 
 func _get_pursue_move(group: EnemyGroup, _dungeon: DungeonData) -> Vector2i:
-	return _pathfinding.get_next_step(group.grid_position, group.last_known_player_pos, false)
+	return _pathfinding.get_next_step(group.grid_position, group.last_known_player_pos, true)
 
 
 func _get_return_move(group: EnemyGroup, _dungeon: DungeonData) -> Vector2i:
-	return _pathfinding.get_next_step(group.grid_position, group.home_position, false)
+	return _pathfinding.get_next_step(group.grid_position, group.home_position, true)
 
 
 func _get_flee_action(group: EnemyGroup, player_pos: Vector2i, _dungeon: DungeonData) -> Dictionary:

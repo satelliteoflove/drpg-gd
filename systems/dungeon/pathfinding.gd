@@ -108,23 +108,32 @@ func get_next_step(from: Vector2i, to: Vector2i, avoid_doors: bool = false) -> V
 	return next
 
 
-func get_all_adjacent(pos: Vector2i) -> Array[Vector2i]:
+func get_all_adjacent(pos: Vector2i, respect_doors: bool = false) -> Array[Vector2i]:
 	var candidates: Array[Vector2i] = []
 
 	var tile := _dungeon.get_tile(pos.x, pos.y)
 	if tile == null:
 		return candidates
 
-	if tile.north_wall != DungeonTile.WallType.SOLID and _dungeon.is_walkable(pos.x, pos.y - 1):
+	if _can_pass_wall(tile, "north", respect_doors) and _dungeon.is_walkable(pos.x, pos.y - 1):
 		candidates.append(Vector2i(pos.x, pos.y - 1))
-	if tile.south_wall != DungeonTile.WallType.SOLID and _dungeon.is_walkable(pos.x, pos.y + 1):
+	if _can_pass_wall(tile, "south", respect_doors) and _dungeon.is_walkable(pos.x, pos.y + 1):
 		candidates.append(Vector2i(pos.x, pos.y + 1))
-	if tile.east_wall != DungeonTile.WallType.SOLID and _dungeon.is_walkable(pos.x + 1, pos.y):
+	if _can_pass_wall(tile, "east", respect_doors) and _dungeon.is_walkable(pos.x + 1, pos.y):
 		candidates.append(Vector2i(pos.x + 1, pos.y))
-	if tile.west_wall != DungeonTile.WallType.SOLID and _dungeon.is_walkable(pos.x - 1, pos.y):
+	if _can_pass_wall(tile, "west", respect_doors) and _dungeon.is_walkable(pos.x - 1, pos.y):
 		candidates.append(Vector2i(pos.x - 1, pos.y))
 
 	return candidates
+
+
+func _can_pass_wall(tile: DungeonTile, direction: String, respect_doors: bool) -> bool:
+	var wall_type := tile.get_wall_type(direction)
+	if wall_type == DungeonTile.WallType.SOLID:
+		return false
+	if respect_doors and wall_type == DungeonTile.WallType.DOOR and not tile.is_door_open(direction):
+		return false
+	return true
 
 
 func get_random_adjacent(pos: Vector2i) -> Vector2i:

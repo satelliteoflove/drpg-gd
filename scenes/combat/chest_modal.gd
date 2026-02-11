@@ -161,7 +161,7 @@ func _on_disarm() -> void:
 		if trap_result.get("party_wiped", false):
 			await get_tree().create_timer(1.0).timeout
 			var no_items: Array[Item] = []
-		chest_resolved.emit(no_items, false)
+			chest_resolved.emit(no_items, false)
 			return
 
 	_update_trap_warning()

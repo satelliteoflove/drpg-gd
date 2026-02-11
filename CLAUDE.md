@@ -66,6 +66,12 @@ Example: `uv run --with Pillow python3 script.py`
 - Shift+h - Strafe left
 - Shift+l - Strafe right
 
+### Dungeon Debug Keys
+- G - Add gold
+- C - Force combat encounter
+- Shift+F - Teleport to next floor (at stairs up)
+- Ctrl+F - Teleport to previous floor (at stairs up)
+
 ### Map Screen Debug Keys
 - R - Reveal entire map
 - E - Show/hide all enemies

@@ -6,6 +6,7 @@ signal action_performed(message: String)
 signal combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Array[Item])
 signal target_selection_requested(reachable_enemies: Array[Monster])
 signal monster_turn_delay_requested(delay: float)
+signal layout_changed
 
 var party_members: Array[Character] = []
 var party: Party = null
@@ -758,7 +759,7 @@ func get_living_enemies() -> Array[Monster]:
 ## [return]: Monster at that position or null.
 func get_enemy_at(pos: Vector2i) -> Monster:
 	for enemy in enemies:
-		if enemy.grid_position == pos:
+		if not enemy.is_dead and enemy.grid_position == pos:
 			return enemy
 	return null
 
@@ -810,6 +811,7 @@ func _check_party_row_advance() -> void:
 		return
 	if party.advance_back_row_if_front_wiped():
 		action_performed.emit("The back row advances to the front!")
+		layout_changed.emit()
 
 
 func _check_enemy_row_advance() -> void:
@@ -820,6 +822,7 @@ func _check_enemy_row_advance() -> void:
 	for enemy in enemies:
 		if not enemy.is_dead:
 			enemy.grid_position.y -= front_row
+	layout_changed.emit()
 
 
 func _get_enemy_front_row() -> int:

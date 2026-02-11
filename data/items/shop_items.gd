@@ -134,6 +134,17 @@ static func _create_items() -> void:
 	_items["scroll_revelation"].reveal_duration = 40
 	_items["scroll_revelation"].description = "Reveals all enemies on the floor for 40 steps."
 
+	var dungeon_key := Item.new()
+	dungeon_key.id = "dungeon_key"
+	dungeon_key.item_name = "Dungeon Key"
+	dungeon_key.description = "Unlocks a locked door in the dungeon."
+	dungeon_key.item_type = Item.ItemType.QUEST
+	dungeon_key.stackable = true
+	dungeon_key.max_stack = 99
+	dungeon_key.buy_price = 0
+	dungeon_key.sell_price = 0
+	_items["dungeon_key"] = dungeon_key
+
 
 static func get_item(item_id: String) -> Item:
 	_ensure_initialized()

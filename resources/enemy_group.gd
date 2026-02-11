@@ -33,6 +33,9 @@ const SEARCH_TURNS := {min = 3, max = 5}
 var last_known_player_pos: Vector2i = Vector2i(-1, -1)
 var search_turns_remaining: int = 0
 var was_spotted: bool = false
+var door_wait_turns: int = 0
+var door_wait_direction: String = ""
+var door_wait_position: Vector2i = Vector2i.ZERO
 var is_revealed: bool = false
 var leash_distance: int = 0
 var steps_from_home: int = 0
@@ -166,6 +169,9 @@ func duplicate_for_encounter() -> EnemyGroup:
 	copy.is_revealed = is_revealed
 	copy.leash_distance = leash_distance
 	copy.steps_from_home = steps_from_home
+	copy.door_wait_turns = door_wait_turns
+	copy.door_wait_direction = door_wait_direction
+	copy.door_wait_position = door_wait_position
 
 	for monster in monsters:
 		var monster_copy := monster.duplicate_for_combat()

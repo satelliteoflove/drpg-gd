@@ -9,6 +9,8 @@ const LEGEND_WIDTH: int = 150
 const COLOR_FLOOR := Color(0.2, 0.2, 0.25)
 const COLOR_WALL := Color(0.6, 0.55, 0.4)
 const COLOR_DOOR := Color(0.5, 0.35, 0.15)
+const COLOR_DOOR_OPEN := Color(0.5, 0.35, 0.15, 0.4)
+const COLOR_DOOR_LOCKED := Color(0.7, 0.15, 0.15)
 const COLOR_STAIRS_UP := Color(0.2, 0.6, 0.2)
 const COLOR_STAIRS_DOWN := Color(0.6, 0.2, 0.2)
 const COLOR_PLAYER := Color(1.0, 1.0, 0.0)
@@ -192,12 +194,12 @@ func _draw() -> void:
 
 func _draw_walls(tile: DungeonTile, tile_pos: Vector2) -> void:
 	if tile.north_wall != DungeonTile.WallType.NONE:
-		var wall_color := _get_wall_color(tile.north_wall)
+		var wall_color := _get_wall_color(tile, "north")
 		var wall_rect := Rect2(tile_pos, Vector2(TILE_SIZE, WALL_THICKNESS))
 		draw_rect(wall_rect, wall_color)
 
 	if tile.south_wall != DungeonTile.WallType.NONE:
-		var wall_color := _get_wall_color(tile.south_wall)
+		var wall_color := _get_wall_color(tile, "south")
 		var wall_rect := Rect2(
 			tile_pos + Vector2(0, TILE_SIZE - WALL_THICKNESS),
 			Vector2(TILE_SIZE, WALL_THICKNESS)
@@ -205,12 +207,12 @@ func _draw_walls(tile: DungeonTile, tile_pos: Vector2) -> void:
 		draw_rect(wall_rect, wall_color)
 
 	if tile.west_wall != DungeonTile.WallType.NONE:
-		var wall_color := _get_wall_color(tile.west_wall)
+		var wall_color := _get_wall_color(tile, "west")
 		var wall_rect := Rect2(tile_pos, Vector2(WALL_THICKNESS, TILE_SIZE))
 		draw_rect(wall_rect, wall_color)
 
 	if tile.east_wall != DungeonTile.WallType.NONE:
-		var wall_color := _get_wall_color(tile.east_wall)
+		var wall_color := _get_wall_color(tile, "east")
 		var wall_rect := Rect2(
 			tile_pos + Vector2(TILE_SIZE - WALL_THICKNESS, 0),
 			Vector2(WALL_THICKNESS, TILE_SIZE)
@@ -218,12 +220,15 @@ func _draw_walls(tile: DungeonTile, tile_pos: Vector2) -> void:
 		draw_rect(wall_rect, wall_color)
 
 
-func _get_wall_color(wall_type: DungeonTile.WallType) -> Color:
-	match wall_type:
-		DungeonTile.WallType.DOOR:
-			return COLOR_DOOR
-		_:
-			return COLOR_WALL
+func _get_wall_color(tile: DungeonTile, direction: String) -> Color:
+	var wall_type := tile.get_wall_type(direction)
+	if wall_type == DungeonTile.WallType.DOOR:
+		if tile.is_door_locked(direction):
+			return COLOR_DOOR_LOCKED
+		if tile.is_door_open(direction):
+			return COLOR_DOOR_OPEN
+		return COLOR_DOOR
+	return COLOR_WALL
 
 
 func _draw_player(offset_x: float, offset_y: float) -> void:
@@ -273,7 +278,9 @@ func _draw_legend(screen_size: Vector2) -> void:
 	var items := [
 		{"color": COLOR_FLOOR, "label": "Floor"},
 		{"color": COLOR_WALL, "label": "Wall"},
-		{"color": COLOR_DOOR, "label": "Door"},
+		{"color": COLOR_DOOR, "label": "Door (Closed)"},
+		{"color": COLOR_DOOR_OPEN, "label": "Door (Open)"},
+		{"color": COLOR_DOOR_LOCKED, "label": "Door (Locked)"},
 		{"color": COLOR_STAIRS_UP, "label": "Stairs Up"},
 		{"color": COLOR_STAIRS_DOWN, "label": "Stairs Down"},
 		{"color": COLOR_PLAYER, "label": "You"},

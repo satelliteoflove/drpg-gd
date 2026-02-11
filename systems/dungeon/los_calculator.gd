@@ -46,16 +46,25 @@ func _can_see_through(dungeon: DungeonData, x: int, y: int, from: Vector2i, to: 
 	var prev_x := from.x if x == from.x else (x - 1 if to.x > from.x else x + 1)
 	var prev_y := from.y if y == from.y else (y - 1 if to.y > from.y else y + 1)
 
-	if x > prev_x and tile.west_wall == DungeonTile.WallType.SOLID:
+	if x > prev_x and _wall_blocks_los(tile, "west"):
 		return false
-	if x < prev_x and tile.east_wall == DungeonTile.WallType.SOLID:
+	if x < prev_x and _wall_blocks_los(tile, "east"):
 		return false
-	if y > prev_y and tile.north_wall == DungeonTile.WallType.SOLID:
+	if y > prev_y and _wall_blocks_los(tile, "north"):
 		return false
-	if y < prev_y and tile.south_wall == DungeonTile.WallType.SOLID:
+	if y < prev_y and _wall_blocks_los(tile, "south"):
 		return false
 
 	return true
+
+
+func _wall_blocks_los(tile: DungeonTile, direction: String) -> bool:
+	var wall_type := tile.get_wall_type(direction)
+	if wall_type == DungeonTile.WallType.SOLID:
+		return true
+	if wall_type == DungeonTile.WallType.DOOR and not tile.is_door_open(direction):
+		return true
+	return false
 
 
 func get_distance(from: Vector2i, to: Vector2i) -> int:

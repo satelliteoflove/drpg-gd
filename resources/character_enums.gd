@@ -228,6 +228,10 @@ const DEATH_STATUSES: Array[StatusEffect] = [
 	StatusEffect.LOST
 ]
 
+const BENEFICIAL_STATUSES: Array[StatusEffect] = [
+	StatusEffect.BLESSED,
+]
+
 const RACIAL_IMMUNITIES: Dictionary = {
 	Race.ELF: [StatusEffect.ASLEEP],
 	Race.DWARF: [StatusEffect.POISONED],

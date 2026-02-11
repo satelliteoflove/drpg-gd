@@ -1,6 +1,9 @@
 class_name DungeonData
 extends Resource
 
+const OPPOSITE_DIR := {"north": "south", "south": "north", "east": "west", "west": "east"}
+const DIR_OFFSET := {"north": Vector2i(0, -1), "south": Vector2i(0, 1), "east": Vector2i(1, 0), "west": Vector2i(-1, 0)}
+
 @export var width: int = 31
 @export var height: int = 31
 @export var floor_level: int = 1
@@ -53,6 +56,26 @@ func get_zone_by_id(zone_id: String) -> EncounterZone:
 		if zone.id == zone_id:
 			return zone
 	return null
+
+
+func sync_door_open(x: int, y: int, direction: String, open: bool) -> void:
+	var tile := get_tile(x, y)
+	if tile != null:
+		tile.set_door_open(direction, open)
+	var offset: Vector2i = DIR_OFFSET.get(direction, Vector2i.ZERO)
+	var neighbor := get_tile(x + offset.x, y + offset.y)
+	if neighbor != null:
+		neighbor.set_door_open(OPPOSITE_DIR[direction], open)
+
+
+func sync_door_locked(x: int, y: int, direction: String, locked: bool) -> void:
+	var tile := get_tile(x, y)
+	if tile != null:
+		tile.set_door_locked(direction, locked)
+	var offset: Vector2i = DIR_OFFSET.get(direction, Vector2i.ZERO)
+	var neighbor := get_tile(x + offset.x, y + offset.y)
+	if neighbor != null:
+		neighbor.set_door_locked(OPPOSITE_DIR[direction], locked)
 
 
 func add_zone(zone: EncounterZone) -> void:

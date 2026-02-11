@@ -155,12 +155,13 @@ static func _process_status(
 		duration = DamageCalculator.roll_dice(effect.duration_dice)
 
 	var dc := 10 + effect.status_power + caster.level / 2
+	var is_beneficial := effect.status_type in CharacterEnums.BENEFICIAL_STATUSES
 
 	for target in targets:
 		if target.is_dead:
 			continue
 
-		if StatusEffectSystem.roll_saving_throw(target, effect.save_type, dc):
+		if not is_beneficial and StatusEffectSystem.roll_saving_throw(target, effect.save_type, dc):
 			result.messages.append("%s resists!" % target.get_display_name())
 			continue
 
@@ -169,7 +170,8 @@ static func _process_status(
 			effect.status_type,
 			duration,
 			"spell",
-			effect.status_power
+			effect.status_power,
+			is_beneficial
 		)
 		if apply_result.message != "":
 			result.messages.append(apply_result.message)
@@ -471,12 +473,13 @@ static func _process_monster_status(
 		duration = DamageCalculator.roll_dice(effect.duration_dice)
 
 	var dc := 10 + effect.status_power + caster.level / 2
+	var is_beneficial := effect.status_type in CharacterEnums.BENEFICIAL_STATUSES
 
 	for target in targets:
 		if target.is_dead:
 			continue
 
-		if StatusEffectSystem.roll_saving_throw(target, effect.save_type, dc):
+		if not is_beneficial and StatusEffectSystem.roll_saving_throw(target, effect.save_type, dc):
 			result.messages.append("%s resists!" % target.get_display_name())
 			continue
 
@@ -485,7 +488,8 @@ static func _process_monster_status(
 			effect.status_type,
 			duration,
 			"monster_spell",
-			effect.status_power
+			effect.status_power,
+			is_beneficial
 		)
 		if apply_result.message != "":
 			result.messages.append(apply_result.message)

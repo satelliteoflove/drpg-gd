@@ -28,7 +28,7 @@ enum Facing { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 }
 
 enum FloorMeshItem { FLOOR = 0, STAIRS_UP = 1, STAIRS_DOWN = 2 }
 enum CeilingMeshItem { CEILING = 0 }
-enum WallMeshItem { WALL = 0 }
+enum WallMeshItem { WALL = 0, DOOR_CLOSED = 1 }
 
 var grid_position: Vector2i = Vector2i.ZERO
 var previous_grid_position: Vector2i = Vector2i.ZERO
@@ -51,6 +51,8 @@ var _enemy_container: Node3D = null
 @onready var floor_label: Label = $UI/TopBar/FloorLabel
 
 var _flicker_time: float = 0.0
+var _message_label: Label = null
+var _message_tween: Tween = null
 
 var _floor_material: StandardMaterial3D = null
 var _wall_material: StandardMaterial3D = null
@@ -72,6 +74,7 @@ func _ready() -> void:
 	_initialize_enemy_system()
 	_update_ui()
 
+	_setup_message_label()
 	$UI/BottomBar/TownButton.pressed.connect(_on_town_pressed)
 	$UI/BottomBar/MenuButton.pressed.connect(_on_menu_pressed)
 
@@ -164,6 +167,16 @@ func _setup_grid_maps() -> void:
 		0.85
 	)
 
+	var door_material := _create_material_from_texture(
+		"res://textures/door/diffuse.png",
+		"res://textures/door/normal.png",
+		Vector3(1.0, 1.0, 1.0),
+		Color.WHITE,
+		0.8,
+		"",
+		0.85
+	)
+
 	_floor_material = floor_material
 	_wall_material = wall_material
 	_ceiling_material = ceiling_material
@@ -174,16 +187,16 @@ func _setup_grid_maps() -> void:
 	ceiling_grid.mesh_library = _create_ceiling_library(ceiling_material)
 	ceiling_grid.cell_size = Vector3(CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-	north_wall_grid.mesh_library = _create_wall_library(wall_material, Vector3(0, WALL_HEIGHT / 2.0, -CELL_SIZE / 2.0), false)
+	north_wall_grid.mesh_library = _create_wall_library(wall_material, door_material, Vector3(0, WALL_HEIGHT / 2.0, -CELL_SIZE / 2.0), false)
 	north_wall_grid.cell_size = Vector3(CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-	south_wall_grid.mesh_library = _create_wall_library(wall_material, Vector3(0, WALL_HEIGHT / 2.0, CELL_SIZE / 2.0), false)
+	south_wall_grid.mesh_library = _create_wall_library(wall_material, door_material, Vector3(0, WALL_HEIGHT / 2.0, CELL_SIZE / 2.0), false)
 	south_wall_grid.cell_size = Vector3(CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-	east_wall_grid.mesh_library = _create_wall_library(wall_material, Vector3(CELL_SIZE / 2.0, WALL_HEIGHT / 2.0, 0), true)
+	east_wall_grid.mesh_library = _create_wall_library(wall_material, door_material, Vector3(CELL_SIZE / 2.0, WALL_HEIGHT / 2.0, 0), true)
 	east_wall_grid.cell_size = Vector3(CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-	west_wall_grid.mesh_library = _create_wall_library(wall_material, Vector3(-CELL_SIZE / 2.0, WALL_HEIGHT / 2.0, 0), true)
+	west_wall_grid.mesh_library = _create_wall_library(wall_material, door_material, Vector3(-CELL_SIZE / 2.0, WALL_HEIGHT / 2.0, 0), true)
 	west_wall_grid.cell_size = Vector3(CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
 
@@ -225,7 +238,7 @@ func _create_ceiling_library(material: StandardMaterial3D) -> MeshLibrary:
 	return library
 
 
-func _create_wall_library(material: StandardMaterial3D, offset: Vector3, rotated: bool) -> MeshLibrary:
+func _create_wall_library(material: StandardMaterial3D, door_mat: StandardMaterial3D, offset: Vector3, rotated: bool) -> MeshLibrary:
 	var library := MeshLibrary.new()
 
 	var mesh := BoxMesh.new()
@@ -238,6 +251,17 @@ func _create_wall_library(material: StandardMaterial3D, offset: Vector3, rotated
 	library.create_item(WallMeshItem.WALL)
 	library.set_item_mesh(WallMeshItem.WALL, mesh)
 	library.set_item_mesh_transform(WallMeshItem.WALL, Transform3D(Basis(), offset))
+
+	var door_mesh := BoxMesh.new()
+	if rotated:
+		door_mesh.size = Vector3(0.1, WALL_HEIGHT, CELL_SIZE)
+	else:
+		door_mesh.size = Vector3(CELL_SIZE, WALL_HEIGHT, 0.1)
+	door_mesh.material = door_mat
+
+	library.create_item(WallMeshItem.DOOR_CLOSED)
+	library.set_item_mesh(WallMeshItem.DOOR_CLOSED, door_mesh)
+	library.set_item_mesh_transform(WallMeshItem.DOOR_CLOSED, Transform3D(Basis(), offset))
 
 	return library
 
@@ -286,14 +310,51 @@ func _render_tile(x: int, y: int, tile: DungeonTile) -> void:
 	floor_grid.set_cell_item(cell, floor_item)
 	ceiling_grid.set_cell_item(cell, CeilingMeshItem.CEILING)
 
-	if tile.north_wall != DungeonTile.WallType.NONE:
-		north_wall_grid.set_cell_item(cell, WallMeshItem.WALL)
-	if tile.south_wall != DungeonTile.WallType.NONE:
-		south_wall_grid.set_cell_item(cell, WallMeshItem.WALL)
-	if tile.east_wall != DungeonTile.WallType.NONE:
-		east_wall_grid.set_cell_item(cell, WallMeshItem.WALL)
-	if tile.west_wall != DungeonTile.WallType.NONE:
-		west_wall_grid.set_cell_item(cell, WallMeshItem.WALL)
+	_render_wall(north_wall_grid, cell, tile.north_wall, tile.is_door_open("north"))
+	_render_wall(south_wall_grid, cell, tile.south_wall, tile.is_door_open("south"))
+	_render_wall(east_wall_grid, cell, tile.east_wall, tile.is_door_open("east"))
+	_render_wall(west_wall_grid, cell, tile.west_wall, tile.is_door_open("west"))
+
+
+func _render_wall(grid: GridMap, cell: Vector3i, wall_type: DungeonTile.WallType, door_open: bool) -> void:
+	match wall_type:
+		DungeonTile.WallType.SOLID:
+			grid.set_cell_item(cell, WallMeshItem.WALL)
+		DungeonTile.WallType.DOOR:
+			if door_open:
+				grid.set_cell_item(cell, -1)
+			else:
+				grid.set_cell_item(cell, WallMeshItem.DOOR_CLOSED)
+		_:
+			pass
+
+
+func _get_wall_grid(direction: String) -> GridMap:
+	match direction:
+		"north": return north_wall_grid
+		"south": return south_wall_grid
+		"east": return east_wall_grid
+		"west": return west_wall_grid
+	return null
+
+
+func _update_door_visual(x: int, y: int, direction: String) -> void:
+	var tile := dungeon_data.get_tile(x, y)
+	if tile == null:
+		return
+	var grid := _get_wall_grid(direction)
+	if grid == null:
+		return
+	var cell := Vector3i(x, 0, y)
+	var wall_type := tile.get_wall_type(direction)
+	_render_wall(grid, cell, wall_type, tile.is_door_open(direction))
+
+
+func _update_enemy_door_visuals() -> void:
+	if enemy_manager == null:
+		return
+	for d in enemy_manager.changed_doors:
+		_update_door_visual(d.x, d.y, d.direction)
 
 
 func _spawn_player() -> void:
@@ -331,6 +392,7 @@ func _initialize_enemy_system() -> void:
 			enemy_manager.enemy_groups.append(group)
 
 	_create_enemy_sprites()
+	_rebuild_group_lookup()
 	_update_enemy_sprites()
 
 
@@ -348,13 +410,23 @@ func _create_sprite_for_group(group: EnemyGroup) -> void:
 	enemy_sprites[group.id] = sprite
 
 
+var _los_cache: LOSCalculator = LOSCalculator.new()
+var _group_lookup: Dictionary = {}
+
+
+func _rebuild_group_lookup() -> void:
+	_group_lookup.clear()
+	for group in enemy_manager.enemy_groups:
+		_group_lookup[group.id] = group
+
+
 func _update_enemy_sprites() -> void:
 	var player_pos := grid_position
 	var is_revealed := GameState.floor_tracker.is_revealed()
 
 	for group_id in enemy_sprites:
 		var sprite: Sprite3D = enemy_sprites[group_id]
-		var group := _get_group_by_id(group_id)
+		var group: EnemyGroup = _group_lookup.get(group_id)
 
 		if group == null or not group.is_alive():
 			sprite.visible = false
@@ -363,7 +435,10 @@ func _update_enemy_sprites() -> void:
 		sprite.update_world_position()
 
 		var dist: int = abs(group.grid_position.x - player_pos.x) + abs(group.grid_position.y - player_pos.y)
-		var has_los := _check_los_to_enemy(group)
+
+		var has_los := false
+		if dist <= 10:
+			has_los = _los_cache.has_line_of_sight(dungeon_data, player_pos, group.grid_position)
 
 		if has_los or GameState.floor_tracker.is_spotted(group_id) or is_revealed:
 			sprite.visible = true
@@ -377,18 +452,6 @@ func _update_enemy_sprites() -> void:
 			sprite.visible = false
 
 
-func _check_los_to_enemy(group: EnemyGroup) -> bool:
-	var los := LOSCalculator.new()
-	return los.has_line_of_sight(dungeon_data, grid_position, group.grid_position)
-
-
-func _get_group_by_id(group_id: String) -> EnemyGroup:
-	for group in enemy_manager.enemy_groups:
-		if group.id == group_id:
-			return group
-	return null
-
-
 func _on_enemy_combat_triggered(group: EnemyGroup) -> void:
 	var encounter := _create_encounter_from_group(group)
 	_open_combat(encounter)
@@ -396,9 +459,11 @@ func _on_enemy_combat_triggered(group: EnemyGroup) -> void:
 
 func _on_enemy_spawned(group: EnemyGroup) -> void:
 	_create_sprite_for_group(group)
+	_group_lookup[group.id] = group
 
 
 func _on_enemy_defeated(group: EnemyGroup) -> void:
+	_group_lookup.erase(group.id)
 	if enemy_sprites.has(group.id):
 		var sprite: Sprite3D = enemy_sprites[group.id]
 		sprite.queue_free()
@@ -464,6 +529,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_turn_left()
 	elif event.is_action_pressed("menu_right"):
 		_turn_right()
+	elif event.is_action_pressed("menu_confirm"):
+		_interact()
 	elif event.is_action_pressed("menu_cancel") or event.is_action_pressed("go_to_menu"):
 		_open_menu()
 	elif event.is_action_pressed("toggle_map"):
@@ -490,6 +557,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_adjust_material_roughness(0.05)
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_BRACKETLEFT:
 		_adjust_material_roughness(-0.05)
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_F:
+		if event.shift_pressed:
+			_debug_teleport_floor(GameState.current_floor + 1)
+		elif event.ctrl_pressed and GameState.current_floor > 1:
+			_debug_teleport_floor(GameState.current_floor - 1)
 
 
 func _get_debug_material() -> StandardMaterial3D:
@@ -524,6 +596,12 @@ func _adjust_material_roughness(delta: float) -> void:
 	var mat := _get_debug_material()
 	mat.roughness = clampf(mat.roughness + delta, 0.0, 1.0)
 	print("[Debug] %s roughness = %.2f" % [_get_debug_material_name(), mat.roughness])
+
+
+func _debug_teleport_floor(target_floor: int) -> void:
+	print("[Debug] Teleporting to floor %d" % target_floor)
+	SceneManager.go_to_dungeon(target_floor, true)
+
 
 
 func _move_forward() -> void:
@@ -589,23 +667,38 @@ func _can_move_to(from: Vector2i, to: Vector2i) -> bool:
 	if not dungeon_data.is_walkable(to.x, to.y):
 		return false
 
-	var tile: DungeonTile = dungeon_data.get_tile(from.x, from.y)
-	if tile == null:
+	var from_tile: DungeonTile = dungeon_data.get_tile(from.x, from.y)
+	if from_tile == null:
 		return false
 
 	var dx: int = to.x - from.x
 	var dy: int = to.y - from.y
 
-	if dy < 0 and tile.north_wall == DungeonTile.WallType.SOLID:
-		return false
-	if dy > 0 and tile.south_wall == DungeonTile.WallType.SOLID:
-		return false
-	if dx < 0 and tile.west_wall == DungeonTile.WallType.SOLID:
-		return false
-	if dx > 0 and tile.east_wall == DungeonTile.WallType.SOLID:
+	var dir := ""
+	if dy < 0: dir = "north"
+	elif dy > 0: dir = "south"
+	elif dx < 0: dir = "west"
+	elif dx > 0: dir = "east"
+
+	if dir != "" and _is_wall_blocking(from_tile, dir):
 		return false
 
+	var to_tile: DungeonTile = dungeon_data.get_tile(to.x, to.y)
+	if to_tile != null and dir != "":
+		var opposite: String = DungeonData.OPPOSITE_DIR[dir]
+		if _is_wall_blocking(to_tile, opposite):
+			return false
+
 	return true
+
+
+func _is_wall_blocking(tile: DungeonTile, direction: String) -> bool:
+	var wall_type := tile.get_wall_type(direction)
+	if wall_type == DungeonTile.WallType.SOLID:
+		return true
+	if wall_type == DungeonTile.WallType.DOOR and not tile.is_door_open(direction):
+		return true
+	return false
 
 
 func _check_special_tile() -> void:
@@ -706,8 +799,10 @@ func _update_camera_transform() -> void:
 func _on_move_complete() -> void:
 	is_moving = false
 	_mark_current_tile_discovered()
+	_close_doors_behind()
 	_check_special_tile()
 	_process_enemy_turn()
+	_update_enemy_door_visuals()
 	_check_held_movement()
 
 
@@ -744,6 +839,7 @@ func _process_enemy_turn() -> void:
 		return
 
 	var combat_group := enemy_manager.on_player_move(grid_position, facing)
+	_rebuild_group_lookup()
 	_update_enemy_sprites()
 
 	if combat_group != null:
@@ -951,6 +1047,123 @@ func _mark_current_tile_discovered() -> void:
 	var tile: DungeonTile = dungeon_data.get_tile(grid_position.x, grid_position.y)
 	if tile != null:
 		tile.discovered = true
+
+
+func _setup_message_label() -> void:
+	_message_label = Label.new()
+	_message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_message_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_message_label.anchors_preset = Control.PRESET_CENTER_BOTTOM
+	_message_label.anchor_left = 0.5
+	_message_label.anchor_right = 0.5
+	_message_label.anchor_top = 1.0
+	_message_label.anchor_bottom = 1.0
+	_message_label.offset_left = -200
+	_message_label.offset_right = 200
+	_message_label.offset_top = -80
+	_message_label.offset_bottom = -50
+	_message_label.add_theme_font_size_override("font_size", 18)
+	_message_label.modulate.a = 0.0
+	$UI.add_child(_message_label)
+
+
+func _show_dungeon_message(text: String) -> void:
+	_message_label.text = text
+	_message_label.modulate.a = 1.0
+	if _message_tween:
+		_message_tween.kill()
+	_message_tween = create_tween()
+	_message_tween.tween_interval(1.5)
+	_message_tween.tween_property(_message_label, "modulate:a", 0.0, 0.5)
+
+
+func _get_facing_direction_string() -> String:
+	match facing:
+		Facing.NORTH: return "north"
+		Facing.EAST: return "east"
+		Facing.SOUTH: return "south"
+		Facing.WEST: return "west"
+	return "north"
+
+
+func _interact() -> void:
+	var dir := _get_facing_direction_string()
+	var tile := dungeon_data.get_tile(grid_position.x, grid_position.y)
+	if tile == null:
+		return
+
+	if tile.get_wall_type(dir) != DungeonTile.WallType.DOOR:
+		return
+
+	if tile.is_door_open(dir):
+		return
+
+	if tile.is_door_locked(dir):
+		_try_unlock_door(dir)
+	else:
+		_open_door_and_step(grid_position.x, grid_position.y, dir)
+
+
+func _open_door_and_step(x: int, y: int, direction: String) -> void:
+	dungeon_data.sync_door_open(x, y, direction, true)
+	_update_door_visual(x, y, direction)
+	var offset: Vector2i = DungeonData.DIR_OFFSET[direction]
+	_update_door_visual(x + offset.x, y + offset.y, DungeonData.OPPOSITE_DIR[direction])
+	_show_dungeon_message("You open the door.")
+	_move_forward()
+
+
+func _close_doors_behind() -> void:
+	if previous_grid_position == grid_position:
+		return
+
+	var dx := grid_position.x - previous_grid_position.x
+	var dy := grid_position.y - previous_grid_position.y
+
+	var move_dir := ""
+	if dy < 0: move_dir = "north"
+	elif dy > 0: move_dir = "south"
+	elif dx > 0: move_dir = "east"
+	elif dx < 0: move_dir = "west"
+
+	if move_dir == "":
+		return
+
+	var prev_tile := dungeon_data.get_tile(previous_grid_position.x, previous_grid_position.y)
+	if prev_tile == null:
+		return
+
+	if prev_tile.get_wall_type(move_dir) == DungeonTile.WallType.DOOR and prev_tile.is_door_open(move_dir):
+		dungeon_data.sync_door_open(previous_grid_position.x, previous_grid_position.y, move_dir, false)
+		_update_door_visual(previous_grid_position.x, previous_grid_position.y, move_dir)
+		_update_door_visual(grid_position.x, grid_position.y, DungeonData.OPPOSITE_DIR[move_dir])
+
+
+func _try_unlock_door(direction: String) -> void:
+	if GameState.party == null:
+		_show_dungeon_message("The door is locked.")
+		return
+
+	if GameState.party.has_living_thief():
+		var thief := GameState.party.get_living_thief()
+		var pick_chance := 0.50 + (thief.agility * 0.02) + (thief.level * 0.03)
+		pick_chance = clampf(pick_chance, 0.10, 0.95)
+		if randf() < pick_chance:
+			dungeon_data.sync_door_locked(grid_position.x, grid_position.y, direction, false)
+			_show_dungeon_message("%s picks the lock!" % thief.get_display_name())
+			_open_door_and_step(grid_position.x, grid_position.y, direction)
+		else:
+			_show_dungeon_message("%s fails to pick the lock." % thief.get_display_name())
+		return
+
+	if GameState.party.inventory.has_item("dungeon_key"):
+		GameState.party.inventory.remove_item("dungeon_key", 1)
+		dungeon_data.sync_door_locked(grid_position.x, grid_position.y, direction, false)
+		_show_dungeon_message("You use a Dungeon Key.")
+		_open_door_and_step(grid_position.x, grid_position.y, direction)
+		return
+
+	_show_dungeon_message("The door is locked.")
 
 
 func _run_single_simulation() -> void:

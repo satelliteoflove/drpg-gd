@@ -4,6 +4,8 @@ extends RefCounted
 const PLAIN_TRAP_CHANCE: float = 0.10
 const ORNATE_TRAP_CHANCE: float = 0.70
 
+const DUNGEON_KEY_CHANCE: float = 0.20
+
 const BASE_INSPECT_CHANCE: float = 0.30
 const THIEF_INSPECT_CHANCE: float = 0.70
 
@@ -12,9 +14,17 @@ const THIEF_DISARM_CHANCE: float = 0.85
 
 
 static func create_chest_from_loot(loot: Array[Item], is_boss: bool) -> Chest:
+	_maybe_add_dungeon_key(loot)
 	var chest_type := _determine_chest_type(loot, is_boss)
 	var trap := _maybe_generate_trap(chest_type)
 	return Chest.create(chest_type, loot, trap)
+
+
+static func _maybe_add_dungeon_key(loot: Array[Item]) -> void:
+	if randf() < DUNGEON_KEY_CHANCE:
+		var key := ShopItems.get_item("dungeon_key")
+		if key != null:
+			loot.append(key.duplicate(true) as Item)
 
 
 static func _determine_chest_type(loot: Array[Item], is_boss: bool) -> Chest.ChestType:
