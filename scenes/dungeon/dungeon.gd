@@ -52,6 +52,8 @@ var _enemy_container: Node3D = null
 
 var _flicker_time: float = 0.0
 var _message_label: Label = null
+var _informed_locked_pos: Vector2i = Vector2i(-1, -1)
+var _informed_locked_dir: String = ""
 var _message_tween: Tween = null
 
 var _floor_material: StandardMaterial3D = null
@@ -541,6 +543,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_force_combat()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_G:
 		_debug_add_gold()
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_K:
+		_debug_add_key()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_S and event.shift_pressed:
 		_run_single_simulation()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_B and event.shift_pressed:
@@ -909,6 +913,15 @@ func _debug_add_gold() -> void:
 		print("[DEBUG] Added 1000 gold. Total: %d" % GameState.party.gold)
 
 
+func _debug_add_key() -> void:
+	if GameState.party:
+		var key := ShopItems.get_item("dungeon_key")
+		if key:
+			GameState.party.inventory.add_item(key.duplicate(true) as Item)
+			_show_dungeon_message("DEBUG: Added Dungeon Key")
+			print("[DEBUG] Added Dungeon Key. Count: %d" % GameState.party.inventory.get_item_count("dungeon_key"))
+
+
 func _generate_encounter() -> Dictionary:
 	var enemy_count := _roll_enemy_count()
 	var enemies: Array[Monster] = []
@@ -1099,17 +1112,22 @@ func _interact() -> void:
 		return
 
 	if tile.is_door_locked(dir):
+		if _informed_locked_pos != grid_position or _informed_locked_dir != dir:
+			_informed_locked_pos = grid_position
+			_informed_locked_dir = dir
+			_show_dungeon_message("The door is locked.")
+			return
 		_try_unlock_door(dir)
 	else:
-		_open_door_and_step(grid_position.x, grid_position.y, dir)
+		_open_door_and_step(grid_position.x, grid_position.y, dir, "You open the door.")
 
 
-func _open_door_and_step(x: int, y: int, direction: String) -> void:
+func _open_door_and_step(x: int, y: int, direction: String, message: String) -> void:
 	dungeon_data.sync_door_open(x, y, direction, true)
 	_update_door_visual(x, y, direction)
 	var offset: Vector2i = DungeonData.DIR_OFFSET[direction]
 	_update_door_visual(x + offset.x, y + offset.y, DungeonData.OPPOSITE_DIR[direction])
-	_show_dungeon_message("You open the door.")
+	_show_dungeon_message(message)
 	_move_forward()
 
 
@@ -1144,14 +1162,16 @@ func _try_unlock_door(direction: String) -> void:
 		_show_dungeon_message("The door is locked.")
 		return
 
+	# TODO: lockpicking is just a dice roll right now - replace with a mini-game
 	if GameState.party.has_living_thief():
 		var thief := GameState.party.get_living_thief()
-		var pick_chance := 0.50 + (thief.agility * 0.02) + (thief.level * 0.03)
+		var pick_chance := 0.25 + (thief.agility * 0.02) + (thief.level * 0.03)
 		pick_chance = clampf(pick_chance, 0.10, 0.95)
 		if randf() < pick_chance:
 			dungeon_data.sync_door_locked(grid_position.x, grid_position.y, direction, false)
-			_show_dungeon_message("%s picks the lock!" % thief.get_display_name())
-			_open_door_and_step(grid_position.x, grid_position.y, direction)
+			_informed_locked_pos = Vector2i(-1, -1)
+			_informed_locked_dir = ""
+			_open_door_and_step(grid_position.x, grid_position.y, direction, "%s picks the lock!" % thief.get_display_name())
 		else:
 			_show_dungeon_message("%s fails to pick the lock." % thief.get_display_name())
 		return
@@ -1159,8 +1179,9 @@ func _try_unlock_door(direction: String) -> void:
 	if GameState.party.inventory.has_item("dungeon_key"):
 		GameState.party.inventory.remove_item("dungeon_key", 1)
 		dungeon_data.sync_door_locked(grid_position.x, grid_position.y, direction, false)
-		_show_dungeon_message("You use a Dungeon Key.")
-		_open_door_and_step(grid_position.x, grid_position.y, direction)
+		_informed_locked_pos = Vector2i(-1, -1)
+		_informed_locked_dir = ""
+		_open_door_and_step(grid_position.x, grid_position.y, direction, "You use a Dungeon Key.")
 		return
 
 	_show_dungeon_message("The door is locked.")

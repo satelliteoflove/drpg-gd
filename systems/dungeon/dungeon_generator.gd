@@ -314,52 +314,81 @@ func _update_walls() -> void:
 
 
 func _place_doors() -> void:
-	for y in range(1, height - 1):
-		for x in range(1, width - 1):
-			var tile := _get_tile(x, y)
-			if tile == null or not tile.is_walkable():
+	var doored_corridors := {}
+	for room in _rooms:
+		var exits: Array[Dictionary] = []
+		for ry in range(room.y, room.y + room.height):
+			for rx in range(room.x, room.x + room.width):
+				var tile := _get_tile(rx, ry)
+				if tile == null or not tile.is_walkable():
+					continue
+				for dir in ["north", "south", "east", "west"]:
+					var offset: Vector2i = DungeonData.DIR_OFFSET[dir]
+					var nx := rx + offset.x
+					var ny := ry + offset.y
+					if _is_in_room(nx, ny):
+						continue
+					var neighbor := _get_tile(nx, ny)
+					if neighbor == null or not neighbor.is_walkable():
+						continue
+					exits.append({"rx": rx, "ry": ry, "dir": dir, "nx": nx, "ny": ny})
+
+		var groups := _group_exits(exits)
+		for group in groups:
+			var mid: Dictionary = group[group.size() / 2]
+			var corridor_pos := Vector2i(mid.nx, mid.ny)
+			if doored_corridors.has(corridor_pos):
 				continue
+			doored_corridors[corridor_pos] = true
+			var door_tile := _get_tile(mid.rx, mid.ry)
+			var door_neighbor := _get_tile(mid.nx, mid.ny)
+			door_tile.set_wall(mid.dir, DungeonTile.WallType.DOOR)
+			door_neighbor.set_wall(DungeonData.OPPOSITE_DIR[mid.dir], DungeonTile.WallType.DOOR)
+			for e in group:
+				if e.rx == mid.rx and e.ry == mid.ry and e.dir == mid.dir:
+					continue
+				var wall_tile := _get_tile(e.rx, e.ry)
+				var wall_neighbor := _get_tile(e.nx, e.ny)
+				wall_tile.set_wall(e.dir, DungeonTile.WallType.SOLID)
+				wall_neighbor.set_wall(DungeonData.OPPOSITE_DIR[e.dir], DungeonTile.WallType.SOLID)
 
-			if _is_in_room(x, y):
-				continue
 
-			var open_n := not _is_solid(x, y - 1)
-			var open_s := not _is_solid(x, y + 1)
-			var open_e := not _is_solid(x + 1, y)
-			var open_w := not _is_solid(x - 1, y)
+func _group_exits(exits: Array[Dictionary]) -> Array:
+	if exits.is_empty():
+		return []
 
-			var openings := int(open_n) + int(open_s) + int(open_e) + int(open_w)
-			if openings != 2:
-				continue
+	var by_dir := {}
+	for e in exits:
+		if not by_dir.has(e.dir):
+			by_dir[e.dir] = []
+		by_dir[e.dir].append(e)
 
-			var is_ns := open_n and open_s
-			var is_ew := open_e and open_w
-			if not is_ns and not is_ew:
-				continue
+	var groups: Array = []
+	for dir in by_dir:
+		var dir_exits: Array = by_dir[dir]
+		var is_horizontal: bool = dir == "north" or dir == "south"
+		if is_horizontal:
+			dir_exits.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.rx < b.rx)
+		else:
+			dir_exits.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.ry < b.ry)
 
-			var door_dir := ""
-			if is_ns:
-				if _is_in_room(x, y - 1):
-					door_dir = "north"
-				elif _is_in_room(x, y + 1):
-					door_dir = "south"
+		var current_group: Array[Dictionary] = [dir_exits[0]]
+		for i in range(1, dir_exits.size()):
+			var prev: Dictionary = current_group[current_group.size() - 1]
+			var curr: Dictionary = dir_exits[i]
+			var contiguous := false
+			if is_horizontal:
+				contiguous = curr.rx == prev.rx + 1 and curr.ry == prev.ry
 			else:
-				if _is_in_room(x + 1, y):
-					door_dir = "east"
-				elif _is_in_room(x - 1, y):
-					door_dir = "west"
+				contiguous = curr.ry == prev.ry + 1 and curr.rx == prev.rx
+			if contiguous:
+				current_group.append(curr)
+			else:
+				groups.append(current_group)
+				current_group = [curr]
+		groups.append(current_group)
 
-			if door_dir == "":
-				continue
-
-			if _rng.randf() > DOOR_CHANCE:
-				continue
-
-			var offset: Vector2i = DungeonData.DIR_OFFSET[door_dir]
-			var neighbor := _get_tile(x + offset.x, y + offset.y)
-			tile.set_wall(door_dir, DungeonTile.WallType.DOOR)
-			if neighbor:
-				neighbor.set_wall(DungeonData.OPPOSITE_DIR[door_dir], DungeonTile.WallType.DOOR)
+	return groups
 
 
 func _lock_doors(dungeon: DungeonData) -> void:
@@ -371,7 +400,6 @@ func _lock_doors(dungeon: DungeonData) -> void:
 
 	if target_room == null:
 		return
-
 	var openings: Array[Dictionary] = []
 	var dir_names := ["north", "south", "east", "west"]
 	for ry in range(target_room.y, target_room.y + target_room.height):
