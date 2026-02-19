@@ -181,6 +181,30 @@ static func glass_cannon_scenario() -> Dictionary:
 	}
 
 
+static func stock_party_consumables(party: Party, level: int) -> void:
+	if level <= 3:
+		_add_consumables(party, "healing_potion", 4)
+		_add_consumables(party, "antidote", 2)
+	elif level <= 5:
+		_add_consumables(party, "healing_potion", 3)
+		_add_consumables(party, "greater_healing", 2)
+		_add_consumables(party, "antidote", 2)
+		_add_consumables(party, "mana_potion", 1)
+	else:
+		_add_consumables(party, "healing_potion", 2)
+		_add_consumables(party, "greater_healing", 4)
+		_add_consumables(party, "antidote", 2)
+		_add_consumables(party, "mana_potion", 2)
+
+
+static func _add_consumables(party: Party, item_id: String, count: int) -> void:
+	var item := ShopItems.get_item(item_id)
+	if item == null:
+		return
+	for i in range(count):
+		party.inventory.add_item(item.duplicate(), 1)
+
+
 static func _create_character(char_name: String, char_class: CharacterEnums.CharacterClass, level: int, equipped: bool = true) -> Character:
 	var stats := {
 		"strength": 12,

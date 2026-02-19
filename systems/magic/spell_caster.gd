@@ -94,10 +94,7 @@ static func _process_damage(
 		if target.is_dead:
 			continue
 
-		var damage := total_base
-
-		if not effect.ignore_defense:
-			damage = maxi(1, damage - target.defense)
+		var damage := maxi(1, total_base)
 
 		var actual: int = target.take_damage(damage)
 		result.damage += actual
@@ -407,10 +404,7 @@ static func _process_monster_damage(
 		if target.is_dead:
 			continue
 
-		var damage := total_base
-
-		if not effect.ignore_defense:
-			damage = maxi(1, damage - target.defense)
+		var damage := maxi(1, total_base)
 
 		var actual: int = target.take_damage(damage)
 		result.damage += actual

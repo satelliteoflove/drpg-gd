@@ -126,7 +126,7 @@ static func _create_items() -> void:
 
 	_items["healing_potion"] = Item.create_consumable("healing_potion", "Healing Potion", 20, 0, 25)
 	_items["greater_healing"] = Item.create_consumable("greater_healing", "Greater Healing Potion", 50, 0, 75)
-	_items["mana_potion"] = Item.create_consumable("mana_potion", "Mana Potion", 0, 15, 30)
+	_items["mana_potion"] = Item.create_consumable("mana_potion", "Mana Potion", 0, 15, 15)
 	_items["antidote"] = Item.create_consumable("antidote", "Antidote", 0, 0, 20)
 	_items["antidote"].cures_status.append(CharacterEnums.StatusEffect.POISONED)
 

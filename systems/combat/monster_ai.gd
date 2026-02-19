@@ -73,7 +73,10 @@ static func _decide_aggressive(monster: Monster, party: Party, _allies: Array[Mo
 	var decision := AIDecision.new()
 	decision.action_type = ActionType.ATTACK
 	decision.attack = _select_best_attack(monster, party)
-	decision.targets = [_select_target(monster, party, decision.attack)]
+	var is_melee := decision.attack == null or decision.attack.weapon_range <= 1
+	var target := _score_and_select_target(party, is_melee)
+	decision.targets = [target] if target else []
+	decision.message = "attack %s (threat: %.1f)" % [target.get_display_name() if target else "none", _last_target_score]
 	return decision
 
 
@@ -82,17 +85,19 @@ static func _decide_berserker(monster: Monster, party: Party, _allies: Array[Mon
 	decision.action_type = ActionType.ATTACK
 
 	var best_attack: MonsterAttack = null
-	var highest_damage := 0
+	var highest_damage := 0.0
 	for attack in monster.attacks:
-		var avg_damage := _estimate_attack_damage(attack)
+		var avg_damage := CombatEvaluator.estimate_dice_average(attack.damage_dice)
 		if avg_damage > highest_damage:
 			highest_damage = avg_damage
 			best_attack = attack
 
 	decision.attack = best_attack if best_attack else monster.get_random_attack()
 
-	var target := _select_weakest_target(party)
+	var is_melee := decision.attack == null or decision.attack.weapon_range <= 1
+	var target := _score_and_select_target(party, is_melee)
 	decision.targets = [target] if target else []
+	decision.message = "berserker attack %s (threat: %.1f)" % [target.get_display_name() if target else "none", _last_target_score]
 	return decision
 
 
@@ -102,11 +107,15 @@ static func _decide_defensive(monster: Monster, party: Party, _allies: Array[Mon
 	var hp_percent := float(monster.current_hp) / float(monster.max_hp)
 	if hp_percent < CombatConstants.DEFENSIVE_HP_THRESHOLD and CombatRNG.randf() < CombatConstants.DEFEND_CHANCE:
 		decision.action_type = ActionType.DEFEND
+		decision.message = "defend (hp: %d%%)" % int(hp_percent * 100)
 		return decision
 
 	decision.action_type = ActionType.ATTACK
 	decision.attack = _select_best_attack(monster, party)
-	decision.targets = [_select_target(monster, party, decision.attack)]
+	var is_melee := decision.attack == null or decision.attack.weapon_range <= 1
+	var target := _score_and_select_target(party, is_melee)
+	decision.targets = [target] if target else []
+	decision.message = "defensive attack %s (threat: %.1f)" % [target.get_display_name() if target else "none", _last_target_score]
 	return decision
 
 
@@ -124,29 +133,36 @@ static func _decide_ranged(monster: Monster, party: Party, _allies: Array[Monste
 	else:
 		decision.attack = monster.get_random_attack()
 
-	var target := _select_caster_target(party)
-	if target == null:
-		target = _select_target(monster, party, decision.attack)
+	var is_melee := decision.attack == null or decision.attack.weapon_range <= 1
+	var target := _score_and_select_target(party, is_melee)
 	decision.targets = [target] if target else []
+	decision.message = "ranged attack %s (threat: %.1f)" % [target.get_display_name() if target else "none", _last_target_score]
 	return decision
 
 
 static func _decide_spellcaster(monster: Monster, party: Party, allies: Array[Monster]) -> AIDecision:
 	var decision := AIDecision.new()
 
-	if monster.current_mp > 0 and not monster.spells.is_empty() and CombatRNG.randf() < CombatConstants.SPELLCASTER_CAST_CHANCE:
-		var spell_id := _select_spell(monster, party, allies)
-		if spell_id != "":
-			var spell := SpellDatabase.get_spell(spell_id)
+	var alive_count := party.get_alive_members().size()
+	var cast_chance := CombatEvaluator.calculate_adaptive_cast_chance(monster, alive_count)
+
+	if monster.current_mp > 0 and not monster.spells.is_empty() and CombatRNG.randf() < cast_chance:
+		var spell_result := _select_best_spell(monster, party, allies)
+		if spell_result.id != "":
+			var spell := SpellDatabase.get_spell(spell_result.id)
 			if spell and monster.current_mp >= spell.mp_cost:
 				decision.action_type = ActionType.SPELL
-				decision.spell_id = spell_id
+				decision.spell_id = spell_result.id
 				decision.targets = _get_spell_targets_for_monster(spell, party, allies, monster)
+				decision.message = "cast %s (score: %.1f, cast_chance: %d%%)" % [spell_result.id, spell_result.score, int(cast_chance * 100)]
 				return decision
 
 	decision.action_type = ActionType.ATTACK
 	decision.attack = _select_best_attack(monster, party)
-	decision.targets = [_select_target(monster, party, decision.attack)]
+	var is_melee := decision.attack == null or decision.attack.weapon_range <= 1
+	var target := _score_and_select_target(party, is_melee)
+	decision.targets = [target] if target else []
+	decision.message = "attack %s (cast_chance was %d%%, fell through)" % [target.get_display_name() if target else "none", int(cast_chance * 100)]
 	return decision
 
 
@@ -161,6 +177,7 @@ static func _decide_support(monster: Monster, party: Party, allies: Array[Monste
 				decision.action_type = ActionType.SPELL
 				decision.spell_id = spell_id
 				decision.targets = [wounded_ally]
+				decision.message = "heal %s with %s" % [wounded_ally.monster_name, spell_id]
 				return decision
 
 	return _decide_spellcaster(monster, party, allies)
@@ -179,14 +196,18 @@ static func _decide_tactical(monster: Monster, party: Party, allies: Array[Monst
 					decision.targets = []
 					for member in alive_party:
 						decision.targets.append(member)
+					decision.message = "tactical %s on all (%d targets)" % [attack.attack_name, alive_party.size()]
 				else:
 					var front := party.get_front_row_alive()
 					if front.size() >= 2:
 						decision.targets = []
 						for member in front:
 							decision.targets.append(member)
+						decision.message = "tactical %s on front row (%d targets)" % [attack.attack_name, front.size()]
 					else:
-						decision.targets = [_select_target(monster, party, attack)]
+						var target := _score_and_select_target(party, true)
+						decision.targets = [target] if target else []
+						decision.message = "tactical %s on %s (threat: %.1f)" % [attack.attack_name, target.get_display_name() if target else "none", _last_target_score]
 				return decision
 
 	return _decide_aggressive(monster, party, allies)
@@ -217,78 +238,53 @@ static func _select_best_attack(monster: Monster, party: Party) -> MonsterAttack
 		if attack.targets_all and alive.size() >= 3:
 			weight += 12.0
 
-		weighted_attacks.append({"attack": attack, "weight": weight})
+		weighted_attacks.append({"item": attack, "weight": weight})
 
-	var total_weight := 0.0
-	for wa in weighted_attacks:
-		total_weight += wa.weight
-
-	var roll := CombatRNG.randf() * total_weight
-	var cumulative := 0.0
-	for wa in weighted_attacks:
-		cumulative += wa.weight
-		if roll <= cumulative:
-			return wa.attack
-
-	return monster.attacks[0]
+	return CombatEvaluator.weighted_random_pick(weighted_attacks)
 
 
-static func _select_target(_monster: Monster, party: Party, attack: MonsterAttack) -> Character:
+static var _last_target_score: float = 0.0
+
+
+static func _score_and_select_target(party: Party, is_melee: bool) -> Character:
 	var front := party.get_front_row_alive()
 	var back: Array[Character] = []
 	for member in party.get_back_row():
 		if not member.is_dead:
 			back.append(member)
 
-	var can_reach_back := attack != null and attack.weapon_range > 1
+	var candidates: Array[Character] = []
+	candidates.append_array(front)
+	if not is_melee:
+		candidates.append_array(back)
+	elif front.is_empty():
+		candidates.append_array(back)
 
-	var available: Array[Character] = []
-	if not front.is_empty():
-		available = front
-	elif can_reach_back and not back.is_empty():
-		available = back
-	elif not back.is_empty():
-		available = back
-
-	if available.is_empty():
+	if candidates.is_empty():
+		_last_target_score = 0.0
 		return null
 
-	return available[CombatRNG.randi() % available.size()]
+	var scored: Array = []
+	for member in candidates:
+		var score := CombatEvaluator.score_party_target(member, party, is_melee)
+		scored.append({"item": member, "weight": score})
+
+	var pick = CombatEvaluator.weighted_random_pick(scored)
+	for entry in scored:
+		if entry.item == pick:
+			_last_target_score = entry.weight
+			break
+
+	return pick
 
 
-static func _select_weakest_target(party: Party) -> Character:
-	var alive := party.get_alive_members()
-	if alive.is_empty():
-		return null
-
-	var weakest: Character = alive[0]
-	for member in alive:
-		if member.current_hp < weakest.current_hp:
-			weakest = member
-
-	return weakest
-
-
-static func _select_caster_target(party: Party) -> Character:
-	var alive := party.get_alive_members()
-	var casters: Array[Character] = []
-
-	for member in alive:
-		if member.max_mp > 0:
-			casters.append(member)
-
-	if casters.is_empty():
-		return null
-
-	return casters[CombatRNG.randi() % casters.size()]
-
-
-static func _select_spell(monster: Monster, party: Party, _allies: Array[Monster]) -> String:
+static func _select_best_spell(monster: Monster, party: Party, allies: Array[Monster]) -> Dictionary:
 	if monster.spells.is_empty():
-		return ""
+		return {"id": "", "score": 0.0}
 
-	var alive_count := party.get_alive_members().size()
-	var valid_spells: Array[String] = []
+	var alive := party.get_alive_members()
+	var alive_count := alive.size()
+	var scored: Array = []
 
 	for spell_id in monster.spells:
 		var spell := SpellDatabase.get_spell(spell_id)
@@ -297,15 +293,58 @@ static func _select_spell(monster: Monster, party: Party, _allies: Array[Monster
 		if monster.current_mp < spell.mp_cost:
 			continue
 
-		if spell.target_type == CharacterEnums.SpellTargetType.ALL_ENEMIES and alive_count >= 2:
-			return spell_id
+		var score := _score_spell(spell, alive, allies, monster, alive_count)
+		if score > 0.0:
+			scored.append({"item": {"id": spell_id, "score": score}, "weight": score})
 
-		valid_spells.append(spell_id)
+	if scored.is_empty():
+		return {"id": "", "score": 0.0}
 
-	if valid_spells.is_empty():
-		return ""
+	var pick = CombatEvaluator.weighted_random_pick(scored)
+	return pick if pick else {"id": "", "score": 0.0}
 
-	return valid_spells[CombatRNG.randi() % valid_spells.size()]
+
+static func _score_spell(spell: Spell, alive_party: Array[Character], allies: Array[Monster], caster: Monster, alive_count: int) -> float:
+	var score := 0.0
+	var is_aoe := spell.target_type == CharacterEnums.SpellTargetType.ALL_ENEMIES
+
+	for effect in spell.effects:
+		match effect.effect_type:
+			SpellEffect.EffectType.DAMAGE:
+				var avg := CombatEvaluator.estimate_dice_average(effect.damage_dice)
+				avg += effect.damage_per_level * caster.level
+				if is_aoe:
+					score += avg * alive_count
+				else:
+					score += avg
+			SpellEffect.EffectType.STATUS:
+				var unaffected := 0
+				for member in alive_party:
+					if not member.has_status(effect.status_type):
+						unaffected += 1
+				if is_aoe:
+					score += CombatConstants.SPELL_SCORE_STATUS_BASE * unaffected
+				else:
+					score += CombatConstants.SPELL_SCORE_STATUS_BASE if unaffected > 0 else 0.0
+			SpellEffect.EffectType.HEAL:
+				var wounded_count := 0
+				for ally in allies:
+					if not ally.is_dead:
+						var hp_pct := float(ally.current_hp) / float(maxi(1, ally.max_hp))
+						if hp_pct < CombatConstants.WOUNDED_ALLY_THRESHOLD:
+							wounded_count += 1
+				var avg_heal := CombatEvaluator.estimate_dice_average(effect.heal_dice)
+				score += avg_heal * maxf(1.0, float(wounded_count))
+			SpellEffect.EffectType.INSTANT_DEATH:
+				var total_hp := 0.0
+				for member in alive_party:
+					total_hp += float(member.current_hp)
+				score += total_hp / maxf(1.0, float(alive_count))
+
+	if is_aoe and alive_count <= 1:
+		score *= CombatConstants.SPELL_SCORE_AOE_PENALTY_SINGLE
+
+	return score
 
 
 static func _get_spell_targets_for_monster(spell: Spell, party: Party, allies: Array[Monster], caster: Monster) -> Array:
@@ -317,10 +356,8 @@ static func _get_spell_targets_for_monster(spell: Spell, party: Party, allies: A
 				return [allies[CombatRNG.randi() % allies.size()]]
 			return [caster]
 		CharacterEnums.SpellTargetType.SINGLE_ENEMY:
-			var alive := party.get_alive_members()
-			if not alive.is_empty():
-				return [alive[CombatRNG.randi() % alive.size()]]
-			return []
+			var target := _score_and_select_target(party, false)
+			return [target] if target else []
 		CharacterEnums.SpellTargetType.ALL_ALLIES:
 			var result: Array = []
 			for ally in allies:
@@ -356,29 +393,3 @@ static func _is_healing_spell(spell: Spell) -> bool:
 		if effect.effect_type == SpellEffect.EffectType.HEAL:
 			return true
 	return false
-
-
-static func _estimate_attack_damage(attack: MonsterAttack) -> int:
-	var dice := attack.damage_dice
-	var avg := 0
-
-	if "d" in dice:
-		var parts := dice.split("d")
-		var num_dice := int(parts[0]) if parts[0] != "" else 1
-		var die_size := 0
-		var bonus := 0
-
-		if "+" in parts[1]:
-			var sub_parts := parts[1].split("+")
-			die_size = int(sub_parts[0])
-			bonus = int(sub_parts[1])
-		elif "-" in parts[1]:
-			var sub_parts := parts[1].split("-")
-			die_size = int(sub_parts[0])
-			bonus = -int(sub_parts[1])
-		else:
-			die_size = int(parts[1])
-
-		avg = num_dice * (die_size + 1) / 2 + bonus
-
-	return avg

@@ -628,7 +628,7 @@ static func _create_minotaur() -> void:
 
 	monster.loot_drops = [
 		LootDrop.create("battle_axe", 0.15),
-		LootDrop.create("plate_mail", 0.06),
+		LootDrop.create("plate_armor", 0.06),
 		LootDrop.create("iron_helm", 0.10),
 		LootDrop.create("iron_shield", 0.08),
 		LootDrop.create("greater_healing", 0.15),
@@ -642,7 +642,7 @@ static func _create_minotaur() -> void:
 static func _create_boss_broodmother() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Broodmother"
-	monster.max_hp = 55
+	monster.max_hp = 110
 	monster.strength = 12
 	monster.agility = 10
 	monster.defense = 4
@@ -699,7 +699,7 @@ static func _create_boss_broodmother() -> void:
 static func _create_boss_ironjaw() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Ironjaw the Warchief"
-	monster.max_hp = 85
+	monster.max_hp = 170
 	monster.strength = 18
 	monster.agility = 10
 	monster.defense = 7
@@ -745,7 +745,7 @@ static func _create_boss_ironjaw() -> void:
 
 	monster.loot_drops = [
 		LootDrop.create("battle_axe", 0.30),
-		LootDrop.create("plate_mail", 0.15),
+		LootDrop.create("plate_armor", 0.15),
 		LootDrop.create("iron_helm", 0.25),
 		LootDrop.create("iron_shield", 0.25),
 		LootDrop.create("greater_healing", 0.50),
@@ -759,7 +759,7 @@ static func _create_boss_ironjaw() -> void:
 static func _create_boss_lich() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Nethris the Lich"
-	monster.max_hp = 70
+	monster.max_hp = 140
 	monster.strength = 8
 	monster.agility = 12
 	monster.defense = 5
@@ -810,7 +810,7 @@ static func _create_boss_lich() -> void:
 
 	monster.loot_drops = [
 		LootDrop.create("staff", 0.30),
-		LootDrop.create("plate_mail", 0.20),
+		LootDrop.create("plate_armor", 0.20),
 		LootDrop.create("mana_potion", 0.50),
 		LootDrop.create("greater_healing", 0.50),
 	]
@@ -823,7 +823,7 @@ static func _create_boss_lich() -> void:
 static func _create_boss_drake() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Vrakthorne the Drake"
-	monster.max_hp = 130
+	monster.max_hp = 260
 	monster.strength = 22
 	monster.agility = 12
 	monster.defense = 10
@@ -872,7 +872,7 @@ static func _create_boss_drake() -> void:
 	monster.attacks = [fire_breath, tail_sweep, rending_claws, terrifying_roar, crushing_bite]
 
 	monster.loot_drops = [
-		LootDrop.create("plate_mail", 0.30),
+		LootDrop.create("plate_armor", 0.30),
 		LootDrop.create("battle_axe", 0.25),
 		LootDrop.create("iron_helm", 0.30),
 		LootDrop.create("iron_shield", 0.25),

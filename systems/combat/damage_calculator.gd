@@ -55,7 +55,7 @@ static func check_hit(accuracy: int, evasion: int) -> bool:
 ## [return]: Final damage dealt (minimum 1).
 static func calculate_damage(base_dice: String, strength: int, bonus: int, reduction: int) -> int:
 	var dice_damage := roll_dice(base_dice)
-	var str_bonus := strength / 4
+	var str_bonus := strength / CombatConstants.STR_DAMAGE_DIVISOR
 	var total := dice_damage + str_bonus + bonus - reduction
 	return maxi(1, total)
 

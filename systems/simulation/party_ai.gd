@@ -50,10 +50,21 @@ static func _decide_healer_action(
 ) -> Dictionary:
 	var mp_percent := float(character.current_mp) / float(maxi(1, character.max_mp))
 
+	var emergency := _find_wounded_ally(party, CombatConstants.PARTY_EMERGENCY_HEAL_THRESHOLD)
+	if emergency and character.current_mp > 0:
+		var heal_spell := _find_best_healing_spell(character)
+		if heal_spell != "":
+			return {
+				"action": "spell",
+				"target": emergency,
+				"spell_id": heal_spell,
+				"reasoning": "emergency heal %s" % emergency.get_display_name()
+			}
+
 	var wounded := _find_wounded_ally(party, 0.5)
 	if wounded and character.current_mp > 0:
-		var heal_spell := _find_healing_spell(character)
-		if heal_spell:
+		var heal_spell := _find_best_healing_spell(character)
+		if heal_spell != "":
 			return {
 				"action": "spell",
 				"target": wounded,
@@ -86,8 +97,8 @@ static func _decide_healer_action(
 
 	var should_cast_offensive := strategy == Strategy.AGGRESSIVE or mp_percent > cast_threshold
 	if should_cast_offensive and character.current_mp > 0:
-		var damage_spell := _find_damage_spell(character)
-		if damage_spell:
+		var damage_spell := _find_best_damage_spell(character)
+		if damage_spell != "":
 			var spell_target := _select_attack_target(enemies, strategy)
 			if spell_target:
 				return {
@@ -114,18 +125,19 @@ static func _decide_caster_action(
 	var mp_percent := float(character.current_mp) / float(maxi(1, character.max_mp))
 
 	if mp_percent > cast_threshold or strategy == Strategy.AGGRESSIVE:
-		var aoe_spell := _find_aoe_spell(character)
 		var living_enemies := _count_living(enemies)
-		if aoe_spell and living_enemies >= 2:
-			return {
-				"action": "spell",
-				"target": enemies,
-				"spell_id": aoe_spell,
-				"reasoning": "aoe damage"
-			}
+		if living_enemies >= 2:
+			var aoe_spell := _find_best_aoe_spell(character)
+			if aoe_spell != "":
+				return {
+					"action": "spell",
+					"target": enemies,
+					"spell_id": aoe_spell,
+					"reasoning": "aoe damage"
+				}
 
-		var damage_spell := _find_damage_spell(character)
-		if damage_spell:
+		var damage_spell := _find_best_damage_spell(character)
+		if damage_spell != "":
 			var spell_target := _select_attack_target(enemies, strategy)
 			if spell_target:
 				return {
@@ -151,10 +163,21 @@ static func _decide_support_action(
 ) -> Dictionary:
 	var mp_percent := float(character.current_mp) / float(maxi(1, character.max_mp))
 
+	var emergency := _find_wounded_ally(party, CombatConstants.PARTY_EMERGENCY_HEAL_THRESHOLD)
+	if emergency and character.current_mp > 0:
+		var heal_spell := _find_best_healing_spell(character)
+		if heal_spell != "":
+			return {
+				"action": "spell",
+				"target": emergency,
+				"spell_id": heal_spell,
+				"reasoning": "emergency heal %s" % emergency.get_display_name()
+			}
+
 	var wounded := _find_wounded_ally(party, 0.4)
 	if wounded and character.current_mp > 0:
-		var heal_spell := _find_healing_spell(character)
-		if heal_spell:
+		var heal_spell := _find_best_healing_spell(character)
+		if heal_spell != "":
 			return {
 				"action": "spell",
 				"target": wounded,
@@ -183,11 +206,15 @@ static func _decide_support_action(
 
 
 static func _decide_fighter_action(
-	_character: Character,
+	character: Character,
 	_party: Party,
 	enemies: Array[Monster],
 	strategy: Strategy
 ) -> Dictionary:
+	var hp_percent := float(character.current_hp) / float(maxi(1, character.max_hp))
+	if hp_percent <= CombatConstants.FIGHTER_DEFEND_HP_THRESHOLD and CombatRNG.randf() < 0.5:
+		return {"action": "defend", "target": null, "spell_id": "", "reasoning": "low HP defend"}
+
 	var target := _select_attack_target(enemies, strategy)
 	if target:
 		return {"action": "attack", "target": target, "spell_id": "", "reasoning": "attack enemy"}
@@ -204,32 +231,19 @@ static func _select_attack_target(enemies: Array[Monster], strategy: Strategy) -
 	if living.is_empty():
 		return null
 
-	match strategy:
-		Strategy.AGGRESSIVE:
-			return _select_weakest_enemy(living)
-		Strategy.DEFENSIVE:
-			return _select_most_dangerous_enemy(living)
-		_:
-			return living[CombatRNG.randi() % living.size()]
+	var scored: Array = []
+	for enemy in living:
+		var score := CombatEvaluator.score_monster_target(enemy, living)
+		match strategy:
+			Strategy.AGGRESSIVE:
+				var hp_pct := float(enemy.current_hp) / float(maxi(1, enemy.max_hp))
+				score += CombatConstants.FOCUS_FIRE_WOUNDED_BONUS * (1.0 - hp_pct)
+			Strategy.DEFENSIVE:
+				var threat := float(enemy.strength) + float(enemy.max_mp) * 2.0
+				score += threat
+		scored.append({"item": enemy, "weight": score})
 
-
-static func _select_weakest_enemy(enemies: Array[Monster]) -> Monster:
-	var weakest: Monster = enemies[0]
-	for enemy in enemies:
-		if enemy.current_hp < weakest.current_hp:
-			weakest = enemy
-	return weakest
-
-
-static func _select_most_dangerous_enemy(enemies: Array[Monster]) -> Monster:
-	var dangerous: Monster = enemies[0]
-	var highest_threat := 0
-	for enemy in enemies:
-		var threat := enemy.strength + enemy.max_mp * 2
-		if threat > highest_threat:
-			highest_threat = threat
-			dangerous = enemy
-	return dangerous
+	return CombatEvaluator.weighted_random_pick(scored)
 
 
 static func _find_wounded_ally(party: Party, threshold: float) -> Character:
@@ -269,7 +283,10 @@ static func _find_buff_target(party: Party) -> Character:
 	return members[CombatRNG.randi() % members.size()]
 
 
-static func _find_healing_spell(character: Character) -> String:
+static func _find_best_healing_spell(character: Character) -> String:
+	var best_id := ""
+	var best_avg := 0.0
+
 	for spell_id in character.known_spells:
 		var spell := SpellDatabase.get_spell(spell_id)
 		if spell == null or not spell.in_combat:
@@ -278,8 +295,14 @@ static func _find_healing_spell(character: Character) -> String:
 			continue
 		for effect in spell.effects:
 			if effect.effect_type == SpellEffect.EffectType.HEAL:
-				return spell_id
-	return ""
+				var avg := CombatEvaluator.estimate_dice_average(effect.heal_dice)
+				avg += effect.heal_per_level * character.level
+				if avg > best_avg:
+					best_avg = avg
+					best_id = spell_id
+				break
+
+	return best_id
 
 
 static func _find_cure_spell(character: Character, _target: Character) -> String:
@@ -295,32 +318,52 @@ static func _find_cure_spell(character: Character, _target: Character) -> String
 	return ""
 
 
-static func _find_damage_spell(character: Character) -> String:
+static func _find_best_damage_spell(character: Character) -> String:
+	var best_id := ""
+	var best_avg := 0.0
+
 	for spell_id in character.known_spells:
 		var spell := SpellDatabase.get_spell(spell_id)
 		if spell == null or not spell.in_combat:
 			continue
 		if character.current_mp < spell.mp_cost:
 			continue
-		if spell.target_type == CharacterEnums.SpellTargetType.SINGLE_ENEMY:
-			for effect in spell.effects:
-				if effect.effect_type == SpellEffect.EffectType.DAMAGE:
-					return spell_id
-	return ""
+		if spell.target_type != CharacterEnums.SpellTargetType.SINGLE_ENEMY:
+			continue
+		for effect in spell.effects:
+			if effect.effect_type == SpellEffect.EffectType.DAMAGE:
+				var avg := CombatEvaluator.estimate_dice_average(effect.damage_dice)
+				avg += effect.damage_per_level * character.level
+				if avg > best_avg:
+					best_avg = avg
+					best_id = spell_id
+				break
+
+	return best_id
 
 
-static func _find_aoe_spell(character: Character) -> String:
+static func _find_best_aoe_spell(character: Character) -> String:
+	var best_id := ""
+	var best_avg := 0.0
+
 	for spell_id in character.known_spells:
 		var spell := SpellDatabase.get_spell(spell_id)
 		if spell == null or not spell.in_combat:
 			continue
 		if character.current_mp < spell.mp_cost:
 			continue
-		if spell.target_type == CharacterEnums.SpellTargetType.ALL_ENEMIES:
-			for effect in spell.effects:
-				if effect.effect_type == SpellEffect.EffectType.DAMAGE:
-					return spell_id
-	return ""
+		if spell.target_type != CharacterEnums.SpellTargetType.ALL_ENEMIES:
+			continue
+		for effect in spell.effects:
+			if effect.effect_type == SpellEffect.EffectType.DAMAGE:
+				var avg := CombatEvaluator.estimate_dice_average(effect.damage_dice)
+				avg += effect.damage_per_level * character.level
+				if avg > best_avg:
+					best_avg = avg
+					best_id = spell_id
+				break
+
+	return best_id
 
 
 static func _find_buff_spell(character: Character) -> String:

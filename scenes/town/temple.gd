@@ -31,9 +31,9 @@ const CURABLE_STATUSES: Array[CharacterEnums.StatusEffect] = [
 	CharacterEnums.StatusEffect.STONED
 ]
 
-const RESURRECT_BASE_COST: int = 200
-const RESURRECT_PER_LEVEL: int = 50
-const CURE_BASE_COST: int = 50
+const RESURRECT_BASE_COST: int = 100
+const RESURRECT_PER_LEVEL: int = 25
+const CURE_BASE_COST: int = 25
 const CURE_PER_LEVEL: int = 10
 const TITHE_AMOUNTS: Array[int] = [100, 500, 1000]
 const BLESSING_DURATION: int = 10

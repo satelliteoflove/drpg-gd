@@ -142,7 +142,7 @@ func _execute_monster_turn(monster_id: String) -> Dictionary:
 		"action": _action_type_to_string(decision.action_type),
 		"target": _get_decision_target_name(decision),
 		"spell": decision.spell_id,
-		"reasoning": "AI behavior"
+		"reasoning": decision.message if decision.message != "" else "AI behavior"
 	}
 	ai_log.log_decision(_current_turn, monster.monster_name, decision_dict)
 

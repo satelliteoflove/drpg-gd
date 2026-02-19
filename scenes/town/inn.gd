@@ -1,36 +1,6 @@
 extends Control
 
-enum RestType { COT, ROOM, SUITE }
-
-const REST_OPTIONS: Array[Dictionary] = [
-	{
-		"type": RestType.COT,
-		"name": "Cot Rest",
-		"description": "A simple cot in the common room. Basic rest.",
-		"cost_per_person": 5,
-		"hp_percent": 25,
-		"mp_percent": 50,
-		"cures_minor": true
-	},
-	{
-		"type": RestType.ROOM,
-		"name": "Room Rest",
-		"description": "A private room with a real bed. Comfortable rest.",
-		"cost_per_person": 25,
-		"hp_percent": 50,
-		"mp_percent": 75,
-		"cures_minor": true
-	},
-	{
-		"type": RestType.SUITE,
-		"name": "Suite Rest",
-		"description": "The finest suite. Full restoration and care.",
-		"cost_per_person": 100,
-		"hp_percent": 100,
-		"mp_percent": 100,
-		"cures_minor": true
-	}
-]
+const GOLD_PER_LEVEL := 10
 
 const MINOR_STATUSES: Array[CharacterEnums.StatusEffect] = [
 	CharacterEnums.StatusEffect.POISONED,
@@ -88,34 +58,31 @@ func _populate_rest_options() -> void:
 		options_list.add_child(label)
 		return
 
-	var living_count := _get_living_party_count()
-
-	if living_count == 0:
+	if _get_living_party_count() == 0:
 		var label := Label.new()
 		label.text = "(All party members are dead)"
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		options_list.add_child(label)
 		return
 
-	for option in REST_OPTIONS:
-		var total_cost: int = option["cost_per_person"] * living_count
-		var btn := Button.new()
-		btn.text = "%s - %d gold" % [option["name"], total_cost]
-		btn.custom_minimum_size = Vector2(350, 36)
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.pressed.connect(_on_rest_selected.bind(option))
+	var total_cost := _get_rest_cost()
+	var btn := Button.new()
+	btn.text = "Rest - %d gold" % total_cost
+	btn.custom_minimum_size = Vector2(350, 36)
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.pressed.connect(_on_rest_selected)
 
-		if not GameState.party.has_gold(total_cost):
-			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
-			btn.tooltip_text = "Not enough gold"
-		elif not _party_needs_rest():
-			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
-			btn.tooltip_text = "Party is fully rested"
+	if not GameState.party.has_gold(total_cost):
+		btn.disabled = true
+		btn.modulate = Color(0.6, 0.6, 0.6)
+		btn.tooltip_text = "Not enough gold"
+	elif not _party_needs_rest():
+		btn.disabled = true
+		btn.modulate = Color(0.6, 0.6, 0.6)
+		btn.tooltip_text = "Party is fully rested"
 
-		options_list.add_child(btn)
-		rest_buttons.append(btn)
+	options_list.add_child(btn)
+	rest_buttons.append(btn)
 
 	nav = MenuNavigator.new()
 	if not rest_buttons.is_empty():
@@ -129,6 +96,10 @@ func _get_living_party_count() -> int:
 		if not member.is_dead:
 			count += 1
 	return count
+
+
+func _get_rest_cost() -> int:
+	return GameState.party.get_highest_level() * GOLD_PER_LEVEL
 
 
 func _party_needs_rest() -> bool:
@@ -150,38 +121,30 @@ func _on_selection_changed(_index: int) -> void:
 
 
 func _update_info() -> void:
-	if nav == null or rest_buttons.is_empty():
-		info_label.text = "Select a rest option to view details."
+	if rest_buttons.is_empty():
+		info_label.text = "Select rest to view details."
 		return
 
-	var idx := nav.get_current_index()
-	if idx < 0 or idx >= REST_OPTIONS.size():
-		info_label.text = "Select a rest option to view details."
-		return
+	var total_cost := _get_rest_cost()
+	var party_level := GameState.party.get_highest_level()
 
-	var option: Dictionary = REST_OPTIONS[idx]
-	var living_count := _get_living_party_count()
-	var total_cost: int = option["cost_per_person"] * living_count
-
-	var text := "[b]%s[/b]\n" % option["name"]
-	text += "%s\n\n" % option["description"]
-	text += "[color=yellow]Cost: %d gold per person[/color]\n" % option["cost_per_person"]
-	text += "[color=yellow]Total: %d gold (%d members)[/color]\n\n" % [total_cost, living_count]
+	var text := "[b]Rest[/b]\n"
+	text += "Full restoration for the party.\n\n"
+	text += "[color=yellow]Cost: %d gold (level %d x %d)[/color]\n\n" % [total_cost, party_level, GOLD_PER_LEVEL]
 
 	text += "[color=cyan]Effects:[/color]\n"
-	text += "  HP restored: %d%%\n" % option["hp_percent"]
-	text += "  MP restored: %d%%\n" % option["mp_percent"]
-	if option["cures_minor"]:
-		text += "  Cures: Poison, Sleep, Confusion, Silence, Fear\n"
+	text += "  HP restored: 100%%\n"
+	text += "  MP restored: 100%%\n"
+	text += "  Cures: Poison, Sleep, Confusion, Silence, Fear\n"
 
 	text += "\n[color=gray]Preview:[/color]\n"
 	for member in GameState.party.get_members():
 		if member.is_dead:
 			continue
-		var hp_gain := _calculate_hp_restore(member, option["hp_percent"])
-		var mp_gain := _calculate_mp_restore(member, option["mp_percent"])
+		var hp_gain := _calculate_hp_restore(member, 100)
+		var mp_gain := _calculate_mp_restore(member, 100)
 		var status_text := ""
-		if option["cures_minor"] and _has_minor_status(member):
+		if _has_minor_status(member):
 			status_text = " [cured]"
 		text += "  %s: +%d HP, +%d MP%s\n" % [member.character_name, hp_gain, mp_gain, status_text]
 
@@ -269,17 +232,12 @@ func _get_status_text(member: Character) -> String:
 	return ", ".join(parts)
 
 
-func _on_rest_selected(option: Dictionary) -> void:
-	var living_count := _get_living_party_count()
-	var total_cost: int = option["cost_per_person"] * living_count
+func _on_rest_selected() -> void:
+	var total_cost := _get_rest_cost()
 
 	if not GameState.party.spend_gold(total_cost):
 		message_label.text = "Not enough gold!"
 		return
-
-	var hp_percent: int = option["hp_percent"]
-	var mp_percent: int = option["mp_percent"]
-	var cures_minor: bool = option["cures_minor"]
 
 	var total_hp := 0
 	var total_mp := 0
@@ -290,17 +248,13 @@ func _on_rest_selected(option: Dictionary) -> void:
 		if member.is_dead:
 			continue
 
-		var hp_restore := member.max_hp * hp_percent / 100
-		var mp_restore := member.max_mp * mp_percent / 100
+		total_hp += member.heal(member.max_hp)
+		total_mp += member.restore_mp(member.max_mp)
 
-		total_hp += member.heal(hp_restore)
-		total_mp += member.restore_mp(mp_restore)
-
-		if cures_minor:
-			for status in MINOR_STATUSES:
-				if member.has_status(status):
-					member.remove_status(status)
-					cured_count += 1
+		for status in MINOR_STATUSES:
+			if member.has_status(status):
+				member.remove_status(status)
+				cured_count += 1
 
 		var level_result := _process_level_ups(member)
 		if not level_result.is_empty():

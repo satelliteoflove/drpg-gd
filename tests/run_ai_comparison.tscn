@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://ai_comparison_test"]
+
+[ext_resource type="Script" path="res://tests/run_ai_comparison.gd" id="1_script"]
+
+[node name="AIComparison" type="Node"]
+script = ExtResource("1_script")
