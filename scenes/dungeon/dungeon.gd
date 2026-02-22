@@ -539,8 +539,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_open_map()
 	elif event.is_action_pressed("go_to_town"):
 		_on_town_pressed()
-	elif event.is_action_pressed("debug_combat"):
-		_force_combat()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_G:
 		_debug_add_gold()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_K:

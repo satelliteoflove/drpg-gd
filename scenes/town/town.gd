@@ -11,7 +11,6 @@ func _ready() -> void:
 	$VBoxContainer/TempleButton.pressed.connect(_on_temple_pressed)
 	$VBoxContainer/SimulatorButton.pressed.connect(_on_simulator_pressed)
 	$VBoxContainer/DungeonButton.pressed.connect(_on_dungeon_pressed)
-	$VBoxContainer/TestCombatButton.pressed.connect(_on_test_combat_pressed)
 	$VBoxContainer/MainMenuButton.pressed.connect(_on_main_menu_pressed)
 
 	_setup_navigation()
@@ -26,7 +25,6 @@ func _setup_navigation() -> void:
 		$VBoxContainer/TempleButton,
 		$VBoxContainer/SimulatorButton,
 		$VBoxContainer/DungeonButton,
-		$VBoxContainer/TestCombatButton,
 		$VBoxContainer/MainMenuButton
 	]
 
@@ -65,30 +63,6 @@ func _on_simulator_pressed() -> void:
 
 func _on_dungeon_pressed() -> void:
 	SceneManager.go_to_dungeon()
-
-
-func _on_test_combat_pressed() -> void:
-	var slime_resource := load("res://data/monsters/slime.tres") as Monster
-	if slime_resource == null:
-		push_error("Could not load slime monster")
-		return
-
-	var enemies: Array[Monster] = []
-	var positions: Array[Vector2i] = [
-		Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0),
-		Vector2i(1, 1),
-		Vector2i(0, 2), Vector2i(2, 2)
-	]
-	var enemy_count := 3
-
-	for i in range(enemy_count):
-		var enemy := slime_resource.duplicate() as Monster
-		enemy.grid_position = positions[i]
-		enemies.append(enemy)
-
-	var encounter := {"enemies": enemies}
-	GameState.start_combat(encounter)
-	SceneManager.go_to_combat()
 
 
 func _on_main_menu_pressed() -> void:

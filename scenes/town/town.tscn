@@ -69,10 +69,6 @@ layout_mode = 2
 layout_mode = 2
 text = "Enter Dungeon"
 
-[node name="TestCombatButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "Test Combat (Debug)"
-
 [node name="MainMenuButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 text = "Main Menu"
