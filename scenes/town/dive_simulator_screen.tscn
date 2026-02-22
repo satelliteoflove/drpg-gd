@@ -1,8 +1,8 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scenes/town/training_grounds.gd" id="1_script"]
+[ext_resource type="Script" path="res://scenes/town/dive_simulator_screen.gd" id="1_script"]
 
-[node name="TrainingGrounds" type="Control"]
+[node name="DiveSimulator" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -16,7 +16,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.1, 0.12, 0.1, 1)
+color = Color(0.08, 0.1, 0.16, 1)
 
 [node name="MainHBox" type="HBoxContainer" parent="."]
 layout_mode = 1
@@ -41,28 +41,29 @@ layout_mode = 2
 [node name="TitleLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "TRAINING GROUNDS"
+text = "DIVE SIMULATOR"
 theme_override_font_sizes/font_size = 24
 
-[node name="CountLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
+[node name="PartyInfoLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
 layout_mode = 2
-text = "Roster: 0/50"
+text = ""
 horizontal_alignment = 2
 
-[node name="OptionsPanel" type="PanelContainer" parent="MainHBox/LeftPanel"]
+[node name="ConfigPanel" type="PanelContainer" parent="MainHBox/LeftPanel"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/LeftPanel/OptionsPanel"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/LeftPanel/ConfigPanel"]
 layout_mode = 2
 
-[node name="OptionsList" type="VBoxContainer" parent="MainHBox/LeftPanel/OptionsPanel/ScrollContainer"]
+[node name="ConfigList" type="VBoxContainer" parent="MainHBox/LeftPanel/ConfigPanel/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 6
 
 [node name="MessageLabel" type="Label" parent="MainHBox/LeftPanel"]
 layout_mode = 2
-text = "Welcome to the Training Grounds."
+text = "Configure and run a simulation."
 horizontal_alignment = 1
 
 [node name="HelpLabel" type="Label" parent="MainHBox/LeftPanel"]
@@ -80,26 +81,22 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="InfoPanel" type="PanelContainer" parent="MainHBox/RightPanel"]
-custom_minimum_size = Vector2(0, 250)
+[node name="TabBar" type="TabBar" parent="MainHBox/RightPanel"]
 layout_mode = 2
+tab_count = 2
+tab_0/title = "Summary"
+tab_1/title = "Encounter Log"
 
-[node name="InfoLabel" type="RichTextLabel" parent="MainHBox/RightPanel/InfoPanel"]
-layout_mode = 2
-bbcode_enabled = true
-text = "Select an option."
-
-[node name="RosterLabel" type="Label" parent="MainHBox/RightPanel"]
-layout_mode = 2
-text = "Roster Overview"
-
-[node name="RosterPanel" type="PanelContainer" parent="MainHBox/RightPanel"]
+[node name="ResultsPanel" type="PanelContainer" parent="MainHBox/RightPanel"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/RightPanel/RosterPanel"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/RightPanel/ResultsPanel"]
 layout_mode = 2
 
-[node name="RosterList" type="VBoxContainer" parent="MainHBox/RightPanel/RosterPanel/ScrollContainer"]
+[node name="ResultsLabel" type="RichTextLabel" parent="MainHBox/RightPanel/ResultsPanel/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "Run a simulation to see results."

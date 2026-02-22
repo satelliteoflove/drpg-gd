@@ -1,16 +1,25 @@
 extends Node
 
-const NUM_DIVES := 50
+const NUM_DIVES := 5
 const BASE_SEED := 70000
 
-var _scenarios := [
-	{"name": "Floor 1 Easy", "level": 2, "floor": 1, "encounters": 5, "boss": false, "return": 1},
-	{"name": "Floor 2 + Boss", "level": 3, "floor": 2, "encounters": 4, "boss": true, "return": 1},
-	{"name": "Floor 3 Gauntlet", "level": 3, "floor": 3, "encounters": 6, "boss": false, "return": 2},
-	{"name": "Floor 4 + Boss", "level": 5, "floor": 4, "encounters": 4, "boss": true, "return": 2},
-	{"name": "Floor 5 Deep Dive", "level": 5, "floor": 5, "encounters": 6, "boss": false, "return": 2},
-	{"name": "Floor 6 + Boss", "level": 7, "floor": 6, "encounters": 4, "boss": true, "return": 3},
-]
+var _scenarios := []
+
+
+func _build_scenarios() -> void:
+	for floor_num in range(1, 7):
+		for level in range(1, 7):
+			var diff: int = level - floor_num
+			if diff > 2:
+				continue
+			_scenarios.append({
+				"name": "F%d Lv%d" % [floor_num, level],
+				"level": level,
+				"floor": floor_num,
+				"encounters": 4,
+				"boss": false,
+				"return": 1,
+			})
 
 
 func _ready() -> void:
@@ -18,6 +27,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	_build_scenarios()
 	var total_dives := _scenarios.size() * NUM_DIVES
 	print("=" .repeat(80))
 	print("DIVE SIMULATOR -- Attrition-Based Combat Testing (with return trip)")
@@ -108,6 +118,12 @@ func _compute_scenario_summary(
 	var total_profit := 0
 	var retreats := 0
 	var retreat_reasons: Dictionary = {}
+	var total_poison := 0
+	var total_paralysis := 0
+	var total_other_status := 0
+	var total_party_surprises := 0
+	var total_enemy_surprises := 0
+	var total_stalemates := 0
 
 	var max_encounter_num := num_encounters + (1 if include_boss else 0)
 	var hp_by_encounter: Array[Array] = []
@@ -127,6 +143,31 @@ func _compute_scenario_summary(
 
 	for result in dive_results:
 		total_potions += result.total_potions_used
+
+		for snap in result.encounter_snapshots:
+			var statuses: Dictionary = snap.get("statuses_applied", {})
+			total_poison += statuses.get("poison", 0)
+			total_paralysis += statuses.get("paralysis", 0)
+			total_other_status += statuses.get("other", 0)
+			var surprise: String = snap.get("surprise", "none")
+			if surprise == "party":
+				total_party_surprises += 1
+			elif surprise == "enemy":
+				total_enemy_surprises += 1
+			if snap.get("stalemate", false):
+				total_stalemates += 1
+		for snap in result.get("return_snapshots", []):
+			var statuses: Dictionary = snap.get("statuses_applied", {})
+			total_poison += statuses.get("poison", 0)
+			total_paralysis += statuses.get("paralysis", 0)
+			total_other_status += statuses.get("other", 0)
+			var surprise: String = snap.get("surprise", "none")
+			if surprise == "party":
+				total_party_surprises += 1
+			elif surprise == "enemy":
+				total_enemy_surprises += 1
+			if snap.get("stalemate", false):
+				total_stalemates += 1
 
 		if result.party_wiped:
 			wipes += 1
@@ -253,6 +294,12 @@ func _compute_scenario_summary(
 		"retreats": retreats,
 		"retreat_rate": float(retreats) / float(total) * 100.0,
 		"retreat_reasons": retreat_reasons,
+		"avg_poison": float(total_poison) / float(total),
+		"avg_paralysis": float(total_paralysis) / float(total),
+		"avg_other_status": float(total_other_status) / float(total),
+		"avg_party_surprises": float(total_party_surprises) / float(total),
+		"avg_enemy_surprises": float(total_enemy_surprises) / float(total),
+		"total_stalemates": total_stalemates,
 	}
 
 
@@ -314,6 +361,15 @@ func _print_scenario_summary(summary: Dictionary) -> void:
 				i + 1, ret_hp[i], ret_mp[i], marker
 			])
 
+	print("  Statuses: %.1f poison/dive, %.1f paralysis/dive, %.1f other/dive" % [
+		summary.avg_poison, summary.avg_paralysis, summary.avg_other_status
+	])
+	var stalemate_str := ""
+	if summary.total_stalemates > 0:
+		stalemate_str = " | %d stalemates" % summary.total_stalemates
+	print("  Surprise: %.1f party/dive, %.1f enemy/dive%s" % [
+		summary.avg_party_surprises, summary.avg_enemy_surprises, stalemate_str
+	])
 	print("  Avg potions consumed: %.1f per dive" % summary.avg_potions)
 
 	if summary.retreats > 0:

@@ -347,7 +347,8 @@ static func cast_spell_by_monster(
 		"messages": [] as Array[String],
 		"total_damage": 0,
 		"total_healing": 0,
-		"mp_consumed": 0
+		"mp_consumed": 0,
+		"statuses_applied": [] as Array[Dictionary],
 	}
 
 	if caster.current_mp < spell.mp_cost:
@@ -364,6 +365,8 @@ static func cast_spell_by_monster(
 		result.messages.append_array(effect_result.messages)
 		result.total_damage += effect_result.get("damage", 0)
 		result.total_healing += effect_result.get("healing", 0)
+		var applied: Array = effect_result.get("statuses_applied", [])
+		result.statuses_applied.append_array(applied)
 
 	result.success = true
 	return result
@@ -460,7 +463,7 @@ static func _process_monster_status(
 	effect: SpellEffect,
 	targets: Array
 ) -> Dictionary:
-	var result := {"messages": [] as Array[String]}
+	var result := {"messages": [] as Array[String], "statuses_applied": [] as Array[Dictionary]}
 
 	var duration := -1
 	if effect.duration_dice != "":
@@ -487,6 +490,11 @@ static func _process_monster_status(
 		)
 		if apply_result.message != "":
 			result.messages.append(apply_result.message)
+		if apply_result.get("success", false) and not is_beneficial:
+			result.statuses_applied.append({
+				"target": target.get_display_name(),
+				"status": effect.status_type,
+			})
 
 	return result
 

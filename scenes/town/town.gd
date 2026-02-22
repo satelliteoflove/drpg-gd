@@ -4,12 +4,12 @@ var nav: MenuNavigator = null
 
 
 func _ready() -> void:
-	$VBoxContainer/TavernButton.pressed.connect(_on_tavern_pressed)
+	$VBoxContainer/GuildHallButton.pressed.connect(_on_guild_hall_pressed)
 	$VBoxContainer/ShopButton.pressed.connect(_on_shop_pressed)
 	$VBoxContainer/PartyButton.pressed.connect(_on_party_pressed)
 	$VBoxContainer/InnButton.pressed.connect(_on_inn_pressed)
 	$VBoxContainer/TempleButton.pressed.connect(_on_temple_pressed)
-	$VBoxContainer/TrainingButton.pressed.connect(_on_training_pressed)
+	$VBoxContainer/SimulatorButton.pressed.connect(_on_simulator_pressed)
 	$VBoxContainer/DungeonButton.pressed.connect(_on_dungeon_pressed)
 	$VBoxContainer/TestCombatButton.pressed.connect(_on_test_combat_pressed)
 	$VBoxContainer/MainMenuButton.pressed.connect(_on_main_menu_pressed)
@@ -19,12 +19,12 @@ func _ready() -> void:
 
 func _setup_navigation() -> void:
 	var buttons: Array[Button] = [
-		$VBoxContainer/TavernButton,
+		$VBoxContainer/GuildHallButton,
 		$VBoxContainer/ShopButton,
 		$VBoxContainer/PartyButton,
 		$VBoxContainer/InnButton,
 		$VBoxContainer/TempleButton,
-		$VBoxContainer/TrainingButton,
+		$VBoxContainer/SimulatorButton,
 		$VBoxContainer/DungeonButton,
 		$VBoxContainer/TestCombatButton,
 		$VBoxContainer/MainMenuButton
@@ -39,8 +39,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		nav.handle_input(event)
 
 
-func _on_tavern_pressed() -> void:
-	SceneManager.go_to_tavern()
+func _on_guild_hall_pressed() -> void:
+	SceneManager.go_to_guild_hall()
 
 
 func _on_shop_pressed() -> void:
@@ -59,8 +59,8 @@ func _on_temple_pressed() -> void:
 	SceneManager.go_to_temple()
 
 
-func _on_training_pressed() -> void:
-	SceneManager.go_to_training_grounds()
+func _on_simulator_pressed() -> void:
+	SceneManager.go_to_dive_simulator()
 
 
 func _on_dungeon_pressed() -> void:

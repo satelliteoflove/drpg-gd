@@ -37,9 +37,9 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 
-[node name="TavernButton" type="Button" parent="VBoxContainer"]
+[node name="GuildHallButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
-text = "Tavern"
+text = "Guild Hall"
 
 [node name="ShopButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
@@ -57,9 +57,9 @@ text = "Inn"
 layout_mode = 2
 text = "Temple"
 
-[node name="TrainingButton" type="Button" parent="VBoxContainer"]
+[node name="SimulatorButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
-text = "Training Grounds"
+text = "Dive Simulator"
 
 [node name="Spacer2" type="Control" parent="VBoxContainer"]
 custom_minimum_size = Vector2(0, 20)

@@ -4,7 +4,7 @@ extends RefCounted
 static var _monsters: Dictionary = {}
 static var _initialized: bool = false
 static var _boss_floor_map: Dictionary = {2: "boss_broodmother", 4: "boss_ironjaw", 6: "boss_lich", 8: "boss_drake"}
-static var _boss_minion_map: Dictionary = {2: ["spider", "spider"], 4: ["orc", "bandit"], 6: ["ghost", "skeleton"], 8: ["dark_mage", "troll"]}
+static var _boss_minion_map: Dictionary = {2: ["spider", "spider"], 4: ["orc", "bandit"], 6: ["ghost", "skeleton_mage"], 8: ["dark_mage", "troll"]}
 
 
 static func get_monster(monster_id: String) -> Monster:
@@ -71,6 +71,7 @@ static func _create_monsters() -> void:
 	_create_dark_mage()
 	_create_ogre()
 	_create_harpy()
+	_create_skeleton_mage()
 	_create_minotaur()
 	_create_boss_broodmother()
 	_create_boss_ironjaw()
@@ -117,7 +118,10 @@ static func _create_goblin() -> void:
 	monster.exp_reward = 15
 	monster.gold_reward_dice = "1d8"
 
-	var attack1 := MonsterAttack.create_basic("Rusty Sword", "1d6", 2)
+	var attack1 := MonsterAttack.create_with_effect(
+		"Rusty Sword", "1d6", 2,
+		CharacterEnums.StatusEffect.POISONED, 0.35, "", "physical", 1
+	)
 	var attack2 := MonsterAttack.create_basic("Claw", "1d4", 0)
 	monster.attacks = [attack1, attack2]
 
@@ -148,8 +152,13 @@ static func _create_kobold() -> void:
 	monster.gold_reward_dice = "2d6"
 
 	var attack1 := MonsterAttack.create_ranged("Throwing Dagger", "1d4", 4, 2)
+	var venomous_dart := MonsterAttack.create_with_effect(
+		"Venomous Dart", "1d4", 4,
+		CharacterEnums.StatusEffect.POISONED, 0.45, "", "physical", 2
+	)
+	venomous_dart.weapon_range = 2
 	var attack2 := MonsterAttack.create_basic("Stab", "1d4", 2)
-	monster.attacks = [attack1, attack1, attack2]
+	monster.attacks = [attack1, venomous_dart, attack2]
 
 	monster.loot_drops = [
 		LootDrop.create("dagger", 0.15),
@@ -176,9 +185,14 @@ static func _create_orc() -> void:
 	monster.exp_reward = 25
 	monster.gold_reward_dice = "2d8"
 
-	var attack1 := MonsterAttack.create_basic("Great Axe", "1d10", 2)
+	var attack1 := MonsterAttack.create_basic("Great Axe", "1d12", 2)
 	var attack2 := MonsterAttack.create_basic("Heavy Punch", "1d6+2", 0)
-	monster.attacks = [attack1, attack2]
+	var war_shout := MonsterAttack.create_with_effect(
+		"War Shout", "1d4", 0,
+		CharacterEnums.StatusEffect.AFRAID, 0.45, "2+1d3", "mental", 2
+	)
+	war_shout.targets_row = true
+	monster.attacks = [attack1, attack2, war_shout]
 
 	monster.loot_drops = [
 		LootDrop.create("battle_axe", 0.08),
@@ -213,7 +227,7 @@ static func _create_spider() -> void:
 		"1d6",
 		3,
 		CharacterEnums.StatusEffect.POISONED,
-		0.35,
+		0.55,
 		"",
 		"physical",
 		2
@@ -257,7 +271,7 @@ static func _create_witch() -> void:
 		"1d4",
 		2,
 		CharacterEnums.StatusEffect.CURSED,
-		0.50,
+		0.65,
 		"",
 		"magical",
 		4
@@ -266,7 +280,7 @@ static func _create_witch() -> void:
 	var scratch := MonsterAttack.create_basic("Scratch", "1d4", 0)
 
 	monster.attacks = [fire_bolt, fire_bolt, curse, scratch]
-	monster.spells = ["m1_fire_bolt"]
+	monster.spells = ["m1_fire_bolt", "m1_sleep"]
 
 	monster.loot_drops = [
 		LootDrop.create("staff", 0.12),
@@ -295,7 +309,11 @@ static func _create_skeleton() -> void:
 	monster.gold_reward_dice = "1d8"
 
 	var sword := MonsterAttack.create_basic("Rusty Blade", "1d6", 1)
-	monster.attacks = [sword]
+	var bone_claw := MonsterAttack.create_with_effect(
+		"Bone Claw", "1d4", 1,
+		CharacterEnums.StatusEffect.PARALYZED, 0.35, "", "physical", 1
+	)
+	monster.attacks = [sword, bone_claw]
 
 	monster.loot_drops = [
 		LootDrop.create("short_sword", 0.10),
@@ -328,7 +346,7 @@ static func _create_zombie() -> void:
 		"1d6+1",
 		-1,
 		CharacterEnums.StatusEffect.POISONED,
-		0.25,
+		0.45,
 		"",
 		"physical",
 		1
@@ -360,8 +378,12 @@ static func _create_wolf() -> void:
 	monster.gold_reward_dice = "1d4"
 
 	var bite := MonsterAttack.create_basic("Vicious Bite", "1d8", 4)
+	var rabid_bite := MonsterAttack.create_with_effect(
+		"Rabid Bite", "1d8", 4,
+		CharacterEnums.StatusEffect.POISONED, 0.40, "", "physical", 1
+	)
 	var claw := MonsterAttack.create_basic("Claw", "1d4", 2)
-	monster.attacks = [bite, bite, claw]
+	monster.attacks = [bite, rabid_bite, claw]
 
 	monster.loot_drops = [
 		LootDrop.create("leather_armor", 0.08),
@@ -386,9 +408,13 @@ static func _create_bandit() -> void:
 	monster.exp_reward = 18
 	monster.gold_reward_dice = "3d8"
 
-	var dagger := MonsterAttack.create_basic("Stab", "1d6", 3)
+	var dagger := MonsterAttack.create_basic("Stab", "1d8", 3)
+	var blackjack := MonsterAttack.create_with_effect(
+		"Blackjack", "1d6", 3,
+		CharacterEnums.StatusEffect.CONFUSED, 0.40, "3+1d3", "mental", 2
+	)
 	var throwing := MonsterAttack.create_ranged("Throwing Knife", "1d4", 5, 2)
-	monster.attacks = [dagger, dagger, throwing]
+	monster.attacks = [dagger, blackjack, throwing]
 
 	monster.loot_drops = [
 		LootDrop.create("dagger", 0.15),
@@ -418,9 +444,12 @@ static func _create_troll() -> void:
 	monster.exp_reward = 50
 	monster.gold_reward_dice = "2d10"
 
-	var club := MonsterAttack.create_basic("Massive Club", "2d8", 0)
-	var claw := MonsterAttack.create_basic("Rending Claw", "1d10", 2)
-	monster.attacks = [club, claw]
+	var club := MonsterAttack.create_basic("Massive Club", "2d10", 0)
+	var festering_wound := MonsterAttack.create_with_effect(
+		"Festering Wound", "1d12", 2,
+		CharacterEnums.StatusEffect.POISONED, 0.50, "", "physical", 3
+	)
+	monster.attacks = [club, festering_wound]
 
 	monster.loot_drops = [
 		LootDrop.create("battle_axe", 0.10),
@@ -441,7 +470,7 @@ static func _create_ghost() -> void:
 	monster.strength = 6
 	monster.agility = 14
 	monster.defense = 0
-	monster.evasion = 20
+	monster.evasion = 12
 	monster.creature_type = CharacterEnums.CreatureType.UNDEAD
 	monster.level = 4
 	monster.intelligence = 14
@@ -458,7 +487,7 @@ static func _create_ghost() -> void:
 		"1d4",
 		2,
 		CharacterEnums.StatusEffect.PARALYZED,
-		0.20,
+		0.45,
 		"1+1d2",
 		"magical",
 		3
@@ -502,7 +531,7 @@ static func _create_dark_mage() -> void:
 		"1d4",
 		2,
 		CharacterEnums.StatusEffect.CURSED,
-		0.40,
+		0.60,
 		"",
 		"magical",
 		4
@@ -511,7 +540,7 @@ static func _create_dark_mage() -> void:
 	var staff := MonsterAttack.create_basic("Staff Strike", "1d4", 0)
 
 	monster.attacks = [bolt, bolt, curse, staff]
-	monster.spells = ["m1_fire_bolt", "m1_sleep", "m2_fear"]
+	monster.spells = ["m1_fire_bolt", "m1_sleep", "m2_fear", "m3_silence"]
 
 	monster.loot_drops = [
 		LootDrop.create("staff", 0.15),
@@ -542,7 +571,10 @@ static func _create_ogre() -> void:
 	var slam := MonsterAttack.create_basic("Crushing Blow", "2d8+2", -2)
 	slam.targets_row = true
 
-	var stomp := MonsterAttack.create_basic("Ground Stomp", "1d6", 0)
+	var stomp := MonsterAttack.create_with_effect(
+		"Ground Stomp", "1d6", 0,
+		CharacterEnums.StatusEffect.CONFUSED, 0.35, "2+1d3", "physical", 3
+	)
 	stomp.targets_all = true
 
 	var fist := MonsterAttack.create_basic("Massive Fist", "1d10+2", 0)
@@ -583,7 +615,7 @@ static func _create_harpy() -> void:
 		"1d4",
 		2,
 		CharacterEnums.StatusEffect.AFRAID,
-		0.35,
+		0.55,
 		"2+1d3",
 		"mental",
 		2
@@ -601,6 +633,42 @@ static func _create_harpy() -> void:
 	monster.min_floor = 4
 	monster.max_floor = 5
 	_monsters["harpy"] = monster
+
+
+static func _create_skeleton_mage() -> void:
+	var monster := Monster.new()
+	monster.monster_name = "Skeleton Mage"
+	monster.max_hp = 12
+	monster.strength = 6
+	monster.agility = 10
+	monster.defense = 1
+	monster.evasion = 6
+	monster.intelligence = 14
+	monster.piety = 10
+	monster.max_mp = 15
+	monster.creature_type = CharacterEnums.CreatureType.UNDEAD
+	monster.level = 3
+	monster.luck = 8
+	monster.exp_reward = 22
+	monster.gold_reward_dice = "2d6"
+
+	var shadow_bolt := MonsterAttack.create_magical("Shadow Bolt", "1d6", CharacterEnums.Element.DARK, 3)
+	var bone_claw := MonsterAttack.create_with_effect(
+		"Bone Claw", "1d4", 1,
+		CharacterEnums.StatusEffect.PARALYZED, 0.40, "", "physical", 2
+	)
+	monster.attacks = [shadow_bolt, bone_claw]
+	monster.spells = ["m1_fire_bolt", "m1_sleep"]
+
+	monster.loot_drops = [
+		LootDrop.create("staff", 0.10),
+		LootDrop.create("mana_potion", 0.12),
+		LootDrop.create("healing_potion", 0.10),
+	]
+
+	monster.min_floor = 3
+	monster.max_floor = 5
+	_monsters["skeleton_mage"] = monster
 
 
 static func _create_minotaur() -> void:
@@ -806,7 +874,7 @@ static func _create_boss_lich() -> void:
 	var bone_staff := MonsterAttack.create_basic("Bone Staff", "1d6", 0)
 
 	monster.attacks = [soul_rend, soul_rend, death_touch, wail, bone_staff]
-	monster.spells = ["m1_fire_bolt", "m1_sleep", "m2_fear", "m3_fireball"]
+	monster.spells = ["m1_fire_bolt", "m1_sleep", "m2_fear", "m3_fireball", "m3_silence"]
 
 	monster.loot_drops = [
 		LootDrop.create("staff", 0.30),

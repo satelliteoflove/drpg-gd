@@ -290,12 +290,12 @@ const RACE_STAT_RANGES: Dictionary = {
 		"luck": Vector2i(7, 17)
 	},
 	Race.GNOME: {
-		"strength": Vector2i(8, 18),
-		"intelligence": Vector2i(9, 19),
-		"piety": Vector2i(9, 19),
-		"vitality": Vector2i(8, 18),
-		"agility": Vector2i(9, 19),
-		"luck": Vector2i(8, 18)
+		"strength": Vector2i(10, 20),
+		"intelligence": Vector2i(7, 17),
+		"piety": Vector2i(13, 23),
+		"vitality": Vector2i(10, 20),
+		"agility": Vector2i(6, 16),
+		"luck": Vector2i(7, 17)
 	},
 	Race.HOBBIT: {
 		"strength": Vector2i(8, 18),
@@ -306,52 +306,52 @@ const RACE_STAT_RANGES: Dictionary = {
 		"luck": Vector2i(11, 21)
 	},
 	Race.FAERIE: {
-		"strength": Vector2i(6, 16),
-		"intelligence": Vector2i(9, 19),
-		"piety": Vector2i(8, 18),
-		"vitality": Vector2i(8, 18),
-		"agility": Vector2i(10, 20),
-		"luck": Vector2i(9, 19)
+		"strength": Vector2i(5, 15),
+		"intelligence": Vector2i(11, 21),
+		"piety": Vector2i(6, 16),
+		"vitality": Vector2i(6, 16),
+		"agility": Vector2i(14, 24),
+		"luck": Vector2i(11, 21)
 	},
 	Race.LIZMAN: {
-		"strength": Vector2i(8, 18),
-		"intelligence": Vector2i(8, 18),
-		"piety": Vector2i(7, 17),
-		"vitality": Vector2i(9, 19),
-		"agility": Vector2i(8, 18),
-		"luck": Vector2i(8, 18)
+		"strength": Vector2i(12, 22),
+		"intelligence": Vector2i(5, 15),
+		"piety": Vector2i(5, 15),
+		"vitality": Vector2i(14, 24),
+		"agility": Vector2i(9, 19),
+		"luck": Vector2i(7, 17)
 	},
 	Race.DRACON: {
-		"strength": Vector2i(9, 19),
+		"strength": Vector2i(10, 20),
 		"intelligence": Vector2i(7, 17),
-		"piety": Vector2i(8, 18),
-		"vitality": Vector2i(10, 20),
+		"piety": Vector2i(6, 16),
+		"vitality": Vector2i(12, 22),
 		"agility": Vector2i(8, 18),
 		"luck": Vector2i(8, 18)
 	},
 	Race.RAWULF: {
-		"strength": Vector2i(10, 20),
-		"intelligence": Vector2i(7, 17),
-		"piety": Vector2i(8, 18),
-		"vitality": Vector2i(9, 19),
-		"agility": Vector2i(8, 18),
-		"luck": Vector2i(8, 18)
-	},
-	Race.MOOK: {
 		"strength": Vector2i(8, 18),
-		"intelligence": Vector2i(8, 18),
-		"piety": Vector2i(6, 16),
-		"vitality": Vector2i(8, 18),
-		"agility": Vector2i(9, 19),
+		"intelligence": Vector2i(6, 16),
+		"piety": Vector2i(12, 22),
+		"vitality": Vector2i(10, 20),
+		"agility": Vector2i(8, 18),
 		"luck": Vector2i(9, 19)
 	},
-	Race.FELPURR: {
-		"strength": Vector2i(9, 19),
-		"intelligence": Vector2i(8, 18),
-		"piety": Vector2i(8, 18),
-		"vitality": Vector2i(9, 19),
-		"agility": Vector2i(9, 19),
+	Race.MOOK: {
+		"strength": Vector2i(10, 20),
+		"intelligence": Vector2i(10, 20),
+		"piety": Vector2i(6, 16),
+		"vitality": Vector2i(10, 20),
+		"agility": Vector2i(7, 17),
 		"luck": Vector2i(8, 18)
+	},
+	Race.FELPURR: {
+		"strength": Vector2i(7, 17),
+		"intelligence": Vector2i(10, 20),
+		"piety": Vector2i(7, 17),
+		"vitality": Vector2i(7, 17),
+		"agility": Vector2i(12, 22),
+		"luck": Vector2i(10, 20)
 	}
 }
 

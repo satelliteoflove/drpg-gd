@@ -61,6 +61,17 @@ static func _decide_healer_action(
 				"reasoning": "emergency heal %s" % emergency.get_display_name()
 			}
 
+	var disabled_ally := _find_disabled_ally(party)
+	if disabled_ally and character.current_mp > 0:
+		var cure_spell := _find_cure_spell(character, disabled_ally)
+		if cure_spell != "":
+			return {
+				"action": "spell",
+				"target": disabled_ally,
+				"spell_id": cure_spell,
+				"reasoning": "cure disabled ally (%s)" % disabled_ally.get_display_name()
+			}
+
 	var wounded := _find_wounded_ally(party, 0.5)
 	if wounded and character.current_mp > 0:
 		var heal_spell := _find_best_healing_spell(character)
@@ -70,6 +81,17 @@ static func _decide_healer_action(
 				"target": wounded,
 				"spell_id": heal_spell,
 				"reasoning": "heal wounded ally"
+			}
+
+	var afflicted_ally := _find_afflicted_ally(party)
+	if afflicted_ally and character.current_mp > 0:
+		var cure_spell := _find_cure_spell(character, afflicted_ally)
+		if cure_spell != "":
+			return {
+				"action": "spell",
+				"target": afflicted_ally,
+				"spell_id": cure_spell,
+				"reasoning": "cure affliction on %s" % afflicted_ally.get_display_name()
 			}
 
 	var party_health := _get_party_health_percent(party)
@@ -83,17 +105,6 @@ static func _decide_healer_action(
 					"spell_id": "",
 					"reasoning": "dispel undead"
 				}
-
-	var status_target := _find_ally_with_curable_status(party)
-	if status_target and character.current_mp > 0:
-		var cure_spell := _find_cure_spell(character, status_target)
-		if cure_spell:
-			return {
-				"action": "spell",
-				"target": status_target,
-				"spell_id": cure_spell,
-				"reasoning": "cure status effect"
-			}
 
 	var should_cast_offensive := strategy == Strategy.AGGRESSIVE or mp_percent > cast_threshold
 	if should_cast_offensive and character.current_mp > 0:
@@ -259,20 +270,29 @@ static func _find_wounded_ally(party: Party, threshold: float) -> Character:
 	return most_wounded
 
 
-static func _find_ally_with_curable_status(party: Party) -> Character:
-	var curable := [
-		CharacterEnums.StatusEffect.POISONED,
+static func _find_disabled_ally(party: Party) -> Character:
+	var disabling := [
 		CharacterEnums.StatusEffect.PARALYZED,
-		CharacterEnums.StatusEffect.BLINDED,
-		CharacterEnums.StatusEffect.SILENCED,
-		CharacterEnums.StatusEffect.CONFUSED
+		CharacterEnums.StatusEffect.ASLEEP,
 	]
-
 	for member in party.get_alive_members():
-		for status in curable:
+		for status in disabling:
 			if member.has_status(status):
 				return member
+	return null
 
+
+static func _find_afflicted_ally(party: Party) -> Character:
+	var afflictions := [
+		CharacterEnums.StatusEffect.POISONED,
+		CharacterEnums.StatusEffect.CONFUSED,
+		CharacterEnums.StatusEffect.SILENCED,
+		CharacterEnums.StatusEffect.BLINDED,
+	]
+	for member in party.get_alive_members():
+		for status in afflictions:
+			if member.has_status(status):
+				return member
 	return null
 
 
@@ -305,7 +325,7 @@ static func _find_best_healing_spell(character: Character) -> String:
 	return best_id
 
 
-static func _find_cure_spell(character: Character, _target: Character) -> String:
+static func _find_cure_spell(character: Character, target: Character) -> String:
 	for spell_id in character.known_spells:
 		var spell := SpellDatabase.get_spell(spell_id)
 		if spell == null or not spell.in_combat:
@@ -314,8 +334,39 @@ static func _find_cure_spell(character: Character, _target: Character) -> String
 			continue
 		for effect in spell.effects:
 			if effect.effect_type == SpellEffect.EffectType.CURE:
-				return spell_id
+				if _cure_matches_target(effect.cure_group, target):
+					return spell_id
 	return ""
+
+
+static func _cure_matches_target(cure_group: String, target: Character) -> bool:
+	match cure_group:
+		"poison":
+			return target.has_status(CharacterEnums.StatusEffect.POISONED)
+		"paralysis":
+			return target.has_status(CharacterEnums.StatusEffect.PARALYZED)
+		"mental":
+			return target.has_status(CharacterEnums.StatusEffect.ASLEEP) or \
+				target.has_status(CharacterEnums.StatusEffect.CONFUSED) or \
+				target.has_status(CharacterEnums.StatusEffect.AFRAID)
+		"blindness":
+			return target.has_status(CharacterEnums.StatusEffect.BLINDED)
+		"silence":
+			return target.has_status(CharacterEnums.StatusEffect.SILENCED)
+		"all":
+			for status in [
+				CharacterEnums.StatusEffect.POISONED,
+				CharacterEnums.StatusEffect.PARALYZED,
+				CharacterEnums.StatusEffect.ASLEEP,
+				CharacterEnums.StatusEffect.CONFUSED,
+				CharacterEnums.StatusEffect.AFRAID,
+				CharacterEnums.StatusEffect.SILENCED,
+				CharacterEnums.StatusEffect.BLINDED,
+				CharacterEnums.StatusEffect.CURSED,
+			]:
+				if target.has_status(status):
+					return true
+	return false
 
 
 static func _find_best_damage_spell(character: Character) -> String:

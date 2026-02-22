@@ -274,6 +274,8 @@ func run_floor_dive(
 				party, i + 1, result, healing, enemy_names, enemy_total_hp
 			)
 			snapshot["deaths_this_encounter"] = encounter_deaths
+			snapshot["surprise"] = result.get("surprise", "none")
+			snapshot["stalemate"] = result.get("stalemate", false)
 			encounter_snapshots.append(snapshot)
 
 			var retreat := _should_retreat(party)
@@ -290,6 +292,8 @@ func run_floor_dive(
 				party, i + 1, result, {}, enemy_names, enemy_total_hp
 			)
 			snapshot["deaths_this_encounter"] = encounter_deaths
+			snapshot["surprise"] = result.get("surprise", "none")
+			snapshot["stalemate"] = result.get("stalemate", false)
 			encounter_snapshots.append(snapshot)
 			break
 
@@ -360,6 +364,8 @@ func run_floor_dive(
 			)
 			snapshot["is_boss"] = true
 			snapshot["deaths_this_encounter"] = encounter_deaths
+			snapshot["surprise"] = boss_result.get("surprise", "none")
+			snapshot["stalemate"] = boss_result.get("stalemate", false)
 			encounter_snapshots.append(snapshot)
 
 	var return_snapshots: Array[Dictionary] = []
@@ -408,6 +414,8 @@ func run_floor_dive(
 			)
 			snapshot["is_return"] = true
 			snapshot["deaths_this_encounter"] = encounter_deaths
+			snapshot["surprise"] = result.get("surprise", "none")
+			snapshot["stalemate"] = result.get("stalemate", false)
 			return_snapshots.append(snapshot)
 
 			if result.victory:
@@ -737,6 +745,10 @@ func _take_encounter_snapshot(
 	if total_max_mp > 0:
 		mp_pct = float(total_mp) / float(total_max_mp) * 100.0
 
+	var statuses_applied := _count_statuses_on_party(
+		combat_result.get("metrics", {}).get("status_effects_applied", {})
+	)
+
 	return {
 		"encounter_num": encounter_num,
 		"victory": combat_result.victory,
@@ -751,6 +763,7 @@ func _take_encounter_snapshot(
 		"potions_used": healing_metrics.get("potions_used", 0),
 		"is_boss": false,
 		"deaths_this_encounter": [] as Array[String],
+		"statuses_applied": statuses_applied,
 	}
 
 
@@ -864,6 +877,21 @@ func _rest_party(party: Party, hp_percent: float, mp_percent: float) -> Dictiona
 		total_mp_restored += actual_mp
 
 	return {"hp": total_hp_restored, "mp": total_mp_restored}
+
+
+func _count_statuses_on_party(status_dict: Dictionary) -> Dictionary:
+	var counts := {"poison": 0, "paralysis": 0, "other": 0}
+	for key in status_dict:
+		var statuses: Array = status_dict[key]
+		for status_val in statuses:
+			match status_val:
+				CharacterEnums.StatusEffect.POISONED:
+					counts["poison"] += 1
+				CharacterEnums.StatusEffect.PARALYZED:
+					counts["paralysis"] += 1
+				_:
+					counts["other"] += 1
+	return counts
 
 
 func _duplicate_party(party: Party) -> Party:

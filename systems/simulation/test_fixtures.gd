@@ -131,13 +131,44 @@ static func create_floor_encounter(floor_num: int) -> Array[Monster]:
 	if available.is_empty():
 		available = ["slime"]
 
-	var count: int = CombatRNG.randi_range(1, 4)
+	var count: int = _roll_encounter_size(floor_num)
 	var monster_ids: Array[String] = []
 
-	for i in range(count):
-		monster_ids.append(available[CombatRNG.randi() % available.size()])
+	if count >= 3 and available.size() >= 2:
+		var used: Array[String] = []
+		for i in range(count):
+			if i < 2 or used.size() >= available.size():
+				var pick: String = available[CombatRNG.randi() % available.size()]
+				monster_ids.append(pick)
+				if not used.has(pick):
+					used.append(pick)
+			else:
+				var remaining: Array[String] = []
+				for mid in available:
+					if not used.has(mid):
+						remaining.append(mid)
+				if not remaining.is_empty():
+					var pick: String = remaining[CombatRNG.randi() % remaining.size()]
+					monster_ids.append(pick)
+					used.append(pick)
+				else:
+					monster_ids.append(available[CombatRNG.randi() % available.size()])
+	else:
+		for i in range(count):
+			monster_ids.append(available[CombatRNG.randi() % available.size()])
 
 	return create_monster_group(monster_ids)
+
+
+static func _roll_encounter_size(floor_num: int) -> int:
+	if floor_num <= 2:
+		return CombatRNG.randi_range(1, 3)
+	elif floor_num <= 4:
+		return CombatRNG.randi_range(2, 5)
+	elif floor_num <= 6:
+		return CombatRNG.randi_range(3, 6)
+	else:
+		return CombatRNG.randi_range(3, 7)
 
 
 static func boss_fight_scenario() -> Dictionary:

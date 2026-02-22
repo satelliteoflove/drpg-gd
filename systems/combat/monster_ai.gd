@@ -230,7 +230,7 @@ static func _select_best_attack(monster: Monster, party: Party) -> MonsterAttack
 					any_affected = true
 					break
 			if not any_affected:
-				weight += 5.0
+				weight += 15.0
 
 		if attack.targets_row and party.get_front_row_alive().size() >= 2:
 			weight += 8.0

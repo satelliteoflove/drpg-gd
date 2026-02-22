@@ -11,12 +11,12 @@ const SCENES: Dictionary = {
 	"dungeon": "res://scenes/dungeon/dungeon.tscn",
 	"combat": "res://scenes/combat/combat.tscn",
 	"character_creation": "res://scenes/town/character_creation.tscn",
-	"training_grounds": "res://scenes/town/training_grounds.tscn",
-	"tavern": "res://scenes/town/tavern.tscn",
+	"guild_hall": "res://scenes/town/guild_hall.tscn",
 	"inn": "res://scenes/town/inn.tscn",
 	"temple": "res://scenes/town/temple.tscn",
 	"shop": "res://scenes/town/shop.tscn",
 	"party_menu": "res://scenes/common/party_menu.tscn",
+	"dive_simulator": "res://scenes/town/dive_simulator_screen.tscn",
 }
 
 var current_scene_name: String = ""
@@ -86,14 +86,9 @@ func go_to_character_creation() -> void:
 	change_scene("character_creation")
 
 
-func go_to_training_grounds() -> void:
+func go_to_guild_hall() -> void:
 	GameState.set_mode(GameState.GameMode.TOWN)
-	change_scene("training_grounds")
-
-
-func go_to_tavern() -> void:
-	GameState.set_mode(GameState.GameMode.TOWN)
-	change_scene("tavern")
+	change_scene("guild_hall")
 
 
 func go_to_inn() -> void:
@@ -114,3 +109,8 @@ func go_to_shop() -> void:
 func go_to_party_menu() -> void:
 	GameState.set_mode(GameState.GameMode.TOWN)
 	change_scene("party_menu")
+
+
+func go_to_dive_simulator() -> void:
+	GameState.set_mode(GameState.GameMode.TOWN)
+	change_scene("dive_simulator")

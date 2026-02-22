@@ -4,6 +4,14 @@ extends RefCounted
 signal turn_completed(turn_data: Dictionary)
 signal combat_completed(result: Dictionary)
 
+enum SurpriseResult { NONE, PARTY_SURPRISE, ENEMY_SURPRISE }
+
+const STALEMATE_THRESHOLD: int = 30
+const SURPRISE_BASE_CHANCE: float = 0.12
+const SURPRISE_AGI_FACTOR: float = 0.02
+const SURPRISE_MIN_CHANCE: float = 0.05
+const SURPRISE_MAX_CHANCE: float = 0.25
+
 var party: Party = null
 var enemies: Array[Monster] = []
 var rng_seed: int = 0
@@ -16,6 +24,9 @@ var cast_threshold: float = PartyAI.DEFAULT_CAST_THRESHOLD
 var _initiative: InitiativeTracker = null
 var _current_turn: int = 0
 var _combat_active: bool = false
+var _stalemate_counter: int = 0
+var _surprise: SurpriseResult = SurpriseResult.NONE
+var _surprise_results: Array[Dictionary] = []
 
 
 func setup(p_party: Party, p_enemies: Array[Monster], seed_value: int) -> void:
@@ -46,9 +57,17 @@ func setup(p_party: Party, p_enemies: Array[Monster], seed_value: int) -> void:
 
 
 func run() -> Dictionary:
+	_roll_surprise()
+	if _surprise != SurpriseResult.NONE:
+		_execute_surprise_round()
+
 	while _combat_active and _current_turn < max_turns:
-		var _turn_result := step()
+		var turn_result := step()
 		if not _combat_active:
+			break
+		_track_stalemate(turn_result)
+		if _stalemate_counter >= STALEMATE_THRESHOLD:
+			_combat_active = false
 			break
 
 	metrics.record_party_state_end(_get_total_party_hp(), _get_total_party_mp())
@@ -314,6 +333,9 @@ func _execute_monster_attack(monster: Monster, attack: MonsterAttack, targets: A
 			metrics.record_damage(monster.monster_name, char_target.get_display_name(), actual)
 			hits.append(char_target.get_display_name())
 
+			if not char_target.is_dead:
+				_try_apply_attack_effect(monster, attack, char_target)
+
 			if char_target.is_dead:
 				_initiative.remove_combatant(char_target.id)
 				metrics.record_death(char_target.get_display_name(), _current_turn)
@@ -341,6 +363,10 @@ func _execute_monster_spell(monster: Monster, spell_id: String, targets: Array) 
 		if t is Character and t.is_dead:
 			_initiative.remove_combatant(t.id)
 			metrics.record_death(t.get_display_name(), _current_turn)
+
+	var applied: Array = result.get("statuses_applied", [])
+	for entry in applied:
+		metrics.record_status(monster.monster_name, entry["target"], entry["status"])
 
 	return {
 		"action": "spell",
@@ -409,6 +435,13 @@ func _build_result() -> Dictionary:
 			party_survivors.append(member.get_display_name())
 			party_hp_remaining += member.current_hp
 
+	var surprise_str := "none"
+	match _surprise:
+		SurpriseResult.PARTY_SURPRISE: surprise_str = "party"
+		SurpriseResult.ENEMY_SURPRISE: surprise_str = "enemy"
+
+	var stalemate := _stalemate_counter >= STALEMATE_THRESHOLD
+
 	return {
 		"seed": rng_seed,
 		"result": "victory" if victory else "defeat",
@@ -417,6 +450,8 @@ func _build_result() -> Dictionary:
 		"party_survivors": party_survivors,
 		"party_hp_remaining": party_hp_remaining,
 		"party_hp_percent": float(party_hp_remaining) / float(maxi(1, party_hp_total)) * 100.0,
+		"surprise": surprise_str,
+		"stalemate": stalemate,
 		"metrics": metrics.to_dict(),
 		"ai_log": ai_log.to_array()
 	}
@@ -445,6 +480,33 @@ func _action_type_to_string(action_type: MonsterAI.ActionType) -> String:
 	return "unknown"
 
 
+func _try_apply_attack_effect(monster: Monster, attack: MonsterAttack, target: Character) -> void:
+	if attack.effect_type < 0 or attack.effect_chance <= 0:
+		return
+	if CombatRNG.randf() > attack.effect_chance:
+		return
+	var duration := -1
+	if attack.effect_duration_dice != "":
+		duration = DamageCalculator.roll_dice(attack.effect_duration_dice)
+	var save_type := _get_save_type_from_string(attack.effect_save_type)
+	var dc := 10 + attack.effect_power
+	if save_type >= 0:
+		if StatusEffectSystem.roll_saving_throw(target, save_type, dc):
+			return
+	var effect_result := StatusEffectSystem.apply_status(target, attack.effect_type, duration, "monster_attack", attack.effect_power)
+	if effect_result.get("success", false):
+		metrics.record_status(monster.monster_name, target.get_display_name(), attack.effect_type)
+
+
+func _get_save_type_from_string(save_str: String) -> CharacterEnums.SaveType:
+	match save_str.to_lower():
+		"physical": return CharacterEnums.SaveType.PHYSICAL
+		"mental": return CharacterEnums.SaveType.MENTAL
+		"magical": return CharacterEnums.SaveType.MAGICAL
+		"death": return CharacterEnums.SaveType.DEATH
+	return -1 as CharacterEnums.SaveType
+
+
 func _get_decision_target_name(decision: MonsterAI.AIDecision) -> String:
 	if decision.targets.is_empty():
 		return ""
@@ -454,3 +516,104 @@ func _get_decision_target_name(decision: MonsterAI.AIDecision) -> String:
 	elif target is Monster:
 		return target.monster_name
 	return ""
+
+
+func _roll_surprise() -> void:
+	var party_avg_agi := 0.0
+	var party_count := 0
+	for member in party.get_members():
+		if not member.is_dead:
+			party_avg_agi += member.agility
+			party_count += 1
+	if party_count > 0:
+		party_avg_agi /= party_count
+
+	var enemy_avg_agi := 0.0
+	var enemy_count := 0
+	for enemy in enemies:
+		if not enemy.is_dead:
+			enemy_avg_agi += enemy.agility
+			enemy_count += 1
+	if enemy_count > 0:
+		enemy_avg_agi /= enemy_count
+
+	var agi_diff := party_avg_agi - enemy_avg_agi
+	var party_chance := clampf(SURPRISE_BASE_CHANCE + agi_diff * SURPRISE_AGI_FACTOR, SURPRISE_MIN_CHANCE, SURPRISE_MAX_CHANCE)
+	var enemy_chance := clampf(SURPRISE_BASE_CHANCE - agi_diff * SURPRISE_AGI_FACTOR, SURPRISE_MIN_CHANCE, SURPRISE_MAX_CHANCE)
+
+	var roll := CombatRNG.randf()
+	if roll < party_chance:
+		_surprise = SurpriseResult.PARTY_SURPRISE
+	elif roll < party_chance + enemy_chance:
+		_surprise = SurpriseResult.ENEMY_SURPRISE
+	else:
+		_surprise = SurpriseResult.NONE
+
+
+func _execute_surprise_round() -> void:
+	if _surprise == SurpriseResult.PARTY_SURPRISE:
+		for member in party.get_members():
+			if not _combat_active:
+				break
+			if member.is_dead or member.is_disabled():
+				continue
+			var target := _get_first_living_enemy()
+			if target == null:
+				break
+			var result := _execute_character_attack(member, target)
+			result["surprise"] = true
+			result["actor"] = member.get_display_name()
+			_surprise_results.append(result)
+			_check_combat_end()
+
+	elif _surprise == SurpriseResult.ENEMY_SURPRISE:
+		for enemy in enemies:
+			if not _combat_active:
+				break
+			if enemy.is_dead:
+				continue
+			var attack := enemy.get_random_attack()
+			if attack == null:
+				continue
+			var target := _get_random_living_party_member()
+			if target == null:
+				break
+			var result := _execute_monster_attack(enemy, attack, [target])
+			result["surprise"] = true
+			result["actor"] = enemy.monster_name
+			_surprise_results.append(result)
+			_check_combat_end()
+
+
+func _get_first_living_enemy() -> Monster:
+	for enemy in enemies:
+		if not enemy.is_dead:
+			return enemy
+	return null
+
+
+func _get_random_living_party_member() -> Character:
+	var alive := party.get_alive_members()
+	if alive.is_empty():
+		return null
+	return alive[CombatRNG.randi() % alive.size()]
+
+
+func _track_stalemate(turn_data: Dictionary) -> void:
+	var had_progress := false
+
+	if turn_data.get("damage", 0) > 0:
+		had_progress = true
+	elif turn_data.get("hit", false):
+		had_progress = true
+	elif turn_data.get("target_killed", false):
+		had_progress = true
+	elif turn_data.get("healing", 0) > 0:
+		had_progress = true
+	elif not turn_data.get("hits", [] as Array[String]).is_empty():
+		had_progress = true
+
+	if had_progress:
+		_stalemate_counter = 0
+	else:
+		_stalemate_counter += 1
