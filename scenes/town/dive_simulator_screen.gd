@@ -219,7 +219,7 @@ func _run_simulation() -> void:
 			_rest_between_dives(party_copy)
 		_clear_consumables(party_copy)
 		TestFixtures.stock_party_consumables(party_copy, party_copy.get_average_level())
-		var seed_value := 80000 + i * 10000
+		var seed_value := randi()
 		CombatRNGClass.set_seed(seed_value)
 
 		var result := sim.run_floor_dive(
