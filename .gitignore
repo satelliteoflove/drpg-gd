@@ -19,6 +19,9 @@
 .claude/
 .mcp.json
 
+# Godot addons (local dev tools)
+addons/godot_mcp/
+
 # OS files
 .DS_Store
 .DS_Store?

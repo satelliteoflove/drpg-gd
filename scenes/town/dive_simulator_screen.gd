@@ -8,10 +8,12 @@ var num_encounters: int = 5
 var include_boss: bool = true
 var return_encounters: int = 2
 var num_dives: int = 5
+var death_threshold: int = 0
 var strategy: PartyAI.Strategy = PartyAI.Strategy.BALANCED
 var current_tab: int = 0
 var last_batch_results: Array[Dictionary] = []
 var last_batch_summary: Dictionary = {}
+var last_rewards: Dictionary = {}
 var is_running: bool = false
 
 var floor_buttons: Array[Button] = []
@@ -20,6 +22,7 @@ var encounters_spin: SpinBox = null
 var boss_check: CheckBox = null
 var return_spin: SpinBox = null
 var dives_spin: SpinBox = null
+var death_threshold_spin: SpinBox = null
 var run_button: Button = null
 
 @onready var title_label: Label = $MainHBox/LeftPanel/Header/TitleLabel
@@ -121,6 +124,16 @@ func _populate_config() -> void:
 	dives_spin.value_changed.connect(func(val: float) -> void: num_dives = int(val))
 	config_list.add_child(dives_spin)
 
+	_add_section_label("Stop on N+ Deaths")
+	death_threshold_spin = SpinBox.new()
+	death_threshold_spin.min_value = 0
+	death_threshold_spin.max_value = 6
+	death_threshold_spin.value = death_threshold
+	death_threshold_spin.custom_minimum_size = Vector2(200, 32)
+	death_threshold_spin.suffix = " (0 = never)"
+	death_threshold_spin.value_changed.connect(func(val: float) -> void: death_threshold = int(val))
+	config_list.add_child(death_threshold_spin)
+
 	_add_section_label("Strategy")
 	var strat_row := HBoxContainer.new()
 	strat_row.add_theme_constant_override("separation", 4)
@@ -196,8 +209,15 @@ func _run_simulation() -> void:
 	var sim := DiveSimulator.new()
 	last_batch_results.clear()
 
+	var party_copy := _copy_party()
+	var level_ups: Array[Dictionary] = []
+	var death_log: Array[Dictionary] = []
+	var dives_completed := 0
+
 	for i in range(num_dives):
-		var party_copy := _copy_party()
+		if i > 0:
+			_rest_between_dives(party_copy)
+		_clear_consumables(party_copy)
 		TestFixtures.stock_party_consumables(party_copy, party_copy.get_average_level())
 		var seed_value := 80000 + i * 10000
 		CombatRNGClass.set_seed(seed_value)
@@ -207,14 +227,75 @@ func _run_simulation() -> void:
 			seed_value, PartyAI.DEFAULT_CAST_THRESHOLD, strategy,
 			return_encounters
 		)
-		last_batch_results.append(result)
 
+		party_copy.distribute_experience(result.total_xp)
+		party_copy.add_gold(result.get("total_gold", 0))
+
+		for member in party_copy.get_members():
+			if member.pending_level_up:
+				var old_level := member.level
+				while member.pending_level_up:
+					member.confirm_level_up()
+				if member.level > old_level:
+					level_ups.append({
+						"name": member.character_name,
+						"old_level": old_level,
+						"new_level": member.level,
+						"dive": i + 1,
+					})
+
+		var dive_deaths: Array = result.get("deaths", [])
+		for dname in dive_deaths:
+			death_log.append({"name": dname, "dive": i + 1})
+
+		last_batch_results.append(result)
+		dives_completed += 1
+
+		if death_threshold > 0:
+			var dead_count := 0
+			for member in party_copy.get_members():
+				if member.is_dead:
+					dead_count += 1
+			if dead_count >= death_threshold:
+				break
+
+	var total_xp_earned := 0
+	var total_gold_earned := 0
+	var loot_items: Array[String] = []
+	for r in last_batch_results:
+		total_xp_earned += r.total_xp
+		total_gold_earned += r.get("total_gold", 0)
+	for slot in party_copy.inventory.slots:
+		var item: Item = slot.get("item")
+		if item:
+			var found := false
+			for orig_slot in GameState.party.inventory.slots:
+				if orig_slot.get("item_id") == slot.get("item_id"):
+					found = true
+					break
+			if not found:
+				loot_items.append(item.item_name if item.item_name != "" else item.id)
+
+	last_rewards = {
+		"total_xp": total_xp_earned,
+		"total_gold": total_gold_earned,
+		"level_ups": level_ups,
+		"death_log": death_log,
+		"loot_items": loot_items,
+		"dives_completed": dives_completed,
+	}
+
+	_apply_results(party_copy)
 	last_batch_summary = _compute_summary(last_batch_results)
 
 	is_running = false
 	if run_button:
 		run_button.disabled = false
-	message_label.text = "Simulation complete. %d dive(s) finished." % num_dives
+	var msg := "Dive complete! Rewards applied. %d dive(s) finished." % dives_completed
+	if dives_completed < num_dives:
+		msg += " (stopped early: death threshold reached)"
+	message_label.text = msg
+	_update_party_info()
 
 	_display_current_tab()
 
@@ -237,6 +318,64 @@ func _copy_party() -> Party:
 		if item:
 			new_party.inventory.add_item(item.duplicate(), qty)
 	return new_party
+
+
+func _rest_between_dives(party: Party) -> void:
+	for member in party.get_members():
+		if member.is_dead:
+			continue
+		member.current_hp = member.max_hp
+		member.current_mp = member.max_mp
+		var to_remove: Array[CharacterEnums.StatusEffect] = []
+		for active in member.active_statuses:
+			if active.type == CharacterEnums.StatusEffect.DEAD:
+				continue
+			if not active.is_permanent():
+				to_remove.append(active.type)
+		for effect in to_remove:
+			member.remove_status(effect)
+
+
+const RESTOCK_CONSUMABLES: Array[String] = [
+	"healing_potion", "greater_healing", "antidote", "mana_potion",
+]
+
+
+func _clear_consumables(party: Party) -> void:
+	for item_id in RESTOCK_CONSUMABLES:
+		var count := party.inventory.get_item_count(item_id)
+		if count > 0:
+			party.inventory.remove_item(item_id, count)
+
+
+func _apply_results(copy_party: Party) -> void:
+	var real_party := GameState.party
+	for copy_member in copy_party.get_members():
+		var real_member := real_party.get_member(copy_member.id)
+		if real_member == null:
+			continue
+		real_member.experience = copy_member.experience
+		real_member.level = copy_member.level
+		real_member.pending_level_up = copy_member.pending_level_up
+		real_member.strength = copy_member.strength
+		real_member.intelligence = copy_member.intelligence
+		real_member.piety = copy_member.piety
+		real_member.vitality = copy_member.vitality
+		real_member.agility = copy_member.agility
+		real_member.luck = copy_member.luck
+		real_member.max_hp = copy_member.max_hp
+		real_member.max_mp = copy_member.max_mp
+		real_member.current_hp = copy_member.current_hp
+		real_member.current_mp = copy_member.current_mp
+		real_member.is_dead = copy_member.is_dead
+		real_member.death_count = copy_member.death_count
+		real_member.status_effects = copy_member.status_effects.duplicate()
+		real_member.active_statuses = copy_member.active_statuses.duplicate()
+		real_member.known_spells = copy_member.known_spells.duplicate()
+		real_member.max_spell_level = copy_member.max_spell_level
+		real_member._recalculate_derived_stats()
+	real_party.gold = copy_party.gold
+	real_party.inventory.slots = copy_party.inventory.slots.duplicate(true)
 
 
 func _compute_summary(results: Array[Dictionary]) -> Dictionary:
@@ -381,6 +520,31 @@ func _display_summary() -> void:
 		if r.deaths.size() > 0:
 			text += " (deaths: %s)" % ", ".join(r.deaths)
 		text += "\n"
+
+	if not last_rewards.is_empty():
+		text += "\n[color=green]--- Rewards Applied ---[/color]\n"
+		text += "Total XP Earned: %d\n" % last_rewards.total_xp
+		text += "Total Gold Earned: %d\n" % last_rewards.total_gold
+
+		var lvl_ups: Array = last_rewards.get("level_ups", [])
+		if not lvl_ups.is_empty():
+			text += "\n[color=cyan]Level Ups:[/color]\n"
+			for lu in lvl_ups:
+				text += "  %s: Lv%d -> Lv%d (dive %d)\n" % [
+					lu.name, lu.old_level, lu.new_level, lu.dive
+				]
+
+		var loot: Array = last_rewards.get("loot_items", [])
+		if not loot.is_empty():
+			text += "\n[color=cyan]Loot Found:[/color]\n"
+			for item_name in loot:
+				text += "  %s\n" % item_name
+
+		var d_log: Array = last_rewards.get("death_log", [])
+		if not d_log.is_empty():
+			text += "\n[color=red]Deaths:[/color]\n"
+			for d in d_log:
+				text += "  %s (dive %d)\n" % [d.name, d.dive]
 
 	results_label.text = text
 

@@ -21,7 +21,6 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-MCPGameBridge="res://addons/godot_mcp/game_bridge/mcp_game_bridge.gd"
 GameState="*res://autoload/game_state.gd"
 SaveManager="*res://autoload/save_manager.gd"
 AudioManager="*res://autoload/audio_manager.gd"
@@ -34,20 +33,9 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
-
 [filesystem]
 
 import/blender/enabled=false
-
-[godot_mcp]
-
-bind_mode=0
-custom_bind_ip=""
-port_override_enabled=false
-port_override=6550
 
 [input]
 
