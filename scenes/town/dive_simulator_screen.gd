@@ -62,7 +62,7 @@ func _populate_config() -> void:
 
 	if not GameState.has_party():
 		var label := Label.new()
-		label.text = "Assemble a party at the Tavern first."
+		label.text = "Assemble a party at the Guild Hall first."
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		config_list.add_child(label)
 		message_label.text = "No party available."

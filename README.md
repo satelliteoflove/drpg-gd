@@ -29,7 +29,7 @@ Many features are not yet implemented, but you're welcome to play around with it
 
 4. Hit Play (F5)
 
-5. Go to Training Grounds to create characters, then Tavern to add them to your party, then head into the dungeon
+5. Go to the Guild Hall to create characters and assemble your party, then head into the dungeon
 
 ## Controls
 

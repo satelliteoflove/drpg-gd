@@ -274,7 +274,7 @@ func _refresh_status() -> void:
 		var label := Label.new()
 		label.text = "(No party members)"
 		status_list.add_child(label)
-		info_label.text = "Visit the Tavern to recruit party members."
+		info_label.text = "Visit the Guild Hall to recruit party members."
 		return
 
 	for i in range(GameState.party.size()):
