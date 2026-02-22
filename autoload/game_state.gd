@@ -59,7 +59,26 @@ func _initialize_game_data() -> void:
 		floor_tracker = FloorTracker.new()
 
 
-## Initializes a fresh game state with empty party and starting gold.
+const STARTER_ROSTER: Array[Dictionary] = [
+	{"name": "Roland", "race": CharacterEnums.Race.HUMAN, "class": CharacterEnums.CharacterClass.FIGHTER, "alignment": CharacterEnums.Alignment.GOOD, "gender": CharacterEnums.Gender.MALE},
+	{"name": "Thorin", "race": CharacterEnums.Race.DWARF, "class": CharacterEnums.CharacterClass.FIGHTER, "alignment": CharacterEnums.Alignment.GOOD, "gender": CharacterEnums.Gender.MALE},
+	{"name": "Marcus", "race": CharacterEnums.Race.HUMAN, "class": CharacterEnums.CharacterClass.PRIEST, "alignment": CharacterEnums.Alignment.GOOD, "gender": CharacterEnums.Gender.MALE},
+	{"name": "Elara", "race": CharacterEnums.Race.ELF, "class": CharacterEnums.CharacterClass.MAGE, "alignment": CharacterEnums.Alignment.NEUTRAL, "gender": CharacterEnums.Gender.FEMALE},
+	{"name": "Celeste", "race": CharacterEnums.Race.HUMAN, "class": CharacterEnums.CharacterClass.BISHOP, "alignment": CharacterEnums.Alignment.GOOD, "gender": CharacterEnums.Gender.FEMALE},
+	{"name": "Pip", "race": CharacterEnums.Race.HOBBIT, "class": CharacterEnums.CharacterClass.THIEF, "alignment": CharacterEnums.Alignment.NEUTRAL, "gender": CharacterEnums.Gender.MALE},
+]
+
+const STARTER_GEAR: Dictionary = {
+	CharacterEnums.CharacterClass.FIGHTER: ["long_sword", "chain_mail", "iron_shield", "iron_helm"],
+	CharacterEnums.CharacterClass.PRIEST: ["mace", "chain_mail", "wooden_shield", "leather_cap"],
+	CharacterEnums.CharacterClass.MAGE: ["staff", "cloth_armor"],
+	CharacterEnums.CharacterClass.BISHOP: ["mace", "cloth_armor"],
+	CharacterEnums.CharacterClass.THIEF: ["short_bow", "leather_armor", "leather_cap", "leather_boots"],
+}
+
+const STARTER_LEVEL: int = 3
+
+
 func new_game() -> void:
 	party = Party.new()
 	party.add_gold(100)
@@ -68,6 +87,55 @@ func new_game() -> void:
 	dungeon_floors.clear()
 	current_floor = 1
 	current_encounter = {}
+	_populate_starter_roster()
+
+
+func _populate_starter_roster() -> void:
+	for template in STARTER_ROSTER:
+		var char_class: CharacterEnums.CharacterClass = template["class"]
+		var race: CharacterEnums.Race = template["race"]
+		var stats := _roll_valid_stats(race, char_class)
+
+		var character := Character.create_new(
+			template["name"], race, char_class,
+			template["alignment"], template["gender"], stats
+		)
+
+		if STARTER_LEVEL > 1:
+			var required_xp := ExperienceTable.get_required_xp(STARTER_LEVEL, race, char_class)
+			character.add_experience(required_xp)
+			while character.pending_level_up:
+				character.confirm_level_up()
+
+		var learnable := SpellLearning.get_learnable_spells(character)
+		for spell in learnable:
+			if not character.known_spells.has(spell.id):
+				character.known_spells.append(spell.id)
+
+		var gear_ids: Array = STARTER_GEAR.get(char_class, [])
+		for item_id: String in gear_ids:
+			var item := ShopItems.get_item(item_id)
+			if item:
+				var item_copy := item.duplicate()
+				if character.can_equip_item(item_copy):
+					character.equip_item(item_copy)
+
+		character.current_hp = character.max_hp
+		character.current_mp = character.max_mp
+		roster.add_character(character)
+
+
+func _roll_valid_stats(race: CharacterEnums.Race, char_class: CharacterEnums.CharacterClass) -> Dictionary:
+	var stats := Character.roll_stats_for_race(race)
+	for i in range(100):
+		if ClassData.meets_requirements(char_class, stats):
+			return stats
+		stats = Character.roll_stats_for_race(race)
+	var reqs := ClassData.get_requirements(char_class)
+	for stat_name: String in reqs:
+		if stats.get(stat_name, 0) < reqs[stat_name]:
+			stats[stat_name] = reqs[stat_name]
+	return stats
 
 
 func has_party() -> bool:
