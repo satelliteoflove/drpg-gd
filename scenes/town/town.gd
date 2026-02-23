@@ -14,6 +14,18 @@ func _ready() -> void:
 	$VBoxContainer/MainMenuButton.pressed.connect(_on_main_menu_pressed)
 
 	_setup_navigation()
+	_update_button_states()
+
+
+func _update_button_states() -> void:
+	var has_party := GameState.has_party()
+	$VBoxContainer/ShopButton.disabled = not has_party
+	$VBoxContainer/PartyButton.disabled = not has_party
+	$VBoxContainer/InnButton.disabled = not has_party
+	$VBoxContainer/TempleButton.disabled = not has_party
+	$VBoxContainer/SimulatorButton.disabled = not has_party
+	$VBoxContainer/DungeonButton.disabled = not has_party
+	$VBoxContainer/HintLabel.visible = not has_party
 
 
 func _setup_navigation() -> void:

@@ -37,6 +37,13 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 
+[node name="HintLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Visit the Guild Hall to assemble your party"
+horizontal_alignment = 1
+autowrap_mode = 2
+visible = false
+
 [node name="GuildHallButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
 text = "Guild Hall"

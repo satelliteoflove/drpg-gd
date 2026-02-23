@@ -32,6 +32,7 @@ var current_spell_level: int = 1
 var available_spells: Dictionary = {}
 var spell_target_mode: String = ""
 var dispel_target_mode: bool = false
+var _active_panel_tween: Tween = null
 var _display_dirty: bool = false
 var _effect_cache: Dictionary = {}
 var _turn_order_labels: Array[Label] = []
@@ -509,10 +510,29 @@ func _update_party_stats() -> void:
 			ui.status_label.text = statuses
 			ui.panel.modulate = Color.WHITE
 
-		if combat_system.current_combatant_id == character.id and combat_system.is_player_turn():
+		var is_active := combat_system.current_combatant_id == character.id and combat_system.is_player_turn()
+		if is_active:
 			ui.name_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
+			var active_style := StyleBoxFlat.new()
+			active_style.bg_color = Color(0, 0, 0, 0)
+			active_style.border_color = Color(0.3, 1, 0.3)
+			active_style.border_width_left = 2
+			active_style.border_width_top = 2
+			active_style.border_width_right = 2
+			active_style.border_width_bottom = 2
+			active_style.corner_radius_top_left = 4
+			active_style.corner_radius_top_right = 4
+			active_style.corner_radius_bottom_left = 4
+			active_style.corner_radius_bottom_right = 4
+			ui.panel.add_theme_stylebox_override("panel", active_style)
+			if _active_panel_tween:
+				_active_panel_tween.kill()
+			_active_panel_tween = create_tween().set_loops()
+			_active_panel_tween.tween_property(active_style, "border_color:a", 0.4, 0.6).set_trans(Tween.TRANS_SINE)
+			_active_panel_tween.tween_property(active_style, "border_color:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
 		else:
 			ui.name_label.remove_theme_color_override("font_color")
+			ui.panel.remove_theme_stylebox_override("panel")
 
 
 func _get_character_status_text(character: Character) -> String:
@@ -698,6 +718,9 @@ func _on_combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Ar
 
 
 func _exit_combat(victory: bool) -> void:
+	if _active_panel_tween:
+		_active_panel_tween.kill()
+		_active_panel_tween = null
 	if combat_closed.get_connections().size() > 0:
 		combat_closed.emit(victory)
 	else:

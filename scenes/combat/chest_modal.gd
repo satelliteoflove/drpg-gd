@@ -8,6 +8,8 @@ var party: Party = null
 var opener: Character = null
 var option_nav: MenuNavigator = null
 var option_buttons: Array[Button] = []
+var _loot_items: Array[Item] = []
+var _loot_left_behind: bool = false
 
 @onready var header_label: Label = $ChestModalVBox/ChestModalHeader
 @onready var description_label: Label = $ChestModalVBox/DescriptionLabel
@@ -206,11 +208,41 @@ func _collect_items() -> void:
 		else:
 			items_left_behind.append(item)
 
-	if not items_left_behind.is_empty():
-		_add_status_message("[color=yellow]Inventory full! %d item(s) left behind.[/color]" % items_left_behind.size())
-		await get_tree().create_timer(1.0).timeout
+	_loot_items = items_collected
+	_loot_left_behind = not items_left_behind.is_empty()
+	_show_loot_summary(items_collected, items_left_behind)
 
-	chest_resolved.emit(items_collected, false)
+
+func _show_loot_summary(collected: Array[Item], left_behind: Array[Item]) -> void:
+	for child in options_vbox.get_children():
+		child.queue_free()
+	option_buttons.clear()
+
+	status_label.clear()
+	var summary := "[color=cyan]Loot collected:[/color]\n"
+	for item in collected:
+		summary += "  [color=cyan]%s[/color]\n" % item.get_display_name()
+	if collected.is_empty():
+		summary += "  (nothing)\n"
+	if not left_behind.is_empty():
+		summary += "\n[color=yellow]Left behind (inventory full):[/color]\n"
+		for item in left_behind:
+			summary += "  [color=yellow]%s[/color]\n" % item.get_display_name()
+	status_label.append_text(summary)
+
+	if leave_button.pressed.is_connected(_on_leave):
+		leave_button.pressed.disconnect(_on_leave)
+	if not leave_button.pressed.is_connected(_on_loot_continue):
+		leave_button.pressed.connect(_on_loot_continue)
+	leave_button.text = "Continue"
+
+	option_buttons.append(leave_button)
+	option_nav = MenuNavigator.new()
+	option_nav.setup(option_buttons, 0)
+
+
+func _on_loot_continue() -> void:
+	chest_resolved.emit(_loot_items, _loot_left_behind)
 
 
 func _get_best_inspector() -> Character:
