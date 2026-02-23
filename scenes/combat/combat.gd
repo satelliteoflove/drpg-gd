@@ -1511,6 +1511,8 @@ func _on_cancel_item() -> void:
 
 
 func _on_cancel_spell() -> void:
+	selected_spell = null
+	spell_target_mode = ""
 	_close_all_modals()
 	_set_actions_enabled(true)
 
