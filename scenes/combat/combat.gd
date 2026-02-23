@@ -290,6 +290,23 @@ func _get_living_enemy_at(pos: Vector2i) -> Monster:
 	return null
 
 
+func _style_bar(bar: ProgressBar, fill_color: Color) -> void:
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = fill_color.darkened(0.7)
+	bg.corner_radius_top_left = 2
+	bg.corner_radius_top_right = 2
+	bg.corner_radius_bottom_left = 2
+	bg.corner_radius_bottom_right = 2
+	bar.add_theme_stylebox_override("background", bg)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = fill_color
+	fill.corner_radius_top_left = 2
+	fill.corner_radius_top_right = 2
+	fill.corner_radius_bottom_left = 2
+	fill.corner_radius_bottom_right = 2
+	bar.add_theme_stylebox_override("fill", fill)
+
+
 func _create_enemy_panel(enemy: Monster) -> EnemyUI:
 	var ui := EnemyUI.new()
 
@@ -312,6 +329,7 @@ func _create_enemy_panel(enemy: Monster) -> EnemyUI:
 	ui.hp_bar.max_value = enemy.max_hp
 	ui.hp_bar.value = enemy.current_hp
 	ui.hp_bar.show_percentage = false
+	_style_bar(ui.hp_bar, Color(0.8, 0.2, 0.2))
 	hp_hbox.add_child(ui.hp_bar)
 
 	ui.hp_text = Label.new()
@@ -393,6 +411,7 @@ func _create_party_member_panel(character: Character, _is_front: bool) -> PartyM
 	ui.hp_bar.max_value = character.max_hp
 	ui.hp_bar.value = character.current_hp
 	ui.hp_bar.show_percentage = false
+	_style_bar(ui.hp_bar, Color(0.8, 0.2, 0.2))
 	hp_hbox.add_child(ui.hp_bar)
 
 	ui.hp_text = Label.new()
@@ -410,6 +429,7 @@ func _create_party_member_panel(character: Character, _is_front: bool) -> PartyM
 	ui.mp_bar.max_value = max(character.max_mp, 1)
 	ui.mp_bar.value = character.current_mp
 	ui.mp_bar.show_percentage = false
+	_style_bar(ui.mp_bar, Color(0.2, 0.4, 0.9))
 	mp_hbox.add_child(ui.mp_bar)
 
 	ui.mp_text = Label.new()
