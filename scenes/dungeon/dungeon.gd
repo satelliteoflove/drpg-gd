@@ -864,6 +864,7 @@ func _open_combat(encounter: Dictionary) -> void:
 		return
 	combat_open = true
 	combat_overlay.visible = true
+	$UI/BottomBar.visible = false
 
 	GameState.start_combat(encounter)
 	combat_ui = CombatScene.instantiate()
@@ -900,6 +901,7 @@ func _close_combat() -> void:
 		return
 	combat_open = false
 	combat_overlay.visible = false
+	$UI/BottomBar.visible = true
 	if combat_ui:
 		combat_ui.queue_free()
 		combat_ui = null

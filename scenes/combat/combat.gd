@@ -33,6 +33,9 @@ var available_spells: Dictionary = {}
 var spell_target_mode: String = ""
 var dispel_target_mode: bool = false
 var _active_panel_tween: Tween = null
+var _target_highlight_tween: Tween = null
+var _target_highlight_style: StyleBoxFlat = null
+var _highlighted_panels: Array[PanelContainer] = []
 var _display_dirty: bool = false
 var _effect_cache: Dictionary = {}
 var _turn_order_labels: Array[Label] = []
@@ -245,14 +248,14 @@ func _build_enemy_display() -> void:
 	if combat_system == null:
 		return
 
+	var enemy_grid_map: Dictionary = {}
 	var occupied_rows: Array[int] = []
-	for row in range(3):
-		for col in range(3):
-			var enemy := _get_living_enemy_at(Vector2i(col, row))
-			if enemy != null:
-				if not occupied_rows.has(row):
-					occupied_rows.append(row)
-				break
+	for enemy in combat_system.get_enemies():
+		var pos := enemy.grid_position
+		enemy_grid_map[pos] = enemy
+		if not occupied_rows.has(pos.y):
+			occupied_rows.append(pos.y)
+	occupied_rows.sort()
 
 	var row_labels_list: Array[Label] = [front_label, middle_label, back_label]
 	for i in range(3):
@@ -262,7 +265,7 @@ func _build_enemy_display() -> void:
 		var actual_row: int = occupied_rows[display_row]
 		for col in range(3):
 			var pos := Vector2i(col, actual_row)
-			var enemy := _get_living_enemy_at(pos)
+			var enemy: Monster = enemy_grid_map.get(pos)
 
 			var cell := PanelContainer.new()
 			cell.custom_minimum_size = Vector2(100, 50)
@@ -271,6 +274,8 @@ func _build_enemy_display() -> void:
 				var ui := _create_enemy_panel(enemy)
 				enemy_panels[enemy.combat_id] = ui
 				cell.add_child(ui.panel)
+				if enemy.is_dead:
+					ui.panel.modulate = Color(0.4, 0.4, 0.4)
 			else:
 				var empty := Label.new()
 				empty.text = "-"
@@ -281,13 +286,6 @@ func _build_enemy_display() -> void:
 				cell.modulate = Color(0.5, 0.5, 0.5, 0.3)
 
 			enemy_grid.add_child(cell)
-
-
-func _get_living_enemy_at(pos: Vector2i) -> Monster:
-	var enemy := combat_system.get_enemy_at(pos)
-	if enemy != null and not enemy.is_dead:
-		return enemy
-	return null
 
 
 func _style_bar(bar: ProgressBar, fill_color: Color) -> void:
@@ -503,6 +501,27 @@ func _update_enemy_display() -> void:
 			else:
 				ui.status_label.text = ""
 			ui.panel.modulate = Color.WHITE
+
+	_update_row_labels()
+
+
+func _update_row_labels() -> void:
+	var living_front := Targeting.get_living_front_row(combat_system.get_enemies())
+	var row_labels_list: Array[Label] = [front_label, middle_label, back_label]
+	for i in range(3):
+		if not row_labels_list[i].visible:
+			continue
+		var has_living := false
+		for enemy in combat_system.get_enemies():
+			if not enemy.is_dead and enemy.grid_position.y == i:
+				has_living = true
+				break
+		if not has_living:
+			row_labels_list[i].add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
+		elif i == living_front:
+			row_labels_list[i].add_theme_color_override("font_color", Color(1, 0.5, 0.2))
+		else:
+			row_labels_list[i].remove_theme_color_override("font_color")
 
 
 func _update_party_stats() -> void:
@@ -882,6 +901,7 @@ func _populate_enemy_target_list(reachable_enemies: Array[Monster]) -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(_on_enemy_target_selected.bind(enemy))
+		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
@@ -1006,6 +1026,7 @@ func _on_dispel_pressed() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(_on_dispel_target_selected.bind(enemy))
+		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
@@ -1114,6 +1135,7 @@ func _populate_target_list() -> void:
 			btn.modulate = Color(0.6, 0.6, 0.6)
 
 		btn.pressed.connect(_on_target_selected.bind(character))
+		btn.focus_entered.connect(_highlight_party_target.bind(character))
 		target_list.add_child(btn)
 		target_buttons.append(btn)
 
@@ -1344,6 +1366,7 @@ func _populate_spell_ally_target_list(dead_only: bool) -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(_on_spell_ally_target_selected.bind(character))
+		btn.focus_entered.connect(_highlight_party_target.bind(character))
 		spell_ally_list.add_child(btn)
 		spell_ally_buttons.append(btn)
 
@@ -1381,6 +1404,7 @@ func _populate_spell_enemy_target_list() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(_on_spell_enemy_target_selected.bind(enemy))
+		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
@@ -1433,6 +1457,7 @@ func _populate_spell_splash_target_list() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(_on_spell_enemy_target_selected.bind(enemy))
+		btn.focus_entered.connect(_highlight_enemy_targets.bind(splash_targets))
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
@@ -1466,6 +1491,7 @@ func _populate_spell_row_target_list() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(_on_spell_row_selected.bind(row))
+		btn.focus_entered.connect(_highlight_enemy_targets.bind(row_targets))
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
@@ -1507,6 +1533,7 @@ func _populate_spell_column_target_list() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(_on_spell_column_selected.bind(col))
+		btn.focus_entered.connect(_highlight_enemy_targets.bind(col_targets))
 		enemy_target_list.add_child(btn)
 		enemy_target_buttons.append(btn)
 
@@ -1568,6 +1595,7 @@ func _on_cancel_target() -> void:
 
 
 func _close_all_modals() -> void:
+	_clear_target_highlights()
 	modal_overlay.visible = false
 	item_modal.visible = false
 	spell_modal.visible = false
@@ -1577,6 +1605,98 @@ func _close_all_modals() -> void:
 		spell_ally_modal.visible = false
 	if chest_modal:
 		chest_modal.visible = false
+
+
+func _highlight_enemy_target(enemy: Monster) -> void:
+	_clear_target_highlights()
+	if not enemy_panels.has(enemy.combat_id):
+		return
+	var ui: EnemyUI = enemy_panels[enemy.combat_id]
+	var panel: VBoxContainer = ui.panel
+	var cell: PanelContainer = panel.get_parent()
+	_target_highlight_style = StyleBoxFlat.new()
+	_target_highlight_style.bg_color = Color(0, 0, 0, 0)
+	_target_highlight_style.border_color = Color(1, 0.3, 0.3)
+	_target_highlight_style.border_width_left = 2
+	_target_highlight_style.border_width_top = 2
+	_target_highlight_style.border_width_right = 2
+	_target_highlight_style.border_width_bottom = 2
+	_target_highlight_style.corner_radius_top_left = 4
+	_target_highlight_style.corner_radius_top_right = 4
+	_target_highlight_style.corner_radius_bottom_left = 4
+	_target_highlight_style.corner_radius_bottom_right = 4
+	cell.add_theme_stylebox_override("panel", _target_highlight_style)
+	_highlighted_panels.append(cell)
+	if _target_highlight_tween:
+		_target_highlight_tween.kill()
+	_target_highlight_tween = create_tween().set_loops()
+	_target_highlight_tween.tween_property(_target_highlight_style, "border_color:a", 0.4, 0.6).set_trans(Tween.TRANS_SINE)
+	_target_highlight_tween.tween_property(_target_highlight_style, "border_color:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
+
+
+func _highlight_enemy_targets(enemies: Array[Monster]) -> void:
+	_clear_target_highlights()
+	_target_highlight_style = StyleBoxFlat.new()
+	_target_highlight_style.bg_color = Color(0, 0, 0, 0)
+	_target_highlight_style.border_color = Color(1, 0.3, 0.3)
+	_target_highlight_style.border_width_left = 2
+	_target_highlight_style.border_width_top = 2
+	_target_highlight_style.border_width_right = 2
+	_target_highlight_style.border_width_bottom = 2
+	_target_highlight_style.corner_radius_top_left = 4
+	_target_highlight_style.corner_radius_top_right = 4
+	_target_highlight_style.corner_radius_bottom_left = 4
+	_target_highlight_style.corner_radius_bottom_right = 4
+	for enemy in enemies:
+		if not enemy_panels.has(enemy.combat_id):
+			continue
+		var ui: EnemyUI = enemy_panels[enemy.combat_id]
+		var cell: PanelContainer = ui.panel.get_parent()
+		cell.add_theme_stylebox_override("panel", _target_highlight_style)
+		_highlighted_panels.append(cell)
+	if _highlighted_panels.is_empty():
+		return
+	if _target_highlight_tween:
+		_target_highlight_tween.kill()
+	_target_highlight_tween = create_tween().set_loops()
+	_target_highlight_tween.tween_property(_target_highlight_style, "border_color:a", 0.4, 0.6).set_trans(Tween.TRANS_SINE)
+	_target_highlight_tween.tween_property(_target_highlight_style, "border_color:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
+
+
+func _highlight_party_target(character: Character) -> void:
+	_clear_target_highlights()
+	if not party_panels.has(character.id):
+		return
+	var ui: PartyMemberUI = party_panels[character.id]
+	_target_highlight_style = StyleBoxFlat.new()
+	_target_highlight_style.bg_color = Color(0, 0, 0, 0)
+	_target_highlight_style.border_color = Color(1, 0.3, 0.3)
+	_target_highlight_style.border_width_left = 2
+	_target_highlight_style.border_width_top = 2
+	_target_highlight_style.border_width_right = 2
+	_target_highlight_style.border_width_bottom = 2
+	_target_highlight_style.corner_radius_top_left = 4
+	_target_highlight_style.corner_radius_top_right = 4
+	_target_highlight_style.corner_radius_bottom_left = 4
+	_target_highlight_style.corner_radius_bottom_right = 4
+	ui.panel.add_theme_stylebox_override("panel", _target_highlight_style)
+	_highlighted_panels.append(ui.panel)
+	if _target_highlight_tween:
+		_target_highlight_tween.kill()
+	_target_highlight_tween = create_tween().set_loops()
+	_target_highlight_tween.tween_property(_target_highlight_style, "border_color:a", 0.4, 0.6).set_trans(Tween.TRANS_SINE)
+	_target_highlight_tween.tween_property(_target_highlight_style, "border_color:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
+
+
+func _clear_target_highlights() -> void:
+	if _target_highlight_tween:
+		_target_highlight_tween.kill()
+		_target_highlight_tween = null
+	for panel in _highlighted_panels:
+		if is_instance_valid(panel):
+			panel.remove_theme_stylebox_override("panel")
+	_highlighted_panels.clear()
+	_target_highlight_style = null
 
 
 func _set_actions_enabled(enabled: bool) -> void:

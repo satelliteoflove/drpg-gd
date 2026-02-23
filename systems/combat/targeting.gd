@@ -27,19 +27,30 @@ static func get_effective_range(character: Character, party: Party) -> int:
 	return base_range - (1 if in_back_row else 0)
 
 
-static func can_reach_enemy(character: Character, enemy: Monster, party: Party) -> bool:
+static func can_reach_enemy(character: Character, enemy: Monster, party: Party, enemies: Array[Monster]) -> bool:
 	var effective_range := get_effective_range(character, party)
-	return enemy.get_row() < effective_range
+	var front_row := get_living_front_row(enemies)
+	return (enemy.get_row() - front_row) < effective_range
+
+
+static func get_living_front_row(enemies: Array[Monster]) -> int:
+	var min_row := -1
+	for enemy in enemies:
+		if not enemy.is_dead:
+			if min_row < 0 or enemy.get_row() < min_row:
+				min_row = enemy.get_row()
+	return max(min_row, 0)
 
 
 static func get_reachable_enemies(character: Character, party: Party, enemies: Array[Monster]) -> Array[Monster]:
 	var reachable: Array[Monster] = []
 	var effective_range := get_effective_range(character, party)
+	var front_row := get_living_front_row(enemies)
 
 	for enemy in enemies:
 		if enemy.is_dead:
 			continue
-		if enemy.get_row() < effective_range:
+		if (enemy.get_row() - front_row) < effective_range:
 			reachable.append(enemy)
 
 	return reachable

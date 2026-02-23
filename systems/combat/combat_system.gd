@@ -202,7 +202,6 @@ func _execute_player_attack(attacker: Character, target: Monster) -> void:
 		if target.is_dead:
 			action_performed.emit("%s is defeated!" % target.monster_name)
 			initiative.remove_combatant(target.combat_id)
-			_check_enemy_row_advance()
 	else:
 		action_performed.emit("%s's attack on %s misses!" % [
 			attacker.get_display_name(),
@@ -275,7 +274,6 @@ func player_dispel(target: Monster) -> void:
 
 	if result["success"]:
 		initiative.remove_combatant(target.combat_id)
-		_check_enemy_row_advance()
 
 	initiative.apply_action_delay(current_combatant_id)
 	_check_combat_end()
@@ -304,18 +302,14 @@ func player_cast_spell(spell_id: String, targets: Array) -> void:
 	for msg in result.messages:
 		action_performed.emit(msg)
 
-	var enemy_killed := false
 	var ally_killed := false
 	for target in targets:
 		if target is Monster and target.is_dead:
 			initiative.remove_combatant(target.combat_id)
-			enemy_killed = true
 		elif target is Character and target.is_dead:
 			initiative.remove_combatant(target.id)
 			ally_killed = true
 
-	if enemy_killed:
-		_check_enemy_row_advance()
 	if ally_killed:
 		_check_party_row_advance()
 
@@ -812,23 +806,3 @@ func _check_party_row_advance() -> void:
 	if party.advance_back_row_if_front_wiped():
 		action_performed.emit("The back row advances to the front!")
 		layout_changed.emit()
-
-
-func _check_enemy_row_advance() -> void:
-	var front_row := _get_enemy_front_row()
-	if front_row <= 0:
-		return
-
-	for enemy in enemies:
-		if not enemy.is_dead:
-			enemy.grid_position.y -= front_row
-	layout_changed.emit()
-
-
-func _get_enemy_front_row() -> int:
-	var min_row := -1
-	for enemy in enemies:
-		if not enemy.is_dead:
-			if min_row < 0 or enemy.grid_position.y < min_row:
-				min_row = enemy.grid_position.y
-	return min_row
