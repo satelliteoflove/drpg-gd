@@ -811,6 +811,7 @@ func _show_victory_summary(xp: int, gold: int, items_added: Array[Item], items_l
 
 
 func _on_target_selection_requested(reachable_enemies: Array[Monster]) -> void:
+	_close_all_modals()
 	_set_actions_enabled(false)
 	_populate_enemy_target_list(reachable_enemies)
 	modal_overlay.visible = true
@@ -857,7 +858,8 @@ func _on_cancel_enemy_target() -> void:
 		_close_all_modals()
 		_set_actions_enabled(true)
 	elif spell_target_mode in ["enemy", "splash", "row", "column"]:
-		enemy_target_modal.visible = false
+		_close_all_modals()
+		modal_overlay.visible = true
 		spell_modal.visible = true
 		selected_spell = null
 		spell_target_mode = ""
@@ -911,6 +913,7 @@ func _on_spell_pressed() -> void:
 	_update_spell_level_buttons()
 	_populate_spell_list_for_level(current_spell_level)
 
+	_close_all_modals()
 	_set_actions_enabled(false)
 	modal_overlay.visible = true
 	spell_modal.visible = true
@@ -941,6 +944,7 @@ func _on_dispel_pressed() -> void:
 		combat_system.player_dispel(undead_targets[0])
 		return
 
+	_close_all_modals()
 	_set_actions_enabled(false)
 	for child in enemy_target_list.get_children():
 		child.queue_free()
@@ -986,6 +990,7 @@ func _on_item_pressed() -> void:
 		message_log.append_text("[color=#aaaaaa]>[/color] No usable items!\n")
 		return
 
+	_close_all_modals()
 	_set_actions_enabled(false)
 	modal_overlay.visible = true
 	item_modal.visible = true
@@ -1490,7 +1495,8 @@ func _cast_spell_on_targets(targets: Array) -> void:
 
 
 func _on_cancel_spell_ally_target() -> void:
-	spell_ally_modal.visible = false
+	_close_all_modals()
+	modal_overlay.visible = true
 	spell_modal.visible = true
 	selected_spell = null
 	spell_target_mode = ""
@@ -1510,7 +1516,8 @@ func _on_cancel_spell() -> void:
 
 
 func _on_cancel_target() -> void:
-	target_modal.visible = false
+	_close_all_modals()
+	modal_overlay.visible = true
 	item_modal.visible = true
 	selected_item = null
 

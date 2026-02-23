@@ -13,6 +13,10 @@ var wrap_around: bool = true
 func setup(buttons: Array[Button], initial_index: int = 0) -> void:
 	items = buttons
 	current_index = clampi(initial_index, 0, items.size() - 1)
+
+	for btn in items:
+		btn.focus_entered.connect(_on_button_focus_entered.bind(btn))
+
 	_update_focus()
 
 
@@ -64,6 +68,13 @@ func _confirm() -> void:
 func _update_focus() -> void:
 	if current_index >= 0 and current_index < items.size():
 		items[current_index].grab_focus()
+
+
+func _on_button_focus_entered(btn: Button) -> void:
+	var index := items.find(btn)
+	if index >= 0 and index != current_index:
+		current_index = index
+		selection_changed.emit(current_index)
 
 
 func select(index: int) -> void:
