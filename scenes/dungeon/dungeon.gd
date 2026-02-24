@@ -21,8 +21,10 @@ const TORCH_BASE_ENERGY: float = 1.0
 const TORCH_FLICKER_INTENSITY: float = 0.08
 const TORCH_FLICKER_SPEED: float = 8.0
 
-const MOVE_DURATION: float = 0.30
-const TURN_DURATION: float = 0.24
+const MOVE_DURATION: float = 0.40
+const TURN_DURATION: float = 0.32
+const HEAD_BOB_AMOUNT: float = 0.02
+const HEAD_BOB_SPEED: float = 2.0
 
 enum Facing { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 }
 
@@ -661,8 +663,16 @@ func _animate_move_to(target_grid: Vector2i) -> void:
 	move_tween = create_tween()
 	move_tween.set_ease(Tween.EASE_OUT)
 	move_tween.set_trans(Tween.TRANS_SINE)
+	move_tween.set_parallel(true)
 	move_tween.tween_property(camera, "position", target_pos, MOVE_DURATION)
+	move_tween.tween_method(_apply_head_bob, 0.0, 1.0, MOVE_DURATION)
+	move_tween.set_parallel(false)
 	move_tween.tween_callback(_on_move_complete)
+
+
+func _apply_head_bob(t: float) -> void:
+	var bob := sin(t * HEAD_BOB_SPEED * PI) * HEAD_BOB_AMOUNT
+	camera.position.y = CAMERA_HEIGHT + bob
 
 
 func _can_move_to(from: Vector2i, to: Vector2i) -> bool:
@@ -800,6 +810,7 @@ func _update_camera_transform() -> void:
 
 func _on_move_complete() -> void:
 	is_moving = false
+	camera.position.y = CAMERA_HEIGHT
 	_mark_current_tile_discovered()
 	_close_doors_behind()
 	_check_special_tile()

@@ -32,6 +32,7 @@ var current_spell_level: int = 1
 var available_spells: Dictionary = {}
 var spell_target_mode: String = ""
 var dispel_target_mode: bool = false
+var _input_cooldown: float = 0.0
 var _active_panel_tween: Tween = null
 var _target_highlight_tween: Tween = null
 var _target_highlight_style: StyleBoxFlat = null
@@ -112,6 +113,11 @@ class EnemyUI:
 @onready var enemy_target_modal: PanelContainer = $EnemyTargetModal
 @onready var enemy_target_list: VBoxContainer = $EnemyTargetModal/EnemyTargetModalVBox/EnemyTargetScrollContainer/EnemyTargetList
 @onready var enemy_target_cancel_button: Button = $EnemyTargetModal/EnemyTargetModalVBox/EnemyTargetCancelButton
+
+
+func _process(delta: float) -> void:
+	if _input_cooldown > 0.0:
+		_input_cooldown -= delta
 
 
 func _ready() -> void:
@@ -720,6 +726,8 @@ func _get_enemy_by_combat_id(combat_id: String) -> Monster:
 
 func _on_turn_started(_combatant_id: String, is_player: bool) -> void:
 	_set_actions_enabled(is_player)
+	if is_player:
+		_input_cooldown = 0.15
 	_schedule_display_update()
 
 
@@ -1769,6 +1777,9 @@ func _get_first_available_action_index(can_attack: bool, can_cast: bool, can_dis
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("debug_win"):
 		_debug_win_combat()
+		return
+
+	if _input_cooldown > 0.0:
 		return
 
 	if event is InputEventKey and event.pressed:
