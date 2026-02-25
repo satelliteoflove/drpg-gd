@@ -39,12 +39,12 @@ static func apply_status(
 	if not ignore_resistance:
 		if _has_racial_immunity(target, status):
 			result.immune = true
-			result.message = "%s is immune to %s!" % [target.get_display_name(), CharacterEnums.get_status_name(status)]
+			result.message = "%s is immune to %s!" % [target.get_display_name(), CharacterEnums.get_status_noun(status)]
 			return result
 
 		if _check_racial_resistance(target, status):
 			result.resisted = true
-			result.message = "%s resists %s!" % [target.get_display_name(), CharacterEnums.get_status_name(status)]
+			result.message = "%s resists %s!" % [target.get_display_name(), CharacterEnums.get_status_noun(status)]
 			return result
 
 	var applied: bool = target.add_status(status, duration, source, power)

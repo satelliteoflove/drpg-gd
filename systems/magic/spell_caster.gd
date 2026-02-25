@@ -159,7 +159,7 @@ static func _process_status(
 			continue
 
 		if not is_beneficial and StatusEffectSystem.roll_saving_throw(target, effect.save_type, dc):
-			result.messages.append("%s resists!" % target.get_display_name())
+			result.messages.append("%s resists %s!" % [target.get_display_name(), CharacterEnums.get_status_noun(effect.status_type)])
 			continue
 
 		var apply_result := StatusEffectSystem.apply_status(
@@ -477,7 +477,7 @@ static func _process_monster_status(
 			continue
 
 		if not is_beneficial and StatusEffectSystem.roll_saving_throw(target, effect.save_type, dc):
-			result.messages.append("%s resists!" % target.get_display_name())
+			result.messages.append("%s resists %s!" % [target.get_display_name(), CharacterEnums.get_status_noun(effect.status_type)])
 			continue
 
 		var apply_result := StatusEffectSystem.apply_status(

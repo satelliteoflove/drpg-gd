@@ -190,6 +190,25 @@ const STATUS_NAMES: Dictionary = {
 	StatusEffect.LOST: "Lost"
 }
 
+const STATUS_NOUN_NAMES: Dictionary = {
+	StatusEffect.NONE: "nothing",
+	StatusEffect.POISONED: "poison",
+	StatusEffect.PARALYZED: "paralysis",
+	StatusEffect.ASLEEP: "sleep",
+	StatusEffect.STONED: "petrification",
+	StatusEffect.CONFUSED: "confusion",
+	StatusEffect.SILENCED: "silence",
+	StatusEffect.BLINDED: "blindness",
+	StatusEffect.AFRAID: "fear",
+	StatusEffect.CHARMED: "charm",
+	StatusEffect.BERSERK: "frenzy",
+	StatusEffect.CURSED: "a curse",
+	StatusEffect.BLESSED: "a blessing",
+	StatusEffect.DEAD: "death",
+	StatusEffect.ASHED: "incineration",
+	StatusEffect.LOST: "banishment"
+}
+
 const STATUS_ABBREVIATIONS: Dictionary = {
 	StatusEffect.NONE: "OK",
 	StatusEffect.POISONED: "PSN",
@@ -398,6 +417,10 @@ static func get_base_age(race: Race) -> int:
 
 static func get_status_name(status: StatusEffect) -> String:
 	return STATUS_NAMES.get(status, "Unknown")
+
+
+static func get_status_noun(status: StatusEffect) -> String:
+	return STATUS_NOUN_NAMES.get(status, "the effect")
 
 
 static func get_status_abbreviation(status: StatusEffect) -> String:

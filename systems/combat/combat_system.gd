@@ -621,7 +621,7 @@ func _try_apply_attack_effect(attack: MonsterAttack, target: Character) -> void:
 
 	if save_type >= 0:
 		if StatusEffectSystem.roll_saving_throw(target, save_type, dc):
-			action_performed.emit("%s resists the %s!" % [target.get_display_name(), CharacterEnums.get_status_name(attack.effect_type).to_lower()])
+			action_performed.emit("%s resists %s!" % [target.get_display_name(), CharacterEnums.get_status_noun(attack.effect_type)])
 			return
 
 	var effect_result := StatusEffectSystem.apply_status(target, attack.effect_type, duration, "monster_attack", attack.effect_power)
