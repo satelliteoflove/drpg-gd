@@ -30,6 +30,14 @@ jobs:
           mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           cp /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
 
+      - name: Strip dev-only MCP plugin references
+        run: |
+          sed -i '/^MCPGameBridge=/d' project.godot
+          sed -i '/^\[editor_plugins\]/,/^\[/{//!d;}' project.godot
+          sed -i '/^\[editor_plugins\]/d' project.godot
+          sed -i '/^\[godot_mcp\]/,/^\[/{//!d;}' project.godot
+          sed -i '/^\[godot_mcp\]/d' project.godot
+
       - name: Import project
         run: godot --headless --import
 
@@ -60,6 +68,14 @@ jobs:
           mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           cp /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
 
+      - name: Strip dev-only MCP plugin references
+        run: |
+          sed -i '/^MCPGameBridge=/d' project.godot
+          sed -i '/^\[editor_plugins\]/,/^\[/{//!d;}' project.godot
+          sed -i '/^\[editor_plugins\]/d' project.godot
+          sed -i '/^\[godot_mcp\]/,/^\[/{//!d;}' project.godot
+          sed -i '/^\[godot_mcp\]/d' project.godot
+
       - name: Import project
         run: godot --headless --import
 
@@ -89,6 +105,14 @@ jobs:
         run: |
           mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           cp /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable/* ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
+
+      - name: Strip dev-only MCP plugin references
+        run: |
+          sed -i '/^MCPGameBridge=/d' project.godot
+          sed -i '/^\[editor_plugins\]/,/^\[/{//!d;}' project.godot
+          sed -i '/^\[editor_plugins\]/d' project.godot
+          sed -i '/^\[godot_mcp\]/,/^\[/{//!d;}' project.godot
+          sed -i '/^\[godot_mcp\]/d' project.godot
 
       - name: Import project
         run: godot --headless --import
