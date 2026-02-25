@@ -39,7 +39,7 @@ var _target_highlight_style: StyleBoxFlat = null
 var _highlighted_panels: Array[PanelContainer] = []
 var _display_dirty: bool = false
 var _effect_cache: Dictionary = {}
-var _turn_order_labels: Array[Label] = []
+var _turn_order_entries: Array[PanelContainer] = []
 
 var action_nav: MenuNavigator = null
 var item_nav: MenuNavigator = null
@@ -83,22 +83,23 @@ class EnemyUI:
 	var status_label: Label
 	var status_icons_hbox: HBoxContainer
 
-@onready var enemy_grid: GridContainer = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/EnemyGrid
-@onready var row_labels: VBoxContainer = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels
-@onready var back_label: Label = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/BackLabel
-@onready var middle_label: Label = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/MiddleLabel
-@onready var front_label: Label = $MainLayout/ContentArea/LeftColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/FrontLabel
-@onready var party_front_row: HBoxContainer = $MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/FrontRow
-@onready var party_back_row: HBoxContainer = $MainLayout/ContentArea/LeftColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/BackRow
-@onready var turn_order_list: VBoxContainer = $MainLayout/ContentArea/TurnOrderPanel/TurnOrderVBox/TurnOrderList
-@onready var message_log: RichTextLabel = $MainLayout/ContentArea/LeftColumn/MessageSection/MessageVBox/MessageLog
+@onready var enemy_grid: GridContainer = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/EnemyGrid
+@onready var row_labels: VBoxContainer = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels
+@onready var back_label: Label = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/BackLabel
+@onready var middle_label: Label = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/MiddleLabel
+@onready var front_label: Label = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/FrontLabel
+@onready var party_front_row: HBoxContainer = $MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/FrontRow
+@onready var party_back_row: HBoxContainer = $MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/BackRow
+@onready var turn_order_hbox: HBoxContainer = $MainLayout/TurnOrderBar/TurnOrderMargin/TurnOrderHBox
+@onready var message_log: RichTextLabel = $MainLayout/MessageSection/MessageMargin/MessageLog
+@onready var active_char_label: Label = $MainLayout/ActionSection/ActionVBox/ActiveCharLabel
 
-@onready var attack_button: Button = $MainLayout/ActionSection/ActionHBox/AttackButton
-@onready var defend_button: Button = $MainLayout/ActionSection/ActionHBox/DefendButton
-@onready var spell_button: Button = $MainLayout/ActionSection/ActionHBox/SpellButton
-@onready var dispel_button: Button = $MainLayout/ActionSection/ActionHBox/DispelButton
-@onready var item_button: Button = $MainLayout/ActionSection/ActionHBox/ItemButton
-@onready var escape_button: Button = $MainLayout/ActionSection/ActionHBox/EscapeButton
+@onready var attack_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/AttackButton
+@onready var defend_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/DefendButton
+@onready var spell_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/SpellButton
+@onready var dispel_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/DispelButton
+@onready var item_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/ItemButton
+@onready var escape_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/EscapeButton
 
 @onready var modal_overlay: ColorRect = $ModalOverlay
 @onready var item_modal: PanelContainer = $ItemModal
@@ -652,8 +653,10 @@ func _update_turn_order() -> void:
 		return
 
 	var entries := _get_sorted_turn_order()
-	var max_shown := 10
+	var max_shown := 9
 	var idx := 0
+
+	var current_name := ""
 
 	for i in range(entries.size()):
 		if idx >= max_shown:
@@ -663,8 +666,9 @@ func _update_turn_order() -> void:
 		var name_text := ""
 		var entry_id: String = entry.id
 		var is_current: bool = (entry_id == combat_system.current_combatant_id)
+		var is_player: bool = entry.is_player
 
-		if entry.is_player:
+		if is_player:
 			var character := _get_character_by_id(entry.id)
 			if character:
 				name_text = character.get_display_name()
@@ -676,26 +680,68 @@ func _update_turn_order() -> void:
 		if name_text == "":
 			continue
 
-		var label: Label
-		if idx < _turn_order_labels.size():
-			label = _turn_order_labels[idx]
-			label.visible = true
+		if is_current:
+			current_name = name_text
+
+		var panel: PanelContainer
+		if idx < _turn_order_entries.size():
+			panel = _turn_order_entries[idx]
+			panel.visible = true
 		else:
-			label = Label.new()
-			turn_order_list.add_child(label)
-			_turn_order_labels.append(label)
+			panel = PanelContainer.new()
+			panel.custom_minimum_size = Vector2(90, 28)
+			var new_lbl := Label.new()
+			new_lbl.name = "NameLabel"
+			new_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			new_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			new_lbl.add_theme_font_size_override("font_size", 12)
+			panel.add_child(new_lbl)
+			turn_order_hbox.add_child(panel)
+			_turn_order_entries.append(panel)
+
+		var lbl: Label = panel.get_node("NameLabel")
+		var style := StyleBoxFlat.new()
+		style.set_corner_radius_all(4)
+		style.content_margin_left = 6
+		style.content_margin_right = 6
+		style.content_margin_top = 2
+		style.content_margin_bottom = 2
 
 		if is_current:
-			label.text = "> %s" % name_text
-			label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
+			lbl.text = "> %s <" % name_text
+			style.bg_color = Color(0.15, 0.4, 0.15)
+			style.border_color = Color(0.3, 1.0, 0.3)
+			style.set_border_width_all(2)
+			lbl.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
+			lbl.add_theme_font_size_override("font_size", 13)
+			panel.custom_minimum_size = Vector2(100, 30)
+		elif is_player:
+			lbl.text = name_text
+			style.bg_color = Color(0.1, 0.15, 0.25)
+			style.border_color = Color(0.3, 0.5, 0.8, 0.5)
+			style.set_border_width_all(1)
+			lbl.add_theme_color_override("font_color", Color(0.5, 0.7, 0.9))
+			lbl.add_theme_font_size_override("font_size", 12)
+			panel.custom_minimum_size = Vector2(90, 28)
 		else:
-			label.text = "  %s" % name_text
-			label.remove_theme_color_override("font_color")
+			lbl.text = name_text
+			style.bg_color = Color(0.25, 0.1, 0.1)
+			style.border_color = Color(0.8, 0.3, 0.3, 0.5)
+			style.set_border_width_all(1)
+			lbl.add_theme_color_override("font_color", Color(0.9, 0.5, 0.5))
+			lbl.add_theme_font_size_override("font_size", 12)
+			panel.custom_minimum_size = Vector2(90, 28)
 
+		panel.add_theme_stylebox_override("panel", style)
 		idx += 1
 
-	for i in range(idx, _turn_order_labels.size()):
-		_turn_order_labels[i].visible = false
+	for i in range(idx, _turn_order_entries.size()):
+		_turn_order_entries[i].visible = false
+
+	if current_name != "":
+		active_char_label.text = "%s's Turn:" % current_name
+	else:
+		active_char_label.text = ""
 
 
 func _get_sorted_turn_order() -> Array:
