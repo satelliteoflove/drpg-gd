@@ -658,12 +658,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if nav:
-		if event.is_action_pressed("menu_up"):
-			nav._move(-1)
-		elif event.is_action_pressed("menu_down"):
-			nav._move(1)
-		elif event.is_action_pressed("menu_confirm"):
-			nav._confirm()
+		nav.handle_input(event)
 
 
 func _on_back_pressed() -> void:

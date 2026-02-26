@@ -663,7 +663,7 @@ func _on_quantity_cancel() -> void:
 	buy_state = BuyState.BROWSING
 	selected_item = null
 	if nav and not item_buttons.is_empty():
-		nav._update_focus()
+		nav.update_focus()
 
 
 func _show_equip_dialog(item: Item) -> void:
@@ -763,7 +763,7 @@ func _on_equip_cancel() -> void:
 	buy_state = BuyState.BROWSING
 	selected_item = null
 	if nav and not item_buttons.is_empty():
-		nav._update_focus()
+		nav.update_focus()
 
 
 func _buy_to_inventory(item: Item, quantity: int) -> void:
@@ -939,7 +939,7 @@ func _on_upgrade_cancel() -> void:
 	selected_item = null
 	selected_inventory_index = -1
 	if nav and not item_buttons.is_empty():
-		nav._update_focus()
+		nav.update_focus()
 
 
 func _on_scrap_item(index: int, item: Item) -> void:
@@ -1128,12 +1128,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_cycle_mode(1)
 		return
 
-	if event is InputEventKey and event.pressed and event.keycode == KEY_EQUAL and event.shift_pressed:
-		GameState.party.add_gold(1000)
-		_refresh_display()
-		print("[DEBUG] Added 1000 gold. Total: %d" % GameState.party.gold)
-		return
-
 	if current_mode == Mode.SELL:
 		if event.is_action_pressed("menu_select"):
 			if not sell_multi_select:
@@ -1161,21 +1155,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 	if nav:
-		if event.is_action_pressed("menu_up"):
-			nav._move(-1)
-			_update_info()
-			_update_comparison()
-		elif event.is_action_pressed("menu_down"):
-			nav._move(1)
-			_update_info()
-			_update_comparison()
-		elif event.is_action_pressed("menu_confirm"):
+		if event.is_action_pressed("menu_confirm"):
 			if sell_multi_select and not sell_selected_indices.is_empty():
 				_sell_selected_items()
 			elif scrap_multi_select and not scrap_selected_indices.is_empty():
 				_scrap_selected_items()
 			else:
-				nav._confirm()
+				nav.handle_input(event)
+		else:
+			nav.handle_input(event)
 
 
 func _handle_quantity_input(event: InputEvent) -> void:
@@ -1193,24 +1181,14 @@ func _handle_equip_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu_cancel"):
 		_on_equip_cancel()
 	elif equip_nav:
-		if event.is_action_pressed("menu_up"):
-			equip_nav._move(-1)
-		elif event.is_action_pressed("menu_down"):
-			equip_nav._move(1)
-		elif event.is_action_pressed("menu_confirm"):
-			equip_nav._confirm()
+		equip_nav.handle_input(event)
 
 
 func _handle_upgrade_input(event: InputEvent) -> void:
 	if event.is_action_pressed("menu_cancel"):
 		_on_upgrade_cancel()
 	elif upgrade_stat_nav:
-		if event.is_action_pressed("menu_up"):
-			upgrade_stat_nav._move(-1)
-		elif event.is_action_pressed("menu_down"):
-			upgrade_stat_nav._move(1)
-		elif event.is_action_pressed("menu_confirm"):
-			upgrade_stat_nav._confirm()
+		upgrade_stat_nav.handle_input(event)
 
 
 func _on_back_pressed() -> void:

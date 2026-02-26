@@ -52,6 +52,14 @@ static func get_cancel_help() -> String:
 	return "%s: Back" % get_action_key("menu_cancel")
 
 
+static func get_tab_help() -> String:
+	return "%s/%s: Tab" % [get_action_key("menu_left"), get_action_key("menu_right")]
+
+
+static func get_reorder_help() -> String:
+	return "%s: Reorder" % get_action_key("menu_reorder")
+
+
 static func get_arrow_nav_help() -> String:
 	var up := get_action_key("menu_up")
 	var down := get_action_key("menu_down")

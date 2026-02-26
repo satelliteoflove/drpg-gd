@@ -2,7 +2,7 @@ extends Control
 
 enum Tab { CREATE, ROSTER, PARTY }
 enum RosterMode { VIEW, MANAGE, CONFIRM_DELETE, RENAME, CHANGE_CLASS }
-enum PartyMode { NORMAL, REORDER }
+enum PartyMode { NORMAL, REORDER_SELECT, REORDER_MOVE }
 
 var current_tab: Tab = Tab.CREATE
 var roster_mode: RosterMode = RosterMode.VIEW
@@ -10,6 +10,7 @@ var party_mode: PartyMode = PartyMode.NORMAL
 var party_focus: int = 0
 var selected_character: Character = null
 var reorder_index: int = -1
+var _reorder_original_ids: Array[String] = []
 
 var nav: MenuNavigator = null
 var buttons: Array[Button] = []
@@ -232,7 +233,7 @@ func _populate_delete_confirm() -> void:
 
 	_setup_nav()
 	if nav:
-		nav._move(1)
+		nav.select(1)
 
 
 func _populate_rename_screen() -> void:
@@ -324,9 +325,10 @@ func _populate_party_tab() -> void:
 	party_buttons.clear()
 	roster_buttons.clear()
 
+	var reordering := party_mode in [PartyMode.REORDER_SELECT, PartyMode.REORDER_MOVE]
 	var party_header := Label.new()
 	var header_text := "PARTY (%d/6)" % GameState.party.size()
-	if party_mode == PartyMode.REORDER:
+	if reordering:
 		header_text += " [REORDERING]"
 	party_header.text = header_text
 	party_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -336,10 +338,12 @@ func _populate_party_tab() -> void:
 		var member: Character = GameState.party.get_member_at(i)
 		var btn := _create_party_button(member, i < 3)
 
-		if party_mode == PartyMode.REORDER:
+		if party_mode == PartyMode.REORDER_MOVE:
 			if i == reorder_index:
 				btn.add_theme_color_override("font_color", Color(1, 1, 0.3))
 				btn.text = "> " + btn.text + " <"
+		elif party_mode == PartyMode.REORDER_SELECT:
+			pass
 		else:
 			btn.pressed.connect(_on_party_member_pressed.bind(member))
 
@@ -353,57 +357,79 @@ func _populate_party_tab() -> void:
 		empty_label.modulate = Color(0.5, 0.5, 0.5)
 		options_list.add_child(empty_label)
 
-	var divider := HSeparator.new()
-	options_list.add_child(divider)
+	if not reordering:
+		var divider := HSeparator.new()
+		options_list.add_child(divider)
 
-	var available := GameState.roster.get_available(GameState.party)
-	var avail_header := Label.new()
-	avail_header.text = "AVAILABLE (%d)" % available.size()
-	avail_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	options_list.add_child(avail_header)
+		var available := GameState.roster.get_available(GameState.party)
+		var avail_header := Label.new()
+		avail_header.text = "AVAILABLE (%d)" % available.size()
+		avail_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		options_list.add_child(avail_header)
 
-	for character in available:
-		var btn := _create_party_button(character, false)
-		btn.pressed.connect(_on_roster_add_pressed.bind(character))
-		if GameState.party.is_full():
-			btn.disabled = true
-			btn.modulate = Color(0.5, 0.5, 0.5)
-		options_list.add_child(btn)
-		roster_buttons.append(btn)
+		for character in available:
+			var btn := _create_party_button(character, false)
+			btn.pressed.connect(_on_roster_add_pressed.bind(character))
+			if GameState.party.is_full():
+				btn.disabled = true
+				btn.modulate = Color(0.5, 0.5, 0.5)
+			options_list.add_child(btn)
+			roster_buttons.append(btn)
 
-	if roster_buttons.is_empty():
-		var empty_label := Label.new()
-		empty_label.text = "(No available characters)"
-		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		empty_label.modulate = Color(0.5, 0.5, 0.5)
-		options_list.add_child(empty_label)
+		if roster_buttons.is_empty():
+			var empty_label := Label.new()
+			empty_label.text = "(No available characters)"
+			empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			empty_label.modulate = Color(0.5, 0.5, 0.5)
+			options_list.add_child(empty_label)
 
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 8)
-	options_list.add_child(spacer)
+		var spacer := Control.new()
+		spacer.custom_minimum_size = Vector2(0, 8)
+		options_list.add_child(spacer)
 
-	var equip_btn := Button.new()
-	equip_btn.text = "Equipment & Spells"
-	equip_btn.custom_minimum_size = Vector2(350, 36)
-	if GameState.party.is_empty():
-		equip_btn.disabled = true
-		equip_btn.modulate = Color(0.5, 0.5, 0.5)
+		var equip_btn := Button.new()
+		equip_btn.text = "Equipment & Spells"
+		equip_btn.custom_minimum_size = Vector2(350, 36)
+		if GameState.party.is_empty():
+			equip_btn.disabled = true
+			equip_btn.modulate = Color(0.5, 0.5, 0.5)
+		else:
+			equip_btn.pressed.connect(_on_equipment_pressed)
+		options_list.add_child(equip_btn)
+
+		var quick_btn := Button.new()
+		quick_btn.text = "Quick Pick Party"
+		quick_btn.custom_minimum_size = Vector2(350, 36)
+		if available.is_empty() and not party_buttons.is_empty():
+			quick_btn.disabled = true
+			quick_btn.modulate = Color(0.5, 0.5, 0.5)
+		else:
+			quick_btn.pressed.connect(_on_quick_pick)
+		options_list.add_child(quick_btn)
+
+		var all_buttons: Array[Button] = []
+		all_buttons.append_array(party_buttons)
+		all_buttons.append_array(roster_buttons)
+		all_buttons.append(equip_btn)
+		all_buttons.append(quick_btn)
+
+		if not all_buttons.is_empty():
+			var focus_idx := clampi(party_focus, 0, all_buttons.size() - 1)
+			party_nav = MenuNavigator.new()
+			party_nav.setup(all_buttons, focus_idx)
+			party_nav.selection_changed.connect(_on_party_selection_changed)
+			party_focus = 0
 	else:
-		equip_btn.pressed.connect(_on_equipment_pressed)
-	options_list.add_child(equip_btn)
+		if not party_buttons.is_empty():
+			var ridx := clampi(reorder_index, 0, party_buttons.size() - 1)
+			party_nav = MenuNavigator.new()
+			party_nav.setup(party_buttons, ridx)
+			party_nav.selection_changed.connect(_on_party_selection_changed)
 
-	var all_buttons: Array[Button] = []
-	all_buttons.append_array(party_buttons)
-	all_buttons.append_array(roster_buttons)
-	all_buttons.append(equip_btn)
-
-	if not all_buttons.is_empty():
-		party_nav = MenuNavigator.new()
-		party_nav.setup(all_buttons, 0)
-		party_nav.selection_changed.connect(_on_party_selection_changed)
-
-	if party_mode == PartyMode.REORDER:
-		message_label.text = "Use Up/Down to move, Enter to confirm."
+	if party_mode == PartyMode.REORDER_SELECT:
+		message_label.text = "Select a character to move, then press Enter."
+	elif party_mode == PartyMode.REORDER_MOVE:
+		message_label.text = "Move with Up/Down. Enter to place, Esc to cancel."
 	elif GameState.party.is_full():
 		message_label.text = "Party is full."
 	elif GameState.party.is_empty():
@@ -536,6 +562,7 @@ func _on_roster_mode_back() -> void:
 
 func _on_party_member_pressed(character: Character) -> void:
 	GameState.party.remove_member(character.id)
+	party_focus = GameState.party.size()
 	_refresh_display()
 
 
@@ -543,6 +570,7 @@ func _on_roster_add_pressed(character: Character) -> void:
 	if GameState.party.is_full():
 		return
 	GameState.party.add_member(character)
+	party_focus = GameState.party.size()
 	_refresh_display()
 
 
@@ -550,17 +578,48 @@ func _on_equipment_pressed() -> void:
 	SceneManager.go_to_party_menu()
 
 
-func _enter_reorder_mode() -> void:
-	if GameState.party.size() < 2:
-		return
-	party_mode = PartyMode.REORDER
-	reorder_index = 0
+func _on_quick_pick() -> void:
+	var available := GameState.roster.get_available(GameState.party)
+	available.shuffle()
+	var slots := 6 - GameState.party.size()
+	var to_add := mini(slots, available.size())
+	for i in range(to_add):
+		GameState.party.add_member(available[i])
+	message_label.text = "Added %d characters to party." % to_add
 	_refresh_display()
 
 
-func _exit_reorder_mode() -> void:
+func _enter_reorder_mode() -> void:
+	if GameState.party.size() < 2:
+		return
+	_reorder_original_ids.clear()
+	for m in GameState.party.get_members():
+		_reorder_original_ids.append(m.id)
+	party_mode = PartyMode.REORDER_SELECT
+	reorder_index = 0
+	party_focus = 0
+	_refresh_display()
+
+
+func _confirm_reorder() -> void:
+	_reorder_original_ids.clear()
 	party_mode = PartyMode.NORMAL
 	reorder_index = -1
+	message_label.text = "Reorder confirmed."
+	_refresh_display()
+
+
+func _cancel_reorder() -> void:
+	var restored: Array[Character] = []
+	for char_id in _reorder_original_ids:
+		var member := GameState.party.get_member(char_id)
+		if member:
+			restored.append(member)
+	GameState.party.members = restored
+	_reorder_original_ids.clear()
+	party_mode = PartyMode.NORMAL
+	reorder_index = -1
+	message_label.text = "Reorder cancelled."
 	_refresh_display()
 
 
@@ -584,17 +643,24 @@ func _update_party_info() -> void:
 
 	var idx := party_nav.get_current_index()
 
-	if party_mode == PartyMode.REORDER:
+	if party_mode in [PartyMode.REORDER_SELECT, PartyMode.REORDER_MOVE]:
 		if reorder_index >= 0 and reorder_index < GameState.party.size():
 			var reorder_char: Character = GameState.party.get_member_at(reorder_index)
 			var row := "Front Row" if reorder_index < 3 else "Back Row"
-			var text := "[b]REORDERING: %s[/b]\n\n" % reorder_char.character_name
-			text += "Current Position: %d (%s)\n\n" % [reorder_index + 1, row]
-			text += "[color=cyan]Formation Info:[/color]\n"
-			text += "  Positions 1-3: Front Row (melee range)\n"
-			text += "  Positions 4-6: Back Row (ranged/protected)\n\n"
-			text += "[color=yellow]Use Up/Down to move this character.[/color]\n"
-			text += "[color=yellow]Press Enter when done.[/color]"
+			var text := ""
+			if party_mode == PartyMode.REORDER_SELECT:
+				text += "[b]SELECT: %s[/b]\n\n" % reorder_char.character_name
+				text += "Position: %d (%s)\n\n" % [reorder_index + 1, row]
+				text += "[color=yellow]Navigate to a character and press Enter to grab them.[/color]\n"
+				text += "[color=yellow]Press Esc to finish reordering.[/color]"
+			else:
+				text += "[b]MOVING: %s[/b]\n\n" % reorder_char.character_name
+				text += "Current Position: %d (%s)\n\n" % [reorder_index + 1, row]
+				text += "[color=cyan]Formation Info:[/color]\n"
+				text += "  Positions 1-3: Front Row (melee range)\n"
+				text += "  Positions 4-6: Back Row (ranged/protected)\n\n"
+				text += "[color=yellow]Use Up/Down to move. Enter to place.[/color]\n"
+				text += "[color=yellow]Press Esc to cancel all changes.[/color]"
 			info_label.text = text
 		return
 
@@ -896,25 +962,29 @@ func _on_nav_selection_changed(_index: int) -> void:
 
 func _update_help() -> void:
 	var v_nav := KeyBindingHelper.get_nav_help()
+	var h_nav := KeyBindingHelper.get_horizontal_help()
 	var confirm := KeyBindingHelper.get_confirm_help()
 	var cancel := KeyBindingHelper.get_cancel_help()
 
 	match current_tab:
 		Tab.CREATE:
-			help_label.text = "Tab: Switch tabs | %s: Create | %s" % [confirm.split(":")[0], cancel]
+			help_label.text = "%s | %s | %s" % [h_nav, confirm, cancel]
 		Tab.ROSTER:
 			match roster_mode:
 				RosterMode.RENAME:
-					help_label.text = "Type name | Enter: Confirm | %s: Cancel" % cancel.split(":")[0]
+					help_label.text = "Type name | Enter: Confirm | %s" % cancel
 				_:
-					help_label.text = "Tab: Switch tabs | %s | %s: Select | %s: Back" % [v_nav, confirm.split(":")[0], cancel.split(":")[0]]
+					help_label.text = "%s | %s | %s | %s" % [h_nav, v_nav, confirm, cancel]
 		Tab.PARTY:
-			if party_mode == PartyMode.REORDER:
-				help_label.text = "Up/Down: Move | Enter: Done | Escape: Cancel"
+			if party_mode == PartyMode.REORDER_SELECT:
+				help_label.text = "%s | %s: Grab | %s: Done" % [v_nav, confirm.split(":")[0], cancel.split(":")[0]]
+			elif party_mode == PartyMode.REORDER_MOVE:
+				help_label.text = "%s: Move | %s: Place | %s" % [v_nav.split(":")[0], confirm.split(":")[0], cancel]
 			elif GameState.party.size() > 1:
-				help_label.text = "Tab: Switch tabs | %s | Enter: Add/Remove | R: Reorder" % v_nav
+				var reorder := KeyBindingHelper.get_reorder_help()
+				help_label.text = "%s | %s | %s | %s" % [h_nav, v_nav, confirm, reorder]
 			else:
-				help_label.text = "Tab: Switch tabs | %s | Enter: Add/Remove | %s: Back" % [v_nav, cancel.split(":")[0]]
+				help_label.text = "%s | %s | %s | %s" % [h_nav, v_nav, confirm, cancel]
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -923,17 +993,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_roster_mode_back()
 		return
 
-	if current_tab == Tab.PARTY and party_mode == PartyMode.REORDER:
+	if current_tab == Tab.PARTY and party_mode in [PartyMode.REORDER_SELECT, PartyMode.REORDER_MOVE]:
 		_handle_reorder_input(event)
 		return
 
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_TAB:
-			if event.shift_pressed:
-				tab_bar.current_tab = (tab_bar.current_tab - 1 + 3) % 3
-			else:
-				tab_bar.current_tab = (tab_bar.current_tab + 1) % 3
-			return
+	if event.is_action_pressed("menu_left"):
+		tab_bar.current_tab = (tab_bar.current_tab - 1 + 3) % 3
+		return
+	if event.is_action_pressed("menu_right"):
+		tab_bar.current_tab = (tab_bar.current_tab + 1) % 3
+		return
 
 	if event.is_action_pressed("menu_cancel"):
 		match current_tab:
@@ -952,42 +1021,41 @@ func _unhandled_input(event: InputEvent) -> void:
 		_handle_party_input(event)
 	elif current_tab == Tab.ROSTER or current_tab == Tab.CREATE:
 		if nav:
-			if event.is_action_pressed("menu_up"):
-				nav._move(-1)
-				_update_roster_info()
-			elif event.is_action_pressed("menu_down"):
-				nav._move(1)
-				_update_roster_info()
-			elif event.is_action_pressed("menu_confirm"):
-				nav._confirm()
+			nav.handle_input(event)
 
 
 func _handle_party_input(event: InputEvent) -> void:
-	if party_nav and party_nav.items.size() > 0:
-		if event.is_action_pressed("menu_up"):
-			party_nav._move(-1)
-			_update_party_info()
-		elif event.is_action_pressed("menu_down"):
-			party_nav._move(1)
-			_update_party_info()
-		elif event.is_action_pressed("menu_confirm"):
-			party_nav._confirm()
-
 	if GameState.party.size() > 1:
-		if event is InputEventKey and event.pressed and not event.echo:
-			if event.keycode == KEY_F or event.keycode == KEY_R:
-				_enter_reorder_mode()
+		if event.is_action_pressed("menu_reorder"):
+			_enter_reorder_mode()
+			return
+
+	if party_nav and party_nav.items.size() > 0:
+		party_nav.handle_input(event)
 
 
 func _handle_reorder_input(event: InputEvent) -> void:
-	if event.is_action_pressed("menu_cancel"):
-		_exit_reorder_mode()
-	elif event.is_action_pressed("menu_up"):
-		_move_party_member(-1)
-	elif event.is_action_pressed("menu_down"):
-		_move_party_member(1)
-	elif event.is_action_pressed("menu_confirm"):
-		_exit_reorder_mode()
+	if party_mode == PartyMode.REORDER_SELECT:
+		if event.is_action_pressed("menu_cancel"):
+			_confirm_reorder()
+		elif event.is_action_pressed("menu_up") or event.is_action_pressed("menu_down"):
+			if party_nav:
+				party_nav.handle_input(event)
+				reorder_index = party_nav.get_current_index()
+				_update_party_info()
+		elif event.is_action_pressed("menu_confirm"):
+			party_mode = PartyMode.REORDER_MOVE
+			_refresh_display()
+	elif party_mode == PartyMode.REORDER_MOVE:
+		if event.is_action_pressed("menu_cancel"):
+			_cancel_reorder()
+		elif event.is_action_pressed("menu_up"):
+			_move_party_member(-1)
+		elif event.is_action_pressed("menu_down"):
+			_move_party_member(1)
+		elif event.is_action_pressed("menu_confirm"):
+			party_mode = PartyMode.REORDER_SELECT
+			_refresh_display()
 
 
 func _on_back_pressed() -> void:

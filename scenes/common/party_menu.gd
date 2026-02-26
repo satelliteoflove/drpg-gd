@@ -84,7 +84,7 @@ func _setup_tabs() -> void:
 		child.queue_free()
 	tab_buttons.clear()
 
-	var tab_names := ["1: Status", "2: Equipment", "3: Inventory", "4: Formation", "5: Spells"]
+	var tab_names := ["Status", "Equipment", "Inventory", "Formation", "Spells"]
 	for i in range(tab_names.size()):
 		var btn := Button.new()
 		btn.text = tab_names[i]
@@ -129,32 +129,25 @@ func _on_tab_pressed(tab_index: int) -> void:
 	_switch_tab(tab_index as Tab)
 
 
-func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("menu_cancel"):
-		if _handle_back():
-			var vp := get_viewport()
-			if vp:
-				vp.set_input_as_handled()
-
-
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed:
-		match event.keycode:
-			KEY_1:
-				_switch_tab(Tab.STATUS)
-				return
-			KEY_2:
-				_switch_tab(Tab.EQUIPMENT)
-				return
-			KEY_3:
-				_switch_tab(Tab.INVENTORY)
-				return
-			KEY_4:
-				_switch_tab(Tab.FORMATION)
-				return
-			KEY_5:
-				_switch_tab(Tab.SPELLS)
-				return
+	if event.is_action_pressed("menu_cancel"):
+		_handle_back()
+		return
+
+	if event.is_action_pressed("menu_left"):
+		if current_tab == Tab.SPELLS and spell_panel == SpellPanel.LIST:
+			_cycle_spell_level(-1)
+			return
+		var new_tab := (current_tab - 1 + Tab.size()) % Tab.size()
+		_switch_tab(new_tab as Tab)
+		return
+	if event.is_action_pressed("menu_right"):
+		if current_tab == Tab.SPELLS and spell_panel == SpellPanel.LIST:
+			_cycle_spell_level(1)
+			return
+		var new_tab := (current_tab + 1) % Tab.size()
+		_switch_tab(new_tab as Tab)
+		return
 
 	match current_tab:
 		Tab.STATUS:
@@ -221,8 +214,8 @@ func _update_help() -> void:
 	var confirm := KeyBindingHelper.get_confirm_help()
 	var cancel := KeyBindingHelper.get_cancel_help()
 	var arrow_nav := KeyBindingHelper.get_arrow_nav_help()
-	var h_nav := KeyBindingHelper.get_horizontal_help()
-	var base := "1-5: Tabs | "
+	var tab_help := KeyBindingHelper.get_tab_help()
+	var base := "%s | " % tab_help
 
 	match current_tab:
 		Tab.STATUS:
@@ -250,7 +243,7 @@ func _update_help() -> void:
 				SpellPanel.PARTY:
 					help_label.text = base + "%s | %s | %s" % [v_nav, confirm, cancel]
 				SpellPanel.LIST:
-					help_label.text = base + "%s | %s: Spell Level | %s: Cast | %s" % [v_nav, h_nav, confirm.split(":")[0], cancel]
+					help_label.text = base + "%s | %s: Spell Level | %s: Cast | %s" % [v_nav, tab_help.split(":")[0], confirm.split(":")[0], cancel]
 				SpellPanel.TARGETS:
 					help_label.text = base + "%s | %s: Cast | %s" % [v_nav, confirm.split(":")[0], cancel]
 
@@ -436,10 +429,7 @@ func _has_negative_status(member: Character) -> bool:
 func _handle_status_input(event: InputEvent) -> void:
 	if status_nav == null:
 		return
-	if event.is_action_pressed("menu_up"):
-		status_nav._move(-1)
-	elif event.is_action_pressed("menu_down"):
-		status_nav._move(1)
+	status_nav.handle_input(event)
 
 
 # === EQUIPMENT TAB ===
@@ -480,7 +470,7 @@ func _refresh_equip_party() -> void:
 	equip_party_nav.setup(equip_party_buttons, 0)
 
 	if equip_panel == EquipPanel.PARTY:
-		equip_party_nav._update_focus()
+		equip_party_nav.update_focus()
 
 
 func _refresh_equip_slots() -> void:
@@ -511,7 +501,7 @@ func _refresh_equip_slots() -> void:
 	equip_slots_nav.setup(equip_slot_buttons, 0)
 
 	if equip_panel == EquipPanel.SLOTS:
-		equip_slots_nav._update_focus()
+		equip_slots_nav.update_focus()
 
 
 func _refresh_equip_items() -> void:
@@ -557,7 +547,7 @@ func _refresh_equip_items() -> void:
 	equip_items_nav.setup(equip_item_buttons, 0)
 
 	if equip_panel == EquipPanel.ITEMS:
-		equip_items_nav._update_focus()
+		equip_items_nav.update_focus()
 
 
 func _get_slot_name(slot_type: Item.ItemType) -> String:
@@ -645,26 +635,19 @@ func _update_equip_info() -> void:
 
 
 func _handle_equipment_input(event: InputEvent) -> void:
-	var nav: MenuNavigator = null
+	var active_nav: MenuNavigator = null
 	match equip_panel:
 		EquipPanel.PARTY:
-			nav = equip_party_nav
+			active_nav = equip_party_nav
 		EquipPanel.SLOTS:
-			nav = equip_slots_nav
+			active_nav = equip_slots_nav
 		EquipPanel.ITEMS:
-			nav = equip_items_nav
+			active_nav = equip_items_nav
 
-	if nav == null:
+	if active_nav == null:
 		return
 
-	if event.is_action_pressed("menu_up"):
-		nav._move(-1)
-		_update_equip_info()
-	elif event.is_action_pressed("menu_down"):
-		nav._move(1)
-		_update_equip_info()
-	elif event.is_action_pressed("menu_confirm"):
-		nav._confirm()
+	active_nav.handle_input(event)
 
 
 # === INVENTORY TAB ===
@@ -712,7 +695,7 @@ func _refresh_inv_items() -> void:
 	inv_nav.selection_changed.connect(_on_inv_selection_changed)
 
 	if not inv_showing_targets:
-		inv_nav._update_focus()
+		inv_nav.update_focus()
 
 
 func _refresh_inv_targets() -> void:
@@ -742,7 +725,7 @@ func _refresh_inv_targets() -> void:
 
 	inv_target_nav = MenuNavigator.new()
 	inv_target_nav.setup(inv_target_buttons, 0)
-	inv_target_nav._update_focus()
+	inv_target_nav.update_focus()
 
 
 func _can_use_item_on(item: Item, character: Character) -> bool:
@@ -825,21 +808,12 @@ func _update_inv_info() -> void:
 
 
 func _handle_inventory_input(event: InputEvent) -> void:
-	var nav: MenuNavigator = inv_target_nav if inv_showing_targets else inv_nav
+	var active_nav: MenuNavigator = inv_target_nav if inv_showing_targets else inv_nav
 
-	if nav == null:
+	if active_nav == null:
 		return
 
-	if event.is_action_pressed("menu_up"):
-		nav._move(-1)
-		if not inv_showing_targets:
-			_update_inv_info()
-	elif event.is_action_pressed("menu_down"):
-		nav._move(1)
-		if not inv_showing_targets:
-			_update_inv_info()
-	elif event.is_action_pressed("menu_confirm"):
-		nav._confirm()
+	active_nav.handle_input(event)
 
 
 # === FORMATION TAB ===
@@ -1059,7 +1033,7 @@ func _refresh_spell_party() -> void:
 	spell_party_nav.selection_changed.connect(_on_spell_party_nav_changed)
 
 	if spell_panel == SpellPanel.PARTY:
-		spell_party_nav._update_focus()
+		spell_party_nav.update_focus()
 
 
 func _on_spell_party_selected(character: Character) -> void:
@@ -1164,7 +1138,7 @@ func _refresh_spell_list() -> void:
 	spell_list_nav.selection_changed.connect(_on_spell_list_nav_changed)
 
 	if spell_panel == SpellPanel.LIST:
-		spell_list_nav._update_focus()
+		spell_list_nav.update_focus()
 
 
 func _on_spell_list_nav_changed(_index: int) -> void:
@@ -1230,7 +1204,7 @@ func _refresh_spell_targets() -> void:
 
 	spell_target_nav = MenuNavigator.new()
 	spell_target_nav.setup(spell_target_buttons, 0)
-	spell_target_nav._update_focus()
+	spell_target_nav.update_focus()
 
 
 func _on_spell_target_selected(target: Character) -> void:
@@ -1299,34 +1273,19 @@ func _update_spell_info() -> void:
 
 
 func _handle_spells_input(event: InputEvent) -> void:
-	if spell_panel == SpellPanel.LIST:
-		if event.is_action_pressed("menu_left"):
-			_cycle_spell_level(-1)
-			return
-		elif event.is_action_pressed("menu_right"):
-			_cycle_spell_level(1)
-			return
-
-	var nav: MenuNavigator = null
+	var active_nav: MenuNavigator = null
 	match spell_panel:
 		SpellPanel.PARTY:
-			nav = spell_party_nav
+			active_nav = spell_party_nav
 		SpellPanel.LIST:
-			nav = spell_list_nav
+			active_nav = spell_list_nav
 		SpellPanel.TARGETS:
-			nav = spell_target_nav
+			active_nav = spell_target_nav
 
-	if nav == null:
+	if active_nav == null:
 		return
 
-	if event.is_action_pressed("menu_up"):
-		nav._move(-1)
-		_update_spell_info()
-	elif event.is_action_pressed("menu_down"):
-		nav._move(1)
-		_update_spell_info()
-	elif event.is_action_pressed("menu_confirm"):
-		nav._confirm()
+	active_nav.handle_input(event)
 
 
 func _cycle_spell_level(direction: int) -> void:

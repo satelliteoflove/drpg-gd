@@ -77,6 +77,10 @@ func _on_button_focus_entered(btn: Button) -> void:
 		selection_changed.emit(current_index)
 
 
+func update_focus() -> void:
+	_update_focus()
+
+
 func select(index: int) -> void:
 	if index >= 0 and index < items.size():
 		current_index = index
