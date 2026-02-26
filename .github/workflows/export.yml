@@ -167,6 +167,14 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.tag }}
           draft: true
+          body: |
+            ## macOS Note
+
+            macOS may report the app as "damaged" because it is not code-signed. To fix, open Terminal and run:
+
+            ```
+            xattr -cr /path/to/drpg-gd.app
+            ```
           files: |
             drpg-gd-${{ steps.version.outputs.tag }}-windows.zip
             drpg-gd-${{ steps.version.outputs.tag }}-macos.zip
