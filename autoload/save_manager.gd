@@ -162,6 +162,7 @@ func _create_save_data() -> Resource:
 
 	data.party_gold = GameState.party.gold
 	data.party_scrap = GameState.party.scrap
+	data.party_formations = GameState.party_formations.duplicate(true)
 	data.party_inventory = GameState.party.inventory.duplicate(true) if GameState.party.inventory else null
 
 	data.current_floor = GameState.current_floor
@@ -196,6 +197,7 @@ func _apply_save_data(data) -> void:
 
 	GameState.party.gold = data.party_gold
 	GameState.party.scrap = data.party_scrap
+	GameState.party_formations = data.party_formations.duplicate(true) if data.party_formations else []
 	if data.party_inventory:
 		GameState.party.inventory = data.party_inventory.duplicate(true)
 

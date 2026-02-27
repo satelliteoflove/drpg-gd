@@ -6,6 +6,7 @@ extends Resource
 
 @export_group("Party State")
 @export var party_member_ids: Array[String] = []
+@export var party_formations: Array[PartyFormation] = []
 @export var party_gold: int = 0
 @export var party_scrap: int = 0
 @export var party_inventory: Inventory = null

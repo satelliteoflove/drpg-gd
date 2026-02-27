@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://d2j4gsa22xmpc"]
 
-[ext_resource type="Script" path="res://scenes/town/guild_hall.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://df4bokpfnj7my" path="res://scenes/town/guild_hall.gd" id="1_script"]
 
-[node name="GuildHall" type="Control"]
+[node name="GuildHall" type="Control" unique_id=2109748014]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,14 +11,16 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1780318358]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 color = Color(0.12, 0.1, 0.14, 1)
 
-[node name="MainHBox" type="HBoxContainer" parent="."]
+[node name="MainHBox" type="HBoxContainer" parent="." unique_id=1723186800]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -27,86 +29,91 @@ offset_left = 20.0
 offset_top = 20.0
 offset_right = -20.0
 offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 16
 
-[node name="LeftPanel" type="VBoxContainer" parent="MainHBox"]
+[node name="LeftPanel" type="VBoxContainer" parent="MainHBox" unique_id=642471034]
 custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="Header" type="HBoxContainer" parent="MainHBox/LeftPanel"]
+[node name="Header" type="HBoxContainer" parent="MainHBox/LeftPanel" unique_id=350403891]
 layout_mode = 2
 
-[node name="TitleLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
+[node name="TitleLabel" type="Label" parent="MainHBox/LeftPanel/Header" unique_id=312198909]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "GUILD HALL"
 theme_override_font_sizes/font_size = 24
+text = "GUILD HALL"
 
-[node name="CountLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
+[node name="CountLabel" type="Label" parent="MainHBox/LeftPanel/Header" unique_id=7440978]
 layout_mode = 2
 text = "Roster: 0/20"
 horizontal_alignment = 2
 
-[node name="TabBar" type="TabBar" parent="MainHBox/LeftPanel"]
+[node name="TabBar" type="TabBar" parent="MainHBox/LeftPanel" unique_id=419422894]
 layout_mode = 2
+current_tab = 2
 tab_count = 3
 tab_0/title = "Create"
 tab_1/title = "Roster"
 tab_2/title = "Party"
 
-[node name="OptionsPanel" type="PanelContainer" parent="MainHBox/LeftPanel"]
+[node name="OptionsPanel" type="PanelContainer" parent="MainHBox/LeftPanel" unique_id=1930892404]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/LeftPanel/OptionsPanel"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/LeftPanel/OptionsPanel" unique_id=1874742772]
 layout_mode = 2
 
-[node name="OptionsList" type="VBoxContainer" parent="MainHBox/LeftPanel/OptionsPanel/ScrollContainer"]
+[node name="OptionsList" type="VBoxContainer" parent="MainHBox/LeftPanel/OptionsPanel/ScrollContainer" unique_id=1434675395]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="MessageLabel" type="Label" parent="MainHBox/LeftPanel"]
+[node name="MessageLabel" type="Label" parent="MainHBox/LeftPanel" unique_id=857568009]
 layout_mode = 2
 text = "Welcome to the Guild Hall."
 horizontal_alignment = 1
 
-[node name="HelpLabel" type="Label" parent="MainHBox/LeftPanel"]
+[node name="HelpLabel" type="Label" parent="MainHBox/LeftPanel" unique_id=1450411064]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 text = "Tab/Shift+Tab: Switch tabs | Up/Down: Navigate | Enter: Select | Esc: Back"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 
-[node name="BackButton" type="Button" parent="MainHBox/LeftPanel"]
+[node name="BackButton" type="Button" parent="MainHBox/LeftPanel" unique_id=77736035]
 layout_mode = 2
 text = "Back to Town"
 
-[node name="RightPanel" type="VBoxContainer" parent="MainHBox"]
+[node name="RightPanel" type="VBoxContainer" parent="MainHBox" unique_id=538920728]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="InfoPanel" type="PanelContainer" parent="MainHBox/RightPanel"]
-custom_minimum_size = Vector2(0, 250)
+[node name="InfoPanel" type="PanelContainer" parent="MainHBox/RightPanel" unique_id=289819885]
+custom_minimum_size = Vector2(0, 280)
 layout_mode = 2
+size_flags_vertical = 0
 
-[node name="InfoLabel" type="RichTextLabel" parent="MainHBox/RightPanel/InfoPanel"]
+[node name="InfoLabel" type="RichTextLabel" parent="MainHBox/RightPanel/InfoPanel" unique_id=308460138]
 layout_mode = 2
 bbcode_enabled = true
 text = "Select an option."
 
-[node name="RosterLabel" type="Label" parent="MainHBox/RightPanel"]
+[node name="RosterLabel" type="Label" parent="MainHBox/RightPanel" unique_id=1491556041]
 layout_mode = 2
 text = "Roster Overview"
 
-[node name="RosterPanel" type="PanelContainer" parent="MainHBox/RightPanel"]
+[node name="RosterPanel" type="PanelContainer" parent="MainHBox/RightPanel" unique_id=1427633212]
+custom_minimum_size = Vector2(0, 340)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/RightPanel/RosterPanel"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/RightPanel/RosterPanel" unique_id=2080440646]
 layout_mode = 2
 
-[node name="RosterList" type="VBoxContainer" parent="MainHBox/RightPanel/RosterPanel/ScrollContainer"]
+[node name="RosterList" type="VBoxContainer" parent="MainHBox/RightPanel/RosterPanel/ScrollContainer" unique_id=208026440]
 layout_mode = 2
 size_flags_horizontal = 3

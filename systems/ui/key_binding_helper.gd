@@ -66,3 +66,7 @@ static func get_arrow_nav_help() -> String:
 	var left := get_action_key("menu_left")
 	var right := get_action_key("menu_right")
 	return "%s/%s/%s/%s: Navigate" % [up, down, left, right]
+
+
+static func get_sort_help(sort_name: String) -> String:
+	return "%s: Sort (%s)" % [get_action_key("menu_sort"), sort_name]

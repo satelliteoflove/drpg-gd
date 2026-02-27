@@ -37,6 +37,10 @@ Note: Reload only triggers when the Godot editor window gains focus.
 3. Use Quick Start for fast dungeon entry
 4. Only restart when necessary
 
+### Suggesting Changes
+
+When advising on fixes or adjustments, start with the smallest change that solves the problem. Tweak one property before restructuring a layout. Adjust a value before rearchitecting a system. Only escalate to larger changes if the simple option genuinely won't work.
+
 ### Python Scripts
 
 Always use `uv run --with <package>` to run Python scripts. Never use `pip install` directly.

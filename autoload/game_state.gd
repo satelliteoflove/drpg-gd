@@ -17,6 +17,7 @@ var in_combat: bool = false
 
 var party: Party = null
 var roster: CharacterRoster = null
+var party_formations: Array[PartyFormation] = []
 var dungeon_floors: Dictionary = {}
 var dungeon_spawn_at_stairs_up: bool = true
 var current_encounter: Dictionary = {}
@@ -57,6 +58,8 @@ func _initialize_game_data() -> void:
 		roster = CharacterRoster.new()
 	if floor_tracker == null:
 		floor_tracker = FloorTracker.new()
+	if party_formations.is_empty():
+		party_formations = []
 
 
 const STARTER_ROSTER: Array[Dictionary] = [
@@ -83,11 +86,22 @@ func new_game() -> void:
 	party = Party.new()
 	party.add_gold(100)
 	roster = CharacterRoster.new()
+	party_formations = []
 	floor_tracker = FloorTracker.new()
 	dungeon_floors.clear()
 	current_floor = 1
 	current_encounter = {}
 	_populate_starter_roster()
+	_create_starter_formation()
+
+
+func _create_starter_formation() -> void:
+	var formation := PartyFormation.new()
+	formation.formation_name = "The Default"
+	for character in roster.get_all():
+		formation.member_ids.append(character.id)
+		formation.member_names.append(character.character_name)
+	party_formations.append(formation)
 
 
 func _populate_starter_roster() -> void:

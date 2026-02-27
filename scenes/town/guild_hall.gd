@@ -2,7 +2,10 @@ extends Control
 
 enum Tab { CREATE, ROSTER, PARTY }
 enum RosterMode { VIEW, MANAGE, CONFIRM_DELETE, RENAME, CHANGE_CLASS }
-enum PartyMode { NORMAL, REORDER_SELECT, REORDER_MOVE }
+enum PartyMode { NORMAL, REORDER_SELECT, REORDER_MOVE, FORMATION_LIST, FORMATION_SAVE, FORMATION_MANAGE }
+enum SortMode { DEFAULT, NAME, LEVEL, CLASS, RACE }
+
+const MAX_FORMATIONS: int = 10
 
 var current_tab: Tab = Tab.CREATE
 var roster_mode: RosterMode = RosterMode.VIEW
@@ -12,6 +15,11 @@ var selected_character: Character = null
 var reorder_index: int = -1
 var _reorder_original_ids: Array[String] = []
 var _reorder_pre_grab_ids: Array[String] = []
+var roster_sort_mode: SortMode = SortMode.DEFAULT
+var _displayed_roster_chars: Array[Character] = []
+var _displayed_available_chars: Array[Character] = []
+var _selected_formation: PartyFormation = null
+var formation_name_edit: LineEdit = null
 
 var nav: MenuNavigator = null
 var buttons: Array[Button] = []
@@ -52,6 +60,8 @@ func _on_tab_changed(tab_index: int) -> void:
 	party_mode = PartyMode.NORMAL
 	selected_character = null
 	reorder_index = -1
+	roster_sort_mode = SortMode.DEFAULT
+	_selected_formation = null
 	_refresh_display()
 
 
@@ -136,7 +146,8 @@ func _populate_roster_tab() -> void:
 func _populate_roster_view() -> void:
 	_clear_options()
 
-	for character in GameState.roster.get_all():
+	_displayed_roster_chars = _sort_characters(GameState.roster.get_all())
+	for character in _displayed_roster_chars:
 		var btn := Button.new()
 		btn.text = "%s - L%d %s %s" % [
 			character.character_name,
@@ -326,6 +337,17 @@ func _populate_class_change() -> void:
 
 
 func _populate_party_tab() -> void:
+	match party_mode:
+		PartyMode.FORMATION_LIST:
+			_populate_formation_list()
+			return
+		PartyMode.FORMATION_SAVE:
+			_populate_formation_save()
+			return
+		PartyMode.FORMATION_MANAGE:
+			_populate_formation_manage()
+			return
+
 	_clear_options()
 	party_buttons.clear()
 	roster_buttons.clear()
@@ -367,12 +389,13 @@ func _populate_party_tab() -> void:
 		options_list.add_child(divider)
 
 		var available := GameState.roster.get_available(GameState.party)
+		_displayed_available_chars = _sort_characters(available)
 		var avail_header := Label.new()
-		avail_header.text = "AVAILABLE (%d)" % available.size()
+		avail_header.text = "AVAILABLE (%d)" % _displayed_available_chars.size()
 		avail_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		options_list.add_child(avail_header)
 
-		for character in available:
+		for character in _displayed_available_chars:
 			var btn := _create_party_button(character, false)
 			btn.pressed.connect(_on_roster_add_pressed.bind(character))
 			if GameState.party.is_full():
@@ -412,11 +435,22 @@ func _populate_party_tab() -> void:
 			quick_btn.pressed.connect(_on_quick_pick)
 		options_list.add_child(quick_btn)
 
+		var formations_btn := Button.new()
+		formations_btn.text = "Formations"
+		formations_btn.custom_minimum_size = Vector2(350, 36)
+		if GameState.roster.is_empty():
+			formations_btn.disabled = true
+			formations_btn.modulate = Color(0.5, 0.5, 0.5)
+		else:
+			formations_btn.pressed.connect(_on_formations_pressed)
+		options_list.add_child(formations_btn)
+
 		var all_buttons: Array[Button] = []
 		all_buttons.append_array(party_buttons)
 		all_buttons.append_array(roster_buttons)
 		all_buttons.append(equip_btn)
 		all_buttons.append(quick_btn)
+		all_buttons.append(formations_btn)
 
 		if not all_buttons.is_empty():
 			var focus_idx := clampi(party_focus, 0, all_buttons.size() - 1)
@@ -696,6 +730,12 @@ func _update_party_info() -> void:
 		var all_count: int = party_buttons.size() + roster_buttons.size()
 		if idx == all_count:
 			info_label.text = "[b]Equipment & Spells[/b]\n\nOpen the party management screen\nto manage equipment, spells, and inventory."
+		elif idx == all_count + 1:
+			info_label.text = "[b]Quick Pick Party[/b]\n\nRandomly fill empty party slots\nfrom available roster members."
+		elif idx == all_count + 2:
+			var text := "[b]Formations[/b]\n\nSave and load named party compositions.\n\n"
+			text += "Saved: %d/%d" % [GameState.party_formations.size(), MAX_FORMATIONS]
+			info_label.text = text
 		else:
 			info_label.text = "Select a character to view details."
 
@@ -706,9 +746,8 @@ func _get_character_at_party_index(idx: int) -> Character:
 			return GameState.party.get_member_at(idx)
 	else:
 		var roster_idx := idx - party_buttons.size()
-		var available := GameState.roster.get_available(GameState.party)
-		if roster_idx >= 0 and roster_idx < available.size():
-			return available[roster_idx]
+		if roster_idx >= 0 and roster_idx < _displayed_available_chars.size():
+			return _displayed_available_chars[roster_idx]
 	return null
 
 
@@ -720,7 +759,7 @@ func _update_roster_info() -> void:
 	match roster_mode:
 		RosterMode.VIEW:
 			var idx := nav.get_current_index() if nav else -1
-			var characters: Array[Character] = GameState.roster.get_all()
+			var characters: Array[Character] = _displayed_roster_chars
 			if idx >= 0 and idx < characters.size():
 				_show_character_info(characters[idx])
 			else:
@@ -961,6 +1000,350 @@ func _create_roster_row(c: Character) -> HBoxContainer:
 	return row
 
 
+func _sort_characters(chars: Array[Character]) -> Array[Character]:
+	if roster_sort_mode == SortMode.DEFAULT:
+		return chars
+	var sorted := chars.duplicate()
+	match roster_sort_mode:
+		SortMode.NAME:
+			sorted.sort_custom(func(a: Character, b: Character) -> bool:
+				return a.character_name.to_lower() < b.character_name.to_lower())
+		SortMode.LEVEL:
+			sorted.sort_custom(func(a: Character, b: Character) -> bool:
+				return a.level > b.level)
+		SortMode.CLASS:
+			sorted.sort_custom(func(a: Character, b: Character) -> bool:
+				return a.character_class < b.character_class)
+		SortMode.RACE:
+			sorted.sort_custom(func(a: Character, b: Character) -> bool:
+				return a.race < b.race)
+	return sorted
+
+
+func _cycle_sort() -> void:
+	roster_sort_mode = ((roster_sort_mode + 1) % SortMode.size()) as SortMode
+	_refresh_display()
+
+
+func _get_sort_mode_name() -> String:
+	match roster_sort_mode:
+		SortMode.DEFAULT: return "Default"
+		SortMode.NAME: return "Name"
+		SortMode.LEVEL: return "Level"
+		SortMode.CLASS: return "Class"
+		SortMode.RACE: return "Race"
+	return "Default"
+
+
+func _on_formations_pressed() -> void:
+	party_mode = PartyMode.FORMATION_LIST
+	_refresh_display()
+
+
+func _populate_formation_list() -> void:
+	_clear_options()
+	_selected_formation = null
+
+	var save_btn := Button.new()
+	save_btn.text = "Save Current Party"
+	save_btn.custom_minimum_size = Vector2(350, 36)
+	if GameState.party.is_empty() or GameState.party_formations.size() >= MAX_FORMATIONS:
+		save_btn.disabled = true
+		save_btn.modulate = Color(0.5, 0.5, 0.5)
+	else:
+		save_btn.pressed.connect(_on_formation_save_pressed)
+	options_list.add_child(save_btn)
+	buttons.append(save_btn)
+
+	for formation in GameState.party_formations:
+		var btn := Button.new()
+		btn.text = "%s (%d)" % [formation.formation_name, formation.member_ids.size()]
+		btn.custom_minimum_size = Vector2(350, 36)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.pressed.connect(_on_formation_selected.bind(formation))
+		options_list.add_child(btn)
+		buttons.append(btn)
+
+	var back_btn := Button.new()
+	back_btn.text = "Back"
+	back_btn.custom_minimum_size = Vector2(350, 36)
+	back_btn.pressed.connect(_on_formation_back)
+	options_list.add_child(back_btn)
+	buttons.append(back_btn)
+
+	if GameState.party_formations.size() >= MAX_FORMATIONS:
+		message_label.text = "Formation slots full (%d/%d)." % [GameState.party_formations.size(), MAX_FORMATIONS]
+	else:
+		message_label.text = "Saved formations: %d/%d" % [GameState.party_formations.size(), MAX_FORMATIONS]
+
+	_setup_nav()
+	if nav:
+		nav.selection_changed.connect(_on_formation_list_selection_changed)
+	_update_formation_list_info()
+
+
+func _on_formation_list_selection_changed(_index: int) -> void:
+	_update_formation_list_info()
+
+
+func _update_formation_list_info() -> void:
+	if nav == null:
+		info_label.text = "Select a formation to manage."
+		return
+
+	var idx := nav.get_current_index()
+	if idx == 0:
+		var text := "[b]Save Current Party[/b]\n\n"
+		if GameState.party.is_empty():
+			text += "[color=gray]No party members to save.[/color]"
+		elif GameState.party_formations.size() >= MAX_FORMATIONS:
+			text += "[color=red]Formation slots full (%d/%d).[/color]" % [GameState.party_formations.size(), MAX_FORMATIONS]
+		else:
+			text += "Save your current party composition\nas a named formation.\n\n"
+			text += "[color=cyan]Current party:[/color]\n"
+			for i in range(GameState.party.size()):
+				var member := GameState.party.get_member_at(i)
+				var row_tag := "[F]" if i < 3 else "[B]"
+				text += "  %s %s - L%d %s\n" % [row_tag, member.character_name, member.level, CharacterEnums.get_class_name(member.character_class)]
+		info_label.text = text
+		return
+
+	var formation_idx := idx - 1
+	if formation_idx >= 0 and formation_idx < GameState.party_formations.size():
+		var formation := GameState.party_formations[formation_idx]
+		_show_formation_info(formation)
+	else:
+		info_label.text = "Return to party management."
+
+
+func _show_formation_info(formation: PartyFormation) -> void:
+	var text := "[b]%s[/b]\n" % formation.formation_name
+	text += "Members: %d\n\n" % formation.member_ids.size()
+	text += "[color=cyan]Composition:[/color]\n"
+	for i in range(formation.member_ids.size()):
+		var char_id := formation.member_ids[i]
+		var char_name := formation.member_names[i] if i < formation.member_names.size() else "???"
+		var character := GameState.roster.get_character(char_id)
+		var row_tag := "[F]" if i < 3 else "[B]"
+		if character:
+			text += "  %s %s - L%d %s\n" % [row_tag, character.character_name, character.level, CharacterEnums.get_class_name(character.character_class)]
+		else:
+			text += "  %s [color=red]%s (not in roster)[/color]\n" % [row_tag, char_name]
+	info_label.text = text
+
+
+func _on_formation_save_pressed() -> void:
+	party_mode = PartyMode.FORMATION_SAVE
+	_refresh_display()
+
+
+func _populate_formation_save() -> void:
+	_clear_options()
+
+	var label := Label.new()
+	label.text = "Name this formation:"
+	options_list.add_child(label)
+
+	formation_name_edit = LineEdit.new()
+	formation_name_edit.placeholder_text = "Formation name"
+	formation_name_edit.custom_minimum_size = Vector2(350, 36)
+	formation_name_edit.max_length = 30
+	formation_name_edit.text_submitted.connect(_on_formation_name_submitted)
+	options_list.add_child(formation_name_edit)
+	formation_name_edit.grab_focus()
+
+	var confirm_btn := Button.new()
+	confirm_btn.text = "Confirm"
+	confirm_btn.custom_minimum_size = Vector2(350, 36)
+	confirm_btn.pressed.connect(_on_formation_save_confirmed)
+	options_list.add_child(confirm_btn)
+	buttons.append(confirm_btn)
+
+	var cancel_btn := Button.new()
+	cancel_btn.text = "Cancel"
+	cancel_btn.custom_minimum_size = Vector2(350, 36)
+	cancel_btn.pressed.connect(_on_formation_save_cancelled)
+	options_list.add_child(cancel_btn)
+	buttons.append(cancel_btn)
+
+	message_label.text = "Enter a name for this formation."
+
+	var text := "[b]Save Formation[/b]\n\n"
+	text += "[color=cyan]Current party:[/color]\n"
+	for i in range(GameState.party.size()):
+		var member := GameState.party.get_member_at(i)
+		var row_tag := "[F]" if i < 3 else "[B]"
+		text += "  %s %s - L%d %s\n" % [row_tag, member.character_name, member.level, CharacterEnums.get_class_name(member.character_class)]
+	info_label.text = text
+
+
+func _on_formation_name_submitted(text: String) -> void:
+	if text.strip_edges().is_empty():
+		return
+	_do_formation_save(text.strip_edges())
+
+
+func _on_formation_save_confirmed() -> void:
+	if formation_name_edit == null:
+		return
+	var fname := formation_name_edit.text.strip_edges()
+	if fname.is_empty():
+		return
+	_do_formation_save(fname)
+
+
+func _do_formation_save(fname: String) -> void:
+	var formation := PartyFormation.new()
+	formation.formation_name = fname
+	for i in range(GameState.party.size()):
+		var member := GameState.party.get_member_at(i)
+		formation.member_ids.append(member.id)
+		formation.member_names.append(member.character_name)
+	GameState.party_formations.append(formation)
+	message_label.text = "Formation '%s' saved." % fname
+	party_mode = PartyMode.FORMATION_LIST
+	_refresh_display()
+
+
+func _on_formation_save_cancelled() -> void:
+	party_mode = PartyMode.FORMATION_LIST
+	_refresh_display()
+
+
+func _on_formation_selected(formation: PartyFormation) -> void:
+	_selected_formation = formation
+	party_mode = PartyMode.FORMATION_MANAGE
+	_refresh_display()
+
+
+func _populate_formation_manage() -> void:
+	_clear_options()
+
+	if _selected_formation == null:
+		party_mode = PartyMode.FORMATION_LIST
+		_populate_formation_list()
+		return
+
+	var header := Label.new()
+	header.text = "Formation: %s" % _selected_formation.formation_name
+	options_list.add_child(header)
+
+	var load_btn := Button.new()
+	load_btn.text = "Load Formation"
+	load_btn.custom_minimum_size = Vector2(350, 36)
+	load_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	load_btn.pressed.connect(_on_formation_load)
+	options_list.add_child(load_btn)
+	buttons.append(load_btn)
+
+	var delete_btn := Button.new()
+	delete_btn.text = "Delete Formation"
+	delete_btn.custom_minimum_size = Vector2(350, 36)
+	delete_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	delete_btn.add_theme_color_override("font_color", Color(1, 0.5, 0.5))
+	delete_btn.pressed.connect(_on_formation_delete)
+	options_list.add_child(delete_btn)
+	buttons.append(delete_btn)
+
+	var back_btn := Button.new()
+	back_btn.text = "Back"
+	back_btn.custom_minimum_size = Vector2(350, 36)
+	back_btn.pressed.connect(_on_formation_manage_back)
+	options_list.add_child(back_btn)
+	buttons.append(back_btn)
+
+	message_label.text = "Manage formation: %s" % _selected_formation.formation_name
+	_setup_nav()
+	if nav:
+		nav.selection_changed.connect(_on_formation_manage_selection_changed)
+	_show_formation_info(_selected_formation)
+
+
+func _on_formation_manage_selection_changed(_index: int) -> void:
+	if _selected_formation == null:
+		return
+	if nav == null:
+		return
+	var idx := nav.get_current_index()
+	match idx:
+		0:
+			var text := "[b]Load Formation[/b]\n\n"
+			text += "Replace your current party with\nthe members from '%s'.\n\n" % _selected_formation.formation_name
+			var missing := 0
+			for i in range(_selected_formation.member_ids.size()):
+				var char_id := _selected_formation.member_ids[i]
+				if GameState.roster.get_character(char_id) == null:
+					missing += 1
+			if missing > 0:
+				text += "[color=orange]Warning: %d member(s) no longer in roster.[/color]" % missing
+			info_label.text = text
+		1:
+			var text := "[b]Delete Formation[/b]\n\n"
+			text += "[color=red]Remove '%s' from saved formations.[/color]\n" % _selected_formation.formation_name
+			text += "This cannot be undone."
+			info_label.text = text
+		_:
+			_show_formation_info(_selected_formation)
+
+
+func _on_formation_load() -> void:
+	if _selected_formation == null:
+		return
+
+	var members_to_remove: Array[String] = []
+	for member in GameState.party.get_members():
+		members_to_remove.append(member.id)
+	for char_id in members_to_remove:
+		GameState.party.remove_member(char_id)
+
+	var loaded := 0
+	var missing := 0
+	var missing_names: Array[String] = []
+	for i in range(_selected_formation.member_ids.size()):
+		var char_id := _selected_formation.member_ids[i]
+		var character := GameState.roster.get_character(char_id)
+		if character:
+			GameState.party.add_member(character)
+			loaded += 1
+		else:
+			missing += 1
+			var char_name := _selected_formation.member_names[i] if i < _selected_formation.member_names.size() else "???"
+			missing_names.append(char_name)
+
+	var total := _selected_formation.member_ids.size()
+	if missing > 0:
+		message_label.text = "Loaded %s (%d/%d - %d not in roster)" % [_selected_formation.formation_name, loaded, total, missing]
+	else:
+		message_label.text = "Loaded %s" % _selected_formation.formation_name
+
+	_selected_formation = null
+	party_mode = PartyMode.NORMAL
+	_refresh_display()
+
+
+func _on_formation_delete() -> void:
+	if _selected_formation == null:
+		return
+	var fname := _selected_formation.formation_name
+	GameState.party_formations.erase(_selected_formation)
+	_selected_formation = null
+	message_label.text = "Formation '%s' deleted." % fname
+	party_mode = PartyMode.FORMATION_LIST
+	_refresh_display()
+
+
+func _on_formation_back() -> void:
+	_selected_formation = null
+	party_mode = PartyMode.NORMAL
+	_refresh_display()
+
+
+func _on_formation_manage_back() -> void:
+	_selected_formation = null
+	party_mode = PartyMode.FORMATION_LIST
+	_refresh_display()
+
+
 func _clear_options() -> void:
 	for child in options_list.get_children():
 		child.queue_free()
@@ -971,6 +1354,7 @@ func _clear_options() -> void:
 	party_buttons.clear()
 	roster_buttons.clear()
 	rename_edit = null
+	formation_name_edit = null
 
 
 func _setup_nav() -> void:
@@ -990,6 +1374,7 @@ func _update_help() -> void:
 	var h_nav := KeyBindingHelper.get_horizontal_help()
 	var confirm := KeyBindingHelper.get_confirm_help()
 	var cancel := KeyBindingHelper.get_cancel_help()
+	var sort_hint := KeyBindingHelper.get_sort_help(_get_sort_mode_name())
 
 	match current_tab:
 		Tab.CREATE:
@@ -1002,6 +1387,8 @@ func _update_help() -> void:
 					help_label.text = "%s | %s | %s | Level resets to 1!" % [v_nav, confirm, cancel]
 				RosterMode.CONFIRM_DELETE:
 					help_label.text = "%s | %s | Permanent!" % [v_nav, confirm]
+				RosterMode.VIEW:
+					help_label.text = "%s | %s | %s | %s | %s" % [h_nav, v_nav, confirm, cancel, sort_hint]
 				_:
 					help_label.text = "%s | %s | %s | %s" % [h_nav, v_nav, confirm, cancel]
 		Tab.PARTY:
@@ -1010,11 +1397,15 @@ func _update_help() -> void:
 				help_label.text = "%s | %s: Grab | %s: Done | %s" % [v_nav, confirm.split(":")[0], reorder, cancel]
 			elif party_mode == PartyMode.REORDER_MOVE:
 				help_label.text = "%s: Move | %s: Place | %s: Undo" % [v_nav.split(":")[0], confirm.split(":")[0], cancel.split(":")[0]]
+			elif party_mode == PartyMode.FORMATION_SAVE:
+				help_label.text = "Type name | Enter: Confirm | %s" % cancel
+			elif party_mode in [PartyMode.FORMATION_LIST, PartyMode.FORMATION_MANAGE]:
+				help_label.text = "%s | %s | %s" % [v_nav, confirm, cancel]
 			elif GameState.party.size() > 1:
 				var reorder := KeyBindingHelper.get_reorder_help()
-				help_label.text = "%s | %s | %s | %s" % [h_nav, v_nav, confirm, reorder]
+				help_label.text = "%s | %s | %s | %s | %s" % [h_nav, v_nav, confirm, reorder, sort_hint]
 			else:
-				help_label.text = "%s | %s | %s | %s" % [h_nav, v_nav, confirm, cancel]
+				help_label.text = "%s | %s | %s | %s | %s" % [h_nav, v_nav, confirm, cancel, sort_hint]
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -1023,9 +1414,33 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_roster_mode_back()
 		return
 
+	if current_tab == Tab.PARTY and party_mode == PartyMode.FORMATION_SAVE:
+		if event.is_action_pressed("menu_cancel"):
+			_on_formation_save_cancelled()
+		return
+
 	if current_tab == Tab.PARTY and party_mode in [PartyMode.REORDER_SELECT, PartyMode.REORDER_MOVE]:
 		_handle_reorder_input(event)
 		return
+
+	if current_tab == Tab.PARTY and party_mode in [PartyMode.FORMATION_LIST, PartyMode.FORMATION_MANAGE]:
+		if event.is_action_pressed("menu_cancel"):
+			if party_mode == PartyMode.FORMATION_MANAGE:
+				_on_formation_manage_back()
+			else:
+				_on_formation_back()
+			return
+		if nav:
+			nav.handle_input(event)
+		return
+
+	if event.is_action_pressed("menu_sort"):
+		if current_tab == Tab.ROSTER and roster_mode == RosterMode.VIEW:
+			_cycle_sort()
+			return
+		if current_tab == Tab.PARTY and party_mode == PartyMode.NORMAL:
+			_cycle_sort()
+			return
 
 	if event.is_action_pressed("menu_left"):
 		tab_bar.current_tab = (tab_bar.current_tab - 1 + 3) % 3
