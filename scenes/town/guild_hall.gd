@@ -50,8 +50,8 @@ func _ready() -> void:
 
 	if GameState.party.is_empty() and not GameState.roster.is_empty():
 		tab_bar.current_tab = Tab.PARTY
-	else:
-		_refresh_display()
+		current_tab = Tab.PARTY
+	_refresh_display()
 
 
 func _on_tab_changed(tab_index: int) -> void:
