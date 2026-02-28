@@ -74,11 +74,11 @@ func _populate_rest_options() -> void:
 
 	if not GameState.party.has_gold(total_cost):
 		btn.disabled = true
-		btn.modulate = Color(0.6, 0.6, 0.6)
+		btn.modulate = UIColors.MODULATE_DISABLED
 		btn.tooltip_text = "Not enough gold"
 	elif not _party_needs_rest():
 		btn.disabled = true
-		btn.modulate = Color(0.6, 0.6, 0.6)
+		btn.modulate = UIColors.MODULATE_DISABLED
 		btn.tooltip_text = "Party is fully rested"
 
 	options_list.add_child(btn)
@@ -198,19 +198,19 @@ func _create_party_row(member: Character) -> HBoxContainer:
 
 	if member.is_dead:
 		hp_label.text = "[DEAD]"
-		hp_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))
+		hp_label.add_theme_color_override("font_color", UIColors.DANGER)
 	else:
 		var hp_percent := float(member.current_hp) / float(member.max_hp) * 100.0
 		hp_label.text = "HP: %d/%d  MP: %d/%d" % [member.current_hp, member.max_hp, member.current_mp, member.max_mp]
 
 		if hp_percent < 25:
-			hp_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+			hp_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 		elif hp_percent < 50:
-			hp_label.add_theme_color_override("font_color", Color(1, 0.8, 0.3))
+			hp_label.add_theme_color_override("font_color", UIColors.TEXT_WARNING)
 		elif hp_percent < 100 or member.current_mp < member.max_mp:
-			hp_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.5))
+			hp_label.add_theme_color_override("font_color", UIColors.TEXT_WARNING)
 		else:
-			hp_label.add_theme_color_override("font_color", Color(0.4, 1, 0.4))
+			hp_label.add_theme_color_override("font_color", UIColors.TEXT_HEALTHY)
 
 	row.add_child(hp_label)
 
@@ -218,7 +218,7 @@ func _create_party_row(member: Character) -> HBoxContainer:
 	var statuses := _get_status_text(member)
 	status_label.text = statuses
 	if statuses != "":
-		status_label.add_theme_color_override("font_color", Color(1, 0.6, 0.2))
+		status_label.add_theme_color_override("font_color", UIColors.TEXT_STATUS)
 	row.add_child(status_label)
 
 	return row

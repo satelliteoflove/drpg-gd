@@ -55,6 +55,7 @@ size_flags_vertical = 3
 
 [node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/LeftPanel/OptionsPanel"]
 layout_mode = 2
+follow_focus = true
 
 [node name="OptionsList" type="VBoxContainer" parent="MainHBox/LeftPanel/OptionsPanel/ScrollContainer"]
 layout_mode = 2
@@ -99,6 +100,7 @@ size_flags_vertical = 3
 
 [node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/RightPanel/PartyPanel"]
 layout_mode = 2
+follow_focus = true
 
 [node name="PartyList" type="VBoxContainer" parent="MainHBox/RightPanel/PartyPanel/ScrollContainer"]
 layout_mode = 2

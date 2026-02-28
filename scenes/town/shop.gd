@@ -124,9 +124,9 @@ func _update_capacity_label() -> void:
 
 	var ratio := float(current) / float(max_cap)
 	if ratio >= 1.0:
-		capacity_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+		capacity_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 	elif ratio >= 0.8:
-		capacity_label.add_theme_color_override("font_color", Color(1, 0.8, 0.3))
+		capacity_label.add_theme_color_override("font_color", UIColors.TEXT_WARNING)
 	else:
 		capacity_label.remove_theme_color_override("font_color")
 
@@ -186,11 +186,11 @@ func _create_buy_button(item: Item) -> Button:
 
 	if not can_afford:
 		btn.disabled = true
-		btn.modulate = Color(0.6, 0.6, 0.6)
+		btn.modulate = UIColors.MODULATE_DISABLED
 		btn.tooltip_text = "Not enough gold"
 	elif not has_space and not item.is_equipment():
 		btn.disabled = true
-		btn.modulate = Color(0.6, 0.6, 0.6)
+		btn.modulate = UIColors.MODULATE_DISABLED
 		btn.tooltip_text = "Inventory full"
 
 	return btn
@@ -345,7 +345,7 @@ func _create_identify_button(index: int, item: Item) -> Button:
 
 	if not GameState.party.has_gold(cost):
 		btn.disabled = true
-		btn.modulate = Color(0.6, 0.6, 0.6)
+		btn.modulate = UIColors.MODULATE_DISABLED
 		btn.tooltip_text = "Not enough gold"
 
 	return btn
@@ -390,7 +390,7 @@ func _create_uncurse_button(index: int, member: Character, item: Item) -> Button
 
 	if not GameState.party.has_gold(cost):
 		btn.disabled = true
-		btn.modulate = Color(0.6, 0.6, 0.6)
+		btn.modulate = UIColors.MODULATE_DISABLED
 		btn.tooltip_text = "Not enough gold"
 
 	return btn
@@ -530,14 +530,14 @@ func _create_comparison_row(member: Character, item: Item) -> HBoxContainer:
 
 	if not can_equip:
 		diff_label.text = "[Cannot equip]"
-		diff_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		diff_label.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
 	else:
 		var diff_text := _get_stat_diff(current_item, item)
 		diff_label.text = diff_text
 		if diff_text.begins_with("+"):
-			diff_label.add_theme_color_override("font_color", Color(0.4, 1, 0.4))
+			diff_label.add_theme_color_override("font_color", UIColors.TEXT_HEALTHY)
 		elif diff_text.begins_with("-"):
-			diff_label.add_theme_color_override("font_color", Color(1, 0.4, 0.4))
+			diff_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 
 	row.add_child(diff_label)
 	return row
@@ -681,7 +681,7 @@ func _show_equip_dialog(item: Item) -> void:
 
 	if GameState.party.inventory.is_full():
 		inv_btn.disabled = true
-		inv_btn.modulate = Color(0.6, 0.6, 0.6)
+		inv_btn.modulate = UIColors.MODULATE_DISABLED
 		inv_btn.tooltip_text = "Inventory full"
 	inv_btn.pressed.connect(_on_equip_to_inventory)
 	equip_options.add_child(inv_btn)
@@ -702,11 +702,11 @@ func _show_equip_dialog(item: Item) -> void:
 		elif will_overflow:
 			btn.text = "%s (inventory full for old item)" % member.character_name
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 		else:
 			btn.text = "%s (cannot equip)" % member.character_name
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 
 		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(_on_equip_to_member.bind(member))
@@ -897,7 +897,7 @@ func _show_upgrade_dialog(item: Item) -> void:
 
 		if not GameState.party.has_scrap(cost):
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 			btn.tooltip_text = "Not enough scrap"
 
 		btn.pressed.connect(_on_upgrade_stat_selected.bind(stat))

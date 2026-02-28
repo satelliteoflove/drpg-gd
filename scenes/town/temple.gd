@@ -101,7 +101,7 @@ func _populate_services() -> void:
 
 		if not available:
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 
 		btn.pressed.connect(_on_service_selected.bind(service_type))
 		options_list.add_child(btn)
@@ -146,16 +146,16 @@ func _populate_dead_members() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 		if member.has_status(CharacterEnums.StatusEffect.ASHED):
-			btn.add_theme_color_override("font_color", Color(0.7, 0.4, 0.1))
+			btn.add_theme_color_override("font_color", UIColors.TEXT_STATUS)
 			btn.tooltip_text = "Ashed - lower success chance"
 		elif member.has_status(CharacterEnums.StatusEffect.LOST):
 			btn.disabled = true
-			btn.modulate = Color(0.4, 0.4, 0.4)
+			btn.modulate = UIColors.MODULATE_DISABLED
 			btn.tooltip_text = "Lost forever - cannot be resurrected"
 
 		if not GameState.party.has_gold(cost):
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 			btn.tooltip_text = "Not enough gold"
 
 		btn.pressed.connect(_on_resurrect_member.bind(member))
@@ -182,7 +182,7 @@ func _populate_afflicted_members() -> void:
 
 			if not GameState.party.has_gold(cost):
 				btn.disabled = true
-				btn.modulate = Color(0.6, 0.6, 0.6)
+				btn.modulate = UIColors.MODULATE_DISABLED
 
 			btn.pressed.connect(_on_cure_member.bind(member, status))
 			options_list.add_child(btn)
@@ -199,7 +199,7 @@ func _populate_tithe_options() -> void:
 
 		if not GameState.party.has_gold(amount):
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 
 		btn.pressed.connect(_on_tithe.bind(amount))
 		options_list.add_child(btn)
@@ -485,13 +485,13 @@ func _create_party_row(member: Character) -> HBoxContainer:
 
 	if member.has_status(CharacterEnums.StatusEffect.LOST):
 		status_label.text = "[LOST]"
-		status_label.add_theme_color_override("font_color", Color(0.5, 0.2, 0.2))
+		status_label.add_theme_color_override("font_color", UIColors.TEXT_LOST)
 	elif member.has_status(CharacterEnums.StatusEffect.ASHED):
 		status_label.text = "[ASHED]"
-		status_label.add_theme_color_override("font_color", Color(0.7, 0.4, 0.1))
+		status_label.add_theme_color_override("font_color", UIColors.TEXT_STATUS)
 	elif member.is_dead:
 		status_label.text = "[DEAD]"
-		status_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))
+		status_label.add_theme_color_override("font_color", UIColors.DANGER)
 	else:
 		var statuses := _get_curable_statuses(member)
 		if not statuses.is_empty():
@@ -499,17 +499,17 @@ func _create_party_row(member: Character) -> HBoxContainer:
 			for s in statuses:
 				status_names.append(CharacterEnums.get_status_name(s))
 			status_label.text = ", ".join(status_names)
-			status_label.add_theme_color_override("font_color", Color(1, 0.6, 0.2))
+			status_label.add_theme_color_override("font_color", UIColors.TEXT_STATUS)
 		else:
 			status_label.text = "Healthy"
-			status_label.add_theme_color_override("font_color", Color(0.4, 1, 0.4))
+			status_label.add_theme_color_override("font_color", UIColors.TEXT_HEALTHY)
 
 	row.add_child(status_label)
 
 	var vit_label := Label.new()
 	vit_label.text = "VIT: %d" % member.vitality
 	if member.vitality <= 2:
-		vit_label.add_theme_color_override("font_color", Color(1, 0.5, 0.3))
+		vit_label.add_theme_color_override("font_color", UIColors.TEXT_WARNING)
 	row.add_child(vit_label)
 
 	return row

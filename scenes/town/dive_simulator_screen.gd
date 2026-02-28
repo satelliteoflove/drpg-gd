@@ -173,7 +173,7 @@ func _populate_config() -> void:
 func _add_section_label(text: String) -> void:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_color_override("font_color", Color(0.7, 0.8, 1.0))
+	label.add_theme_color_override("font_color", UIColors.INFO)
 	config_list.add_child(label)
 
 

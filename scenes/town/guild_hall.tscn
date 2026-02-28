@@ -67,6 +67,7 @@ size_flags_vertical = 3
 
 [node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/LeftPanel/OptionsPanel" unique_id=1874742772]
 layout_mode = 2
+follow_focus = true
 
 [node name="OptionsList" type="VBoxContainer" parent="MainHBox/LeftPanel/OptionsPanel/ScrollContainer" unique_id=1434675395]
 layout_mode = 2
@@ -113,6 +114,7 @@ size_flags_vertical = 3
 
 [node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/RightPanel/RosterPanel" unique_id=2080440646]
 layout_mode = 2
+follow_focus = true
 
 [node name="RosterList" type="VBoxContainer" parent="MainHBox/RightPanel/RosterPanel/ScrollContainer" unique_id=208026440]
 layout_mode = 2

@@ -89,6 +89,7 @@ size_flags_vertical = 3
 
 [node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/LeftPanel/ItemsPanel"]
 layout_mode = 2
+follow_focus = true
 
 [node name="ItemsList" type="VBoxContainer" parent="MainHBox/LeftPanel/ItemsPanel/ScrollContainer"]
 layout_mode = 2
@@ -133,6 +134,7 @@ size_flags_vertical = 3
 
 [node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/RightPanel/ComparisonPanel"]
 layout_mode = 2
+follow_focus = true
 
 [node name="ComparisonList" type="VBoxContainer" parent="MainHBox/RightPanel/ComparisonPanel/ScrollContainer"]
 layout_mode = 2

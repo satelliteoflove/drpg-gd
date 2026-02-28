@@ -89,7 +89,7 @@ func _populate_create_tab() -> void:
 
 	if GameState.roster.is_full():
 		create_btn.disabled = true
-		create_btn.modulate = Color(0.6, 0.6, 0.6)
+		create_btn.modulate = UIColors.MODULATE_DISABLED
 	else:
 		create_btn.pressed.connect(_on_create_character)
 
@@ -159,9 +159,9 @@ func _populate_roster_view() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 		if character.is_dead:
-			btn.modulate = Color(0.7, 0.3, 0.3)
+			btn.modulate = UIColors.MODULATE_DEAD
 		elif GameState.party.has_member(character):
-			btn.modulate = Color(0.5, 0.8, 1.0)
+			btn.modulate = UIColors.TEXT_IN_PARTY
 
 		btn.pressed.connect(_on_roster_manage_selected.bind(character))
 		options_list.add_child(btn)
@@ -208,7 +208,7 @@ func _populate_manage_actions() -> void:
 	delete_btn.text = "Delete"
 	delete_btn.custom_minimum_size = Vector2(350, 36)
 	delete_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	delete_btn.add_theme_color_override("font_color", Color(1, 0.5, 0.5))
+	delete_btn.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 	delete_btn.pressed.connect(_on_manage_action.bind("delete"))
 	options_list.add_child(delete_btn)
 	buttons.append(delete_btn)
@@ -235,7 +235,7 @@ func _populate_delete_confirm() -> void:
 	var confirm_btn := Button.new()
 	confirm_btn.text = "Yes, delete %s" % selected_character.character_name
 	confirm_btn.custom_minimum_size = Vector2(350, 36)
-	confirm_btn.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+	confirm_btn.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 	confirm_btn.pressed.connect(_on_delete_confirmed)
 	options_list.add_child(confirm_btn)
 	buttons.append(confirm_btn)
@@ -316,10 +316,10 @@ func _populate_class_change() -> void:
 		if char_class == selected_character.character_class:
 			btn.text += " (current)"
 			btn.disabled = true
-			btn.modulate = Color(0.7, 0.7, 0.7)
+			btn.modulate = UIColors.MODULATE_DISABLED
 		elif not meets_reqs:
 			btn.disabled = true
-			btn.modulate = Color(0.5, 0.5, 0.5)
+			btn.modulate = UIColors.MODULATE_DISABLED
 		else:
 			btn.pressed.connect(_on_class_change_selected.bind(char_class))
 
@@ -367,7 +367,7 @@ func _populate_party_tab() -> void:
 
 		if party_mode == PartyMode.REORDER_MOVE:
 			if i == reorder_index:
-				btn.add_theme_color_override("font_color", Color(1, 1, 0.3))
+				btn.add_theme_color_override("font_color", UIColors.WARNING)
 				btn.text = "> " + btn.text + " <"
 		elif party_mode == PartyMode.REORDER_SELECT:
 			pass
@@ -381,7 +381,7 @@ func _populate_party_tab() -> void:
 		var empty_label := Label.new()
 		empty_label.text = "(No party members)"
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		empty_label.modulate = Color(0.5, 0.5, 0.5)
+		empty_label.modulate = UIColors.MODULATE_DISABLED
 		options_list.add_child(empty_label)
 
 	if not reordering:
@@ -400,7 +400,7 @@ func _populate_party_tab() -> void:
 			btn.pressed.connect(_on_roster_add_pressed.bind(character))
 			if GameState.party.is_full():
 				btn.disabled = true
-				btn.modulate = Color(0.5, 0.5, 0.5)
+				btn.modulate = UIColors.MODULATE_DISABLED
 			options_list.add_child(btn)
 			roster_buttons.append(btn)
 
@@ -408,7 +408,7 @@ func _populate_party_tab() -> void:
 			var empty_label := Label.new()
 			empty_label.text = "(No available characters)"
 			empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			empty_label.modulate = Color(0.5, 0.5, 0.5)
+			empty_label.modulate = UIColors.MODULATE_DISABLED
 			options_list.add_child(empty_label)
 
 		var spacer := Control.new()
@@ -420,7 +420,7 @@ func _populate_party_tab() -> void:
 		equip_btn.custom_minimum_size = Vector2(350, 36)
 		if GameState.party.is_empty():
 			equip_btn.disabled = true
-			equip_btn.modulate = Color(0.5, 0.5, 0.5)
+			equip_btn.modulate = UIColors.MODULATE_DISABLED
 		else:
 			equip_btn.pressed.connect(_on_equipment_pressed)
 		options_list.add_child(equip_btn)
@@ -430,7 +430,7 @@ func _populate_party_tab() -> void:
 		quick_btn.custom_minimum_size = Vector2(350, 36)
 		if available.is_empty() and not party_buttons.is_empty():
 			quick_btn.disabled = true
-			quick_btn.modulate = Color(0.5, 0.5, 0.5)
+			quick_btn.modulate = UIColors.MODULATE_DISABLED
 		else:
 			quick_btn.pressed.connect(_on_quick_pick)
 		options_list.add_child(quick_btn)
@@ -440,7 +440,7 @@ func _populate_party_tab() -> void:
 		formations_btn.custom_minimum_size = Vector2(350, 36)
 		if GameState.roster.is_empty():
 			formations_btn.disabled = true
-			formations_btn.modulate = Color(0.5, 0.5, 0.5)
+			formations_btn.modulate = UIColors.MODULATE_DISABLED
 		else:
 			formations_btn.pressed.connect(_on_formations_pressed)
 		options_list.add_child(formations_btn)
@@ -492,7 +492,7 @@ func _create_party_button(character: Character, front_row: bool) -> Button:
 	btn.custom_minimum_size = Vector2(350, 30)
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if character.is_dead:
-		btn.modulate = Color(0.7, 0.3, 0.3)
+		btn.modulate = UIColors.MODULATE_DEAD
 	return btn
 
 
@@ -986,13 +986,13 @@ func _create_roster_row(c: Character) -> HBoxContainer:
 	var status_label := Label.new()
 	if c.has_status(CharacterEnums.StatusEffect.LOST):
 		status_label.text = "[LOST]"
-		status_label.add_theme_color_override("font_color", Color(0.5, 0.2, 0.2))
+		status_label.add_theme_color_override("font_color", UIColors.TEXT_LOST)
 	elif c.is_dead:
 		status_label.text = "[DEAD]"
-		status_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))
+		status_label.add_theme_color_override("font_color", UIColors.DANGER)
 	elif GameState.party.has_member(c):
 		status_label.text = "[PARTY]"
-		status_label.add_theme_color_override("font_color", Color(0.3, 0.7, 1.0))
+		status_label.add_theme_color_override("font_color", UIColors.TEXT_IN_PARTY)
 	else:
 		status_label.text = ""
 	row.add_child(status_label)
@@ -1049,7 +1049,7 @@ func _populate_formation_list() -> void:
 	save_btn.custom_minimum_size = Vector2(350, 36)
 	if GameState.party.is_empty() or GameState.party_formations.size() >= MAX_FORMATIONS:
 		save_btn.disabled = true
-		save_btn.modulate = Color(0.5, 0.5, 0.5)
+		save_btn.modulate = UIColors.MODULATE_DISABLED
 	else:
 		save_btn.pressed.connect(_on_formation_save_pressed)
 	options_list.add_child(save_btn)
@@ -1240,7 +1240,7 @@ func _populate_formation_manage() -> void:
 	delete_btn.text = "Delete Formation"
 	delete_btn.custom_minimum_size = Vector2(350, 36)
 	delete_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	delete_btn.add_theme_color_override("font_color", Color(1, 0.5, 0.5))
+	delete_btn.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 	delete_btn.pressed.connect(_on_formation_delete)
 	options_list.add_child(delete_btn)
 	buttons.append(delete_btn)

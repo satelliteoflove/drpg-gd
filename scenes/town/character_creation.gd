@@ -286,7 +286,7 @@ func _show_stats_step() -> void:
 	var bg_info := Label.new()
 	bg_info.text = "%s - %d Bonus Points" % [bg_data["name"], bonus_points]
 	bg_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bg_info.add_theme_color_override("font_color", Color(0.8, 0.8, 0.5))
+	bg_info.add_theme_color_override("font_color", UIColors.TEXT_WARNING)
 	content_container.add_child(bg_info)
 
 	bonus_label = Label.new()
@@ -339,7 +339,7 @@ func _show_stats_step() -> void:
 
 		var range_lbl := Label.new()
 		range_lbl.text = "(%d-%d)" % [range_vec.x, range_vec.y]
-		range_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+		range_lbl.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
 		row.add_child(range_lbl)
 
 		content_container.add_child(row)

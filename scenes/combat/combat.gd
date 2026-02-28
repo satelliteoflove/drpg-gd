@@ -282,15 +282,15 @@ func _build_enemy_display() -> void:
 				enemy_panels[enemy.combat_id] = ui
 				cell.add_child(ui.panel)
 				if enemy.is_dead:
-					ui.panel.modulate = Color(0.4, 0.4, 0.4)
+					ui.panel.modulate = UIColors.DEAD_TINT
 			else:
 				var empty := Label.new()
 				empty.text = "-"
 				empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				empty.add_theme_color_override("font_color", Color(0.3, 0.3, 0.3))
+				empty.add_theme_color_override("font_color", UIColors.TEXT_DISABLED)
 				cell.add_child(empty)
-				cell.modulate = Color(0.5, 0.5, 0.5, 0.3)
+				cell.modulate = UIColors.DISABLED_TINT
 
 			enemy_grid.add_child(cell)
 
@@ -334,7 +334,7 @@ func _create_enemy_panel(enemy: Monster) -> EnemyUI:
 	ui.hp_bar.max_value = enemy.max_hp
 	ui.hp_bar.value = enemy.current_hp
 	ui.hp_bar.show_percentage = false
-	_style_bar(ui.hp_bar, Color(0.8, 0.2, 0.2))
+	_style_bar(ui.hp_bar, UIColors.DANGER)
 	hp_hbox.add_child(ui.hp_bar)
 
 	ui.hp_text = Label.new()
@@ -351,7 +351,7 @@ func _create_enemy_panel(enemy: Monster) -> EnemyUI:
 	ui.status_label = Label.new()
 	ui.status_label.text = ""
 	ui.status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ui.status_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+	ui.status_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 	ui.panel.add_child(ui.status_label)
 
 	return ui
@@ -416,7 +416,7 @@ func _create_party_member_panel(character: Character, _is_front: bool) -> PartyM
 	ui.hp_bar.max_value = character.max_hp
 	ui.hp_bar.value = character.current_hp
 	ui.hp_bar.show_percentage = false
-	_style_bar(ui.hp_bar, Color(0.8, 0.2, 0.2))
+	_style_bar(ui.hp_bar, UIColors.DANGER)
 	hp_hbox.add_child(ui.hp_bar)
 
 	ui.hp_text = Label.new()
@@ -434,7 +434,7 @@ func _create_party_member_panel(character: Character, _is_front: bool) -> PartyM
 	ui.mp_bar.max_value = max(character.max_mp, 1)
 	ui.mp_bar.value = character.current_mp
 	ui.mp_bar.show_percentage = false
-	_style_bar(ui.mp_bar, Color(0.2, 0.4, 0.9))
+	_style_bar(ui.mp_bar, UIColors.MP_BLUE)
 	mp_hbox.add_child(ui.mp_bar)
 
 	ui.mp_text = Label.new()
@@ -451,7 +451,7 @@ func _create_party_member_panel(character: Character, _is_front: bool) -> PartyM
 	ui.status_label = Label.new()
 	ui.status_label.text = ""
 	ui.status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ui.status_label.add_theme_color_override("font_color", Color(1, 0.3, 0.3))
+	ui.status_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 	vbox.add_child(ui.status_label)
 
 	return ui
@@ -498,7 +498,7 @@ func _update_enemy_display() -> void:
 
 		if enemy.is_dead:
 			ui.status_label.text = "DEAD"
-			ui.panel.modulate = Color(0.4, 0.4, 0.4)
+			ui.panel.modulate = UIColors.DEAD_TINT
 		else:
 			var hp_percent := float(enemy.current_hp) / float(enemy.max_hp)
 			if hp_percent <= 0.25:
@@ -524,9 +524,9 @@ func _update_row_labels() -> void:
 				has_living = true
 				break
 		if not has_living:
-			row_labels_list[i].add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
+			row_labels_list[i].add_theme_color_override("font_color", UIColors.TEXT_DISABLED)
 		elif i == living_front:
-			row_labels_list[i].add_theme_color_override("font_color", Color(1, 0.5, 0.2))
+			row_labels_list[i].add_theme_color_override("font_color", UIColors.TEXT_STATUS)
 		else:
 			row_labels_list[i].remove_theme_color_override("font_color")
 
@@ -550,7 +550,7 @@ func _update_party_stats() -> void:
 
 		if character.is_dead:
 			ui.status_label.text = "DEAD"
-			ui.panel.modulate = Color(0.5, 0.5, 0.5)
+			ui.panel.modulate = UIColors.MODULATE_DISABLED
 		else:
 			var statuses := _get_character_status_text(character)
 			ui.status_label.text = statuses
@@ -558,10 +558,10 @@ func _update_party_stats() -> void:
 
 		var is_active := combat_system.current_combatant_id == character.id and combat_system.is_player_turn()
 		if is_active:
-			ui.name_label.add_theme_color_override("font_color", Color(0.3, 1, 0.3))
+			ui.name_label.add_theme_color_override("font_color", UIColors.TEXT_ACTIVE)
 			var active_style := StyleBoxFlat.new()
-			active_style.bg_color = Color(0, 0, 0, 0)
-			active_style.border_color = Color(0.3, 1, 0.3)
+			active_style.bg_color = Color.TRANSPARENT
+			active_style.border_color = UIColors.TEXT_ACTIVE
 			active_style.border_width_left = 2
 			active_style.border_width_top = 2
 			active_style.border_width_right = 2
@@ -712,7 +712,7 @@ func _update_turn_order() -> void:
 			style.bg_color = Color(0.15, 0.4, 0.15)
 			style.border_color = Color(0.3, 1.0, 0.3)
 			style.set_border_width_all(2)
-			lbl.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
+			lbl.add_theme_color_override("font_color", UIColors.TEXT_ACTIVE)
 			lbl.add_theme_font_size_override("font_size", 13)
 			panel.custom_minimum_size = Vector2(100, 30)
 		elif is_player:
@@ -720,7 +720,7 @@ func _update_turn_order() -> void:
 			style.bg_color = Color(0.1, 0.15, 0.25)
 			style.border_color = Color(0.3, 0.5, 0.8, 0.5)
 			style.set_border_width_all(1)
-			lbl.add_theme_color_override("font_color", Color(0.5, 0.7, 0.9))
+			lbl.add_theme_color_override("font_color", UIColors.INFO)
 			lbl.add_theme_font_size_override("font_size", 12)
 			panel.custom_minimum_size = Vector2(90, 28)
 		else:
@@ -728,7 +728,7 @@ func _update_turn_order() -> void:
 			style.bg_color = Color(0.25, 0.1, 0.1)
 			style.border_color = Color(0.8, 0.3, 0.3, 0.5)
 			style.set_border_width_all(1)
-			lbl.add_theme_color_override("font_color", Color(0.9, 0.5, 0.5))
+			lbl.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 			lbl.add_theme_font_size_override("font_size", 12)
 			panel.custom_minimum_size = Vector2(90, 28)
 
@@ -1186,7 +1186,7 @@ func _populate_target_list() -> void:
 		var can_use := _can_use_item_on(selected_item, character)
 		if not can_use:
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 
 		btn.pressed.connect(_on_target_selected.bind(character))
 		btn.focus_entered.connect(_highlight_party_target.bind(character))
@@ -1278,7 +1278,7 @@ func _update_spell_level_buttons() -> void:
 
 		var has_spells: bool = available_spells.has(level) and not available_spells[level].is_empty()
 		btn.disabled = not has_spells
-		btn.modulate = Color.WHITE if has_spells else Color(0.5, 0.5, 0.5)
+		btn.modulate = Color.WHITE if has_spells else UIColors.MODULATE_DISABLED
 
 
 func _on_spell_level_changed(level: int) -> void:
@@ -1323,7 +1323,7 @@ func _populate_spell_list_for_level(level: int) -> void:
 
 		if not can_cast:
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 			btn.text = "%s (%d MP) - Not enough MP" % [spell.name, spell.mp_cost]
 
 		btn.pressed.connect(_on_spell_selected.bind(spell))
@@ -1669,8 +1669,8 @@ func _highlight_enemy_target(enemy: Monster) -> void:
 	var panel: VBoxContainer = ui.panel
 	var cell: PanelContainer = panel.get_parent()
 	_target_highlight_style = StyleBoxFlat.new()
-	_target_highlight_style.bg_color = Color(0, 0, 0, 0)
-	_target_highlight_style.border_color = Color(1, 0.3, 0.3)
+	_target_highlight_style.bg_color = Color.TRANSPARENT
+	_target_highlight_style.border_color = UIColors.TEXT_DANGER
 	_target_highlight_style.border_width_left = 2
 	_target_highlight_style.border_width_top = 2
 	_target_highlight_style.border_width_right = 2
@@ -1691,8 +1691,8 @@ func _highlight_enemy_target(enemy: Monster) -> void:
 func _highlight_enemy_targets(enemies: Array[Monster]) -> void:
 	_clear_target_highlights()
 	_target_highlight_style = StyleBoxFlat.new()
-	_target_highlight_style.bg_color = Color(0, 0, 0, 0)
-	_target_highlight_style.border_color = Color(1, 0.3, 0.3)
+	_target_highlight_style.bg_color = Color.TRANSPARENT
+	_target_highlight_style.border_color = UIColors.TEXT_DANGER
 	_target_highlight_style.border_width_left = 2
 	_target_highlight_style.border_width_top = 2
 	_target_highlight_style.border_width_right = 2
@@ -1723,8 +1723,8 @@ func _highlight_party_target(character: Character) -> void:
 		return
 	var ui: PartyMemberUI = party_panels[character.id]
 	_target_highlight_style = StyleBoxFlat.new()
-	_target_highlight_style.bg_color = Color(0, 0, 0, 0)
-	_target_highlight_style.border_color = Color(1, 0.3, 0.3)
+	_target_highlight_style.bg_color = Color.TRANSPARENT
+	_target_highlight_style.border_color = UIColors.TEXT_DANGER
 	_target_highlight_style.border_width_left = 2
 	_target_highlight_style.border_width_top = 2
 	_target_highlight_style.border_width_right = 2
@@ -1770,25 +1770,25 @@ func _set_actions_enabled(enabled: bool) -> void:
 
 	attack_button.disabled = not can_attack
 	if not can_attack and enabled:
-		attack_button.modulate = Color(0.5, 0.5, 0.5)
+		attack_button.modulate = UIColors.MODULATE_DISABLED
 	else:
 		attack_button.modulate = Color.WHITE
 
 	defend_button.disabled = not enabled
 	spell_button.disabled = not can_cast
 	if not can_cast and enabled:
-		spell_button.modulate = Color(0.5, 0.5, 0.5)
+		spell_button.modulate = UIColors.MODULATE_DISABLED
 	else:
 		spell_button.modulate = Color.WHITE
 	dispel_button.disabled = not can_dispel
 	if not can_dispel and enabled:
-		dispel_button.modulate = Color(0.5, 0.5, 0.5)
+		dispel_button.modulate = UIColors.MODULATE_DISABLED
 	else:
 		dispel_button.modulate = Color.WHITE
 	item_button.disabled = not enabled
 	if is_boss_encounter:
 		escape_button.disabled = true
-		escape_button.modulate = Color(0.5, 0.5, 0.5)
+		escape_button.modulate = UIColors.MODULATE_DISABLED
 	else:
 		escape_button.disabled = not enabled
 

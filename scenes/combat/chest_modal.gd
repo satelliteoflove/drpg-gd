@@ -52,10 +52,10 @@ func _update_trap_warning() -> void:
 		trap_warning_label.visible = true
 		if chest.trap_disarmed:
 			trap_warning_label.text = "Trap disarmed: %s" % chest.trap.trap_name
-			trap_warning_label.add_theme_color_override("font_color", Color(0.4, 1, 0.4))
+			trap_warning_label.add_theme_color_override("font_color", UIColors.TEXT_HEALTHY)
 		else:
 			trap_warning_label.text = "Trap detected: %s" % chest.trap.trap_name
-			trap_warning_label.add_theme_color_override("font_color", Color(1, 0.4, 0.4))
+			trap_warning_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 	else:
 		trap_warning_label.visible = false
 

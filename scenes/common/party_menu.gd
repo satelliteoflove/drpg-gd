@@ -279,9 +279,9 @@ func _refresh_status() -> void:
 		btn.custom_minimum_size = Vector2(350, 32)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		if member.is_dead:
-			btn.modulate = Color(0.7, 0.3, 0.3)
+			btn.modulate = UIColors.MODULATE_DEAD
 		elif _has_negative_status(member):
-			btn.modulate = Color(1.0, 0.8, 0.4)
+			btn.modulate = UIColors.TEXT_WARNING
 		btn.pressed.connect(_on_status_member_selected.bind(i))
 		status_list.add_child(btn)
 		status_buttons.append(btn)
@@ -538,7 +538,7 @@ func _refresh_equip_items() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		if not equip_selected_character.can_equip_item(item):
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 		btn.pressed.connect(_on_equip_item_selected.bind(item))
 		equip_items_list.add_child(btn)
 		equip_item_buttons.append(btn)
@@ -717,7 +717,7 @@ func _refresh_inv_targets() -> void:
 
 		if not _can_use_item_on(inv_selected_item, member):
 			btn.disabled = true
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 
 		btn.pressed.connect(_on_inv_target_selected.bind(member))
 		inv_targets.add_child(btn)
@@ -861,21 +861,21 @@ func _update_form_slot_button(btn: Button, slot_index: int) -> void:
 
 	if character:
 		btn.text = "%s\nL%d %s" % [character.character_name, character.level, CharacterEnums.get_class_name(character.character_class)]
-		btn.modulate = Color(0.7, 0.3, 0.3) if character.is_dead else Color.WHITE
+		btn.modulate = UIColors.MODULATE_DEAD if character.is_dead else Color.WHITE
 	else:
 		btn.text = "(Empty)"
-		btn.modulate = Color(0.5, 0.5, 0.5)
+		btn.modulate = UIColors.MODULATE_DISABLED
 
 
 func _update_formation_selection() -> void:
 	for i in range(form_slot_buttons.size()):
 		var btn := form_slot_buttons[i]
 		if i == form_selected_index:
-			btn.add_theme_color_override("font_color", Color(0, 1, 0))
-			btn.add_theme_color_override("font_hover_color", Color(0, 1, 0))
+			btn.add_theme_color_override("font_color", UIColors.TEXT_ACTIVE)
+			btn.add_theme_color_override("font_hover_color", UIColors.TEXT_ACTIVE)
 		elif i == form_current_slot:
-			btn.add_theme_color_override("font_color", Color(1, 1, 0))
-			btn.add_theme_color_override("font_hover_color", Color(1, 1, 0))
+			btn.add_theme_color_override("font_color", UIColors.WARNING)
+			btn.add_theme_color_override("font_hover_color", UIColors.WARNING)
 		else:
 			btn.remove_theme_color_override("font_color")
 			btn.remove_theme_color_override("font_hover_color")
@@ -1021,9 +1021,9 @@ func _refresh_spell_party() -> void:
 		btn.custom_minimum_size = Vector2(180, 28)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		if member.is_dead:
-			btn.modulate = Color(0.7, 0.3, 0.3)
+			btn.modulate = UIColors.MODULATE_DEAD
 		elif member.is_silenced():
-			btn.modulate = Color(0.6, 0.6, 0.6)
+			btn.modulate = UIColors.MODULATE_DISABLED
 		btn.pressed.connect(_on_spell_party_selected.bind(member))
 		spell_party_list.add_child(btn)
 		spell_party_buttons.append(btn)
@@ -1086,7 +1086,7 @@ func _refresh_spell_level_tabs() -> void:
 		btn.button_pressed = (lvl == spell_current_level)
 		var has_spells: bool = spell_all_spells.has(lvl) and not spell_all_spells[lvl].is_empty()
 		if not has_spells:
-			btn.modulate = Color(0.4, 0.4, 0.4)
+			btn.modulate = UIColors.MODULATE_DISABLED
 		btn.pressed.connect(_on_spell_level_selected.bind(lvl))
 		spell_level_tabs.add_child(btn)
 
@@ -1123,11 +1123,11 @@ func _refresh_spell_list() -> void:
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 		if not spell.out_of_combat:
-			btn.modulate = Color(0.5, 0.5, 0.5)
+			btn.modulate = UIColors.MODULATE_DISABLED
 		elif spell_selected_character.current_mp < spell.mp_cost:
-			btn.modulate = Color(0.6, 0.5, 0.4)
+			btn.modulate = UIColors.MODULATE_DISABLED
 		elif spell_selected_character.is_dead or spell_selected_character.is_silenced():
-			btn.modulate = Color(0.5, 0.5, 0.5)
+			btn.modulate = UIColors.MODULATE_DISABLED
 
 		btn.pressed.connect(_on_spell_selected.bind(spell))
 		spell_list.add_child(btn)
@@ -1196,7 +1196,7 @@ func _refresh_spell_targets() -> void:
 
 		if not valid_target:
 			btn.disabled = true
-			btn.modulate = Color(0.5, 0.5, 0.5)
+			btn.modulate = UIColors.MODULATE_DISABLED
 
 		btn.pressed.connect(_on_spell_target_selected.bind(member))
 		spell_target_list.add_child(btn)
