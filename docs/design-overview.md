@@ -1,6 +1,6 @@
 # DRPG-GD Character Systems - Design Overview
 
-**TL;DR:** DRPG-GD is a Wizardry-style dungeon crawler where characters age and eventually die or retire. Race choice determines whether a character peaks in 19 years or 287, and a global calendar means time passes for everyone - even characters sitting in town. On top of the core dungeon crawling (which is already built), I'm designing systems that give characters personality traits, relationship histories, permanent marks from their experiences, and AI-generated dialogue that reflects who they've become. The emotional core of the whole thing: your long-lived characters watch generations of short-lived companions come, contribute, and pass on - and they carry that history with them forever.
+**TL;DR:** DRPG-GD is a Wizardry-style dungeon crawler where characters feel alive. They develop personalities through play, form relationships with each other, accumulate permanent marks from their experiences, grow old, and eventually die or retire. A global calendar and aging system mean that time is always passing and race choice has real strategic weight. On top of the core dungeon crawling (which is already built), I'm designing the systems that make a Level 12 Dwarf Fighter feel like a person with a history - not just a stat block with a name.
 
 ## What's This About?
 
@@ -12,7 +12,13 @@ The dungeon crawling part is already built and working. This document covers wha
 
 Every character should accumulate a story that only they could have.
 
-Two Elf Mages with identical stats are not the same character if one of them watched three generations of Human companions grow old and die while the other just rolled off the creation screen. These systems exist to make that kind of history visible, mechanical, and something the player feels in their gut when things go wrong.
+Take two Dwarf Fighters created on the same day with the same stats. Ten years later, they're completely different people:
+
+**Torben** rolled typical Dwarf tendencies - Brave, Gruff, Stoic, Principled. He went straight into the front row alongside a Rawulf Priest named Wick. Year 2, he got KO'd by a fire elemental on Floor 3. Mark: "Fell on Floor 3." Next fight, Wick healed him from 2 HP. Relationship modifier: "Saved my life on Floor 3." By Year 5, a discovery event on Floor 4 - strange noise behind a collapsed wall - and the player chose to investigate instead of backing off. That plus consistently choosing to fight over flee when things got ugly crystallized his Brave tendency into a permanent trait. He killed the Iron Golem boss that same year. Mark: "Slayer of the Iron Golem." Year 8, Wick entered Decline and died of old age at the inn. Torben got a mourning mark and a frozen relationship - six years of shared history, read-only, permanent. By Year 10, he's the veteran with a Companion bond with the party's Elf Mage, a dead friend's history in his record, and a reputation built from actual gameplay.
+
+**Renna** rolled against the grain - Calculating, Sarcastic, Curious, Self-Interested. The A-team already had a Lizman Fighter, so Renna got benched. Years 1-4, she worked a town role at the guild hall training recruits - XP trickle, gold income, and town events with a Gnome Priest named Dalla who was also waiting for her shot. They bonded over shared downtime. Year 5, the Lizman entered Decline and Renna got called up. Rest bonus helped her close the level gap. She got poisoned twice on her first real floor. Mark: "Scarred by Poison." Year 7, a hard choice event fired - and the player picked the option that benefited Renna at the group's expense. The party's Principled Elf Priest took issue. Relationship modifier: "Disagreed over the tomb on Floor 6." That choice, plus a pattern of risky calls, crystallized Reckless over her original Calculating tendency. By Year 10, her closest bond is Dalla the Gnome - built over years of town life before they ever fought together.
+
+Same race, same class, same starting stats. Different people, different histories, different relationships. These systems exist to make that kind of divergence visible, mechanical, and something the player actually feels.
 
 ## Race Choice Matters (A Lot)
 
@@ -33,7 +39,7 @@ The tension between "burn bright and fast" and "invest for the long haul" is the
 | Fighter | Lizman | 0.7 | Dwarf | 0.9 |
 | Priest | Rawulf | 0.7 | Gnome | 0.8 |
 | Thief | Felpurr | 0.7 | Hobbit | 0.8 |
-| Mage | *(nobody)* | - | Faerie | 0.8 |
+| Mage | *(nobody)*  | - | Faerie | 0.8 |
 | Ranger | Mook | 0.7 | Elf | 1.0 |
 
 Mage is the only class with no short-lived sprinter, which makes Faerie the obvious pick from day one. That's intentional.
@@ -169,7 +175,7 @@ Reaching a tier is a milestone the player sees. Losing a Bonded companion hurts 
 
 **Growth is slow on purpose.** The "fought side by side" modifier is tiny per fight. You need dozens of fights together to reach Companion. Clutch moments (healing someone from the brink, reviving a downed ally) are worth more but happen rarely. It should feel like trust earned over a long career, not instant BFFs. This slowness is exactly what makes losing someone to old age sting - that bond took real time to build and the new recruit starts from zero.
 
-**Frozen relationships.** When a character dies, their relationships aren't deleted. The full history with every surviving character is preserved as read-only. The player can still browse everything those characters went through together. Surviving characters with close bonds receive a mourning mark. A veteran Elf with a long list of frozen relationships has a biography written entirely in the experiences they shared with people who are gone. That's the story the game is telling.
+**Frozen relationships.** When a character dies, their relationships aren't deleted. The full history with every surviving character is preserved as read-only. The player can still browse everything those characters went through together. Surviving characters with close bonds receive a mourning mark. A veteran Elf with a list of frozen relationships carries that history alongside their marks, their traits, and their active bonds. It's all part of the same record.
 
 ### 4. Narrative Events
 
@@ -254,13 +260,13 @@ Every generated line goes through validation: correct names, within word limits,
 
 ## Why Any Of This Matters
 
-The generational dynamic is the emotional core of everything I'm designing here.
+The goal is that after a few hours of play, the player stops thinking about stat blocks and starts thinking about people. Not because the game told them to care, but because the systems made it unavoidable. Marks give characters a past. Personality gives them a voice. Relationships give them connections to each other. Aging gives them a timeline that's always moving.
 
-An Elf Mage will genuinely outlive 12+ generations of Human companions and 17+ generations of Rawulf companions. That's not a flavor text number. It's a mechanical reality that plays out through frozen relationships, mourning marks, and dialogue that references the departed.
+None of these systems are remarkable on their own. A mark is just a label. A relationship modifier is just a number with a name. A tendency is just a weighted random roll. But layered together over hours of gameplay, they accumulate into something that feels like a real history - and that history is different for every character in the guild.
 
-The player who recruits a Rawulf Priest knows they're choosing someone who will peak fast, contribute enormously in the early game, and then age out. The bond that Rawulf builds with the party's Dwarf Fighter over dozens of fights becomes a Companion or Bonded relationship - and when the Rawulf dies of old age, the Dwarf carries a mourning mark and a frozen relationship stack that tells the story of everything they went through together. The next Rawulf Priest starts at Neutral. The Dwarf remembers.
+One consequence of all this is the generational dynamic. An Elf Mage who outlives 12+ generations of Human companions carries a record of every one of those relationships. That's powerful. But it's one thread. The Rawulf Priest who only lived 19 years of prime but crystallized as Brave, earned "Slayer of the Iron Golem," and built a Bonded relationship with the party's Dwarf - that character's story is just as complete. It's just shorter.
 
-That's what these systems are building toward.
+The systems don't care how long a character lives. They care about what happens while they're here.
 
 ## Build Order
 
