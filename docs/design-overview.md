@@ -78,29 +78,50 @@ This isn't a punishment. It's supposed to land.
 
 Nothing in the game slows or reverses aging. No items, no spells, no secret techniques. If you could counter aging, it would stop being a real cost, and the whole sprinter-vs-investment framework falls apart. Some curses and resurrection can *accelerate* aging, but the clock only moves in one direction.
 
+## Character Creation
+
+Character creation combines race/class selection with personality and stat investment:
+
+1. **Pick race** - determines lifespan, stat ranges, XP modifiers, resistances
+2. **Pick class** - constrained by stat requirements vs. racial stat ranges + bonus points
+3. **Distribute 9 bonus points** across stats (racial min to racial max)
+4. **Optional aging trade** - sacrifice 1-3 years of age for 1 bonus point each. Opens elite classes for well-suited races, but costs real time from a sprinter's limited prime.
+5. **Pick one personality trait** to crystallize - the player chooses one axis (Temperament, Social, Outlook, or Values) to lock in. A second trait is randomly crystallized from racial weights. Remaining 2 axes are tendencies.
+6. **Receive a backstory mark** - drawn from a mixed pool of generic marks plus race-specific marks.
+
+The old Background system (Veteran/Journeyman/Apprentice/Prodigy) is removed. All characters start at Level 1.
+
+### Stat Point Balance
+
+With 9 base points, all basic and advanced classes are accessible to nearly every race. Elite classes (Valkyrie, Lord, Monk, Ninja, Samurai) require either a well-suited race, aging trade, or class-changing after stat growth through leveling. Samurai is the aspirational class-change target - only Dwarf can access it at creation (with 3 years aging). This is intentional: elite classes are earned.
+
 ## Time and Availability
 
-Time is a visible, global resource in DRPG-GD. There's a game calendar, and it moves forward for everyone. When the party spends four days clearing a dungeon floor, four days pass for the entire guild - including the characters sitting at home. This is what ties aging, recovery, and training into a single coherent system.
+Time is a visible, global resource in DRPG-GD. The base unit of game time is **days**. A game calendar tracks the current date, visible in town and the guild hall. Character ages and life phases are shown on character sheets. When the party spends four days clearing a dungeon floor, four days pass for the entire guild - including the characters sitting at home. This is what ties aging, recovery, and training into a single coherent system.
 
 ### Why It Matters
 
 The calendar exists to make roster depth a real strategic concern. You can't just invest in one party of six and ignore everyone else, because characters will be unavailable:
 
-- **Class changes** take a full year of in-game time. The character is locked out while they retrain. For a Rawulf, that's roughly 5% of their entire prime. For an Elf, it's a rounding error. This reinforces the sprinter-vs-investment dynamic - the same decision costs different races very different amounts.
-- **Recovery** takes real time. HP and MP regenerate gradually at the inn - not instantly. Gold cost is low (the inn isn't trying to bankrupt you), but the real cost is time. Every day spent recovering is a day everyone in the guild ages. Having a healer at the inn with the recovering group accelerates HP recovery - the priest naturally casts healing spells as their own MP regenerates. Characters recover without a healer too, just slower. This creates a strategic choice: keep the healer at the inn to speed things up, or send them into the dungeon with the B-team who also needs support.
+- **Class changes** cost time scaled by tier: 30 days (basic-to-basic), 90 days (basic-to-advanced), 365 days (any-to-elite). The character is locked out while they retrain. For a Rawulf, even 90 days is significant. For an Elf, a year is a rounding error. This reinforces the sprinter-vs-investment dynamic - the same decision costs different races very different amounts.
+- **Recovery** takes real time. The player chooses how many days to rest at the inn, with a clear UI showing the tradeoff: more days = more HP/MP recovered, but more time passing for the entire guild. Gold cost is low (the inn isn't trying to bankrupt you), but the real cost is time. Every day spent recovering is a day everyone ages.
 - **The dungeon is always open.** You can always go in with whoever's available. The question isn't "can I play?" - it's "who am I bringing?" Your A-team's fighter is retraining? Time for the backup to get some real experience.
 
 ### Life In Town
 
 Characters who aren't in the dungeon aren't sitting idle. They're working.
 
-**Town roles.** Every benched character can be assigned a role in town - the priest works at the temple, the fighter trains recruits at the guild hall, the thief runs the shop. Each role provides a steady trickle of XP and gold, and some provide guild-wide benefits: reduced resurrection costs, better shop prices, small stat bonuses for new recruits. This means the roster isn't a penalty - it's a workforce. The player is managing a guild, not just a party.
+**Town jobs.** Every benched character can be assigned a job in town. All jobs provide the same standard XP trickle and gold income - no job is mechanically optimal. The job title is narrative flavor that informs town events and personality development. Any character can hold any job: a Psionic bartender is as valid as a Fighter in the militia.
 
-This ties directly into the retirement concept. The old Lizman Fighter wiping down the bar at the tavern isn't just flavor - he's earning his keep and contributing to the guild's bottom line. Characters transition naturally from active duty to support roles to full retirement, and the town reflects that history.
+Jobs also provide **crystallization evidence** over time. A bartender slowly trends toward Friendly or Gruff. A militia fighter trends toward Brave. A gardener trends toward Stoic or Curious. Benched characters aren't narratively frozen - they evolve through daily life. Each job carries a personality bias tag indicating which trait option it nudges toward.
+
+The job list is open-ended and expandable. Class-themed options exist (militia for fighters, temple work for priests, locksmithing for thieves) alongside class-neutral options (innkeeper, bartender, gardener, blacksmith, groundskeeper, bailiff). Each job has a limited number of slots (1-3), which forces variety in job assignments and creates a small management decision about town composition.
+
+This ties directly into the retirement concept. The old Lizman Fighter wiping down the bar at the tavern isn't just flavor - he's earning his keep. Characters transition naturally from active duty to town jobs to full retirement, and the town reflects that history.
 
 **Town events.** Characters in town have their own narrative micro-events. The Dwarf Fighter and the Gnome Priest who are both benched this week might share a quiet scene at the tavern - a relationship nudge, maybe a crystallization tick. Town isn't dead time. It's different time. The narrative systems keep running for everyone in the guild, not just the six characters currently in the dungeon.
 
-**Catch-up XP.** Characters who fall behind the active party's average level get a temporary XP multiplier when they return to the dungeon. Bringing the B-team isn't just necessary - it's efficient. This keeps the roster viable without requiring the player to grind every character equally.
+**Catch-up XP.** Characters who fall behind the active party's average level get a gentle XP multiplier (1.25-1.5x) when they return to the dungeon. Bringing the B-team isn't just necessary - it's efficient. This keeps the roster viable without requiring the player to grind every character equally.
 
 **Rest bonus.** Characters who've been in town for a while come back sharp. They get a temporary XP bonus that decays over time in the dungeon. For a brief window, a well-rested low-level character in a high-level group can gain levels quickly - thrown into the deep end and learning to swim fast. The bonus has caps and fades steadily, so it's a short burst of accelerated growth, not a permanent advantage.
 
@@ -112,7 +133,32 @@ It also prevents the degenerate strategy of picking six long-lived races and ign
 
 Time should feel present without being oppressive. The calendar is visible and simple. The guild hall shows availability at a glance - who's ready, who's recovering, who's training, what role they're filling, and when they're back. The player always has agency. The game never locks them out of playing - it just makes them think about who to invest in and when.
 
-## The Five Narrative Systems
+## Early Game Experience
+
+The narrative systems described below are all slow-burn by nature. Marks accumulate over fights. Relationships build over dozens of encounters. Crystallization takes multiple events. Aging takes years. None of this helps a new player in their first 30 minutes.
+
+Two design decisions address this directly:
+
+### Characters Arrive With Backstory
+
+No character starts as a blank slate. Every character created at the guild hall comes with:
+- 1-2 crystallized personality traits representing their life before adventuring
+- 1 mark from their past ("Apprentice Blacksmith," "Survived the Frostmarch," "Ran from Home")
+- A one-line personality hook visible on creation ("Brave and sarcastic, with something to prove")
+
+This means the player sees differentiated characters from the moment they open the guild roster. Two axes are still uncrystallized, leaving room for the player to shape who the character becomes through gameplay.
+
+### Scripted First Floor
+
+Floor 1 is not procedurally generated. It is a hand-designed character forge that ensures the player's first dungeon run triggers:
+- A discovery event (tests Curiosity vs. Caution)
+- A combat encounter that generates at least one mark
+- A micro-event between two party members
+- A hard choice event (tests Values axis)
+
+By the time the player returns to town after Floor 1, every character has gained at least one new mark and at least one crystallization tick. The pace then settles to the sustainable long-term rate. The first floor front-loads the "this game is different" signal without permanently inflating event frequency.
+
+## The Four Narrative Systems
 
 These are listed in the order I plan to build them. Each one adds a layer on top of the previous ones.
 
@@ -175,6 +221,12 @@ Reaching a tier is a milestone the player sees. Losing a Bonded companion hurts 
 
 **Growth is slow on purpose.** The "fought side by side" modifier is tiny per fight. You need dozens of fights together to reach Companion. Clutch moments (healing someone from the brink, reviving a downed ally) are worth more but happen rarely. It should feel like trust earned over a long career, not instant BFFs. This slowness is exactly what makes losing someone to old age sting - that bond took real time to build and the new recruit starts from zero.
 
+**Rotation incentives.** Three mechanics prevent the optimal strategy from being "never change the party":
+
+- *Diminishing returns*: The "fought side by side" modifier gets smaller the more times it fires between the same pair consecutively. Fresh pairings generate full-weight modifiers. The player isn't punished for stability - they just gain less per fight. Swapping in a bench character creates new pairings at full weight.
+- *Guild breadth bonuses*: The game tracks total unique Companion+ relationships across the entire guild. Hitting thresholds unlocks guild-wide benefits (better shop prices, faster recovery, XP bonuses). This rewards broad relationship building across the roster, not just deep bonds within one party.
+- *Reunion modifiers*: When two characters with existing positive relationships are reunited in a party after time apart, they receive a one-time "Good to see you again" modifier. Separation creates reunion value. Rotation stops feeling like breaking up the team and starts feeling like setting up future reunions.
+
 **Frozen relationships.** When a character dies, their relationships aren't deleted. The full history with every surviving character is preserved as read-only. The player can still browse everything those characters went through together. Surviving characters with close bonds receive a mourning mark. A veteran Elf with a list of frozen relationships carries that history alongside their marks, their traits, and their active bonds. It's all part of the same record.
 
 ### 4. Narrative Events
@@ -190,20 +242,14 @@ Hand-authored dramatic structures with AI-generated dialogue. I write the scenar
 
 When an event fires, the system casts party members into roles based on trait match, who hasn't had screen time recently, whether this could crystallize a pending trait, and relationship relevance. Everyone gets their moment.
 
-### 5. Character Drives
-
-The system watches for situations that collide with a character's personality and surfaces short narrative signals. The Brave character watches the party retreat: "[Name] hesitates at the retreat." The character with "Afraid of Fire" faces a fire-using enemy: "[Name] flinches at the flames." The Bonded ally drops to critical HP: "[Name] shouts [Ally's] name."
-
-These are signals, not commands. The player always makes the tactical call. The system just interprets that call through each character's personality and generates narrative ripples. Follow the drive and the trait deepens. Go against it and there's friction - uncomfortable banter, strained relationships, maybe even a trait shifting if you consistently override it.
-
-The guiding principle: the tail does not wag the dog. Narrative sits on top of tactics. It never overrides them.
-
 ## How It Fits Together
 
 ```
 Character Creation
   - Race determines lifespan, stats, XP speed, resistances
-  - Personality tendencies influenced by racial bias + randomness
+  - 1-2 personality traits pre-crystallized (backstory)
+  - 1 mark from life before adventuring
+  - Remaining tendencies influenced by racial bias + randomness
   |
   v
 Three things generate narrative changes:
@@ -211,14 +257,12 @@ Three things generate narrative changes:
   +---> Combat (every fight)
   |       - Marks from near-death, kills, status effects
   |       - Relationship shifts from heals, revives, fighting together
-  |       - Drive activations from personality clashing with situation
   |       - Player notified immediately via notification cards
   |
   +---> Narrative Events (exploration, rest, between floors)
   |       - Crystallize personality traits
   |       - Create marks from choices and scenarios
   |       - Shift relationships between event participants
-  |       - Activate drives through moral and tactical dilemmas
   |
   +---> Town Life (while benched)
   |       - Town events between characters in town
@@ -228,8 +272,8 @@ Three things generate narrative changes:
   v
 Everything feeds back into gameplay:
   - Positive bonds = combat adjacency bonuses
+  - Guild breadth bonuses from total Companion+ relationships
   - Marks with effects = small stat modifiers or triggers
-  - Drives = narrative tension layered on tactical decisions
   - All of it informs AI dialogue
   |
   v
@@ -240,23 +284,35 @@ Aging advances through dungeon time and inn rest
   - Aging marks accumulate
   - Death from old age hits during rest in the Fragile phase
   - Frozen relationships carry the legacy forward
+  |
+  v
+Retirement and Legacy
+  - Player chooses when to retire a character
+  - Retired characters work town roles, become guild NPCs
+  - Retirement (not death) unlocks legacy: create a child character
+  - Child gets tendency bias from parent, "Knew your father" bonds
+  - Death without retirement = pure loss, no legacy
 ```
 
 ## Combat Notifications
 
 Players should never find out about a meaningful change after it already happened. When something matters in combat, they see it right then:
 
-- **Notification cards** for major moments (new marks, significant relationship shifts, drive activations). Temporary overlay, auto-dismiss, queued if multiple fire in one round. Doesn't pause combat.
+- **Notification cards** for major moments (new marks, significant relationship shifts). Temporary overlay, auto-dismiss, queued if multiple fire in one round. Doesn't pause combat.
 - **Combat log entries** for the small stuff (adjacency bond ticks). There if you look, not in your face if you don't.
 - **Post-combat summary** if anything changed during the fight. Skippable, shown by default.
 
 ## AI Dialogue
 
-A local AI model (Wayfarer) generates what characters say. The system is provider-agnostic - swap the model without touching the event or dialogue systems.
+A hybrid approach splits dialogue responsibility by stakes:
 
-I write the events. The AI writes the lines. The tone target is modern and natural. No "forsooth" or "prithee." Characters talk like people. Most lines are 5-15 words. Longer lines are reserved for emotional peaks.
+**Major narrative events** (discovery, hard choice, combat aftermath, memory) use **pre-written dialogue** tagged by trait combination. These are the moments that define characters and create lasting marks. Every word is authored during development. Quality is fully controlled.
 
-Every generated line goes through validation: correct names, within word limits, not repeating recent dialogue, no anachronisms or fourth-wall breaks. Failed lines retry twice with corrective prompts, then fall back to pre-written generic lines. All failures get logged for analysis.
+**Micro-events and combat quips** use **LLM generation** with pre-written fallback. These are high-volume, low-stakes moments where personality flavor matters more than precision. A mediocre line here is quickly forgotten. A great line is a bonus.
+
+The LLM system is provider-agnostic - swap the model without touching the event or dialogue systems. The tone target is modern and natural. No "forsooth" or "prithee." Characters talk like people. Most lines are 5-15 words. Longer lines are reserved for emotional peaks.
+
+Every generated line goes through validation: correct names, within word limits, not repeating recent dialogue, no anachronisms or fourth-wall breaks. Failed lines retry twice with corrective prompts, then fall back to pre-written lines tagged by trait combination. All failures get logged for analysis.
 
 ## Why Any Of This Matters
 
@@ -268,17 +324,76 @@ One consequence of all this is the generational dynamic. An Elf Mage who outlive
 
 The systems don't care how long a character lives. They care about what happens while they're here.
 
+## Generational Legacy
+
+When a character is **retired** (not killed - retirement is a deliberate player choice), the player can create a legacy child. This turns the loss of a sprinter from wasted investment into a down payment on the next generation.
+
+### What the Child Inherits
+
+- **Tendency bias**: The child's personality tendency weights are skewed toward the parent's crystallized traits. No traits are pre-crystallized from the parent - the child develops their own personality, but the apple doesn't fall far from the tree.
+- **Origin mark**: The parent's most significant mark becomes the child's backstory ("Child of Torben, Slayer of the Iron Golem"). Narrative continuity without mechanical power.
+- **Relationship head-start**: A "Knew your father" named modifier with the parent's surviving companions who had Companion or Bonded tier relationships. Small positive weight - not enough to skip the bond-building process, but enough that they're not strangers.
+
+### Constraints
+
+- **Retirement only.** Death from old age, combat death, or any other loss does not qualify. This makes retirement a meaningful strategic decision with a tangible reward, and creates real urgency to retire characters before they die.
+- **Same race.** The child is the same race as the parent. Cross-race inheritance doesn't make narrative sense and would create optimization incentives that undermine race identity.
+- **Class is the player's choice.** The child follows their own path.
+- **No generational stacking.** Legacy bonuses come from the parent only, not the grandparent. This prevents breeding-program optimization.
+
 ## Build Order
 
 1. **Aging** - mechanical foundation, no dependencies
 2. **Calendar and availability** - global time, recovery, town roles, catch-up/rest bonuses
 3. **Racial balance** - XP modifier changes, resistance updates, breath weapon
 4. **Marks** - data structure, combat generation, UI
-5. **Personality traits** - tendency seeding, crystallization, storage
-6. **Relationships** - modifier stacks, bond tiers, combat bonuses
-7. **Events** - templates, casting, dialogue triggers
-8. **Character drives** - trigger detection, narrative signals
-9. **AI dialogue** - prompt construction, validation, fallback
+5. **Personality traits** - tendency seeding, backstory crystallization, crystallization logic, storage
+6. **Relationships** - modifier stacks, bond tiers, combat bonuses, diminishing returns, breadth bonuses, reunion modifiers
+7. **Events** - templates, casting, scripted first floor, pre-written dialogue for major events
+8. **AI dialogue** - LLM integration for micro-events, prompt construction, validation, fallback (prototype mid-stream once personality data exists)
+9. **Generational legacy** - retirement flow, child creation, inheritance
+
+## Retirement
+
+Retirement is always available and **permanent**. A retired character leaves the active roster and becomes a permanent town NPC - they still exist, still fill town roles, still show up in the guild's history. They cannot be un-retired. This gives the decision real weight, especially since retirement is the gate to legacy children.
+
+**Equipment stays with the retiree.** If the player wants gear back, they strip the character before retiring. This creates a natural "prepare for retirement" ritual.
+
+**Legacy children** require the retiring character to have reached Prime phase or later. Youth retirements are just roster cleanup - no legacy. This prevents farming legacy children from throwaway characters while keeping retirement accessible for roster management.
+
+**The retirement screen** shows a summary of the character's history: their marks, crystallized traits, and top relationships. If the character has Companion or Bonded relationships, 1-2 templated companion lines reference real relationship data ("We survived the Iron Golem together. I won't forget that."). Characters with no close bonds get a quieter exit. The ceremony scales with investment automatically because it's a presentation layer on existing data, not a new system.
+
+## Roster Management
+
+### Guild Cap
+
+The active (non-retired) roster is capped at 25 characters. This gives room for two active parties, a group of swap-ins, and town role coverage without drowning in management overhead. Retired characters don't count against the cap.
+
+### Total Party Kill
+
+When the active party is wiped out in the dungeon, the bodies stay where they fell. The player assembles a rescue team from the bench to recover them. This turns a TPK from a game-over screen into a new gameplay scenario:
+
+- Bench characters with lower levels and weaker bonds are suddenly the A-team
+- The rescue run generates marks and relationships for the rescuers
+- Senior/declining characters on the bench become critical - past their prime but the most capable rescue team available
+- Bodies degrade on the game calendar: unrecovered bodies eventually become ashed (harder to resurrect, more aging penalty on resurrection)
+- Every day spent preparing the rescue team is a day the bodies are degrading AND the entire guild is aging
+
+The body degradation timer ties into the same calendar system that drives everything else, creating natural urgency without artificial failure limits.
+
+## Target Playtime
+
+A full playthrough targets **80-120 real-world hours**. This gives the generational dynamics room to breathe:
+- Multiple cycles of sprinters aging out and being replaced
+- Long-lived races becoming guild anchors in the second half
+- Relationships building, freezing, and accumulating across generations
+- The full retirement/legacy cycle playing out multiple times
+
+All system pacing (event frequency, aging rate, relationship growth speed, crystallization thresholds) should be calibrated against this target.
+
+## Save Compatibility
+
+These systems represent a fundamental redesign of the character model. Existing save files from before these systems are implemented will not be migrated. Players start fresh. This ensures every player experiences the full system from character creation onward.
 
 ## Feedback Welcome
 

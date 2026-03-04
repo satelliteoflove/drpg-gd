@@ -8,7 +8,7 @@ Characters age through gameplay. Time passes during dungeon exploration and inn 
 
 ### Inn Rest
 
-Resting at the inn to heal HP/MP advances time. The amount of time depends on how much healing is needed. Every rest ages every character in the roster (not just the active party). Time scale for rest TBD - needs to be calibrated against racial lifespans so that short-lived races feel the pressure without aging out before they can meaningfully contribute.
+The player chooses how many days to rest at the inn. The UI displays a clear tradeoff: more days = more HP/MP recovered, at a cost of gold and time. Every rest advances time for every character in the roster (not just the active party). The exact HP/MP recovery rate per day needs calibration against racial lifespans so that short-lived races feel time pressure without aging out before they can meaningfully contribute.
 
 ### Dungeon Time
 
@@ -27,7 +27,12 @@ Resurrection ages the target character based on how long they were dead:
 
 ### Class Change
 
-Changing class ages the character by 1 year. This represents the time and effort of retraining. For short-lived races, a class change is a significant life investment.
+Class changes age the character by a duration scaled to the tier of the target class:
+- **Basic-to-basic**: 30 days
+- **Basic-to-advanced**: 90 days
+- **Any-to-elite**: 365 days (1 year)
+
+The character is locked out of the active roster for the full duration. For short-lived races, even a 90-day advanced class change is a significant career investment. For long-lived races, a year-long elite retraining is a rounding error. This reinforces the sprinter-vs-investment dynamic.
 
 ## Life Phases
 
@@ -124,6 +129,16 @@ When a character dies of old age, it should be handled with narrative weight:
 - Marks on the deceased become part of the guild's history
 - The player is not punished mechanically beyond losing the character
 
+### Death vs. Retirement
+
+Death from old age is **pure loss**. The character's history is preserved but no legacy child can be created. Only voluntary retirement (a deliberate player choice made before death) unlocks the generational legacy system, and only if the character has reached Prime phase or later.
+
+Retirement is available at any time. A retired character leaves the active roster and becomes a permanent town NPC. Youth retirements are just roster cleanup with no legacy option. Prime-or-later retirements unlock legacy child creation.
+
+This creates urgency for declining characters: the player watches their veteran's stats decline and knows the hidden death probability is rising. They must decide when to pull the trigger on retirement. Retire too early and they lose a still-useful character. Wait too long and the character dies without leaving a legacy. The tension is between squeezing out one more dungeon run and securing the next generation.
+
+See [design-overview.md](design-overview.md) - Generational Legacy for full details on what children inherit.
+
 ## Aging Acceleration
 
 ### Marks Can Accelerate Aging
@@ -174,7 +189,8 @@ The aging system makes race choice consequential over the entire game:
 - Characters born at game start will be in Decline by mid-game
 - The player WILL lose these characters to old age during a normal playthrough
 - This creates real attachment and loss - the narrative system should lean into it
-- Replacement characters carry on the legacy (marks, relationships with surviving long-lived characters)
+- Retiring a character before death unlocks legacy child creation (tendency bias, origin mark, relationship head-start with parent's companions)
+- Death without retirement = pure loss, creating urgency around the retirement decision
 
 **Long-lived races (Elf, Dwarf, Gnome, Faerie, Dracon, Hobbit)**:
 - 50-325 years of prime

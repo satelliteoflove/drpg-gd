@@ -2,7 +2,7 @@
 
 ## Combat-Generated Changes
 
-Combat is a primary source of marks, relationship shifts, and drive activations - not just narrative events. Every fight is evaluated in real time for moments that matter.
+Combat is a primary source of marks and relationship shifts - not just narrative events. Every fight is evaluated in real time for moments that matter.
 
 ### Combat Marks
 
@@ -26,18 +26,6 @@ Combat is a primary source of marks, relationship shifts, and drive activations 
 | Character is KO'd while an ally with healing spells/items took a different action | *(no modifier)* | - | Intentionally NOT tracked - too complex to infer intent, would feel unfair |
 | Characters survive a boss fight together | "Survived [Boss Name] together" | Positive | Shared triumph, scales with fight difficulty |
 
-### Combat Drive Activations
-
-| Trait/Mark | Trigger | Signal |
-|---|---|---|
-| Brave | Party ordered to flee | "[Name] hesitates at the retreat." |
-| Cautious | Party engages elite enemy at low HP | "[Name] eyes the exits." |
-| "Afraid of Fire" mark | Fire-using enemy attacks | "[Name] flinches at the flames." |
-| Positive relationship | Bonded ally drops below 25% HP | "[Name] shouts [Ally]'s name." |
-| Ruthless | Enemy at critical HP | "[Name] sees an opening." |
-| Merciful | Weak enemy group encountered | "[Name] looks at these creatures with something like pity." |
-| Principled | Ambush opportunity (party has surprise) | "[Name] shifts uncomfortably." |
-
 ### Relationship Growth Rate
 
 The "fought side by side" modifier is deliberately weak per occurrence. Combat bonds build slowly over many fights, not a few:
@@ -58,7 +46,6 @@ Major moments (marks, significant relationship shifts) are shown as a temporary 
 
 - Mark earned: card shows mark name, icon, and the character it applies to. Auto-dismisses after a few seconds.
 - Relationship shift: card shows the two characters, the modifier name, and a positive/negative indicator. Auto-dismisses.
-- Drive activation: card shows the character and a short italicized line of flavor text. Auto-dismisses.
 - Cards queue if multiple trigger in the same round - they don't stack or overlap.
 - Cards do NOT pause combat. They're informational, not interactive.
 
@@ -110,6 +97,15 @@ Traits start as tendencies and crystallize into permanent traits through a hybri
 4. **Pivotal moments (major events)**: Certain hand-authored events (boss aftermath, hard moral choices, floor milestones) present a direct choice that crystallizes a trait immediately. These are rare and dramatic - the player is explicitly deciding who this character becomes.
 5. **Crystallization**: When an axis crystallizes (by either path), the trait locks in permanently. Shown with dedicated UI treatment. Stored on the character resource with metadata about the triggering event.
 6. **Post-crystallization**: Crystallized traits rarely shift. Extreme events can trigger a re-crystallization, but this should be exceptionally rare and dramatic.
+
+### Backstory Crystallization
+
+Every new character arrives with 2 personality axes already crystallized:
+- **Player-chosen**: The player picks one axis (Temperament, Social, Outlook, or Values) and selects which trait to crystallize on that axis.
+- **Random**: A second axis is crystallized randomly using the racial tendency weights.
+- The remaining 2 axes are uncrystallized tendencies that the player shapes through gameplay.
+
+Each new character also arrives with 1 backstory mark drawn from a mixed pool: 10-15 generic marks available to any race ("Apprentice Blacksmith," "Ran from Home," "Survived a Plague") plus 3-5 race-specific marks per race ("Former Miner" for Dwarves, "Century of Study" for Elves). This ensures characters feel differentiated from the moment they join the guild.
 
 ### Tendency Seeding
 
@@ -221,13 +217,15 @@ Event frequency starts high and will be dialed back through playtesting. Initial
 
 The game needs a minimum of 6 event templates to start, with the goal of building to dozens. Templates should cover each event category and provide varied trigger conditions to avoid repetition.
 
-Event template format is TBD - will be defined when implementation begins. Likely a YAML or JSON data file per template with the structure described above.
+Event templates are JSON data files, one per template, with the structure described above.
 
 ## Relationships
 
 ### Named Modifier Stacks
 
-Every character pair has a relationship represented as a stack of named modifiers. Each modifier records:
+Every character pair has a relationship represented as a stack of named modifiers. Relationships are stored in a **separate RelationshipManager** singleton (not on individual Character resources), keyed by character-pair ID. This provides a single source of truth and simplifies freezing relationships when a character dies.
+
+Each modifier records:
 
 - **Name**: What happened ("Saved my life on Floor 3", "Argued over the chalice", "Fought side by side against the Minotaur")
 - **Value**: Positive or negative numeric weight
@@ -256,6 +254,16 @@ Reaching a tier is a milestone the player sees. Losing a Bonded companion (to de
 
 This is deliberate. Penalizing the player mechanically for narrative outcomes feels punitive and discourages engagement with the system. Positive-only mechanics reward investment without punishing story.
 
+### Rotation Incentives
+
+Three mechanics prevent the optimal strategy from being "never change the party":
+
+**Diminishing returns on same-pair bonding.** The "fought side by side" modifier gets smaller the more times it fires between the same pair consecutively. Fresh pairings generate full-weight modifiers. The player isn't punished for stability - they just gain less per fight. Swapping in a bench character creates new pairings at full weight.
+
+**Guild breadth bonuses.** The game tracks total unique Companion+ relationships across the entire guild roster. Hitting thresholds unlocks guild-wide benefits (better shop prices, faster recovery, XP bonuses, reduced resurrection costs). This rewards broad relationship building across the roster rather than deep bonds within one party.
+
+**Reunion modifiers.** When two characters with existing positive relationships are reunited in a party after time apart, they receive a one-time "Good to see you again" modifier. Small positive weight that reframes separation as creating reunion value. Rotation stops feeling like breaking up the team and starts feeling like setting up future reunions.
+
 ### Frozen Relationships and Loss
 
 When a character dies (combat or old age), their relationships are NOT deleted:
@@ -263,7 +271,7 @@ When a character dies (combat or old age), their relationships are NOT deleted:
 - **Frozen relationships**: The full modifier stack with every surviving character is preserved as read-only history. The player can still view everything those characters went through together. The relationship can no longer grow.
 - **Mourning mark**: Surviving characters with Companion or Bonded tier relationships receive a mark ("Mourning [Name]"). This mark:
   - Informs the LLM for grief-appropriate dialogue
-  - Can trigger drive activations (seeing an enemy type that killed the fallen companion)
+  - Can trigger event casting (seeing an enemy type that killed the fallen companion)
   - Fades naturally over game time (grief diminishes but the frozen relationship record persists forever)
 - **Narrative continuity**: A veteran Elf with a list of frozen relationships tells their own story. The UI should make this history accessible - these aren't dead data, they're the character's biography.
 
@@ -348,43 +356,17 @@ The current `death_count` field on Character should be replaced by marks. Each d
 
 This preserves the mechanical information while adding narrative richness.
 
-## Character Drives
-
-### Medium Version
-
-The system watches for trigger conditions tied to a character's traits, marks, and relationships, then surfaces narrative signals in the message log. The player makes tactical decisions; the drive system interprets those decisions through each character's personality.
-
-### Trigger Examples
-
-| Trait/Mark | Trigger Condition | Narrative Signal |
-|---|---|---|
-| Brave | Party retreats from combat | "[Character] grits their teeth as the party falls back." |
-| Merciful | Party delivers killing blow to surrendering enemy | "[Character] looks away." |
-| "Afraid of Fire" mark | Fire-using enemy encountered | "[Character] tenses at the sight of flames." |
-| Positive relationship | Bonded ally drops to critical HP | "[Character] shouts [ally]'s name." |
-| Ruthless | Opportunity to exploit a weakness | "[Character] sees an opening." |
-
-### Consequences
-
-**Following a drive** (acting in alignment with traits):
-- Reinforces the trait (if not yet crystallized, nudges toward that crystallization)
-- Strengthens related relationships ("We survived that together")
-- Positive banter after the moment
-
-**Going against a drive** (overriding traits with tactical decisions):
-- Post-event banter expressing discomfort or conflict
-- Relationship modifiers with characters who share the overridden value
-- Over time, potential trait shift (a consistently overridden Brave tendency might crystallize as Cautious instead)
-
-### Design Principle
-
-Drives are signals, not constraints. The player always makes the tactical decision. The system interprets that decision through character personality and generates narrative consequences. "The tail does not wag the dog" - the narrative system enriches tactical gameplay, it does not override it.
-
 ## LLM Dialogue Generation
 
 ### Approach
 
-Template-filling with character-appropriate dialogue. Hand-authored event structures define WHAT happens; the LLM generates HOW characters say things.
+A hybrid model splits dialogue responsibility by stakes:
+
+**Major narrative events** (discovery, hard choice, combat aftermath, memory) use **pre-written dialogue** tagged by trait combination. These are the defining character moments. Every word is authored during development. Quality is fully controlled.
+
+**Micro-events and combat quips** use **LLM generation** with pre-written fallback. These are high-volume, low-stakes moments where personality flavor matters more than precision. If the LLM is great, micro-events feel alive. If it's mediocre, the player's most important moments are still hand-written.
+
+Hand-authored event structures define WHAT happens. For major events, pre-written dialogue covers HOW characters say things. For micro-events, the LLM generates HOW characters say things with trait-tagged fallback lines as a safety net.
 
 ### Language Style
 
@@ -395,7 +377,7 @@ Modern, natural language. No fake medieval prose. Characters speak like real peo
 Each dialogue generation request includes:
 
 1. **World context**: Current floor, recent events, time of day, party state
-2. **Character profile**: Name, race, class, level, personality traits (or tendencies), active marks, current drive state
+2. **Character profile**: Name, race, class, level, personality traits (or tendencies), active marks
 3. **Relationship context**: How this character feels about other characters in the scene (modifier stack summary)
 4. **Speech guidance**: Derived from trait combination. Not explicit instructions like "speak gruffly" but implicit through trait description ("This character is Gruff and Stoic - they use few words and avoid emotional displays")
 5. **Recent dialogue cache**: Last 3-5 lines of dialogue from this character to avoid repetition
