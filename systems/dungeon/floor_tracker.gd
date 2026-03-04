@@ -5,7 +5,10 @@ signal enemy_spotted(group_id: String)
 signal reveal_expired
 signal step_taken(total_steps: int)
 
+const STEPS_PER_DAY: int = 120
+
 var global_step_count: int = 0
+var accumulated_steps: int = 0
 var spotted_groups: Dictionary = {}
 var reveal_active: bool = false
 var reveal_steps_remaining: int = 0
@@ -14,6 +17,7 @@ var current_floor: int = 0
 
 func increment_step() -> void:
 	global_step_count += 1
+	accumulated_steps += 1
 	if reveal_active:
 		reveal_steps_remaining -= 1
 		if reveal_steps_remaining <= 0:
@@ -68,9 +72,16 @@ func set_floor(floor_num: int) -> void:
 		clear_spotted_for_floor()
 
 
+func consume_dungeon_days() -> int:
+	var days: int = accumulated_steps / STEPS_PER_DAY
+	accumulated_steps = accumulated_steps % STEPS_PER_DAY
+	return days
+
+
 func save_state() -> Dictionary:
 	return {
 		"global_step_count": global_step_count,
+		"accumulated_steps": accumulated_steps,
 		"spotted_groups": spotted_groups.duplicate(),
 		"reveal_active": reveal_active,
 		"reveal_steps_remaining": reveal_steps_remaining,
@@ -80,6 +91,7 @@ func save_state() -> Dictionary:
 
 func load_state(data: Dictionary) -> void:
 	global_step_count = data.get("global_step_count", 0)
+	accumulated_steps = data.get("accumulated_steps", 0)
 	spotted_groups = data.get("spotted_groups", {}).duplicate()
 	reveal_active = data.get("reveal_active", false)
 	reveal_steps_remaining = data.get("reveal_steps_remaining", 0)

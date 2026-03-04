@@ -15,6 +15,7 @@ func _ready() -> void:
 
 	_setup_navigation()
 	_update_button_states()
+	$VBoxContainer/DayLabel.text = "Day %d" % GameState.game_day
 
 
 func _update_button_states() -> void:

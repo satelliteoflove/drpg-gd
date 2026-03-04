@@ -38,7 +38,7 @@ class ActiveStatus:
 @export var character_class: CharacterEnums.CharacterClass = CharacterEnums.CharacterClass.FIGHTER
 @export var alignment: CharacterEnums.Alignment = CharacterEnums.Alignment.NEUTRAL
 @export var gender: CharacterEnums.Gender = CharacterEnums.Gender.MALE
-@export var age: int = 18
+@export var age_days: int = 6570
 
 @export_group("Base Stats")
 @export var base_strength: int = 10
@@ -47,6 +47,14 @@ class ActiveStatus:
 @export var base_vitality: int = 10
 @export var base_agility: int = 10
 @export var base_luck: int = 10
+
+@export_group("Peak Stats")
+@export var peak_strength: int = 10
+@export var peak_intelligence: int = 10
+@export var peak_piety: int = 10
+@export var peak_vitality: int = 10
+@export var peak_agility: int = 10
+@export var peak_luck: int = 10
 
 @export_group("Current Stats")
 @export var strength: int = 10
@@ -128,7 +136,7 @@ static func create_new(
 	character.character_class = p_class
 	character.alignment = p_alignment
 	character.gender = p_gender
-	character.age = CharacterEnums.get_base_age(p_race) + CombatRNG.randi_range(0, 5)
+	character.age_days = (CharacterEnums.get_base_age(p_race) + CombatRNG.randi_range(0, 5)) * CharacterEnums.DAYS_PER_YEAR
 
 	character.base_strength = p_stats.get("strength", 10)
 	character.base_intelligence = p_stats.get("intelligence", 10)
@@ -143,6 +151,13 @@ static func create_new(
 	character.vitality = character.base_vitality
 	character.agility = character.base_agility
 	character.luck = character.base_luck
+
+	character.peak_strength = character.base_strength
+	character.peak_intelligence = character.base_intelligence
+	character.peak_piety = character.base_piety
+	character.peak_vitality = character.base_vitality
+	character.peak_agility = character.base_agility
+	character.peak_luck = character.base_luck
 
 	character.level = 1
 	character.experience = 0
@@ -392,6 +407,103 @@ func get_alignment_name() -> String:
 	return CharacterEnums.get_alignment_name(alignment)
 
 
+func get_age_years() -> int:
+	return age_days / CharacterEnums.DAYS_PER_YEAR
+
+
+func get_life_phase() -> CharacterEnums.LifePhase:
+	return CharacterEnums.get_life_phase(race, age_days)
+
+
+func get_life_phase_name() -> String:
+	return CharacterEnums.get_life_phase_name(get_life_phase())
+
+
+func apply_aging_effects() -> void:
+	var phase: CharacterEnums.LifePhase = get_life_phase()
+
+	if phase == CharacterEnums.LifePhase.YOUTH or phase == CharacterEnums.LifePhase.PRIME:
+		strength = peak_strength
+		intelligence = peak_intelligence
+		piety = peak_piety
+		vitality = peak_vitality
+		agility = peak_agility
+		luck = peak_luck
+		return
+
+	var physical_stats := ["strength", "vitality", "agility"]
+	var mental_stats := ["intelligence", "piety"]
+	var ranges: Dictionary = CharacterEnums.RACE_STAT_RANGES.get(race, {})
+
+	if phase == CharacterEnums.LifePhase.DECLINE:
+		var decline_start: int = CharacterEnums.get_decline_start_days(race)
+		var fragile_start: int = CharacterEnums.get_fragile_start_days(race)
+		var decline_duration: int = fragile_start - decline_start
+		var progress: float = clampf(float(age_days - decline_start) / float(decline_duration), 0.0, 1.0)
+
+		for stat_name in physical_stats:
+			var peak_val: int = get("peak_" + stat_name)
+			var penalty: int = roundi(peak_val * 0.4 * progress)
+			var range_vec: Vector2i = ranges.get(stat_name, Vector2i(8, 18))
+			var floor_val: int = maxi(roundi(range_vec.x * 0.3), 1)
+			set(stat_name, maxi(peak_val - penalty, floor_val))
+
+		var mental_progress: float = clampf((progress - 0.5) / 0.5, 0.0, 1.0)
+		for stat_name in mental_stats:
+			var peak_val: int = get("peak_" + stat_name)
+			var penalty: int = roundi(peak_val * 0.2 * mental_progress)
+			var range_vec: Vector2i = ranges.get(stat_name, Vector2i(8, 18))
+			var floor_val: int = maxi(roundi(range_vec.x * 0.3), 1)
+			set(stat_name, maxi(peak_val - penalty, floor_val))
+
+	elif phase == CharacterEnums.LifePhase.FRAGILE:
+		var decline_start: int = CharacterEnums.get_decline_start_days(race)
+		var fragile_start: int = CharacterEnums.get_fragile_start_days(race)
+		var max_age_days: int = CharacterEnums.get_max_age_days(race)
+		var fragile_duration: int = max_age_days - fragile_start
+		var fragile_progress: float = clampf(float(age_days - fragile_start) / float(fragile_duration), 0.0, 1.0) if fragile_duration > 0 else 1.0
+
+		for stat_name in physical_stats:
+			var peak_val: int = get("peak_" + stat_name)
+			var decline_penalty: int = roundi(peak_val * 0.4)
+			var fragile_penalty: int = roundi(peak_val * 0.3 * pow(fragile_progress, 1.5))
+			var range_vec: Vector2i = ranges.get(stat_name, Vector2i(8, 18))
+			var floor_val: int = maxi(roundi(range_vec.x * 0.3), 1)
+			set(stat_name, maxi(peak_val - decline_penalty - fragile_penalty, floor_val))
+
+		for stat_name in mental_stats:
+			var peak_val: int = get("peak_" + stat_name)
+			var decline_penalty: int = roundi(peak_val * 0.2)
+			var fragile_penalty: int = roundi(peak_val * 0.2 * fragile_progress)
+			var range_vec: Vector2i = ranges.get(stat_name, Vector2i(8, 18))
+			var floor_val: int = maxi(roundi(range_vec.x * 0.3), 1)
+			set(stat_name, maxi(peak_val - decline_penalty - fragile_penalty, floor_val))
+
+	luck = peak_luck
+
+
+func advance_age(days: int) -> void:
+	age_days += days
+	apply_aging_effects()
+	_recalculate_derived_stats()
+
+
+func check_old_age_death() -> bool:
+	if get_life_phase() != CharacterEnums.LifePhase.FRAGILE:
+		return false
+	if is_dead:
+		return false
+	var fragile_start: int = CharacterEnums.get_fragile_start_days(race)
+	var max_age_days: int = CharacterEnums.get_max_age_days(race)
+	var fragile_duration: int = max_age_days - fragile_start
+	var progress: float = clampf(float(age_days - fragile_start) / float(fragile_duration), 0.0, 1.0) if fragile_duration > 0 else 1.0
+	var death_chance: float = 0.8 * progress * progress
+	if CombatRNG.randf() < death_chance:
+		_die()
+		return true
+	return false
+
+
 func init_combat() -> void:
 	if current_hp <= 0 and not is_dead:
 		current_hp = max_hp
@@ -457,12 +569,13 @@ func resurrect(vitality_loss: int = 1) -> bool:
 	if has_status(CharacterEnums.StatusEffect.LOST):
 		return false
 
-	vitality = maxi(1, vitality - vitality_loss)
-	age += CombatRNG.randi_range(1, 5)
+	peak_vitality = maxi(1, peak_vitality - vitality_loss)
+	age_days += CombatRNG.randi_range(1, 5) * CharacterEnums.DAYS_PER_YEAR
 	is_dead = false
 	remove_status(CharacterEnums.StatusEffect.DEAD)
 	remove_status(CharacterEnums.StatusEffect.ASHED)
 
+	apply_aging_effects()
 	_recalculate_derived_stats()
 	current_hp = maxi(1, int(max_hp * CombatConstants.RESURRECTION_HP_FRACTION))
 
@@ -499,6 +612,7 @@ func confirm_level_up() -> bool:
 	if CombatRNG.randf() < CombatConstants.STAT_GAIN_CHANCE:
 		_gain_random_stat()
 
+	apply_aging_effects()
 	_recalculate_derived_stats()
 
 	var hp_gain := max_hp - old_max_hp
@@ -522,20 +636,8 @@ func confirm_level_up() -> bool:
 func _gain_random_stat() -> void:
 	var stats := ["strength", "intelligence", "piety", "vitality", "agility", "luck"]
 	var chosen: String = stats[CombatRNG.randi() % stats.size()]
-
-	match chosen:
-		"strength":
-			strength = mini(strength + 1, CombatConstants.MAX_STAT_VALUE)
-		"intelligence":
-			intelligence = mini(intelligence + 1, CombatConstants.MAX_STAT_VALUE)
-		"piety":
-			piety = mini(piety + 1, CombatConstants.MAX_STAT_VALUE)
-		"vitality":
-			vitality = mini(vitality + 1, CombatConstants.MAX_STAT_VALUE)
-		"agility":
-			agility = mini(agility + 1, CombatConstants.MAX_STAT_VALUE)
-		"luck":
-			luck = mini(luck + 1, CombatConstants.MAX_STAT_VALUE)
+	var peak_key: String = "peak_" + chosen
+	set(peak_key, mini(get(peak_key) + 1, CombatConstants.MAX_STAT_VALUE))
 
 
 func get_xp_to_next_level() -> int:

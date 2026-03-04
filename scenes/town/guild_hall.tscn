@@ -94,9 +94,9 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
 [node name="InfoPanel" type="PanelContainer" parent="MainHBox/RightPanel" unique_id=289819885]
-custom_minimum_size = Vector2(0, 280)
+custom_minimum_size = Vector2(0, 450)
 layout_mode = 2
-size_flags_vertical = 0
+size_flags_vertical = 3
 
 [node name="InfoLabel" type="RichTextLabel" parent="MainHBox/RightPanel/InfoPanel" unique_id=308460138]
 layout_mode = 2
@@ -108,7 +108,6 @@ layout_mode = 2
 text = "Roster Overview"
 
 [node name="RosterPanel" type="PanelContainer" parent="MainHBox/RightPanel" unique_id=1427633212]
-custom_minimum_size = Vector2(0, 340)
 layout_mode = 2
 size_flags_vertical = 3
 

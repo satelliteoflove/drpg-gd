@@ -26,6 +26,7 @@ var dungeon_player_position: Vector2i = Vector2i.ZERO
 var dungeon_player_facing: int = 0
 var returning_from_combat: bool = false
 var combat_speed: int = 5
+var game_day: int = 1
 var floor_tracker: FloorTracker = null
 
 
@@ -72,14 +73,14 @@ const STARTER_ROSTER: Array[Dictionary] = [
 ]
 
 const STARTER_GEAR: Dictionary = {
-	CharacterEnums.CharacterClass.FIGHTER: ["long_sword", "chain_mail", "iron_shield", "iron_helm"],
-	CharacterEnums.CharacterClass.PRIEST: ["mace", "chain_mail", "wooden_shield", "leather_cap"],
+	CharacterEnums.CharacterClass.FIGHTER: ["long_sword", "leather_armor", "wooden_shield"],
+	CharacterEnums.CharacterClass.PRIEST: ["mace", "leather_armor", "wooden_shield"],
 	CharacterEnums.CharacterClass.MAGE: ["staff", "cloth_armor"],
 	CharacterEnums.CharacterClass.BISHOP: ["mace", "cloth_armor"],
-	CharacterEnums.CharacterClass.THIEF: ["short_bow", "leather_armor", "leather_cap", "leather_boots"],
+	CharacterEnums.CharacterClass.THIEF: ["short_bow", "leather_armor"],
 }
 
-const STARTER_LEVEL: int = 3
+const STARTER_LEVEL: int = 1
 
 
 func new_game() -> void:
@@ -91,6 +92,7 @@ func new_game() -> void:
 	dungeon_floors.clear()
 	current_floor = 1
 	current_encounter = {}
+	game_day = 1
 	_populate_starter_roster()
 	_create_starter_formation()
 
@@ -188,3 +190,9 @@ func clear_encounter() -> void:
 func end_combat(victory: bool) -> void:
 	in_combat = false
 	combat_ended.emit(victory)
+
+
+func advance_game_days(days: int) -> void:
+	game_day += days
+	for character in roster.get_all():
+		character.advance_age(days)

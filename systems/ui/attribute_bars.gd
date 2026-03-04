@@ -21,12 +21,12 @@ var attributes: Array[Dictionary] = []
 
 func set_character(character: Character) -> void:
 	attributes.clear()
-	attributes.append({ "label": "STR", "value": character.strength, "base": character.base_strength })
-	attributes.append({ "label": "INT", "value": character.intelligence, "base": character.base_intelligence })
-	attributes.append({ "label": "PIE", "value": character.piety, "base": character.base_piety })
-	attributes.append({ "label": "VIT", "value": character.vitality, "base": character.base_vitality })
-	attributes.append({ "label": "AGI", "value": character.agility, "base": character.base_agility })
-	attributes.append({ "label": "LCK", "value": character.luck, "base": character.base_luck })
+	attributes.append({ "label": "STR", "value": character.strength, "base": character.peak_strength })
+	attributes.append({ "label": "INT", "value": character.intelligence, "base": character.peak_intelligence })
+	attributes.append({ "label": "PIE", "value": character.piety, "base": character.peak_piety })
+	attributes.append({ "label": "VIT", "value": character.vitality, "base": character.peak_vitality })
+	attributes.append({ "label": "AGI", "value": character.agility, "base": character.peak_agility })
+	attributes.append({ "label": "LCK", "value": character.luck, "base": character.peak_luck })
 	queue_redraw()
 
 

@@ -51,6 +51,7 @@ var _enemy_container: Node3D = null
 @onready var camera: Camera3D = $Camera3D
 @onready var player_light: OmniLight3D = $Camera3D/PlayerLight
 @onready var floor_label: Label = $UI/TopBar/FloorLabel
+@onready var time_label: Label = $UI/TopBar/TimeLabel
 
 var _flicker_time: float = 0.0
 var _message_label: Label = null
@@ -77,6 +78,7 @@ func _ready() -> void:
 	_spawn_player()
 	_initialize_enemy_system()
 	_update_ui()
+	GameState.floor_tracker.step_taken.connect(_on_step_taken)
 
 	_setup_message_label()
 	$UI/BottomBar/TownButton.pressed.connect(_on_town_pressed)
@@ -501,6 +503,14 @@ func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
 
 func _update_ui() -> void:
 	floor_label.text = "Floor " + str(GameState.current_floor)
+	var pending_days: int = GameState.floor_tracker.accumulated_steps / FloorTracker.STEPS_PER_DAY
+	var current_day: int = GameState.game_day + pending_days
+	var hours: int = (GameState.floor_tracker.accumulated_steps % FloorTracker.STEPS_PER_DAY) * 24 / FloorTracker.STEPS_PER_DAY
+	time_label.text = "Day %d  %dh elapsed" % [current_day, hours]
+
+
+func _on_step_taken(_total_steps: int) -> void:
+	_update_ui()
 
 
 func _input(event: InputEvent) -> void:

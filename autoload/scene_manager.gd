@@ -58,6 +58,10 @@ func go_to_main_menu() -> void:
 
 
 func go_to_town() -> void:
+	if GameState.current_mode == GameState.GameMode.DUNGEON:
+		var dungeon_days: int = GameState.floor_tracker.consume_dungeon_days()
+		if dungeon_days > 0:
+			GameState.advance_game_days(dungeon_days)
 	GameState.set_mode(GameState.GameMode.TOWN)
 	if GameState.has_party():
 		SaveManager.autosave()

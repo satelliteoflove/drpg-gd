@@ -307,7 +307,7 @@ func _update_status_info(index: int) -> void:
 	var member: Character = GameState.party.get_member_at(index)
 	var row := "Front Row" if index < 3 else "Back Row"
 	var text := "[b]%s[/b] (%s)\n" % [member.character_name, row]
-	text += "Level %d %s %s  |  %s\n" % [member.level, CharacterEnums.get_race_name(member.race), CharacterEnums.get_class_name(member.character_class), CharacterEnums.get_alignment_name(member.alignment)]
+	text += "Level %d %s %s  |  %s  |  Age: %d (%s)\n" % [member.level, CharacterEnums.get_race_name(member.race), CharacterEnums.get_class_name(member.character_class), CharacterEnums.get_alignment_name(member.alignment), member.get_age_years(), member.get_life_phase_name()]
 	text += "HP: %d/%d    MP: %d/%d    XP: %d\n" % [member.current_hp, member.max_hp, member.current_mp, member.max_mp, member.experience]
 	text += "Weapon: %s  |  Defense: %d  |  Accuracy: %+d" % [member.weapon_dice, member.defense, member.accuracy]
 

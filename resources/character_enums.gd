@@ -115,6 +115,13 @@ enum Element {
 	ACID
 }
 
+enum LifePhase {
+	YOUTH,
+	PRIME,
+	DECLINE,
+	FRAGILE
+}
+
 enum ClassTier {
 	BASIC,
 	ADVANCED,
@@ -377,16 +384,39 @@ const RACE_STAT_RANGES: Dictionary = {
 const RACE_BASE_AGE: Dictionary = {
 	Race.HUMAN: 18,
 	Race.ELF: 75,
-	Race.DWARF: 35,
-	Race.GNOME: 50,
-	Race.HOBBIT: 25,
-	Race.FAERIE: 100,
-	Race.LIZMAN: 15,
-	Race.DRACON: 20,
-	Race.RAWULF: 12,
-	Race.MOOK: 10,
-	Race.FELPURR: 14
+	Race.DWARF: 50,
+	Race.GNOME: 60,
+	Race.HOBBIT: 30,
+	Race.FAERIE: 25,
+	Race.LIZMAN: 20,
+	Race.DRACON: 40,
+	Race.RAWULF: 16,
+	Race.MOOK: 15,
+	Race.FELPURR: 22
 }
+
+const RACE_MAX_AGE: Dictionary = {
+	Race.HUMAN: 80,
+	Race.ELF: 650,
+	Race.DWARF: 300,
+	Race.GNOME: 350,
+	Race.HOBBIT: 120,
+	Race.FAERIE: 250,
+	Race.LIZMAN: 65,
+	Race.DRACON: 200,
+	Race.RAWULF: 55,
+	Race.MOOK: 55,
+	Race.FELPURR: 70
+}
+
+const LIFE_PHASE_NAMES: Dictionary = {
+	LifePhase.YOUTH: "Youth",
+	LifePhase.PRIME: "Prime",
+	LifePhase.DECLINE: "Decline",
+	LifePhase.FRAGILE: "Fragile"
+}
+
+const DAYS_PER_YEAR: int = 365
 
 
 static func get_race_name(race: Race) -> String:
@@ -464,3 +494,49 @@ static func get_exclusive_group(status: StatusEffect) -> Array[StatusEffect]:
 	if status in DEATH_STATUSES:
 		return DEATH_STATUSES
 	return []
+
+
+static func get_max_age(race: Race) -> int:
+	return RACE_MAX_AGE.get(race, 80)
+
+
+static func get_career_years(race: Race) -> int:
+	return get_max_age(race) - get_base_age(race)
+
+
+static func get_life_phase(race: Race, age_days: int) -> LifePhase:
+	var base_days: int = get_base_age(race) * DAYS_PER_YEAR
+	var career_days: int = get_career_years(race) * DAYS_PER_YEAR
+	var days_into_career: int = age_days - base_days
+	if days_into_career < 0:
+		return LifePhase.YOUTH
+	var youth_end: int = int(career_days * 0.07)
+	var prime_end: int = int(career_days * 0.50)
+	var decline_end: int = int(career_days * 0.80)
+	if days_into_career < youth_end:
+		return LifePhase.YOUTH
+	if days_into_career < prime_end:
+		return LifePhase.PRIME
+	if days_into_career < decline_end:
+		return LifePhase.DECLINE
+	return LifePhase.FRAGILE
+
+
+static func get_life_phase_name(phase: LifePhase) -> String:
+	return LIFE_PHASE_NAMES.get(phase, "Unknown")
+
+
+static func get_decline_start_days(race: Race) -> int:
+	var base_days: int = get_base_age(race) * DAYS_PER_YEAR
+	var career_days: int = get_career_years(race) * DAYS_PER_YEAR
+	return base_days + int(career_days * 0.50)
+
+
+static func get_fragile_start_days(race: Race) -> int:
+	var base_days: int = get_base_age(race) * DAYS_PER_YEAR
+	var career_days: int = get_career_years(race) * DAYS_PER_YEAR
+	return base_days + int(career_days * 0.80)
+
+
+static func get_max_age_days(race: Race) -> int:
+	return get_max_age(race) * DAYS_PER_YEAR

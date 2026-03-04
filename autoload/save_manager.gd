@@ -119,6 +119,11 @@ func load_game(slot: String) -> bool:
 		load_completed.emit(false)
 		return false
 
+	if save_data.save_version < 2:
+		push_error("[SaveManager] Save version %d is too old (requires v2+)" % save_data.save_version)
+		load_completed.emit(false)
+		return false
+
 	_apply_save_data(save_data)
 	current_slot = slot
 
@@ -171,6 +176,9 @@ func _create_save_data() -> Resource:
 	data.player_facing = GameState.dungeon_player_facing
 	data.spawn_at_stairs_up = GameState.dungeon_spawn_at_stairs_up
 
+	data.game_day = GameState.game_day
+	data.floor_tracker_state = GameState.floor_tracker.save_state()
+
 	data.save_timestamp = int(Time.get_unix_time_from_system())
 	data.play_time_seconds = _get_total_play_time()
 
@@ -211,6 +219,10 @@ func _apply_save_data(data) -> void:
 	GameState.dungeon_player_position = data.player_position
 	GameState.dungeon_player_facing = data.player_facing
 	GameState.dungeon_spawn_at_stairs_up = data.spawn_at_stairs_up
+
+	GameState.game_day = data.game_day if data.game_day else 1
+	if not data.floor_tracker_state.is_empty():
+		GameState.floor_tracker.load_state(data.floor_tracker_state)
 
 
 func _get_total_play_time() -> int:

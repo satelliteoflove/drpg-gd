@@ -163,7 +163,6 @@ func _populate_roster_view() -> void:
 		elif GameState.party.has_member(character):
 			btn.modulate = UIColors.TEXT_IN_PARTY
 
-		btn.pressed.connect(_on_roster_manage_selected.bind(character))
 		options_list.add_child(btn)
 		buttons.append(btn)
 
@@ -369,10 +368,6 @@ func _populate_party_tab() -> void:
 			if i == reorder_index:
 				btn.add_theme_color_override("font_color", UIColors.WARNING)
 				btn.text = "> " + btn.text + " <"
-		elif party_mode == PartyMode.REORDER_SELECT:
-			pass
-		else:
-			btn.pressed.connect(_on_party_member_pressed.bind(member))
 
 		options_list.add_child(btn)
 		party_buttons.append(btn)
@@ -397,7 +392,6 @@ func _populate_party_tab() -> void:
 
 		for character in _displayed_available_chars:
 			var btn := _create_party_button(character, false)
-			btn.pressed.connect(_on_roster_add_pressed.bind(character))
 			if GameState.party.is_full():
 				btn.disabled = true
 				btn.modulate = UIColors.MODULATE_DISABLED
@@ -457,6 +451,7 @@ func _populate_party_tab() -> void:
 			party_nav = MenuNavigator.new()
 			party_nav.setup(all_buttons, focus_idx)
 			party_nav.selection_changed.connect(_on_party_selection_changed)
+			party_nav.item_confirmed.connect(_on_party_item_confirmed)
 			party_focus = 0
 	else:
 		if not party_buttons.is_empty():
@@ -690,6 +685,16 @@ func _move_party_member(direction: int) -> void:
 		_refresh_display()
 
 
+func _on_party_item_confirmed(index: int) -> void:
+	var character: Character = _get_character_at_party_index(index)
+	if character == null:
+		return
+	if index < party_buttons.size():
+		_on_party_member_pressed(character)
+	else:
+		_on_roster_add_pressed(character)
+
+
 func _on_party_selection_changed(_index: int) -> void:
 	_update_party_info()
 
@@ -776,75 +781,75 @@ func _update_roster_info() -> void:
 
 
 func _show_character_info(character: Character) -> void:
-	var text := "[b]%s[/b]\n" % character.character_name
-	text += "Level %d %s %s\n" % [
+	var text := "[b]%s[/b]  L%d %s %s  %s  Age %d (%s)\n" % [
+		character.character_name,
 		character.level,
 		CharacterEnums.get_race_name(character.race),
-		CharacterEnums.get_class_name(character.character_class)
+		CharacterEnums.get_class_name(character.character_class),
+		CharacterEnums.get_alignment_name(character.alignment),
+		character.get_age_years(),
+		character.get_life_phase_name()
 	]
-	text += "Alignment: %s\n\n" % CharacterEnums.get_alignment_name(character.alignment)
 
-	text += "[color=cyan]Stats:[/color]\n"
-	text += "  HP: %d/%d  MP: %d/%d\n" % [
+	text += "HP: %d/%d  MP: %d/%d  XP: %d" % [
 		character.current_hp, character.max_hp,
-		character.current_mp, character.max_mp
+		character.current_mp, character.max_mp,
+		character.experience
 	]
-	text += "  STR: %d  INT: %d  PIE: %d\n" % [
-		character.strength, character.intelligence, character.piety
-	]
-	text += "  VIT: %d  AGI: %d  LCK: %d\n" % [
+	if character.pending_level_up:
+		text += " [color=yellow](Level up!)[/color]"
+	text += "\n"
+
+	text += "STR: %d  INT: %d  PIE: %d  VIT: %d  AGI: %d  LCK: %d\n" % [
+		character.strength, character.intelligence, character.piety,
 		character.vitality, character.agility, character.luck
 	]
-	text += "  XP: %d" % character.experience
-	if character.pending_level_up:
-		text += " [color=yellow](Level up ready!)[/color]"
-	text += "\n\n"
 
-	text += "[color=cyan]Equipment:[/color]\n"
-	text += _format_equipment(character)
+	var equip_text := _format_equipment(character)
+	if equip_text != "":
+		text += equip_text
 
 	if character.max_spell_level > 0:
-		text += "\n[color=cyan]Spell Book:[/color]\n"
+		text += "\n[color=cyan]Spells:[/color] "
 		text += _format_spell_book(character)
 
 	if character.is_dead:
 		if character.has_status(CharacterEnums.StatusEffect.LOST):
-			text += "\n[color=red]Status: LOST FOREVER[/color]"
+			text += "\n[color=red]LOST FOREVER[/color]"
 		elif character.has_status(CharacterEnums.StatusEffect.ASHED):
-			text += "\n[color=orange]Status: ASHED[/color]"
+			text += "\n[color=orange]ASHED[/color]"
 		else:
-			text += "\n[color=red]Status: DEAD[/color]"
+			text += "\n[color=red]DEAD[/color]"
 	elif GameState.party.has_member(character):
-		text += "\n[color=cyan]Currently in party[/color]"
+		text += "\n[color=cyan]In party[/color]"
 
 	info_label.text = text
 
 
 func _format_equipment(character: Character) -> String:
-	var text := ""
 	var slots: Array[Dictionary] = [
-		{"type": Item.ItemType.WEAPON, "name": "Weapon"},
-		{"type": Item.ItemType.ARMOR, "name": "Armor"},
-		{"type": Item.ItemType.SHIELD, "name": "Shield"},
-		{"type": Item.ItemType.HELMET, "name": "Helmet"},
-		{"type": Item.ItemType.GLOVES, "name": "Gloves"},
-		{"type": Item.ItemType.BOOTS, "name": "Boots"},
-		{"type": Item.ItemType.ACCESSORY, "name": "Accessory"}
+		{"type": Item.ItemType.WEAPON, "name": "Wpn"},
+		{"type": Item.ItemType.ARMOR, "name": "Arm"},
+		{"type": Item.ItemType.SHIELD, "name": "Shd"},
+		{"type": Item.ItemType.HELMET, "name": "Hlm"},
+		{"type": Item.ItemType.GLOVES, "name": "Glv"},
+		{"type": Item.ItemType.BOOTS, "name": "Bts"},
+		{"type": Item.ItemType.ACCESSORY, "name": "Acc"}
 	]
 
+	var parts: Array[String] = []
 	for slot_info in slots:
 		var item: Item = character.get_equipped_item(slot_info["type"])
-		var slot_name: String = slot_info["name"]
 		if item:
 			var item_name := item.get_display_name()
 			if item.is_cursed and item.is_identified:
-				text += "  %s: [color=red]%s[/color]\n" % [slot_name, item_name]
+				parts.append("[color=red]%s[/color]" % item_name)
 			else:
-				text += "  %s: %s\n" % [slot_name, item_name]
-		else:
-			text += "  %s: [color=gray](empty)[/color]\n" % slot_name
+				parts.append(item_name)
 
-	return text
+	if parts.is_empty():
+		return ""
+	return "[color=cyan]Gear:[/color] %s\n" % ", ".join(parts)
 
 
 func _format_spell_book(character: Character) -> String:
@@ -1363,6 +1368,13 @@ func _setup_nav() -> void:
 	nav = MenuNavigator.new()
 	nav.setup(buttons, 0)
 	nav.selection_changed.connect(_on_nav_selection_changed)
+	if current_tab == Tab.ROSTER and roster_mode == RosterMode.VIEW:
+		nav.item_confirmed.connect(_on_roster_item_confirmed)
+
+
+func _on_roster_item_confirmed(index: int) -> void:
+	if index >= 0 and index < _displayed_roster_chars.size():
+		_on_roster_manage_selected(_displayed_roster_chars[index])
 
 
 func _on_nav_selection_changed(_index: int) -> void:

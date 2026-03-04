@@ -1,41 +1,14 @@
 extends Control
 
-enum Step { RACE, BACKGROUND, STATS, CLASS, ALIGNMENT, GENDER, NAME, CONFIRM, LEVEL_UP_RESULTS }
-enum Background { VETERAN, JOURNEYMAN, APPRENTICE, PRODIGY }
+enum Step { RACE, STATS, CLASS, ALIGNMENT, GENDER, NAME, CONFIRM }
 
 const STAT_NAMES: Array[String] = ["strength", "intelligence", "piety", "vitality", "agility", "luck"]
 const STAT_LABELS: Array[String] = ["STR", "INT", "PIE", "VIT", "AGI", "LCK"]
-
-const BACKGROUND_DATA: Dictionary = {
-	Background.VETERAN: {
-		"name": "Veteran",
-		"bonus_points": 5,
-		"start_level": 4,
-		"description": "A seasoned adventurer. Fewer stat choices, but years of experience.",
-	},
-	Background.JOURNEYMAN: {
-		"name": "Journeyman",
-		"bonus_points": 10,
-		"start_level": 3,
-		"description": "A capable traveler with some experience under their belt.",
-	},
-	Background.APPRENTICE: {
-		"name": "Apprentice",
-		"bonus_points": 15,
-		"start_level": 2,
-		"description": "A promising newcomer with natural talent and basic training.",
-	},
-	Background.PRODIGY: {
-		"name": "Prodigy",
-		"bonus_points": 20,
-		"start_level": 1,
-		"description": "A gifted individual with exceptional potential but no experience.",
-	},
-}
+const BASE_BONUS_POINTS: int = 9
+const MAX_AGING_TRADE: int = 3
 
 var current_step: Step = Step.RACE
 var selected_race: CharacterEnums.Race = CharacterEnums.Race.HUMAN
-var selected_background: Background = Background.APPRENTICE
 var selected_class: CharacterEnums.CharacterClass = CharacterEnums.CharacterClass.FIGHTER
 var selected_alignment: CharacterEnums.Alignment = CharacterEnums.Alignment.NEUTRAL
 var selected_gender: CharacterEnums.Gender = CharacterEnums.Gender.MALE
@@ -45,9 +18,7 @@ var bonus_points: int = 0
 var bonus_remaining: int = 0
 var stat_bonus_spent: Dictionary = {}
 var stat_value_labels: Dictionary = {}
-var created_character: Character = null
-var level_up_results: Array[Dictionary] = []
-var _pending_spells: Array[String] = []
+var aging_years_spent: int = 0
 
 @onready var step_label: Label = $VBoxContainer/StepLabel
 @onready var content_panel: PanelContainer = $VBoxContainer/ContentPanel
@@ -60,6 +31,9 @@ var _pending_spells: Array[String] = []
 var bonus_label: Label = null
 var stat_minus_buttons: Dictionary = {}
 var stat_plus_buttons: Dictionary = {}
+var aging_label: Label = null
+var aging_minus_btn: Button = null
+var aging_plus_btn: Button = null
 
 
 func _ready() -> void:
@@ -71,11 +45,6 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if current_step == Step.NAME:
-		return
-
-	if current_step == Step.LEVEL_UP_RESULTS:
-		if event.is_action_pressed("menu_confirm"):
-			_on_next_pressed()
 		return
 
 	if event.is_action_pressed("menu_cancel"):
@@ -94,8 +63,6 @@ func _show_step() -> void:
 	match current_step:
 		Step.RACE:
 			_show_race_step()
-		Step.BACKGROUND:
-			_show_background_step()
 		Step.STATS:
 			_show_stats_step()
 		Step.CLASS:
@@ -108,8 +75,6 @@ func _show_step() -> void:
 			_show_name_step()
 		Step.CONFIRM:
 			_show_confirm_step()
-		Step.LEVEL_UP_RESULTS:
-			_show_level_up_results_step()
 
 
 func _clear_content() -> void:
@@ -119,14 +84,15 @@ func _clear_content() -> void:
 	stat_minus_buttons.clear()
 	stat_plus_buttons.clear()
 	bonus_label = null
+	aging_label = null
+	aging_minus_btn = null
+	aging_plus_btn = null
 
 
 func _update_nav_buttons() -> void:
-	back_button.visible = current_step != Step.RACE and current_step != Step.LEVEL_UP_RESULTS
-	cancel_button.visible = current_step != Step.LEVEL_UP_RESULTS
-	if current_step == Step.LEVEL_UP_RESULTS:
-		next_button.text = "Done"
-	elif current_step == Step.CONFIRM:
+	back_button.visible = current_step != Step.RACE
+	cancel_button.visible = true
+	if current_step == Step.CONFIRM:
 		next_button.text = "Create"
 	else:
 		next_button.text = "Next"
@@ -159,17 +125,21 @@ func _add_race_info() -> void:
 	info.custom_minimum_size = Vector2(0, 100)
 
 	var ranges: Dictionary = CharacterEnums.RACE_STAT_RANGES.get(selected_race, {})
+	var base_age: int = CharacterEnums.get_base_age(selected_race)
+	var max_age: int = CharacterEnums.get_max_age(selected_race)
+	var career: int = CharacterEnums.get_career_years(selected_race)
 	var text := "[b]%s[/b]\n" % CharacterEnums.get_race_name(selected_race)
 	text += "STR: %d-%d  INT: %d-%d  PIE: %d-%d\n" % [
 		ranges.get("strength", Vector2i(8,18)).x, ranges.get("strength", Vector2i(8,18)).y,
 		ranges.get("intelligence", Vector2i(8,18)).x, ranges.get("intelligence", Vector2i(8,18)).y,
 		ranges.get("piety", Vector2i(8,18)).x, ranges.get("piety", Vector2i(8,18)).y
 	]
-	text += "VIT: %d-%d  AGI: %d-%d  LCK: %d-%d" % [
+	text += "VIT: %d-%d  AGI: %d-%d  LCK: %d-%d\n" % [
 		ranges.get("vitality", Vector2i(8,18)).x, ranges.get("vitality", Vector2i(8,18)).y,
 		ranges.get("agility", Vector2i(8,18)).x, ranges.get("agility", Vector2i(8,18)).y,
 		ranges.get("luck", Vector2i(8,18)).x, ranges.get("luck", Vector2i(8,18)).y
 	]
+	text += "Lifespan: %d-%d years (Career: %d years)" % [base_age, max_age, career]
 	info.text = text
 	content_container.add_child(info)
 
@@ -180,56 +150,7 @@ func _on_race_selected(race: CharacterEnums.Race) -> void:
 	bonus_points = 0
 	bonus_remaining = 0
 	stat_bonus_spent.clear()
-	_show_step()
-
-
-func _show_background_step() -> void:
-	step_label.text = "Step 2: Choose Background"
-
-	var grid := GridContainer.new()
-	grid.columns = 2
-	content_container.add_child(grid)
-
-	for bg_id: int in Background.values():
-		var bg: Background = bg_id as Background
-		var bg_data: Dictionary = BACKGROUND_DATA[bg]
-		var btn := Button.new()
-		btn.text = bg_data["name"]
-		btn.custom_minimum_size = Vector2(180, 40)
-		btn.toggle_mode = true
-		btn.button_pressed = (bg == selected_background)
-		btn.pressed.connect(_on_background_selected.bind(bg))
-		grid.add_child(btn)
-
-	_add_background_info()
-
-
-func _add_background_info() -> void:
-	var bg_data: Dictionary = BACKGROUND_DATA[selected_background]
-	var info := RichTextLabel.new()
-	info.bbcode_enabled = true
-	info.fit_content = true
-	info.custom_minimum_size = Vector2(0, 120)
-
-	var text := "[b]%s[/b]\n" % bg_data["name"]
-	text += "%s\n\n" % bg_data["description"]
-	text += "[color=cyan]Bonus Points:[/color] %d\n" % bg_data["bonus_points"]
-	text += "[color=cyan]Starting Level:[/color] %d\n\n" % bg_data["start_level"]
-
-	var class_count := _count_available_classes(selected_race, bg_data["bonus_points"])
-	var total_classes := CharacterEnums.CharacterClass.values().size()
-	text += "[color=yellow]Available classes: %d / %d[/color]" % [class_count, total_classes]
-
-	info.text = text
-	content_container.add_child(info)
-
-
-func _on_background_selected(bg: Background) -> void:
-	selected_background = bg
-	rolled_stats = {}
-	bonus_points = 0
-	bonus_remaining = 0
-	stat_bonus_spent.clear()
+	aging_years_spent = 0
 	_show_step()
 
 
@@ -273,21 +194,14 @@ func _init_stats_for_race() -> void:
 
 
 func _show_stats_step() -> void:
-	step_label.text = "Step 3: Distribute Bonus Points"
+	step_label.text = "Step 2: Distribute Bonus Points"
 
 	if rolled_stats.is_empty():
 		_init_stats_for_race()
-		bonus_points = BACKGROUND_DATA[selected_background]["bonus_points"]
+		bonus_points = BASE_BONUS_POINTS + aging_years_spent
 		bonus_remaining = bonus_points
 
 	var ranges: Dictionary = CharacterEnums.RACE_STAT_RANGES.get(selected_race, {})
-
-	var bg_data: Dictionary = BACKGROUND_DATA[selected_background]
-	var bg_info := Label.new()
-	bg_info.text = "%s - %d Bonus Points" % [bg_data["name"], bonus_points]
-	bg_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bg_info.add_theme_color_override("font_color", UIColors.TEXT_WARNING)
-	content_container.add_child(bg_info)
 
 	bonus_label = Label.new()
 	bonus_label.text = "Remaining: %d" % bonus_remaining
@@ -352,6 +266,55 @@ func _show_stats_step() -> void:
 	total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	content_container.add_child(total_label)
 
+	var aging_spacer := Control.new()
+	aging_spacer.custom_minimum_size = Vector2(0, 8)
+	content_container.add_child(aging_spacer)
+
+	var aging_row := HBoxContainer.new()
+	aging_row.add_theme_constant_override("separation", 8)
+	aging_row.alignment = BoxContainer.ALIGNMENT_CENTER
+
+	var aging_title := Label.new()
+	aging_title.text = "Trade Age:"
+	aging_row.add_child(aging_title)
+
+	aging_minus_btn = Button.new()
+	aging_minus_btn.text = "-"
+	aging_minus_btn.custom_minimum_size = Vector2(36, 36)
+	aging_minus_btn.disabled = (aging_years_spent <= 0)
+	aging_minus_btn.pressed.connect(_on_aging_minus)
+	aging_row.add_child(aging_minus_btn)
+
+	aging_label = Label.new()
+	aging_label.text = "+%d yr" % aging_years_spent
+	aging_label.custom_minimum_size = Vector2(50, 0)
+	aging_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	aging_row.add_child(aging_label)
+
+	aging_plus_btn = Button.new()
+	aging_plus_btn.text = "+"
+	aging_plus_btn.custom_minimum_size = Vector2(36, 36)
+	aging_plus_btn.disabled = (aging_years_spent >= MAX_AGING_TRADE)
+	aging_plus_btn.pressed.connect(_on_aging_plus)
+	aging_row.add_child(aging_plus_btn)
+
+	var base_age: int = CharacterEnums.get_base_age(selected_race)
+	var preview_age: int = base_age + aging_years_spent
+	var preview_days: int = preview_age * CharacterEnums.DAYS_PER_YEAR
+	var preview_phase: String = CharacterEnums.get_life_phase_name(CharacterEnums.get_life_phase(selected_race, preview_days))
+	var age_preview := Label.new()
+	age_preview.text = "(Age: %d, %s)" % [preview_age, preview_phase]
+	age_preview.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+	aging_row.add_child(age_preview)
+
+	content_container.add_child(aging_row)
+
+	var aging_info := Label.new()
+	aging_info.text = "+1 bonus point per year traded"
+	aging_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	aging_info.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+	content_container.add_child(aging_info)
+
 	var btn_row := HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	btn_row.add_theme_constant_override("separation", 8)
@@ -363,6 +326,28 @@ func _show_stats_step() -> void:
 	btn_row.add_child(reset_btn)
 
 	content_container.add_child(btn_row)
+
+
+func _on_aging_plus() -> void:
+	if aging_years_spent >= MAX_AGING_TRADE:
+		return
+	aging_years_spent += 1
+	bonus_points = BASE_BONUS_POINTS + aging_years_spent
+	bonus_remaining += 1
+	_refresh_stats_display()
+	_show_step()
+
+
+func _on_aging_minus() -> void:
+	if aging_years_spent <= 0:
+		return
+	if bonus_remaining <= 0:
+		return
+	aging_years_spent -= 1
+	bonus_points = BASE_BONUS_POINTS + aging_years_spent
+	bonus_remaining -= 1
+	_refresh_stats_display()
+	_show_step()
 
 
 func _on_stat_plus(stat_name: String) -> void:
@@ -409,12 +394,14 @@ func _on_reset_pressed() -> void:
 		var range_vec: Vector2i = ranges.get(stat_name, Vector2i(8, 18))
 		rolled_stats[stat_name] = range_vec.x
 		stat_bonus_spent[stat_name] = 0
+	aging_years_spent = 0
+	bonus_points = BASE_BONUS_POINTS
 	bonus_remaining = bonus_points
-	_refresh_stats_display()
+	_show_step()
 
 
 func _show_class_step() -> void:
-	step_label.text = "Step 4: Choose Class"
+	step_label.text = "Step 3: Choose Class"
 
 	var grid := GridContainer.new()
 	grid.columns = 3
@@ -468,7 +455,7 @@ func _on_class_selected(char_class: CharacterEnums.CharacterClass) -> void:
 
 
 func _show_alignment_step() -> void:
-	step_label.text = "Step 5: Choose Alignment"
+	step_label.text = "Step 4: Choose Alignment"
 
 	var vbox := VBoxContainer.new()
 	content_container.add_child(vbox)
@@ -490,7 +477,7 @@ func _on_alignment_selected(alignment: CharacterEnums.Alignment) -> void:
 
 
 func _show_gender_step() -> void:
-	step_label.text = "Step 6: Choose Gender"
+	step_label.text = "Step 5: Choose Gender"
 
 	var hbox := HBoxContainer.new()
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -513,7 +500,7 @@ func _on_gender_selected(gender: CharacterEnums.Gender) -> void:
 
 
 func _show_name_step() -> void:
-	step_label.text = "Step 7: Enter Name"
+	step_label.text = "Step 6: Enter Name"
 
 	var name_edit := LineEdit.new()
 	name_edit.placeholder_text = "Character Name"
@@ -535,17 +522,21 @@ func _on_name_changed(new_name: String) -> void:
 
 
 func _show_confirm_step() -> void:
-	step_label.text = "Step 8: Confirm Character"
+	step_label.text = "Step 7: Confirm Character"
 
-	var bg_data: Dictionary = BACKGROUND_DATA[selected_background]
+	var base_age: int = CharacterEnums.get_base_age(selected_race)
+	var final_age: int = base_age + aging_years_spent
+	var preview_days: int = final_age * CharacterEnums.DAYS_PER_YEAR
+	var phase_name: String = CharacterEnums.get_life_phase_name(CharacterEnums.get_life_phase(selected_race, preview_days))
+
 	var summary := Label.new()
-	summary.text = "Name: %s\nRace: %s\nBackground: %s (Level %d)\nClass: %s\nAlignment: %s\nGender: %s\n\nStrength: %d\nIntelligence: %d\nPiety: %d\nVitality: %d\nAgility: %d\nLuck: %d" % [
+	summary.text = "Name: %s\nRace: %s\nClass: %s\nAlignment: %s\nGender: %s\nAge: %d (%s)\nLevel: 1\n\nStrength: %d\nIntelligence: %d\nPiety: %d\nVitality: %d\nAgility: %d\nLuck: %d" % [
 		character_name if character_name else "(unnamed)",
 		CharacterEnums.get_race_name(selected_race),
-		bg_data["name"], bg_data["start_level"],
 		CharacterEnums.get_class_name(selected_class),
 		CharacterEnums.get_alignment_name(selected_alignment),
 		"Male" if selected_gender == CharacterEnums.Gender.MALE else "Female",
+		final_age, phase_name,
 		rolled_stats.get("strength", 10),
 		rolled_stats.get("intelligence", 10),
 		rolled_stats.get("piety", 10),
@@ -569,10 +560,6 @@ func _on_back_pressed() -> void:
 
 
 func _on_next_pressed() -> void:
-	if current_step == Step.LEVEL_UP_RESULTS:
-		_finalize_character(created_character)
-		return
-
 	if current_step == Step.CONFIRM:
 		_create_character()
 		return
@@ -602,49 +589,10 @@ func _create_character() -> void:
 		rolled_stats
 	)
 
-	var bg_data: Dictionary = BACKGROUND_DATA[selected_background]
-	var target_level: int = bg_data["start_level"]
+	if aging_years_spent > 0:
+		new_char.age_days += aging_years_spent * CharacterEnums.DAYS_PER_YEAR
 
-	if target_level > 1:
-		var required_xp := ExperienceTable.get_required_xp(target_level, selected_race, selected_class)
-		new_char.add_experience(required_xp)
-
-		level_up_results.clear()
-		new_char.spells_learned.connect(_on_creation_spells_learned)
-		while new_char.pending_level_up:
-			_pending_spells.clear()
-			var old_level := new_char.level
-			var old_hp := new_char.max_hp
-			var old_mp := new_char.max_mp
-			var old_stats := {}
-			for stat_name: String in STAT_NAMES:
-				old_stats[stat_name] = new_char.get(stat_name)
-
-			new_char.confirm_level_up()
-
-			var stat_gains: Array[String] = []
-			for i in range(STAT_NAMES.size()):
-				var diff: int = new_char.get(STAT_NAMES[i]) - old_stats[STAT_NAMES[i]]
-				if diff > 0:
-					stat_gains.append("+%d %s" % [diff, STAT_LABELS[i]])
-
-			level_up_results.append({
-				"old_level": old_level,
-				"new_level": new_char.level,
-				"hp_gain": new_char.max_hp - old_hp,
-				"mp_gain": new_char.max_mp - old_mp,
-				"stat_gains": stat_gains,
-				"spells": _pending_spells.duplicate(),
-			})
-		new_char.spells_learned.disconnect(_on_creation_spells_learned)
-
-		new_char.current_hp = new_char.max_hp
-		new_char.current_mp = new_char.max_mp
-		created_character = new_char
-		current_step = Step.LEVEL_UP_RESULTS
-		_show_step()
-	else:
-		_finalize_character(new_char)
+	_finalize_character(new_char)
 
 
 func _finalize_character(new_char: Character) -> void:
@@ -653,53 +601,6 @@ func _finalize_character(new_char: Character) -> void:
 		SceneManager.go_to_guild_hall()
 	else:
 		push_error("Failed to add character to roster (roster full?)")
-
-
-func _on_creation_spells_learned(spells: Array[String]) -> void:
-	for spell_name: String in spells:
-		_pending_spells.append(spell_name)
-
-
-func _show_level_up_results_step() -> void:
-	step_label.text = "Character Created!"
-
-	var info := RichTextLabel.new()
-	info.bbcode_enabled = true
-	info.fit_content = true
-	info.scroll_active = false
-	info.custom_minimum_size = Vector2(0, 200)
-
-	var text := "[b]%s[/b] the %s %s\n\n" % [
-		created_character.character_name,
-		CharacterEnums.get_race_name(created_character.race),
-		CharacterEnums.get_class_name(created_character.character_class),
-	]
-
-	for result: Dictionary in level_up_results:
-		text += "[color=yellow]Level %d -> %d[/color]\n" % [result["old_level"], result["new_level"]]
-		var parts: Array[String] = []
-		if result["hp_gain"] > 0:
-			parts.append("HP +%d" % result["hp_gain"])
-		if result["mp_gain"] > 0:
-			parts.append("MP +%d" % result["mp_gain"])
-		if parts.size() > 0:
-			text += "  %s\n" % ", ".join(parts)
-		var gains: Array = result["stat_gains"]
-		if gains.size() > 0:
-			text += "  Stats: %s\n" % ", ".join(gains)
-		var spells: Array = result["spells"]
-		if spells.size() > 0:
-			text += "  [color=cyan]Learned: %s[/color]\n" % ", ".join(spells)
-		text += "\n"
-
-	text += "[b]Final: Level %d | HP: %d | MP: %d[/b]" % [
-		created_character.level,
-		created_character.max_hp,
-		created_character.max_mp,
-	]
-
-	info.text = text
-	content_container.add_child(info)
 
 
 func _on_cancel_pressed() -> void:
