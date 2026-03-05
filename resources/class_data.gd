@@ -200,6 +200,18 @@ static func get_spell_level_at_character_level(char_class: CharacterEnums.Charac
 	return spell_level
 
 
+static func get_training_days(from_class: CharacterEnums.CharacterClass, to_class: CharacterEnums.CharacterClass) -> int:
+	var to_tier: CharacterEnums.ClassTier = get_tier(to_class)
+	var from_tier: CharacterEnums.ClassTier = get_tier(from_class)
+	if to_tier == CharacterEnums.ClassTier.ELITE:
+		return 365
+	if to_tier == CharacterEnums.ClassTier.ADVANCED:
+		if from_tier == CharacterEnums.ClassTier.BASIC:
+			return 90
+		return 60
+	return 30
+
+
 static func get_available_classes_for_race(_race: CharacterEnums.Race) -> Array[CharacterEnums.CharacterClass]:
 	var available: Array[CharacterEnums.CharacterClass] = []
 	for char_class: int in CLASS_DEFINITIONS:

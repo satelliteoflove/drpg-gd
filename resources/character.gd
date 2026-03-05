@@ -82,6 +82,12 @@ class ActiveStatus:
 var is_defending: bool = false
 var active_statuses: Array[ActiveStatus] = []
 
+const AVAILABILITY_AVAILABLE: int = 0
+const AVAILABILITY_TRAINING: int = 1
+const REST_BONUS_MAX: float = 1.5
+const REST_BONUS_PER_TOWN_DAY: float = 0.01
+const REST_BONUS_DECAY_PER_ENCOUNTER: float = 0.1
+
 const SLOT_MAP: Dictionary = {
 	Item.ItemType.WEAPON: "equipped_weapon",
 	Item.ItemType.ARMOR: "equipped_armor",
@@ -107,6 +113,15 @@ const SLOT_MAP: Dictionary = {
 @export var defense: int = 0
 @export var evasion: int = 0
 @export var damage_bonus: int = 0
+
+@export_group("Availability")
+@export var availability: int = 0
+@export var available_on_day: int = 0
+@export var training_days_total: int = 0
+@export var training_target_class: int = -1
+@export var town_job: int = -1
+@export var town_days_accumulated: int = 0
+@export var rest_bonus_xp_multiplier: float = 1.0
 
 @export_group("Spells")
 @export var known_spells: Array[String] = []
@@ -744,3 +759,77 @@ func can_learn_spell_level(spell_level: int) -> bool:
 
 func get_attack_power() -> int:
 	return level / 2 + (strength - 10) / 2 + damage_bonus
+
+
+func is_available() -> bool:
+	return availability == AVAILABILITY_AVAILABLE
+
+
+func is_training() -> bool:
+	return availability == AVAILABILITY_TRAINING
+
+
+func start_training(target_class: int, days: int, current_day: int) -> void:
+	availability = AVAILABILITY_TRAINING
+	available_on_day = current_day + days
+	training_days_total = days
+	training_target_class = target_class
+	town_job = -1
+
+
+func complete_training() -> void:
+	if training_target_class < 0:
+		availability = AVAILABILITY_AVAILABLE
+		return
+	character_class = training_target_class as CharacterEnums.CharacterClass
+	level = 1
+	experience = 0
+	pending_level_up = false
+	apply_aging_effects()
+	_recalculate_derived_stats()
+	current_hp = max_hp
+	current_mp = max_mp
+	var learnable := SpellLearning.get_learnable_spells(self)
+	known_spells.clear()
+	for spell in learnable:
+		known_spells.append(spell.id)
+	availability = AVAILABILITY_AVAILABLE
+	training_target_class = -1
+	training_days_total = 0
+	available_on_day = 0
+
+
+func get_training_days_elapsed(current_day: int) -> int:
+	var total := get_training_total()
+	if total <= 0:
+		return 0
+	var start_day := available_on_day - total
+	return clampi(current_day - start_day, 0, total)
+
+
+func get_training_total() -> int:
+	if training_days_total > 0:
+		return training_days_total
+	if availability == AVAILABILITY_TRAINING and training_target_class >= 0:
+		return ClassData.get_training_days(character_class, training_target_class as CharacterEnums.CharacterClass)
+	return 0
+
+
+func tick_availability(current_day: int) -> bool:
+	if availability == AVAILABILITY_TRAINING and current_day >= available_on_day:
+		complete_training()
+		return true
+	return false
+
+
+func calculate_rest_bonus() -> void:
+	if town_days_accumulated > 0:
+		rest_bonus_xp_multiplier = minf(REST_BONUS_MAX, rest_bonus_xp_multiplier + town_days_accumulated * REST_BONUS_PER_TOWN_DAY)
+
+
+func decay_rest_bonus() -> void:
+	rest_bonus_xp_multiplier = maxf(1.0, rest_bonus_xp_multiplier - REST_BONUS_DECAY_PER_ENCOUNTER)
+
+
+func get_xp_multiplier() -> float:
+	return rest_bonus_xp_multiplier

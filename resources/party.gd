@@ -231,8 +231,15 @@ func distribute_experience(total_xp: int) -> void:
 	if alive.is_empty():
 		return
 
+	var avg_level := get_average_level()
 	for member in alive:
-		member.add_experience(total_xp)
+		var xp := float(total_xp)
+		if member.level < avg_level:
+			var level_diff := avg_level - member.level
+			xp *= minf(1.5, 1.0 + 0.05 * level_diff)
+		xp *= member.get_xp_multiplier()
+		member.add_experience(int(xp))
+		member.decay_rest_bonus()
 
 
 func distribute_gold(total_gold: int) -> void:

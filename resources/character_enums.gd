@@ -416,7 +416,9 @@ const LIFE_PHASE_NAMES: Dictionary = {
 	LifePhase.FRAGILE: "Fragile"
 }
 
-const DAYS_PER_YEAR: int = 365
+const DAYS_PER_YEAR: int = 364
+const MONTHS_PER_YEAR: int = 13
+const DAYS_PER_MONTH: int = 28
 
 
 static func get_race_name(race: Race) -> String:

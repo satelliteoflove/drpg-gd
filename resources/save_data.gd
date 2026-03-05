@@ -23,6 +23,6 @@ extends Resource
 @export var floor_tracker_state: Dictionary = {}
 
 @export_group("Meta")
-@export var save_version: int = 2
+@export var save_version: int = 3
 @export var save_timestamp: int = 0
 @export var play_time_seconds: int = 0

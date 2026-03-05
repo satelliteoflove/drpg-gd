@@ -320,6 +320,14 @@ func _update_status_info(index: int) -> void:
 	if member.is_dead:
 		text += "\n[color=red]DEAD - Visit the Temple for resurrection[/color]"
 
+	if not member.is_dead:
+		var avg_level := GameState.party.get_average_level()
+		if member.level < avg_level:
+			var catchup_pct := mini(50, 5 * (avg_level - member.level))
+			text += "\n[color=green]Catch-up: +%d%% XP[/color]" % catchup_pct
+		if member.rest_bonus_xp_multiplier > 1.0:
+			text += "\n[color=green]Rested: +%.0f%% XP[/color]" % ((member.rest_bonus_xp_multiplier - 1.0) * 100)
+
 	info_label.text = text
 	_update_combat_radar(member)
 

@@ -13,8 +13,6 @@ const MINOR_STATUSES: Array[CharacterEnums.StatusEffect] = [
 	CharacterEnums.StatusEffect.AFRAID
 ]
 
-var nav: MenuNavigator = null
-var rest_buttons: Array[Button] = []
 var selected_days: int = 1
 var minus_btn: Button = null
 var plus_btn: Button = null
@@ -22,6 +20,7 @@ var day_label: Label = null
 
 @onready var title_label: Label = $MainHBox/LeftPanel/Header/TitleLabel
 @onready var gold_label: Label = $MainHBox/LeftPanel/Header/GoldLabel
+var _date_labels: Dictionary = {}
 @onready var options_panel: PanelContainer = $MainHBox/LeftPanel/OptionsPanel
 @onready var options_list: VBoxContainer = $MainHBox/LeftPanel/OptionsPanel/ScrollContainer/OptionsList
 @onready var message_label: Label = $MainHBox/LeftPanel/MessageLabel
@@ -37,8 +36,17 @@ var day_label: Label = null
 
 func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
+	_build_date_grid()
 	selected_days = _calculate_default_days()
 	_refresh_display()
+
+
+func _build_date_grid() -> void:
+	var header: HBoxContainer = title_label.get_parent()
+	_date_labels = GameCalendar.create_date_grid(GameState.game_day)
+	var grid: GridContainer = _date_labels["grid"]
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_END
+	header.add_child(grid)
 
 
 func _refresh_display() -> void:
@@ -48,10 +56,12 @@ func _refresh_display() -> void:
 	_update_info()
 	_update_help()
 
+	if not _date_labels.is_empty():
+		GameCalendar.update_date_labels(_date_labels, GameState.game_day)
 	if GameState.party.is_empty():
 		message_label.text = "No party members to rest."
 	else:
-		message_label.text = "Choose how many days to rest. (Day %d)" % GameState.game_day
+		message_label.text = "Choose how many days to rest."
 
 
 func _calculate_default_days() -> int:
@@ -73,7 +83,6 @@ func _calculate_default_days() -> int:
 func _populate_rest_options() -> void:
 	for child in options_list.get_children():
 		child.queue_free()
-	rest_buttons.clear()
 	minus_btn = null
 	plus_btn = null
 	day_label = null
@@ -92,65 +101,46 @@ func _populate_rest_options() -> void:
 		options_list.add_child(label)
 		return
 
-	var day_row := HBoxContainer.new()
-	day_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	day_row.add_theme_constant_override("separation", 12)
-
-	var day_title := Label.new()
-	day_title.text = "Days:"
-	day_row.add_child(day_title)
-
-	minus_btn = Button.new()
-	minus_btn.text = "-"
-	minus_btn.custom_minimum_size = Vector2(36, 36)
-	minus_btn.focus_mode = Control.FOCUS_NONE
-	minus_btn.pressed.connect(_on_days_minus)
-	day_row.add_child(minus_btn)
-
-	day_label = Label.new()
-	day_label.text = str(selected_days)
-	day_label.custom_minimum_size = Vector2(30, 0)
-	day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	day_row.add_child(day_label)
+	var day_col := VBoxContainer.new()
+	day_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	day_col.add_theme_constant_override("separation", 2)
+	day_col.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 	plus_btn = Button.new()
-	plus_btn.text = "+"
-	plus_btn.custom_minimum_size = Vector2(36, 36)
+	plus_btn.text = "▲"
+	plus_btn.custom_minimum_size = Vector2(60, 32)
 	plus_btn.focus_mode = Control.FOCUS_NONE
 	plus_btn.pressed.connect(_on_days_plus)
-	day_row.add_child(plus_btn)
+	day_col.add_child(plus_btn)
 
-	options_list.add_child(day_row)
+	day_label = Label.new()
+	day_label.text = "%d Day%s" % [selected_days, "s" if selected_days != 1 else ""]
+	day_label.custom_minimum_size = Vector2(60, 0)
+	day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	day_col.add_child(day_label)
+
+	minus_btn = Button.new()
+	minus_btn.text = "▼"
+	minus_btn.custom_minimum_size = Vector2(60, 32)
+	minus_btn.focus_mode = Control.FOCUS_NONE
+	minus_btn.pressed.connect(_on_days_minus)
+	day_col.add_child(minus_btn)
+
+	options_list.add_child(day_col)
 
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 4)
+	spacer.custom_minimum_size = Vector2(0, 8)
 	options_list.add_child(spacer)
 
-	var total_cost := _get_rest_cost()
-	var btn := Button.new()
-	btn.text = "Rest %d day%s - %d gold" % [selected_days, "s" if selected_days != 1 else "", total_cost]
-	btn.custom_minimum_size = Vector2(350, 36)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_rest_selected)
-
-	if not GameState.party.has_gold(total_cost):
-		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
-		btn.tooltip_text = "Not enough gold"
-	elif not _party_needs_rest():
-		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
-		btn.tooltip_text = "Party is fully rested"
-
-	options_list.add_child(btn)
-	rest_buttons.append(btn)
+	var rest_btn := Button.new()
+	rest_btn.text = "Rest"
+	rest_btn.custom_minimum_size = Vector2(120, 36)
+	rest_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	rest_btn.focus_mode = Control.FOCUS_NONE
+	rest_btn.pressed.connect(_on_rest_selected)
+	options_list.add_child(rest_btn)
 
 	_update_day_buttons()
-
-	nav = MenuNavigator.new()
-	if not rest_buttons.is_empty():
-		nav.setup(rest_buttons, 0)
-		nav.selection_changed.connect(_on_selection_changed)
 
 
 func _update_day_buttons() -> void:
@@ -159,7 +149,7 @@ func _update_day_buttons() -> void:
 	if plus_btn:
 		plus_btn.disabled = (selected_days >= MAX_REST_DAYS)
 	if day_label:
-		day_label.text = str(selected_days)
+		day_label.text = "%d Day%s" % [selected_days, "s" if selected_days != 1 else ""]
 
 
 func _on_days_minus() -> void:
@@ -200,28 +190,25 @@ func _party_needs_rest() -> bool:
 	return false
 
 
-func _on_selection_changed(_index: int) -> void:
-	_update_info()
-
-
 func _update_info() -> void:
-	if rest_buttons.is_empty():
-		info_label.text = "Select rest to view details."
+	if GameState.party.is_empty() or _get_living_party_count() == 0:
+		info_label.text = ""
 		return
 
 	var total_cost := _get_rest_cost()
 	var party_level := GameState.party.get_highest_level()
 
 	var text := "[b]Rest - %d Day%s[/b]\n" % [selected_days, "s" if selected_days != 1 else ""]
-	text += "Recover %d%% HP and %d%% MP per day.\n\n" % [int(HP_RECOVERY_PER_DAY * 100), int(MP_RECOVERY_PER_DAY * 100)]
-	text += "[color=yellow]Cost: %d gold (%d gold/day x %d days)[/color]\n" % [total_cost, party_level * GOLD_PER_LEVEL_PER_DAY, selected_days]
-	text += "[color=yellow]Time: Day %d -> Day %d[/color]\n\n" % [GameState.game_day, GameState.game_day + selected_days]
+	text += "[color=yellow]Cost: %d gold (%d/day x %d)[/color]\n" % [total_cost, party_level * GOLD_PER_LEVEL_PER_DAY, selected_days]
+	var from_date := GameCalendar.get_date(GameState.game_day)
+	var to_date := GameCalendar.get_date(GameState.game_day + selected_days)
+	text += "[color=yellow]Day %d, Month %d, Year %d -> Day %d, Month %d, Year %d[/color]\n\n" % [
+		from_date["day"], from_date["month"], from_date["year"],
+		to_date["day"], to_date["month"], to_date["year"]]
 
-	text += "[color=cyan]Effects:[/color]\n"
-	text += "  HP restored: %d%% per day\n" % int(HP_RECOVERY_PER_DAY * 100)
-	text += "  MP restored: %d%% per day\n" % int(MP_RECOVERY_PER_DAY * 100)
+	text += "Restores %d%% of max HP/MP per day\n" % int(HP_RECOVERY_PER_DAY * 100)
 	if selected_days >= 1:
-		text += "  Cures: Poison, Sleep, Confusion, Silence, Fear\n"
+		text += "Cures: Poison, Sleep, Confusion, Silence, Fear\n"
 
 	var has_aging_warning := false
 	for member in GameState.party.get_members():
@@ -234,20 +221,6 @@ func _update_info() -> void:
 
 	if has_aging_warning:
 		text += "\n[color=orange]Warning: Aging characters in party![/color]\n"
-
-	text += "\n[color=gray]Preview:[/color]\n"
-	for member in GameState.party.get_members():
-		if member.is_dead:
-			continue
-		var hp_gain := _calculate_hp_restore(member, selected_days)
-		var mp_gain := _calculate_mp_restore(member, selected_days)
-		var phase_text := ""
-		var phase: CharacterEnums.LifePhase = member.get_life_phase()
-		if phase == CharacterEnums.LifePhase.DECLINE:
-			phase_text = " [color=orange](Declining)[/color]"
-		elif phase == CharacterEnums.LifePhase.FRAGILE:
-			phase_text = " [color=red](Fragile)[/color]"
-		text += "  %s: +%d HP, +%d MP%s\n" % [member.character_name, hp_gain, mp_gain, phase_text]
 
 	info_label.text = text
 
@@ -484,10 +457,9 @@ func _show_level_up_results(results: Array[Dictionary]) -> void:
 
 
 func _update_help() -> void:
-	var v_nav := KeyBindingHelper.get_nav_help()
 	var confirm := KeyBindingHelper.get_confirm_help()
 	var cancel := KeyBindingHelper.get_cancel_help()
-	help_label.text = "%s | %s: Rest | %s" % [v_nav, confirm.split(":")[0], cancel]
+	help_label.text = "k/Up: +Day | j/Down: -Day | %s: Rest | %s" % [confirm.split(":")[0], cancel]
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -495,19 +467,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		_on_back_pressed()
 		return
 
-	if event.is_action_pressed("ui_left"):
-		_on_days_minus()
-		return
-	if event.is_action_pressed("ui_right"):
+	if event.is_action_pressed("menu_up"):
 		_on_days_plus()
+		return
+	if event.is_action_pressed("menu_down"):
+		_on_days_minus()
 		return
 
 	if event.is_action_pressed("menu_confirm"):
 		_on_rest_selected()
-		return
-
-	if nav:
-		nav.handle_input(event)
 
 
 func _on_back_pressed() -> void:

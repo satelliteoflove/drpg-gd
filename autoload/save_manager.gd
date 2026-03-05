@@ -119,8 +119,8 @@ func load_game(slot: String) -> bool:
 		load_completed.emit(false)
 		return false
 
-	if save_data.save_version < 2:
-		push_error("[SaveManager] Save version %d is too old (requires v2+)" % save_data.save_version)
+	if save_data.save_version < 3:
+		push_error("[SaveManager] Save version %d is too old (requires v3+)" % save_data.save_version)
 		load_completed.emit(false)
 		return false
 

@@ -193,6 +193,14 @@ func end_combat(victory: bool) -> void:
 
 
 func advance_game_days(days: int) -> void:
-	game_day += days
-	for character in roster.get_all():
-		character.advance_age(days)
+	for _d in range(days):
+		game_day += 1
+		for character in roster.get_all():
+			character.advance_age(1)
+			character.tick_availability(game_day)
+			if character.is_available() and not party.has_member(character) and not character.is_dead:
+				character.town_days_accumulated += 1
+				if character.town_job >= 0:
+					var job := TownJobs.get_job(character.town_job)
+					character.add_experience(job.get("xp_per_day", 0))
+					party.add_gold(job.get("gold_per_day", 0))

@@ -1,7 +1,7 @@
 extends Control
 
 enum Tab { CREATE, ROSTER, PARTY }
-enum RosterMode { VIEW, MANAGE, CONFIRM_DELETE, RENAME, CHANGE_CLASS }
+enum RosterMode { VIEW, MANAGE, CONFIRM_DELETE, RENAME, CHANGE_CLASS, ASSIGN_JOB }
 enum PartyMode { NORMAL, REORDER_SELECT, REORDER_MOVE, FORMATION_LIST, FORMATION_SAVE, FORMATION_MANAGE }
 enum SortMode { DEFAULT, NAME, LEVEL, CLASS, RACE }
 
@@ -31,6 +31,8 @@ var rename_edit: LineEdit = null
 
 @onready var title_label: Label = $MainHBox/LeftPanel/Header/TitleLabel
 @onready var count_label: Label = $MainHBox/LeftPanel/Header/CountLabel
+var _date_labels: Dictionary = {}
+var roster_value_label: Label = null
 @onready var tab_bar: TabBar = $MainHBox/LeftPanel/TabBar
 @onready var options_panel: PanelContainer = $MainHBox/LeftPanel/OptionsPanel
 @onready var options_list: VBoxContainer = $MainHBox/LeftPanel/OptionsPanel/ScrollContainer/OptionsList
@@ -47,11 +49,43 @@ var rename_edit: LineEdit = null
 func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 	tab_bar.tab_changed.connect(_on_tab_changed)
+	_build_header_grid()
 
-	if GameState.party.is_empty() and not GameState.roster.is_empty():
-		tab_bar.current_tab = Tab.PARTY
+	if GameState.has_party():
 		current_tab = Tab.PARTY
+	elif not GameState.roster.is_empty():
+		current_tab = Tab.PARTY
+	else:
+		current_tab = Tab.CREATE
+	tab_bar.current_tab = current_tab
 	_refresh_display()
+
+
+func _build_header_grid() -> void:
+	count_label.hide()
+	var header: HBoxContainer = title_label.get_parent()
+	_date_labels = GameCalendar.create_date_grid(GameState.game_day)
+	var grid: GridContainer = _date_labels["grid"]
+	grid.columns = 4
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_END
+	var roster_header := Label.new()
+	roster_header.text = "Roster"
+	roster_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	roster_header.add_theme_font_size_override("font_size", UIColors.FONT_SIZE_SMALL)
+	roster_header.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+	grid.add_child(roster_header)
+	grid.move_child(roster_header, 3)
+	roster_value_label = Label.new()
+	roster_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	grid.add_child(roster_value_label)
+	header.add_child(grid)
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.shift_pressed and event.keycode == KEY_D:
+		GameState.advance_game_days(30)
+		message_label.text = "DEBUG: Advanced 30 days. Now %s." % GameCalendar.format_short(GameState.game_day)
+		_refresh_display()
 
 
 func _on_tab_changed(tab_index: int) -> void:
@@ -66,7 +100,9 @@ func _on_tab_changed(tab_index: int) -> void:
 
 
 func _refresh_display() -> void:
-	count_label.text = "Roster: %d/%d" % [GameState.roster.size(), GameState.roster.MAX_SIZE]
+	if not _date_labels.is_empty():
+		GameCalendar.update_date_labels(_date_labels, GameState.game_day)
+		roster_value_label.text = "%d/%d" % [GameState.roster.size(), GameState.roster.MAX_SIZE]
 	_update_roster_overview()
 
 	match current_tab:
@@ -138,7 +174,10 @@ func _populate_roster_tab() -> void:
 			message_label.text = "Enter a new name for the character."
 		RosterMode.CHANGE_CLASS:
 			_populate_class_change()
-			message_label.text = "Select a new class. Level will reset to 1."
+			message_label.text = "Select a new class. Training required."
+		RosterMode.ASSIGN_JOB:
+			_populate_job_assignment()
+			message_label.text = "Select a job for %s." % selected_character.character_name
 
 	_update_roster_info()
 
@@ -160,6 +199,8 @@ func _populate_roster_view() -> void:
 
 		if character.is_dead:
 			btn.modulate = UIColors.MODULATE_DEAD
+		elif character.is_training():
+			btn.modulate = UIColors.TEXT_WARNING
 		elif GameState.party.has_member(character):
 			btn.modulate = UIColors.TEXT_IN_PARTY
 
@@ -202,6 +243,18 @@ func _populate_manage_actions() -> void:
 	reclass_btn.pressed.connect(_on_manage_action.bind("change_class"))
 	options_list.add_child(reclass_btn)
 	buttons.append(reclass_btn)
+
+	var job_btn := Button.new()
+	job_btn.text = "Assign Job"
+	job_btn.custom_minimum_size = Vector2(350, 36)
+	job_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	if selected_character.is_dead or selected_character.is_training() or GameState.party.has_member(selected_character):
+		job_btn.disabled = true
+		job_btn.modulate = UIColors.MODULATE_DISABLED
+	else:
+		job_btn.pressed.connect(_on_manage_action.bind("assign_job"))
+	options_list.add_child(job_btn)
+	buttons.append(job_btn)
 
 	var delete_btn := Button.new()
 	delete_btn.text = "Delete"
@@ -488,6 +541,11 @@ func _create_party_button(character: Character, front_row: bool) -> Button:
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if character.is_dead:
 		btn.modulate = UIColors.MODULATE_DEAD
+	elif not character.is_available():
+		btn.disabled = true
+		btn.modulate = UIColors.MODULATE_DISABLED
+		var t_elapsed := character.get_training_days_elapsed(GameState.game_day)
+		btn.text += " [Training %d/%d]" % [t_elapsed, character.get_training_total()]
 	return btn
 
 
@@ -507,6 +565,8 @@ func _on_manage_action(action_id: String) -> void:
 			roster_mode = RosterMode.RENAME
 		"change_class":
 			roster_mode = RosterMode.CHANGE_CLASS
+		"assign_job":
+			roster_mode = RosterMode.ASSIGN_JOB
 		"delete":
 			roster_mode = RosterMode.CONFIRM_DELETE
 	_refresh_display()
@@ -561,25 +621,112 @@ func _on_class_change_selected(new_class: CharacterEnums.CharacterClass) -> void
 		return
 
 	var old_class := selected_character.character_class
-	selected_character.character_class = new_class
-	selected_character.level = 1
-	selected_character.experience = 0
+	var training_days := ClassData.get_training_days(old_class, new_class)
+	selected_character.start_training(new_class, training_days, GameState.game_day)
 
-	var class_data: Dictionary = ClassData.get_class_data(new_class)
-	selected_character.max_hp = class_data.get("hp_base", 10) + selected_character.vitality
-	selected_character.current_hp = selected_character.max_hp
-	@warning_ignore("integer_division")
-	selected_character.max_mp = class_data.get("mp_base", 0) + (selected_character.intelligence + selected_character.piety) / 4
-	selected_character.current_mp = selected_character.max_mp
+	if GameState.party.has_member(selected_character):
+		GameState.party.remove_member(selected_character.id)
 
-	message_label.text = "%s changed class from %s to %s (now Level 1)." % [
+	var completion_day := GameState.game_day + training_days
+	message_label.text = "%s begins training as %s. Available %s (%d days)." % [
 		selected_character.character_name,
-		CharacterEnums.get_class_name(old_class),
-		CharacterEnums.get_class_name(new_class)
+		CharacterEnums.get_class_name(new_class),
+		GameCalendar.format_short(completion_day),
+		training_days
 	]
 	selected_character = null
 	roster_mode = RosterMode.VIEW
 	_refresh_display()
+
+
+func _populate_job_assignment() -> void:
+	_clear_options()
+
+	if selected_character == null:
+		roster_mode = RosterMode.MANAGE
+		_populate_manage_actions()
+		return
+
+	var header := Label.new()
+	header.text = "Assign Job: %s" % selected_character.character_name
+	options_list.add_child(header)
+
+	for job in TownJobs.get_all_jobs():
+		var job_idx: int = job["id"]
+		var assigned := TownJobs.count_assigned(GameState.roster, job_idx)
+		var slots: int = job["slots"]
+		var btn := Button.new()
+		btn.text = "%s (%d/%d filled)" % [job["name"], assigned, slots]
+		btn.custom_minimum_size = Vector2(350, 36)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if not TownJobs.is_slot_available(GameState.roster, job_idx) and selected_character.town_job != job_idx:
+			btn.disabled = true
+			btn.modulate = UIColors.MODULATE_DISABLED
+		else:
+			btn.pressed.connect(_on_job_selected.bind(job_idx))
+		if selected_character.town_job == job_idx:
+			btn.add_theme_color_override("font_color", UIColors.TEXT_IN_PARTY)
+		options_list.add_child(btn)
+		buttons.append(btn)
+
+	if selected_character.town_job >= 0:
+		var remove_btn := Button.new()
+		remove_btn.text = "Remove Job"
+		remove_btn.custom_minimum_size = Vector2(350, 36)
+		remove_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		remove_btn.add_theme_color_override("font_color", UIColors.TEXT_WARNING)
+		remove_btn.pressed.connect(_on_job_removed)
+		options_list.add_child(remove_btn)
+		buttons.append(remove_btn)
+
+	var cancel_btn := Button.new()
+	cancel_btn.text = "Cancel"
+	cancel_btn.custom_minimum_size = Vector2(350, 36)
+	cancel_btn.pressed.connect(_on_roster_mode_back)
+	options_list.add_child(cancel_btn)
+	buttons.append(cancel_btn)
+
+	_setup_nav()
+	_update_roster_info()
+
+
+func _on_job_selected(job_index: int) -> void:
+	if selected_character == null:
+		_on_roster_mode_back()
+		return
+	selected_character.town_job = job_index
+	message_label.text = "%s assigned to %s." % [
+		selected_character.character_name,
+		TownJobs.get_job_name(job_index)
+	]
+	roster_mode = RosterMode.MANAGE
+	_refresh_display()
+
+
+func _on_job_removed() -> void:
+	if selected_character == null:
+		_on_roster_mode_back()
+		return
+	var old_job := TownJobs.get_job_name(selected_character.town_job)
+	selected_character.town_job = -1
+	message_label.text = "%s removed from %s." % [selected_character.character_name, old_job]
+	roster_mode = RosterMode.MANAGE
+	_refresh_display()
+
+
+func _show_job_assignment_info() -> void:
+	if selected_character == null:
+		info_label.text = ""
+		return
+	var text := "[b]%s[/b] - Job Assignment\n\n" % selected_character.character_name
+	text += "Town jobs provide daily income while benched:\n"
+	text += "  [color=cyan]+5 XP/day[/color] to the character\n"
+	text += "  [color=yellow]+2 Gold/day[/color] to the guild treasury\n\n"
+	if selected_character.town_job >= 0:
+		text += "Current job: [color=cyan]%s[/color]" % TownJobs.get_job_name(selected_character.town_job)
+	else:
+		text += "Currently unemployed."
+	info_label.text = text
 
 
 func _on_roster_mode_back() -> void:
@@ -589,7 +736,7 @@ func _on_roster_mode_back() -> void:
 		RosterMode.MANAGE:
 			roster_mode = RosterMode.VIEW
 			selected_character = null
-		RosterMode.CONFIRM_DELETE, RosterMode.RENAME, RosterMode.CHANGE_CLASS:
+		RosterMode.CONFIRM_DELETE, RosterMode.RENAME, RosterMode.CHANGE_CLASS, RosterMode.ASSIGN_JOB:
 			roster_mode = RosterMode.MANAGE
 	_refresh_display()
 
@@ -603,6 +750,9 @@ func _on_party_member_pressed(character: Character) -> void:
 func _on_roster_add_pressed(character: Character) -> void:
 	if GameState.party.is_full():
 		return
+	if not character.is_available() or character.is_dead:
+		return
+	character.town_job = -1
 	GameState.party.add_member(character)
 	party_focus = GameState.party.size()
 	_refresh_display()
@@ -614,11 +764,16 @@ func _on_equipment_pressed() -> void:
 
 func _on_quick_pick() -> void:
 	var available := GameState.roster.get_available(GameState.party)
-	available.shuffle()
+	var eligible: Array[Character] = []
+	for c in available:
+		if c.is_available() and not c.is_dead:
+			eligible.append(c)
+	eligible.shuffle()
 	var slots := 6 - GameState.party.size()
-	var to_add := mini(slots, available.size())
+	var to_add := mini(slots, eligible.size())
 	for i in range(to_add):
-		GameState.party.add_member(available[i])
+		eligible[i].town_job = -1
+		GameState.party.add_member(eligible[i])
 	message_label.text = "Added %d characters to party." % to_add
 	_refresh_display()
 
@@ -778,6 +933,8 @@ func _update_roster_info() -> void:
 			_show_rename_info()
 		RosterMode.CHANGE_CLASS:
 			_show_class_change_info()
+		RosterMode.ASSIGN_JOB:
+			_show_job_assignment_info()
 
 
 func _show_character_info(character: Character) -> void:
@@ -820,8 +977,25 @@ func _show_character_info(character: Character) -> void:
 			text += "\n[color=orange]ASHED[/color]"
 		else:
 			text += "\n[color=red]DEAD[/color]"
+	elif character.is_training():
+		var t_elapsed := character.get_training_days_elapsed(GameState.game_day)
+		var t_total := character.get_training_total()
+		var t_remain := t_total - t_elapsed
+		text += "\n[color=orange]Training as %s - Day %d/%d (%d remaining)[/color]" % [
+			CharacterEnums.get_class_name(character.training_target_class),
+			t_elapsed, t_total, t_remain]
 	elif GameState.party.has_member(character):
 		text += "\n[color=cyan]In party[/color]"
+
+	if not character.is_dead and character.town_job >= 0:
+		text += "\n[color=cyan]Job: %s[/color]" % TownJobs.get_job_name(character.town_job)
+
+	if not character.is_dead and not character.is_training():
+		var preview_bonus := minf(Character.REST_BONUS_MAX, 1.0 + character.town_days_accumulated * Character.REST_BONUS_PER_TOWN_DAY)
+		if character.rest_bonus_xp_multiplier > 1.0:
+			text += "\n[color=green]Rested: +%.0f%% XP in dungeon[/color]" % ((character.rest_bonus_xp_multiplier - 1.0) * 100)
+		elif preview_bonus > 1.0:
+			text += "\n[color=green]Rested: +%.0f%% XP on next dive[/color]" % ((preview_bonus - 1.0) * 100)
 
 	info_label.text = text
 
@@ -951,7 +1125,10 @@ func _show_class_change_info() -> void:
 	if char_class == selected_character.character_class:
 		text += "[color=gray]This is the current class.[/color]"
 	else:
+		var train_days := ClassData.get_training_days(selected_character.character_class, char_class)
+		var completion_day := GameState.game_day + train_days
 		text += "[color=orange]Changing class will reset level to 1![/color]\n"
+		text += "Training time: %d days (available %s)\n" % [train_days, GameCalendar.format_short(completion_day)]
 		text += "Stats and known spells will be preserved."
 
 	info_label.text = text
@@ -995,6 +1172,10 @@ func _create_roster_row(c: Character) -> HBoxContainer:
 	elif c.is_dead:
 		status_label.text = "[DEAD]"
 		status_label.add_theme_color_override("font_color", UIColors.DANGER)
+	elif c.is_training():
+		var t_elapsed := c.get_training_days_elapsed(GameState.game_day)
+		status_label.text = "[Training %d/%d]" % [t_elapsed, c.get_training_total()]
+		status_label.add_theme_color_override("font_color", UIColors.TEXT_WARNING)
 	elif GameState.party.has_member(c):
 		status_label.text = "[PARTY]"
 		status_label.add_theme_color_override("font_color", UIColors.TEXT_IN_PARTY)
@@ -1307,7 +1488,8 @@ func _on_formation_load() -> void:
 	for i in range(_selected_formation.member_ids.size()):
 		var char_id := _selected_formation.member_ids[i]
 		var character := GameState.roster.get_character(char_id)
-		if character:
+		if character and character.is_available() and not character.is_dead:
+			character.town_job = -1
 			GameState.party.add_member(character)
 			loaded += 1
 		else:

@@ -506,7 +506,7 @@ func _update_ui() -> void:
 	var pending_days: int = GameState.floor_tracker.accumulated_steps / FloorTracker.STEPS_PER_DAY
 	var current_day: int = GameState.game_day + pending_days
 	var hours: int = (GameState.floor_tracker.accumulated_steps % FloorTracker.STEPS_PER_DAY) * 24 / FloorTracker.STEPS_PER_DAY
-	time_label.text = "Day %d  %dh elapsed" % [current_day, hours]
+	time_label.text = "%s  %dh" % [GameCalendar.format_short(current_day), hours]
 
 
 func _on_step_taken(_total_steps: int) -> void:

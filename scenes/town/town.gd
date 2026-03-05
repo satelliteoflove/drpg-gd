@@ -15,7 +15,17 @@ func _ready() -> void:
 
 	_setup_navigation()
 	_update_button_states()
-	$VBoxContainer/DayLabel.text = "Day %d" % GameState.game_day
+	_setup_date_display()
+
+
+func _setup_date_display() -> void:
+	var day_label: Label = $VBoxContainer/DayLabel
+	day_label.hide()
+	var date_info := GameCalendar.create_date_grid(GameState.game_day)
+	var grid: GridContainer = date_info["grid"]
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	day_label.get_parent().add_child(grid)
+	day_label.get_parent().move_child(grid, day_label.get_index())
 
 
 func _update_button_states() -> void:
