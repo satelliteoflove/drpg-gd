@@ -59,6 +59,7 @@ const TEXT_ACTIVE := Color(0.3, 1.0, 0.3)
 const TEXT_STATUS := Color(1.0, 0.6, 0.2)
 const TEXT_IN_PARTY := Color(0.3, 0.7, 1.0)
 const TEXT_LOST := Color(0.5, 0.2, 0.2)
+const TEXT_HIGHLIGHT := Color(1.0, 1.0, 0.6)
 
 # Font sizes
 const FONT_SIZE_TITLE := 24

@@ -34,6 +34,12 @@ var stat_plus_buttons: Dictionary = {}
 var aging_label: Label = null
 var aging_minus_btn: Button = null
 var aging_plus_btn: Button = null
+var grid_nav: MenuNavigator = null
+var grid_buttons: Array[Button] = []
+var grid_columns: int = 3
+var stat_focus_index: int = 0
+var stat_row_labels: Array = []
+var stat_focus_buttons: Array = []
 
 
 func _ready() -> void:
@@ -52,8 +58,95 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_cancel_pressed()
 		else:
 			_on_back_pressed()
-	elif event.is_action_pressed("menu_confirm"):
-		_on_next_pressed()
+		return
+
+	if event.is_action_pressed("menu_confirm"):
+		if current_step == Step.STATS:
+			_stat_focus_confirm()
+		elif grid_nav and grid_nav.current_index >= 0 and grid_nav.current_index < grid_buttons.size() and grid_buttons[grid_nav.current_index].disabled:
+			return
+		else:
+			_on_next_pressed()
+		return
+
+	if current_step == Step.STATS:
+		if event.is_action_pressed("menu_up"):
+			_stat_focus_move(-1)
+		elif event.is_action_pressed("menu_down"):
+			_stat_focus_move(1)
+		elif event.is_action_pressed("menu_left"):
+			_stat_focus_action(-1)
+		elif event.is_action_pressed("menu_right"):
+			_stat_focus_action(1)
+		return
+
+	if grid_nav and not grid_buttons.is_empty():
+		if event.is_action_pressed("menu_left"):
+			_grid_move(-1)
+		elif event.is_action_pressed("menu_right"):
+			_grid_move(1)
+		elif event.is_action_pressed("menu_up"):
+			_grid_move(-grid_columns)
+		elif event.is_action_pressed("menu_down"):
+			_grid_move(grid_columns)
+
+
+func _grid_move(offset: int) -> void:
+	var new_index := grid_nav.current_index + offset
+	if new_index < 0 or new_index >= grid_buttons.size():
+		return
+	grid_nav.select(new_index)
+	if not grid_buttons[new_index].disabled:
+		grid_buttons[new_index].pressed.emit()
+
+
+func _stat_focus_move(offset: int) -> void:
+	var total := stat_row_labels.size()
+	if total == 0:
+		return
+	var new_index := stat_focus_index + offset
+	if new_index < 0 or new_index >= total:
+		return
+	stat_focus_index = new_index
+	_update_stat_focus_highlight()
+
+
+func _stat_focus_action(direction: int) -> void:
+	if stat_focus_index < STAT_NAMES.size():
+		var stat_name: String = STAT_NAMES[stat_focus_index]
+		if direction > 0:
+			_on_stat_plus(stat_name)
+		else:
+			_on_stat_minus(stat_name)
+	elif stat_focus_index == STAT_NAMES.size():
+		if direction > 0:
+			_on_aging_plus()
+		else:
+			_on_aging_minus()
+
+
+func _stat_focus_confirm() -> void:
+	if stat_focus_index < stat_focus_buttons.size() and stat_focus_buttons[stat_focus_index] != null:
+		stat_focus_buttons[stat_focus_index].pressed.emit()
+		return
+	_on_next_pressed()
+
+
+func _update_stat_focus_highlight() -> void:
+	for i in range(stat_row_labels.size()):
+		var lbl = stat_row_labels[i]
+		if lbl != null:
+			if i == stat_focus_index:
+				lbl.add_theme_color_override("font_color", UIColors.TEXT_HIGHLIGHT)
+			else:
+				lbl.remove_theme_color_override("font_color")
+	for i in range(stat_focus_buttons.size()):
+		var btn = stat_focus_buttons[i]
+		if btn != null:
+			if i == stat_focus_index:
+				btn.add_theme_color_override("font_color", UIColors.TEXT_HIGHLIGHT)
+			else:
+				btn.remove_theme_color_override("font_color")
 
 
 func _show_step() -> void:
@@ -87,9 +180,14 @@ func _clear_content() -> void:
 	aging_label = null
 	aging_minus_btn = null
 	aging_plus_btn = null
+	grid_nav = null
+	grid_buttons.clear()
+	stat_row_labels.clear()
+	stat_focus_buttons.clear()
 
 
 func _update_nav_buttons() -> void:
+	nav_container.visible = current_step != Step.STATS
 	back_button.visible = current_step != Step.RACE
 	cancel_button.visible = true
 	if current_step == Step.CONFIRM:
@@ -103,8 +201,11 @@ func _show_race_step() -> void:
 
 	var grid := GridContainer.new()
 	grid.columns = 3
+	grid_columns = 3
 	content_container.add_child(grid)
 
+	var initial_index := 0
+	grid_buttons.clear()
 	for race_id: int in CharacterEnums.Race.values():
 		var race: CharacterEnums.Race = race_id as CharacterEnums.Race
 		var btn := Button.new()
@@ -113,7 +214,13 @@ func _show_race_step() -> void:
 		btn.toggle_mode = true
 		btn.button_pressed = (race == selected_race)
 		btn.pressed.connect(_on_race_selected.bind(race))
+		if race == selected_race:
+			initial_index = grid_buttons.size()
 		grid.add_child(btn)
+		grid_buttons.append(btn)
+
+	grid_nav = MenuNavigator.new()
+	grid_nav.setup(grid_buttons, initial_index)
 
 	_add_race_info()
 
@@ -227,6 +334,8 @@ func _show_stats_step() -> void:
 		name_lbl.text = stat_label_text
 		name_lbl.custom_minimum_size = Vector2(40, 0)
 		row.add_child(name_lbl)
+		stat_row_labels.append(name_lbl)
+		stat_focus_buttons.append(null)
 
 		var minus_btn := Button.new()
 		minus_btn.text = "-"
@@ -277,6 +386,8 @@ func _show_stats_step() -> void:
 	var aging_title := Label.new()
 	aging_title.text = "Trade Age:"
 	aging_row.add_child(aging_title)
+	stat_row_labels.append(aging_title)
+	stat_focus_buttons.append(null)
 
 	aging_minus_btn = Button.new()
 	aging_minus_btn.text = "-"
@@ -324,8 +435,35 @@ func _show_stats_step() -> void:
 	reset_btn.custom_minimum_size = Vector2(80, 40)
 	reset_btn.pressed.connect(_on_reset_pressed)
 	btn_row.add_child(reset_btn)
+	stat_row_labels.append(null)
+	stat_focus_buttons.append(reset_btn)
+
+	var stat_back_btn := Button.new()
+	stat_back_btn.text = "Back"
+	stat_back_btn.custom_minimum_size = Vector2(80, 40)
+	stat_back_btn.pressed.connect(_on_back_pressed)
+	btn_row.add_child(stat_back_btn)
+	stat_row_labels.append(null)
+	stat_focus_buttons.append(stat_back_btn)
+
+	var stat_next_btn := Button.new()
+	stat_next_btn.text = "Next"
+	stat_next_btn.custom_minimum_size = Vector2(80, 40)
+	stat_next_btn.pressed.connect(_on_next_pressed)
+	btn_row.add_child(stat_next_btn)
+	stat_row_labels.append(null)
+	stat_focus_buttons.append(stat_next_btn)
+
+	var stat_cancel_btn := Button.new()
+	stat_cancel_btn.text = "Cancel"
+	stat_cancel_btn.custom_minimum_size = Vector2(80, 40)
+	stat_cancel_btn.pressed.connect(_on_cancel_pressed)
+	btn_row.add_child(stat_cancel_btn)
+	stat_row_labels.append(null)
+	stat_focus_buttons.append(stat_cancel_btn)
 
 	content_container.add_child(btn_row)
+	_update_stat_focus_highlight()
 
 
 func _on_aging_plus() -> void:
@@ -405,8 +543,11 @@ func _show_class_step() -> void:
 
 	var grid := GridContainer.new()
 	grid.columns = 3
+	grid_columns = 3
 	content_container.add_child(grid)
 
+	var initial_index := 0
+	grid_buttons.clear()
 	for class_id: int in CharacterEnums.CharacterClass.values():
 		var char_class: CharacterEnums.CharacterClass = class_id as CharacterEnums.CharacterClass
 		var btn := Button.new()
@@ -421,7 +562,13 @@ func _show_class_step() -> void:
 		if meets_reqs:
 			btn.pressed.connect(_on_class_selected.bind(char_class))
 
+		if char_class == selected_class and meets_reqs:
+			initial_index = grid_buttons.size()
 		grid.add_child(btn)
+		grid_buttons.append(btn)
+
+	grid_nav = MenuNavigator.new()
+	grid_nav.setup(grid_buttons, initial_index)
 
 	_add_class_info()
 
@@ -460,6 +607,9 @@ func _show_alignment_step() -> void:
 	var vbox := VBoxContainer.new()
 	content_container.add_child(vbox)
 
+	var initial_index := 0
+	grid_buttons.clear()
+	grid_columns = 1
 	for align_id: int in CharacterEnums.Alignment.values():
 		var alignment: CharacterEnums.Alignment = align_id as CharacterEnums.Alignment
 		var btn := Button.new()
@@ -468,7 +618,13 @@ func _show_alignment_step() -> void:
 		btn.toggle_mode = true
 		btn.button_pressed = (alignment == selected_alignment)
 		btn.pressed.connect(_on_alignment_selected.bind(alignment))
+		if alignment == selected_alignment:
+			initial_index = grid_buttons.size()
 		vbox.add_child(btn)
+		grid_buttons.append(btn)
+
+	grid_nav = MenuNavigator.new()
+	grid_nav.setup(grid_buttons, initial_index)
 
 
 func _on_alignment_selected(alignment: CharacterEnums.Alignment) -> void:
@@ -483,6 +639,9 @@ func _show_gender_step() -> void:
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	content_container.add_child(hbox)
 
+	var initial_index := 0
+	grid_buttons.clear()
+	grid_columns = 2
 	for gender_id: int in CharacterEnums.Gender.values():
 		var gender: CharacterEnums.Gender = gender_id as CharacterEnums.Gender
 		var btn := Button.new()
@@ -491,7 +650,13 @@ func _show_gender_step() -> void:
 		btn.toggle_mode = true
 		btn.button_pressed = (gender == selected_gender)
 		btn.pressed.connect(_on_gender_selected.bind(gender))
+		if gender == selected_gender:
+			initial_index = grid_buttons.size()
 		hbox.add_child(btn)
+		grid_buttons.append(btn)
+
+	grid_nav = MenuNavigator.new()
+	grid_nav.setup(grid_buttons, initial_index)
 
 
 func _on_gender_selected(gender: CharacterEnums.Gender) -> void:
