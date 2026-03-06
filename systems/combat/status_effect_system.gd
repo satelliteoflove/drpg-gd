@@ -37,11 +37,6 @@ static func apply_status(
 		return result
 
 	if not ignore_resistance:
-		if _has_racial_immunity(target, status):
-			result.immune = true
-			result.message = "%s is immune to %s!" % [target.get_display_name(), CharacterEnums.get_status_noun(status)]
-			return result
-
 		if _check_racial_resistance(target, status):
 			result.resisted = true
 			result.message = "%s resists %s!" % [target.get_display_name(), CharacterEnums.get_status_noun(status)]
@@ -188,16 +183,10 @@ static func _get_save_bonus(target: Resource, save_type: CharacterEnums.SaveType
 	return level_bonus
 
 
-static func _has_racial_immunity(target: Resource, status: CharacterEnums.StatusEffect) -> bool:
-	return CharacterEnums.has_racial_immunity(target.race, status)
-
-
 static func _check_racial_resistance(target: Resource, status: CharacterEnums.StatusEffect) -> bool:
-	var immunities: Array = CharacterEnums.RACIAL_IMMUNITIES.get(target.race, [])
-	if status in immunities:
-		return true
-
-	return false
+	if not CharacterEnums.has_racial_resistance(target.race, status):
+		return false
+	return CombatRNG.randf() < CharacterEnums.RACIAL_RESISTANCE_CHANCE
 
 
 static func get_status_for_display(target: Resource) -> Array[Dictionary]:

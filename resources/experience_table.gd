@@ -124,7 +124,7 @@ const RACE_CLASS_XP_MODIFIERS: Dictionary = {
 		CharacterEnums.CharacterClass.NINJA: 1.3
 	},
 	CharacterEnums.Race.LIZMAN: {
-		CharacterEnums.CharacterClass.FIGHTER: 0.8,
+		CharacterEnums.CharacterClass.FIGHTER: 0.7,
 		CharacterEnums.CharacterClass.MAGE: 1.4,
 		CharacterEnums.CharacterClass.PRIEST: 1.4,
 		CharacterEnums.CharacterClass.THIEF: 1.3,
@@ -158,7 +158,7 @@ const RACE_CLASS_XP_MODIFIERS: Dictionary = {
 	CharacterEnums.Race.RAWULF: {
 		CharacterEnums.CharacterClass.FIGHTER: 1.1,
 		CharacterEnums.CharacterClass.MAGE: 1.3,
-		CharacterEnums.CharacterClass.PRIEST: 0.9,
+		CharacterEnums.CharacterClass.PRIEST: 0.7,
 		CharacterEnums.CharacterClass.THIEF: 1.1,
 		CharacterEnums.CharacterClass.ALCHEMIST: 1.0,
 		CharacterEnums.CharacterClass.BISHOP: 1.2,
@@ -179,7 +179,7 @@ const RACE_CLASS_XP_MODIFIERS: Dictionary = {
 		CharacterEnums.CharacterClass.ALCHEMIST: 1.1,
 		CharacterEnums.CharacterClass.BISHOP: 1.2,
 		CharacterEnums.CharacterClass.BARD: 1.1,
-		CharacterEnums.CharacterClass.RANGER: 1.1,
+		CharacterEnums.CharacterClass.RANGER: 0.7,
 		CharacterEnums.CharacterClass.PSIONIC: 1.1,
 		CharacterEnums.CharacterClass.VALKYRIE: 1.3,
 		CharacterEnums.CharacterClass.SAMURAI: 1.3,
@@ -191,7 +191,7 @@ const RACE_CLASS_XP_MODIFIERS: Dictionary = {
 		CharacterEnums.CharacterClass.FIGHTER: 1.2,
 		CharacterEnums.CharacterClass.MAGE: 1.0,
 		CharacterEnums.CharacterClass.PRIEST: 1.2,
-		CharacterEnums.CharacterClass.THIEF: 0.9,
+		CharacterEnums.CharacterClass.THIEF: 0.7,
 		CharacterEnums.CharacterClass.ALCHEMIST: 1.1,
 		CharacterEnums.CharacterClass.BISHOP: 1.3,
 		CharacterEnums.CharacterClass.BARD: 1.0,

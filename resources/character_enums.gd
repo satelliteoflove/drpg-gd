@@ -258,11 +258,19 @@ const BENEFICIAL_STATUSES: Array[StatusEffect] = [
 	StatusEffect.BLESSED,
 ]
 
-const RACIAL_IMMUNITIES: Dictionary = {
+const RACIAL_RESISTANCES: Dictionary = {
 	Race.ELF: [StatusEffect.ASLEEP],
 	Race.DWARF: [StatusEffect.POISONED],
 	Race.HOBBIT: [StatusEffect.PARALYZED, StatusEffect.STONED],
 	Race.DRACON: [StatusEffect.PARALYZED, StatusEffect.STONED]
+}
+
+const RACIAL_RESISTANCE_CHANCE: float = 0.75
+
+const RACIAL_ELEMENT_RESISTANCES: Dictionary = {
+	Race.RAWULF: { Element.ICE: 0.5 },
+	Race.MOOK: { Element.ICE: 0.5 },
+	Race.FELPURR: { Element.ICE: 0.5 }
 }
 
 const ELEMENT_NAMES: Dictionary = {
@@ -483,9 +491,14 @@ static func is_death_status(status: StatusEffect) -> bool:
 	return status in DEATH_STATUSES
 
 
-static func has_racial_immunity(race: Race, status: StatusEffect) -> bool:
-	var immunities: Array = RACIAL_IMMUNITIES.get(race, [])
-	return status in immunities
+static func has_racial_resistance(race: Race, status: StatusEffect) -> bool:
+	var resistances: Array = RACIAL_RESISTANCES.get(race, [])
+	return status in resistances
+
+
+static func get_elemental_resistance(race: Race, element: Element) -> float:
+	var resists: Dictionary = RACIAL_ELEMENT_RESISTANCES.get(race, {})
+	return resists.get(element, 0.0)
 
 
 static func get_exclusive_group(status: StatusEffect) -> Array[StatusEffect]:

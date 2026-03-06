@@ -519,11 +519,27 @@ func check_old_age_death() -> bool:
 	return false
 
 
+var breath_used: bool = false
+
+
 func init_combat() -> void:
 	if current_hp <= 0 and not is_dead:
 		current_hp = max_hp
 	is_defending = false
+	breath_used = false
 	_recalculate_derived_stats()
+
+
+func can_use_breath() -> bool:
+	return race == CharacterEnums.Race.DRACON and not breath_used and not is_dead
+
+
+func get_breath_damage() -> int:
+	return maxi(1, current_hp / 2)
+
+
+func is_breath_aoe() -> bool:
+	return level >= 9
 
 
 ## Applies damage to the character, potentially killing them.

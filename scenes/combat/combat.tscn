@@ -215,6 +215,11 @@ custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
 text = "Dispel"
 
+[node name="BreathButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox"]
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+text = "Breath"
+
 [node name="ItemButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox"]
 custom_minimum_size = Vector2(90, 36)
 layout_mode = 2

@@ -32,6 +32,7 @@ var current_spell_level: int = 1
 var available_spells: Dictionary = {}
 var spell_target_mode: String = ""
 var dispel_target_mode: bool = false
+var breath_target_mode: bool = false
 var _input_cooldown: float = 0.0
 var _active_panel_tween: Tween = null
 var _target_highlight_tween: Tween = null
@@ -98,6 +99,7 @@ class EnemyUI:
 @onready var defend_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/DefendButton
 @onready var spell_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/SpellButton
 @onready var dispel_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/DispelButton
+@onready var breath_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/BreathButton
 @onready var item_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/ItemButton
 @onready var escape_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/EscapeButton
 
@@ -126,6 +128,7 @@ func _ready() -> void:
 	defend_button.pressed.connect(_on_defend_pressed)
 	spell_button.pressed.connect(_on_spell_pressed)
 	dispel_button.pressed.connect(_on_dispel_pressed)
+	breath_button.pressed.connect(_on_breath_pressed)
 	item_button.pressed.connect(_on_item_pressed)
 	escape_button.pressed.connect(_on_escape_pressed)
 	item_cancel_button.pressed.connect(_on_cancel_item)
@@ -141,7 +144,7 @@ func _ready() -> void:
 
 
 func _setup_action_nav() -> void:
-	action_buttons = [attack_button, defend_button, spell_button, dispel_button, item_button, escape_button]
+	action_buttons = [attack_button, defend_button, spell_button, dispel_button, breath_button, item_button, escape_button]
 	action_nav = MenuNavigator.new()
 	action_nav.setup(action_buttons, 0)
 
@@ -974,6 +977,10 @@ func _on_cancel_enemy_target() -> void:
 		dispel_target_mode = false
 		_close_all_modals()
 		_set_actions_enabled(true)
+	elif breath_target_mode:
+		breath_target_mode = false
+		_close_all_modals()
+		_set_actions_enabled(true)
 	elif spell_target_mode in ["enemy", "splash", "row", "column"]:
 		_close_all_modals()
 		modal_overlay.visible = true
@@ -1097,6 +1104,56 @@ func _on_dispel_target_selected(enemy: Monster) -> void:
 	_close_all_modals()
 	dispel_target_mode = false
 	combat_system.player_dispel(enemy)
+
+
+func _on_breath_pressed() -> void:
+	if not combat_system or not combat_system.is_player_turn():
+		return
+
+	var character := _get_character_by_id(combat_system.current_combatant_id)
+	if character == null or not character.can_use_breath():
+		return
+
+	if character.is_breath_aoe():
+		combat_system.player_breath()
+		return
+
+	var living := combat_system.get_living_enemies()
+	if living.size() == 1:
+		combat_system.player_breath(living[0])
+		return
+
+	_close_all_modals()
+	_set_actions_enabled(false)
+	for child in enemy_target_list.get_children():
+		child.queue_free()
+	enemy_target_buttons.clear()
+
+	for enemy in living:
+		var btn := Button.new()
+		var row_names: Array[String] = ["Front", "Middle", "Back"]
+		var row_label: String = row_names[enemy.get_row()]
+		btn.text = "%s (%s Row) - %d HP" % [enemy.monster_name, row_label, enemy.current_hp]
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.custom_minimum_size = Vector2(0, 32)
+		btn.pressed.connect(_on_breath_target_selected.bind(enemy))
+		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
+		enemy_target_list.add_child(btn)
+		enemy_target_buttons.append(btn)
+
+	enemy_target_nav = MenuNavigator.new()
+	if not enemy_target_buttons.is_empty():
+		enemy_target_nav.setup(enemy_target_buttons, 0)
+
+	breath_target_mode = true
+	modal_overlay.visible = true
+	enemy_target_modal.visible = true
+
+
+func _on_breath_target_selected(enemy: Monster) -> void:
+	_close_all_modals()
+	breath_target_mode = false
+	combat_system.player_breath(enemy)
 
 
 func _on_item_pressed() -> void:
@@ -1757,6 +1814,7 @@ func _set_actions_enabled(enabled: bool) -> void:
 	var can_attack := enabled
 	var can_cast := enabled
 	var can_dispel := false
+	var can_breath := false
 	if enabled and combat_system:
 		var current_char := _get_character_by_id(combat_system.current_combatant_id)
 		if current_char:
@@ -1767,6 +1825,7 @@ func _set_actions_enabled(enabled: bool) -> void:
 			can_cast = _can_character_cast_spells(current_char)
 			can_dispel = DispelUndead.can_dispel(current_char) and \
 				not DispelUndead.get_valid_targets(combat_system.get_living_enemies()).is_empty()
+			can_breath = current_char.can_use_breath()
 
 	attack_button.disabled = not can_attack
 	if not can_attack and enabled:
@@ -1785,6 +1844,11 @@ func _set_actions_enabled(enabled: bool) -> void:
 		dispel_button.modulate = UIColors.MODULATE_DISABLED
 	else:
 		dispel_button.modulate = Color.WHITE
+	breath_button.disabled = not can_breath
+	if not can_breath and enabled:
+		breath_button.modulate = UIColors.MODULATE_DISABLED
+	else:
+		breath_button.modulate = Color.WHITE
 	item_button.disabled = not enabled
 	if is_boss_encounter:
 		escape_button.disabled = true

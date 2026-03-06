@@ -409,17 +409,24 @@ static func _process_monster_damage(
 
 		var damage := maxi(1, total_base)
 
+		var resist_suffix := ""
+		if target is Character and effect.element != CharacterEnums.Element.NONE:
+			var resist: float = CharacterEnums.get_elemental_resistance(target.race, effect.element)
+			if resist > 0.0:
+				damage = maxi(1, int(damage * (1.0 - resist)))
+				resist_suffix = " (%s resistant)" % CharacterEnums.get_element_name(effect.element)
+
 		var actual: int = target.take_damage(damage)
 		result.damage += actual
 
 		var element_name := CharacterEnums.get_element_name(effect.element)
 		if target.is_dead:
-			result.messages.append("%s takes %d %s damage and is defeated!" % [
-				target.get_display_name(), actual, element_name
+			result.messages.append("%s takes %d %s damage and is defeated!%s" % [
+				target.get_display_name(), actual, element_name, resist_suffix
 			])
 		else:
-			result.messages.append("%s takes %d %s damage." % [
-				target.get_display_name(), actual, element_name
+			result.messages.append("%s takes %d %s damage.%s" % [
+				target.get_display_name(), actual, element_name, resist_suffix
 			])
 
 	return result

@@ -231,6 +231,58 @@ func player_defend() -> void:
 	_check_combat_end()
 
 
+func player_breath(target: Monster = null) -> void:
+	if not waiting_for_player or not is_active:
+		return
+
+	var attacker := _get_character(current_combatant_id)
+	if attacker == null or not attacker.can_use_breath():
+		return
+
+	waiting_for_player = false
+	waiting_for_target = false
+	attacker.breath_used = true
+
+	var damage := attacker.get_breath_damage()
+
+	if attacker.is_breath_aoe():
+		var targets: Array[Monster] = []
+		for enemy in enemies:
+			if not enemy.is_dead:
+				targets.append(enemy)
+
+		action_performed.emit("%s breathes acid!" % attacker.get_display_name())
+		for t in targets:
+			var actual := t.take_damage(damage)
+			if t.is_dead:
+				action_performed.emit("%s takes %d acid damage and is defeated!" % [t.monster_name, actual])
+				initiative.remove_combatant(t.combat_id)
+			else:
+				action_performed.emit("%s takes %d acid damage." % [t.monster_name, actual])
+	else:
+		if target == null:
+			var living := get_living_enemies()
+			if living.size() == 1:
+				target = living[0]
+			else:
+				waiting_for_player = true
+				waiting_for_target = true
+				attacker.breath_used = false
+				target_selection_requested.emit(living)
+				return
+
+		action_performed.emit("%s breathes acid at %s!" % [attacker.get_display_name(), target.monster_name])
+		var actual := target.take_damage(damage)
+		if target.is_dead:
+			action_performed.emit("%s takes %d acid damage and is defeated!" % [target.monster_name, actual])
+			initiative.remove_combatant(target.combat_id)
+		else:
+			action_performed.emit("%s takes %d acid damage." % [target.monster_name, actual])
+
+	initiative.apply_action_delay(current_combatant_id)
+	_check_combat_end()
+
+
 ## Attempts to escape from combat. Success chance based on party's average agility.
 func player_escape() -> void:
 	if not waiting_for_player or not is_active:
@@ -526,13 +578,21 @@ func _execute_monster_single_attack(monster: Monster, attack: MonsterAttack, tar
 		if sleep_mult > 1.0:
 			damage = int(damage * sleep_mult)
 
+		var resist_suffix := ""
+		if attack.element != CharacterEnums.Element.NONE:
+			var resist: float = CharacterEnums.get_elemental_resistance(target.race, attack.element)
+			if resist > 0.0:
+				damage = maxi(1, int(damage * (1.0 - resist)))
+				resist_suffix = " (%s resistant)" % CharacterEnums.get_element_name(attack.element)
+
 		var actual_damage := target.take_damage(damage)
 
-		var damage_msg := "%s uses %s on %s for %d damage!" % [
+		var damage_msg := "%s uses %s on %s for %d damage!%s" % [
 			monster.monster_name,
 			attack.attack_name,
 			target.get_display_name(),
-			actual_damage
+			actual_damage,
+			resist_suffix
 		]
 		action_performed.emit(damage_msg)
 
@@ -576,6 +636,11 @@ func _execute_monster_multi_attack(monster: Monster, attack: MonsterAttack, targ
 			var sleep_mult := StatusEffectSystem.get_damage_multiplier_for_sleeping(char_target)
 			if sleep_mult > 1.0:
 				damage = int(damage * sleep_mult)
+
+			if attack.element != CharacterEnums.Element.NONE:
+				var resist: float = CharacterEnums.get_elemental_resistance(char_target.race, attack.element)
+				if resist > 0.0:
+					damage = maxi(1, int(damage * (1.0 - resist)))
 
 			var actual := char_target.take_damage(damage)
 			total_damage += actual
