@@ -1,6 +1,6 @@
 extends Control
 
-enum Step { RACE, STATS, CLASS, ALIGNMENT, GENDER, NAME, CONFIRM }
+enum Step { RACE, STATS, CLASS, ALIGNMENT, GENDER, PERSONALITY, NAME, CONFIRM }
 
 const STAT_NAMES: Array[String] = ["strength", "intelligence", "piety", "vitality", "agility", "luck"]
 const STAT_LABELS: Array[String] = ["STR", "INT", "PIE", "VIT", "AGI", "LCK"]
@@ -12,6 +12,8 @@ var selected_race: CharacterEnums.Race = CharacterEnums.Race.HUMAN
 var selected_class: CharacterEnums.CharacterClass = CharacterEnums.CharacterClass.FIGHTER
 var selected_alignment: CharacterEnums.Alignment = CharacterEnums.Alignment.NEUTRAL
 var selected_gender: CharacterEnums.Gender = CharacterEnums.Gender.MALE
+var selected_personality_axis: Personality.Axis = Personality.Axis.TEMPERAMENT
+var selected_personality_option: int = -1
 var character_name: String = ""
 var rolled_stats: Dictionary = {}
 var bonus_points: int = 0
@@ -164,6 +166,8 @@ func _show_step() -> void:
 			_show_alignment_step()
 		Step.GENDER:
 			_show_gender_step()
+		Step.PERSONALITY:
+			_show_personality_step()
 		Step.NAME:
 			_show_name_step()
 		Step.CONFIRM:
@@ -664,8 +668,105 @@ func _on_gender_selected(gender: CharacterEnums.Gender) -> void:
 	_show_step()
 
 
+func _show_personality_step() -> void:
+	step_label.text = "Step 6: Choose Personality Trait"
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	content_container.add_child(vbox)
+
+	var axis_label := Label.new()
+	axis_label.text = "Choose an axis to crystallize:"
+	vbox.add_child(axis_label)
+
+	var axis_box := VBoxContainer.new()
+	vbox.add_child(axis_box)
+
+	var axis_buttons: Array[Button] = []
+	for axis_id: int in Personality.Axis.values():
+		var axis: Personality.Axis = axis_id as Personality.Axis
+		var btn := Button.new()
+		btn.text = Personality.get_axis_name(axis)
+		btn.custom_minimum_size = Vector2(200, 36)
+		btn.toggle_mode = true
+		btn.button_pressed = (axis == selected_personality_axis)
+		btn.pressed.connect(_on_personality_axis_selected.bind(axis))
+		axis_box.add_child(btn)
+		axis_buttons.append(btn)
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 8)
+	vbox.add_child(spacer)
+
+	var option_label := Label.new()
+	option_label.text = "Choose a trait on this axis:"
+	vbox.add_child(option_label)
+
+	var option_box := VBoxContainer.new()
+	vbox.add_child(option_box)
+
+	var option_buttons: Array[Button] = []
+	var options: Array = Personality.get_options_for_axis(selected_personality_axis)
+	for option: int in options:
+		var btn := Button.new()
+		btn.text = Personality.get_option_name(selected_personality_axis, option)
+		btn.custom_minimum_size = Vector2(200, 36)
+		btn.toggle_mode = true
+		btn.button_pressed = (option == selected_personality_option)
+		btn.pressed.connect(_on_personality_option_selected.bind(option))
+		option_box.add_child(btn)
+		option_buttons.append(btn)
+
+	var tendency_spacer := Control.new()
+	tendency_spacer.custom_minimum_size = Vector2(0, 8)
+	vbox.add_child(tendency_spacer)
+
+	var weights: Dictionary = Personality.RACE_TENDENCY_WEIGHTS.get(selected_race, {})
+	var info := Label.new()
+	info.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+	var info_parts: Array[String] = []
+	for axis_id: int in Personality.Axis.values():
+		var axis_weights: Array = weights.get(axis_id, [])
+		if axis_weights.is_empty():
+			continue
+		var best_option: int = axis_weights[0][0]
+		var best_weight: int = axis_weights[0][1]
+		for pair in axis_weights:
+			if pair[1] > best_weight:
+				best_option = pair[0]
+				best_weight = pair[1]
+		info_parts.append("%s: %s" % [
+			Personality.get_axis_name(axis_id as Personality.Axis),
+			Personality.get_option_name(axis_id as Personality.Axis, best_option)])
+	info.text = "Racial leanings: " + ", ".join(info_parts)
+	vbox.add_child(info)
+
+	grid_buttons.clear()
+	grid_buttons.append_array(axis_buttons)
+	grid_buttons.append_array(option_buttons)
+	grid_columns = 1
+
+	var initial_index := 0
+	for i in range(grid_buttons.size()):
+		if grid_buttons[i].button_pressed:
+			initial_index = i
+	grid_nav = MenuNavigator.new()
+	grid_nav.setup(grid_buttons, initial_index)
+
+
+func _on_personality_axis_selected(axis: Personality.Axis) -> void:
+	selected_personality_axis = axis
+	selected_personality_option = -1
+	_show_step()
+
+
+func _on_personality_option_selected(option: int) -> void:
+	selected_personality_option = option
+	_show_step()
+
+
 func _show_name_step() -> void:
-	step_label.text = "Step 6: Enter Name"
+	step_label.text = "Step 7: Enter Name"
 
 	var name_edit := LineEdit.new()
 	name_edit.placeholder_text = "Character Name"
@@ -687,7 +788,7 @@ func _on_name_changed(new_name: String) -> void:
 
 
 func _show_confirm_step() -> void:
-	step_label.text = "Step 7: Confirm Character"
+	step_label.text = "Step 8: Confirm Character"
 
 	var base_age: int = CharacterEnums.get_base_age(selected_race)
 	var final_age: int = base_age + aging_years_spent
@@ -695,13 +796,20 @@ func _show_confirm_step() -> void:
 	var phase_name: String = CharacterEnums.get_life_phase_name(CharacterEnums.get_life_phase(selected_race, preview_days))
 
 	var summary := Label.new()
-	summary.text = "Name: %s\nRace: %s\nClass: %s\nAlignment: %s\nGender: %s\nAge: %d (%s)\nLevel: 1\n\nStrength: %d\nIntelligence: %d\nPiety: %d\nVitality: %d\nAgility: %d\nLuck: %d" % [
+	var personality_text := ""
+	if selected_personality_option >= 0:
+		personality_text = "%s: %s" % [
+			Personality.get_axis_name(selected_personality_axis),
+			Personality.get_option_name(selected_personality_axis, selected_personality_option)]
+
+	summary.text = "Name: %s\nRace: %s\nClass: %s\nAlignment: %s\nGender: %s\nAge: %d (%s)\nPersonality: %s\nLevel: 1\n\nStrength: %d\nIntelligence: %d\nPiety: %d\nVitality: %d\nAgility: %d\nLuck: %d" % [
 		character_name if character_name else "(unnamed)",
 		CharacterEnums.get_race_name(selected_race),
 		CharacterEnums.get_class_name(selected_class),
 		CharacterEnums.get_alignment_name(selected_alignment),
 		"Male" if selected_gender == CharacterEnums.Gender.MALE else "Female",
 		final_age, phase_name,
+		personality_text,
 		rolled_stats.get("strength", 10),
 		rolled_stats.get("intelligence", 10),
 		rolled_stats.get("piety", 10),
@@ -732,6 +840,9 @@ func _on_next_pressed() -> void:
 	if current_step == Step.NAME and character_name.is_empty():
 		return
 
+	if current_step == Step.PERSONALITY and selected_personality_option < 0:
+		return
+
 	if current_step == Step.CLASS:
 		if not ClassData.meets_requirements(selected_class, rolled_stats):
 			return
@@ -756,6 +867,8 @@ func _create_character() -> void:
 
 	if aging_years_spent > 0:
 		new_char.age_days += aging_years_spent * CharacterEnums.DAYS_PER_YEAR
+
+	PersonalitySystem.seed_backstory_personality(new_char, selected_personality_axis, selected_personality_option)
 
 	_finalize_character(new_char)
 

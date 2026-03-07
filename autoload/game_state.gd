@@ -138,6 +138,7 @@ func _populate_starter_roster() -> void:
 
 		character.current_hp = character.max_hp
 		character.current_mp = character.max_mp
+		PersonalitySystem.seed_auto_personality(character)
 		roster.add_character(character)
 
 

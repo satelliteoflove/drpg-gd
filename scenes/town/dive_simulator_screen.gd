@@ -370,6 +370,10 @@ func _apply_results(copy_party: Party) -> void:
 		real_member.is_dead = copy_member.is_dead
 		real_member.death_count = copy_member.death_count
 		real_member.marks = copy_member.marks.duplicate(true)
+		real_member.tendencies = copy_member.tendencies.duplicate(true)
+		real_member.evidence = copy_member.evidence.duplicate(true)
+		real_member.traits = copy_member.traits.duplicate(true)
+		real_member.crystallization_events = copy_member.crystallization_events.duplicate(true)
 		real_member.status_effects = copy_member.status_effects.duplicate()
 		real_member.active_statuses = copy_member.active_statuses.duplicate()
 		real_member.known_spells = copy_member.known_spells.duplicate()

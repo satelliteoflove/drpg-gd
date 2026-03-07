@@ -126,6 +126,12 @@ const SLOT_MAP: Dictionary = {
 @export_group("Marks")
 @export var marks: Array[Dictionary] = []
 
+@export_group("Personality")
+@export var tendencies: Dictionary = {}
+@export var evidence: Dictionary = {}
+@export var traits: Dictionary = {}
+@export var crystallization_events: Dictionary = {}
+
 @export_group("Spells")
 @export var known_spells: Array[String] = []
 @export var max_spell_level: int = 0
@@ -614,6 +620,32 @@ func has_mark_named(mark_name: String) -> bool:
 		if mark.get("name") == mark_name:
 			return true
 	return false
+
+
+func is_trait_crystallized(axis: Personality.Axis) -> bool:
+	return traits.has(axis)
+
+
+func get_active_trait(axis: Personality.Axis) -> int:
+	if traits.has(axis):
+		return traits[axis]
+	return tendencies.get(axis, -1)
+
+
+func get_personality_summary() -> String:
+	if tendencies.is_empty():
+		return ""
+	var parts: Array[String] = []
+	for axis: int in Personality.Axis.values():
+		var option: int = get_active_trait(axis as Personality.Axis)
+		if option < 0:
+			continue
+		var trait_name: String = Personality.get_option_name(axis as Personality.Axis, option)
+		if is_trait_crystallized(axis as Personality.Axis):
+			parts.append(trait_name)
+		else:
+			parts.append(trait_name + " (tendency)")
+	return ", ".join(parts)
 
 
 func _die() -> void:

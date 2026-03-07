@@ -962,6 +962,8 @@ func _show_character_info(character: Character) -> void:
 		character.vitality, character.agility, character.luck
 	]
 
+	text += _format_personality(character)
+
 	var equip_text := _format_equipment(character)
 	if equip_text != "":
 		text += equip_text
@@ -1008,6 +1010,24 @@ func _show_character_info(character: Character) -> void:
 			text += "\n[color=green]Rested: +%.0f%% XP on next dive[/color]" % ((preview_bonus - 1.0) * 100)
 
 	info_label.text = text
+
+
+func _format_personality(character: Character) -> String:
+	if character.tendencies.is_empty():
+		return ""
+	var parts: Array[String] = []
+	for axis: int in Personality.Axis.values():
+		var option: int = character.get_active_trait(axis as Personality.Axis)
+		if option < 0:
+			continue
+		var trait_name: String = Personality.get_option_name(axis as Personality.Axis, option)
+		if character.is_trait_crystallized(axis as Personality.Axis):
+			parts.append("[b]%s[/b]" % trait_name)
+		else:
+			parts.append("[color=gray]%s[/color]" % trait_name)
+	if parts.is_empty():
+		return ""
+	return "Personality: %s\n" % ", ".join(parts)
 
 
 func _format_equipment(character: Character) -> String:
