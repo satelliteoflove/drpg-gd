@@ -799,6 +799,16 @@ func _on_combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Ar
 		GameState.party.distribute_experience(exp_gained)
 		GameState.party.distribute_gold(gold_gained)
 
+		var new_marks := MarkSystem.evaluate_post_combat(
+			combat_system.get_party(),
+			combat_system.enemies,
+			is_boss_encounter,
+			GameState.current_floor if GameState.current_floor > 0 else 1,
+			GameState.game_day
+		)
+		for entry in new_marks:
+			entry.character.add_mark(entry.mark)
+
 		_show_victory_summary(exp_gained, gold_gained, [], [])
 
 		if not loot.is_empty():

@@ -970,6 +970,16 @@ func _show_character_info(character: Character) -> void:
 		text += "\n[color=cyan]Spells:[/color] "
 		text += _format_spell_book(character)
 
+	var all_marks := character.get_marks()
+	if not all_marks.is_empty():
+		var major := character.get_major_marks()
+		var minor_count := all_marks.size() - major.size()
+		text += "\n[color=yellow]Marks:[/color]"
+		for mark in major:
+			text += "\n  [color=orange]%s[/color]" % mark.get("name")
+		if minor_count > 0:
+			text += "\n  [color=gray](%d minor marks)[/color]" % minor_count
+
 	if character.is_dead:
 		if character.has_status(CharacterEnums.StatusEffect.LOST):
 			text += "\n[color=red]LOST FOREVER[/color]"

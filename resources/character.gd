@@ -123,6 +123,9 @@ const SLOT_MAP: Dictionary = {
 @export var town_days_accumulated: int = 0
 @export var rest_bonus_xp_multiplier: float = 1.0
 
+@export_group("Marks")
+@export var marks: Array[Dictionary] = []
+
 @export_group("Spells")
 @export var known_spells: Array[String] = []
 @export var max_spell_level: int = 0
@@ -581,11 +584,43 @@ func spend_mp(amount: int) -> bool:
 	return true
 
 
+func add_mark(mark: Dictionary) -> void:
+	marks.append(mark)
+
+
+func get_marks() -> Array[Dictionary]:
+	return marks
+
+
+func get_major_marks() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for mark in marks:
+		if mark.get("severity") == Marks.Severity.MAJOR:
+			result.append(mark)
+	return result
+
+
+func count_marks_by_theme(theme: String) -> int:
+	var count := 0
+	for mark in marks:
+		var tags: Array = mark.get("theme_tags", [])
+		if tags.has(theme):
+			count += 1
+	return count
+
+
+func has_mark_named(mark_name: String) -> bool:
+	for mark in marks:
+		if mark.get("name") == mark_name:
+			return true
+	return false
+
+
 func _die() -> void:
 	if is_dead:
 		return
 	is_dead = true
-	death_count += 1
+	MarkSystem.add_ko_mark(self)
 	add_status(CharacterEnums.StatusEffect.DEAD, -1, "", 0)
 	died.emit()
 
