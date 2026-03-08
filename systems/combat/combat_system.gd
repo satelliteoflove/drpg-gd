@@ -176,6 +176,8 @@ func player_attack(target: Monster = null) -> void:
 
 func _execute_player_attack(attacker: Character, target: Monster) -> void:
 	var accuracy_mod := StatusEffectSystem.get_accuracy_modifier(attacker)
+	var rel_bonuses := RelationshipManager.get_adjacency_bonus(GameState.get_party_members())
+	accuracy_mod += rel_bonuses.get(attacker.id, {}).get("accuracy", 0)
 	var result := DamageCalculator.calculate_character_attack(attacker, target, accuracy_mod)
 
 	if result.hit:
@@ -570,6 +572,8 @@ func _execute_monster_attack(monster: Monster, attack: MonsterAttack, targets: A
 
 func _execute_monster_single_attack(monster: Monster, attack: MonsterAttack, target: Character) -> void:
 	var evasion_mod := StatusEffectSystem.get_evasion_modifier(target)
+	var rel_bonuses := RelationshipManager.get_adjacency_bonus(GameState.get_party_members())
+	evasion_mod += rel_bonuses.get(target.id, {}).get("evasion", 0)
 	var result := DamageCalculator.calculate_monster_attack(monster, attack, target, evasion_mod)
 
 	if result.hit:
@@ -628,6 +632,8 @@ func _execute_monster_multi_attack(monster: Monster, attack: MonsterAttack, targ
 
 		var char_target: Character = target as Character
 		var evasion_mod := StatusEffectSystem.get_evasion_modifier(char_target)
+		var rel_bonuses_multi := RelationshipManager.get_adjacency_bonus(GameState.get_party_members())
+		evasion_mod += rel_bonuses_multi.get(char_target.id, {}).get("evasion", 0)
 		var result := DamageCalculator.calculate_monster_attack(monster, attack, char_target, evasion_mod)
 
 		if result.hit:

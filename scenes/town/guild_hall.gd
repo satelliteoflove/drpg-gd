@@ -963,6 +963,7 @@ func _show_character_info(character: Character) -> void:
 	]
 
 	text += _format_personality(character)
+	text += _format_relationships(character)
 
 	var equip_text := _format_equipment(character)
 	if equip_text != "":
@@ -1028,6 +1029,33 @@ func _format_personality(character: Character) -> String:
 	if parts.is_empty():
 		return ""
 	return "Personality: %s\n" % ", ".join(parts)
+
+
+func _format_relationships(character: Character) -> String:
+	var rels := RelationshipManager.get_relationships_for(character.id)
+	if rels.is_empty():
+		return ""
+	rels.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return abs(a.get("weight", 0)) > abs(b.get("weight", 0)))
+	var parts: Array[String] = []
+	var count := mini(rels.size(), 3)
+	for i in range(count):
+		var rel: Dictionary = rels[i]
+		var other := GameState.roster.get_character(rel.other_id)
+		var name := other.character_name if other else rel.other_id
+		var tier: Relationships.BondTier = rel.tier
+		var tier_name := Relationships.get_tier_name(tier)
+		var weight: int = rel.weight
+		var color := "white"
+		if tier == Relationships.BondTier.BONDED:
+			color = "green"
+		elif tier == Relationships.BondTier.COMPANION:
+			color = "yellow"
+		if tier == Relationships.BondTier.NEUTRAL:
+			parts.append("%s (%+d)" % [name, weight])
+		else:
+			parts.append("[color=%s]%s: %s (%+d)[/color]" % [color, name, tier_name, weight])
+	return "Bonds: %s\n" % ", ".join(parts)
 
 
 func _format_equipment(character: Character) -> String:

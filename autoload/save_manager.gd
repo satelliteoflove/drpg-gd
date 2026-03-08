@@ -179,6 +179,8 @@ func _create_save_data() -> Resource:
 	data.game_day = GameState.game_day
 	data.floor_tracker_state = GameState.floor_tracker.save_state()
 
+	data.relationship_state = RelationshipManager.get_save_state()
+
 	data.save_timestamp = int(Time.get_unix_time_from_system())
 	data.play_time_seconds = _get_total_play_time()
 
@@ -223,6 +225,9 @@ func _apply_save_data(data) -> void:
 	GameState.game_day = data.game_day if data.game_day else 1
 	if not data.floor_tracker_state.is_empty():
 		GameState.floor_tracker.load_state(data.floor_tracker_state)
+
+	if data.relationship_state:
+		RelationshipManager.load_save_state(data.relationship_state)
 
 
 func _get_total_play_time() -> int:

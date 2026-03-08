@@ -89,6 +89,7 @@ func new_game() -> void:
 	roster = CharacterRoster.new()
 	party_formations = []
 	floor_tracker = FloorTracker.new()
+	RelationshipManager.clear()
 	dungeon_floors.clear()
 	current_floor = 1
 	current_encounter = {}
@@ -196,6 +197,7 @@ func end_combat(victory: bool) -> void:
 func advance_game_days(days: int) -> void:
 	for _d in range(days):
 		game_day += 1
+		RelationshipManager.advance_day()
 		for character in roster.get_all():
 			character.advance_age(1)
 			character.tick_availability(game_day)

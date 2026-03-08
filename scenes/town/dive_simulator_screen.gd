@@ -206,6 +206,8 @@ func _run_simulation() -> void:
 		run_button.disabled = true
 	await get_tree().process_frame
 
+	var relationship_snapshot := RelationshipManager.get_save_state()
+
 	var sim := DiveSimulator.new()
 	last_batch_results.clear()
 
@@ -286,6 +288,7 @@ func _run_simulation() -> void:
 	}
 
 	_apply_results(party_copy)
+	RelationshipManager.load_save_state(relationship_snapshot)
 	last_batch_summary = _compute_summary(last_batch_results)
 
 	is_running = false
