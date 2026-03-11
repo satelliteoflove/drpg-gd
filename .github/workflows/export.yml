@@ -51,6 +51,7 @@ jobs:
         with:
           name: windows
           path: build/windows/
+          retention-days: 1
 
   export-macos:
     name: Export macOS
@@ -89,6 +90,7 @@ jobs:
         with:
           name: macos
           path: build/macos/
+          retention-days: 1
 
   export-linux:
     name: Export Linux
@@ -127,6 +129,7 @@ jobs:
         with:
           name: linux
           path: build/linux/
+          retention-days: 1
 
   release:
     name: Create Release
