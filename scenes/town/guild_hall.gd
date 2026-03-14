@@ -774,8 +774,31 @@ func _on_quick_pick() -> void:
 	for i in range(to_add):
 		eligible[i].town_job = -1
 		GameState.party.add_member(eligible[i])
+	_sort_party_by_role()
 	message_label.text = "Added %d characters to party." % to_add
 	_refresh_display()
+
+
+func _sort_party_by_role() -> void:
+	const FRONT_CLASSES := [
+		CharacterEnums.CharacterClass.FIGHTER,
+		CharacterEnums.CharacterClass.LORD,
+		CharacterEnums.CharacterClass.VALKYRIE,
+		CharacterEnums.CharacterClass.SAMURAI,
+		CharacterEnums.CharacterClass.MONK,
+		CharacterEnums.CharacterClass.NINJA,
+	]
+	var members := GameState.party.get_members().duplicate()
+	members.sort_custom(func(a: Character, b: Character) -> bool:
+		var a_front := a.character_class in FRONT_CLASSES
+		var b_front := b.character_class in FRONT_CLASSES
+		if a_front != b_front:
+			return a_front
+		return false
+	)
+	GameState.party.clear()
+	for m: Character in members:
+		GameState.party.add_member(m)
 
 
 func _enter_reorder_mode() -> void:
