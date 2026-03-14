@@ -50,6 +50,9 @@ __pycache__/
 venv/
 .env
 
+# LLM binaries and models
+llm/
+
 # Logs and temp files
 *.log
 *.tmp

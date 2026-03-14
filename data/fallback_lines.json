@@ -1,0 +1,181 @@
+{
+  "combat_victory": {
+    "brave": [
+      "Ha! They never stood a chance.",
+      "Who's next? I could do this all day.",
+      "That was a good fight. I needed that."
+    ],
+    "cautious": [
+      "That could have gone badly. Let's stay sharp.",
+      "We made it. Barely.",
+      "Check your gear before we move on."
+    ],
+    "friendly": [
+      "Great teamwork back there, everyone!",
+      "Couldn't have done it without all of you.",
+      "Is everyone alright? Good, good."
+    ],
+    "gruff": [
+      "Hmph. They were barely worth the effort.",
+      "Stop celebrating. More will come.",
+      "Wipe your blade and keep moving."
+    ],
+    "sarcastic": [
+      "Well, that was almost challenging.",
+      "Remind me why we're down here again?",
+      "Oh good, more blood on my boots."
+    ],
+    "default": [
+      "We won. Let's keep moving.",
+      "Another fight behind us.",
+      "Stay alert. There will be more."
+    ]
+  },
+  "combat_close_call": {
+    "brave": [
+      "That was close. But we're still standing.",
+      "I've had worse. Probably.",
+      "They almost had us. Almost."
+    ],
+    "cautious": [
+      "We can't take another hit like that.",
+      "Maybe we should turn back...",
+      "That was too close for comfort."
+    ],
+    "friendly": [
+      "I'm glad we all made it through that.",
+      "Everyone patch up. We need each other.",
+      "That scared me. Is everyone okay?"
+    ],
+    "gruff": [
+      "Sloppy. We need to do better.",
+      "Pain is temporary. Death is worse.",
+      "Walk it off. We're not done."
+    ],
+    "default": [
+      "We barely survived that.",
+      "Let's be more careful next time.",
+      "That was a close one."
+    ]
+  },
+  "floor_descent": {
+    "brave": [
+      "Deeper we go. Bring it on.",
+      "Whatever's down there, we'll handle it.",
+      "I can feel the danger. Good."
+    ],
+    "cautious": [
+      "The air feels heavier down here.",
+      "Everyone stay close.",
+      "I don't like the look of this."
+    ],
+    "curious": [
+      "I wonder what we'll find down here.",
+      "The architecture is different on this level.",
+      "Can you feel that? Something's changed."
+    ],
+    "default": [
+      "Another floor. Stay sharp.",
+      "Going deeper.",
+      "Watch your step down here."
+    ]
+  },
+  "exploration": {
+    "brave": [
+      "I hear something ahead. Let's check it out.",
+      "These corridors don't scare me.",
+      "Keep your weapons ready."
+    ],
+    "cautious": [
+      "Quiet. Did you hear that?",
+      "Check corners before you turn them.",
+      "Something doesn't feel right."
+    ],
+    "curious": [
+      "These walls have markings on them.",
+      "I wonder who built this place.",
+      "There's got to be more to this floor."
+    ],
+    "sarcastic": [
+      "Another lovely corridor of doom.",
+      "Charming decor. Very 'abandoned dungeon chic.'",
+      "I'm sure nothing terrible is around the next corner."
+    ],
+    "default": [
+      "Let's keep moving.",
+      "Stay together.",
+      "Eyes open, everyone."
+    ]
+  },
+  "treasure_found": {
+    "friendly": [
+      "Look at this! Enough to share!",
+      "This'll help everyone out.",
+      "What a find! Great work, team."
+    ],
+    "gruff": [
+      "Finally, something worth the trouble.",
+      "About time this dungeon paid up.",
+      "Don't just stare at it. Grab it."
+    ],
+    "sarcastic": [
+      "Oh look, shiny things. How original.",
+      "I'm sure this isn't cursed at all.",
+      "Treasure in a dungeon. How unexpected."
+    ],
+    "default": [
+      "Nice find.",
+      "That'll come in handy.",
+      "Let's take it and go."
+    ]
+  },
+  "trap_triggered": {
+    "cautious": [
+      "I TOLD you to watch your step!",
+      "Check the floor before you walk!",
+      "This is exactly what I was afraid of."
+    ],
+    "sarcastic": [
+      "Oh wonderful. A trap. Shocking.",
+      "Who could have possibly seen that coming.",
+      "Next time, maybe look where you're walking."
+    ],
+    "brave": [
+      "Just a trap. Shake it off.",
+      "Is that the best this dungeon's got?",
+      "Traps won't stop us."
+    ],
+    "default": [
+      "Watch out for more traps.",
+      "That was unpleasant.",
+      "Be more careful ahead."
+    ]
+  },
+  "rest": {
+    "friendly": [
+      "Let me tend to those wounds.",
+      "Rest up, everyone. You've earned it.",
+      "Anyone hungry? I saved some rations."
+    ],
+    "gruff": [
+      "Don't get comfortable. We move soon.",
+      "Sleep light. I don't trust this place.",
+      "Five minutes. Then we go."
+    ],
+    "optimistic": [
+      "Things are looking up from here.",
+      "We've come so far already!",
+      "Tomorrow will be better."
+    ],
+    "pessimistic": [
+      "Enjoy the rest while it lasts.",
+      "I doubt we'll get another chance to rest.",
+      "At least we're alive. For now."
+    ],
+    "default": [
+      "Let's rest here for a bit.",
+      "Good spot to catch our breath.",
+      "We need this."
+    ]
+  }
+}
