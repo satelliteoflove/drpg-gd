@@ -1042,7 +1042,7 @@ func _format_relationships(character: Character) -> String:
 	for i in range(count):
 		var rel: Dictionary = rels[i]
 		var other := GameState.roster.get_character(rel.other_id)
-		var name := other.character_name if other else rel.other_id
+		var rel_name: String = other.character_name if other else rel.other_id
 		var tier: Relationships.BondTier = rel.tier
 		var tier_name := Relationships.get_tier_name(tier)
 		var weight: int = rel.weight
@@ -1052,9 +1052,9 @@ func _format_relationships(character: Character) -> String:
 		elif tier == Relationships.BondTier.COMPANION:
 			color = "yellow"
 		if tier == Relationships.BondTier.NEUTRAL:
-			parts.append("%s (%+d)" % [name, weight])
+			parts.append("%s (%+d)" % [rel_name, weight])
 		else:
-			parts.append("[color=%s]%s: %s (%+d)[/color]" % [color, name, tier_name, weight])
+			parts.append("[color=%s]%s: %s (%+d)[/color]" % [color, rel_name, tier_name, weight])
 	return "Bonds: %s\n" % ", ".join(parts)
 
 

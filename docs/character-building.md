@@ -31,7 +31,7 @@ Four axes of personality (Temperament, Social, Outlook, Values) that start as te
 
 ### Narrative Events
 
-Hand-authored event structures with pre-written dialogue for major events and LLM-generated dialogue for micro-events. Events cast 1-3 characters from the party into dramatic moments that trigger crystallization, relationship changes, and marks. Separate from combat encounters - these fire during exploration, rest, and between floors. See [narrative-systems.md](narrative-systems.md).
+Hand-authored event templates that the LLM fills with dialogue. Templates define actors, situation, and possible resolutions; the LLM generates all character dialogue within those constraints. Events cast 1-3 characters from the party into dramatic moments that trigger crystallization, relationship changes, and marks. A generic personality-tagged fallback line pool provides graceful degradation when the LLM is unavailable. See [narrative-systems.md](narrative-systems.md).
 
 ### Relationships
 
@@ -114,15 +114,16 @@ When a character is **retired** (a deliberate player choice), the player can cre
 
 These systems should be built in the order that provides the most value with the least coupling:
 
-1. **Aging** - purely mechanical, no LLM dependency, extends existing character resource
-2. **Calendar and availability** - global time, recovery, town roles, catch-up/rest bonuses
-3. **Racial balance changes** - XP modifier updates, add missing resistances, implement breath weapon
-4. **Marks** - data structure on character resource, UI to display them, combat generation
-5. **Personality traits** - tendency seeding, backstory crystallization, crystallization logic, storage
-6. **Relationships** - modifier stack per character pair, combat bonuses, diminishing returns, breadth bonuses, reunion modifiers
-7. **Events** - templates, casting system, scripted first floor, pre-written dialogue for major events
-8. **AI dialogue** - LLM integration for micro-events, prompt construction, validation, fallback (prototype mid-stream once personality data exists)
-9. **Generational legacy** - retirement flow, child creation, inheritance
+1. **Aging** - purely mechanical, no LLM dependency, extends existing character resource [DONE]
+2. **Calendar and availability** - global time, recovery, town roles, catch-up/rest bonuses [DONE]
+3. **Racial balance changes** - XP modifier updates, add missing resistances, implement breath weapon [DONE]
+4. **Marks** - data structure on character resource, UI to display them, combat generation [DONE]
+5. **Personality traits** - tendency seeding, backstory crystallization, crystallization logic, storage [DONE]
+6. **Relationships** - modifier stack per character pair, combat bonuses, diminishing returns, breadth bonuses, reunion modifiers [DONE]
+7. **Event framework** - event template format (JSON), casting system, consequence engine, event manager autoload (triggers, pacing, cooldowns), event UI scene, micro-event framework, data-driven combat event generation (marks and relationship triggers as JSON rules), generic personality-tagged fallback line pool, 6 starter event templates
+8. **AI dialogue** - LLM integration (local Wayfarer model), prompt construction from templates + character context, validation pipeline, retry + fallback selection, replace fallback text with LLM output in event UI
+9. **Scripted first floor** - curated event triggers for floors 1-2, tutorial pacing, ensuring personality/marks/relationships systems are demonstrated to the player early
+10. **Generational legacy** - retirement flow, child creation, inheritance
 
 ## Related Documents
 

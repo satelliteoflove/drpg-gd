@@ -4,6 +4,8 @@
 
 Combat is a primary source of marks and relationship shifts - not just narrative events. Every fight is evaluated in real time for moments that matter.
 
+Combat triggers are data-driven: each mark trigger and relationship trigger is defined as a JSON rule with a trigger type, conditions, and the mark/modifier to create. Adding a new combat mark means adding a JSON entry, not writing new code. The evaluator understands a fixed vocabulary of trigger types (hp_below_pct, killed_boss, adjacent_survive, healed_below_pct, etc.) and applies matching rules after each combat.
+
 ### Combat Marks
 
 | Trigger | Mark | Severity | Notes |
@@ -147,15 +149,15 @@ Pre-crystallization, the LLM reads the tendency. Post-crystallization, it reads 
 
 ### Structure
 
-Events are hand-authored structures with LLM-generated dialogue. Each event defines:
+Event templates are hand-authored scaffolding that the LLM fills with dialogue. The template defines who is involved, what the situation is, and the handful of ways it can resolve. The LLM is flexible within those constraints but cannot go off the rails because actors, situation, and outcomes are predetermined. Each template defines:
 
 - **Trigger conditions**: When can this event fire? (floor depth, party state, time since last event, etc.)
 - **Character slots**: 1-3 roles that party members are cast into (e.g., "the discoverer", "the skeptic", "the witness")
 - **Slot requirements**: What traits/marks/relationships make a character eligible for each slot
-- **Setup text**: Scene-setting description (hand-authored, not LLM)
+- **Setup text**: Scene-setting description (hand-authored, gives the LLM and player shared context)
 - **Choice points**: Player decisions within the event
 - **Consequences**: What happens mechanically (trait crystallization, marks, relationship changes)
-- **Dialogue prompts**: Context sent to the LLM for each character's lines
+- **LLM prompt context**: Per-slot guidance for dialogue generation (what the character is reacting to, what tone fits, what they might reference)
 
 ### Event Categories
 
@@ -360,13 +362,21 @@ This preserves the mechanical information while adding narrative richness.
 
 ### Approach
 
-A hybrid model splits dialogue responsibility by stakes:
+All dialogue is LLM-generated. Event templates provide scaffolding -- they define actors, situation, and possible resolutions. The LLM generates every line of character dialogue within that scaffolding, informed by each character's personality, marks, and relationships. This avoids the combinatorial explosion of pre-writing dialogue for 256 possible personality combinations per character slot.
 
-**Major narrative events** (discovery, hard choice, combat aftermath, memory) use **pre-written dialogue** tagged by trait combination. These are the defining character moments. Every word is authored during development. Quality is fully controlled.
+Hand-authored templates define WHAT happens (situation, actors, choices, consequences). The LLM generates HOW characters say things. The template constrains the LLM tightly enough that it cannot derail the event, but flexibly enough that two runs of the same event with different characters feel genuinely different.
 
-**Micro-events and combat quips** use **LLM generation** with pre-written fallback. These are high-volume, low-stakes moments where personality flavor matters more than precision. If the LLM is great, micro-events feel alive. If it's mediocre, the player's most important moments are still hand-written.
+### Fallback When LLM Is Unavailable
 
-Hand-authored event structures define WHAT happens. For major events, pre-written dialogue covers HOW characters say things. For micro-events, the LLM generates HOW characters say things with trait-tagged fallback lines as a safety net.
+A generic pool of personality-tagged lines serves as fallback when the LLM is unavailable or fails validation. These are NOT per-event lines -- they are a shared pool organized by context type and personality:
+
+- **Context types**: post-combat, discovery, moral choice, rest, observation, greeting (~6 types)
+- **Personality tags**: keyed by the most relevant axis for that context (e.g., Temperament for combat, Values for moral choices)
+- **Pool size**: ~5-10 lines per personality option per context type (~400-500 lines total)
+
+Fallback lines are functional but generic. They convey personality flavor without referencing the specific event. The LLM is the intended experience; fallback exists for graceful degradation, not as a parallel content track.
+
+For micro-events, initiator lines are tagged by both personality and "tone" (complaint, observation, boast, worry, etc.). Responder lines are keyed by `initiator_tone + responder_personality`, ensuring responses feel reactive even without the LLM.
 
 ### Language Style
 
@@ -398,7 +408,7 @@ Tone correctness is not validated programmatically - the prompt is responsible f
 
 1. **First failure**: Re-generate with a corrective prompt that specifies what went wrong ("Line was too long, maximum 15 words" or "Character name was wrong, use 'Thorin' not 'Thoren'")
 2. **Second failure**: Re-generate with tighter constraints
-3. **Third failure**: Fall back to pre-written generic lines tagged by trait combination
+3. **Third failure**: Fall back to generic personality-tagged line from the fallback pool
 4. **All failures logged**: Every failed generation is logged with full diagnostic data:
    - The prompt sent
    - The response received
