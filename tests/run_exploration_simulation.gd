@@ -30,7 +30,7 @@ func _run() -> void:
 	_build_scenarios()
 	var total_dives := _scenarios.size() * NUM_DIVES
 	print("=" .repeat(80))
-	print("DIVE SIMULATOR -- Attrition-Based Combat Testing (with return trip)")
+	print("AUTOEXPLORE -- Attrition-Based Combat Testing (with return trip)")
 	print("%d scenarios x %d dives = %d total dives" % [_scenarios.size(), NUM_DIVES, total_dives])
 	print("=" .repeat(80))
 	print("")
@@ -60,7 +60,7 @@ func _run() -> void:
 			var seed_value := BASE_SEED + si * 100000 + di * 1000
 			CombatRNG.set_seed(seed_value)
 
-			var sim := DiveSimulator.new()
+			var sim := ExplorationSimulator.new()
 			var result := sim.run_floor_dive(
 				party, floor_num, num_encounters, include_boss,
 				seed_value, PartyAI.DEFAULT_CAST_THRESHOLD,

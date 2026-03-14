@@ -16,7 +16,7 @@ const SCENES: Dictionary = {
 	"temple": "res://scenes/town/temple.tscn",
 	"shop": "res://scenes/town/shop.tscn",
 	"party_menu": "res://scenes/common/party_menu.tscn",
-	"dive_simulator": "res://scenes/town/dive_simulator_screen.tscn",
+	"autoexplore": "res://scenes/town/autoexplore_screen.tscn",
 }
 
 var current_scene_name: String = ""
@@ -118,6 +118,6 @@ func go_to_party_menu() -> void:
 	change_scene("party_menu")
 
 
-func go_to_dive_simulator() -> void:
+func go_to_autoexplore() -> void:
 	GameState.set_mode(GameState.GameMode.TOWN)
-	change_scene("dive_simulator")
+	change_scene("autoexplore")

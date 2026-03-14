@@ -1,8 +1,8 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scenes/town/dive_simulator_screen.gd" id="1_script"]
+[ext_resource type="Script" path="res://scenes/town/autoexplore_screen.gd" id="1_script"]
 
-[node name="DiveSimulator" type="Control"]
+[node name="AutoExplore" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -41,7 +41,7 @@ layout_mode = 2
 [node name="TitleLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "DIVE SIMULATOR"
+text = "AUTOEXPLORE"
 theme_override_font_sizes/font_size = 24
 
 [node name="PartyInfoLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
@@ -64,7 +64,7 @@ theme_override_constants/separation = 6
 
 [node name="MessageLabel" type="Label" parent="MainHBox/LeftPanel"]
 layout_mode = 2
-text = "Configure and run a simulation."
+text = "Configure and run an exploration."
 horizontal_alignment = 1
 
 [node name="HelpLabel" type="Label" parent="MainHBox/LeftPanel"]
@@ -101,4 +101,4 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 bbcode_enabled = true
-text = "Run a simulation to see results."
+text = "Press Run to begin exploration."

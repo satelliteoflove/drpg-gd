@@ -81,7 +81,7 @@ func _on_temple_pressed() -> void:
 
 
 func _on_simulator_pressed() -> void:
-	SceneManager.go_to_dive_simulator()
+	SceneManager.go_to_autoexplore()
 
 
 func _on_dungeon_pressed() -> void:

@@ -1,9 +1,10 @@
-class_name DiveSimulator
+class_name ExplorationSimulator
 extends RefCounted
 
 signal encounter_completed(encounter_num: int, result: Dictionary)
 signal dive_completed(result: Dictionary)
 
+var post_combat_callback: Callable = Callable()
 var _dice_regex: RegEx = null
 
 
@@ -254,6 +255,8 @@ func run_floor_dive(
 
 		if result.victory:
 			encounters_won += 1
+			if post_combat_callback.is_valid():
+				post_combat_callback.call(party, simulator.enemies, false, floor_level)
 			var healing := _heal_between_combats(party)
 			total_healing_hp += healing.hp_restored
 			total_healing_mp += healing.mp_spent
@@ -349,6 +352,8 @@ func run_floor_dive(
 
 			if boss_result.victory:
 				encounters_won += 1
+				if post_combat_callback.is_valid():
+					post_combat_callback.call(party, simulator.enemies, true, floor_level)
 				var gold := _roll_encounter_gold(boss_enemies, true)
 				total_gold += gold
 				var loot := _roll_encounter_loot(boss_enemies, party, floor_level)
@@ -419,6 +424,8 @@ func run_floor_dive(
 			return_snapshots.append(snapshot)
 
 			if result.victory:
+				if post_combat_callback.is_valid():
+					post_combat_callback.call(party, simulator.enemies, false, floor_level)
 				var gold := _roll_encounter_gold(enemies, false)
 				total_gold += gold
 				var loot := _roll_encounter_loot(enemies, party, floor_level)

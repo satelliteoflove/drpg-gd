@@ -15,6 +15,8 @@ var last_batch_results: Array[Dictionary] = []
 var last_batch_summary: Dictionary = {}
 var last_rewards: Dictionary = {}
 var is_running: bool = false
+var _narrative_log: Array[Dictionary] = []
+var _sim_day: int = 0
 
 var floor_buttons: Array[Button] = []
 var strategy_buttons: Array[Button] = []
@@ -115,7 +117,7 @@ func _populate_config() -> void:
 	return_spin.value_changed.connect(func(val: float) -> void: return_encounters = int(val))
 	config_list.add_child(return_spin)
 
-	_add_section_label("Number of Dives")
+	_add_section_label("Number of Runs")
 	dives_spin = SpinBox.new()
 	dives_spin.min_value = 1
 	dives_spin.max_value = 10
@@ -160,7 +162,7 @@ func _populate_config() -> void:
 	config_list.add_child(spacer)
 
 	run_button = Button.new()
-	run_button.text = "Run Simulation"
+	run_button.text = "Run AutoExplore"
 	run_button.custom_minimum_size = Vector2(350, 40)
 	run_button.pressed.connect(_on_run_pressed)
 	config_list.add_child(run_button)
@@ -194,31 +196,38 @@ func _on_run_pressed() -> void:
 	if is_running:
 		return
 	if not GameState.has_party():
-		message_label.text = "No party to simulate with."
+		message_label.text = "No party to explore with."
 		return
 	_run_simulation()
 
 
 func _run_simulation() -> void:
 	is_running = true
-	message_label.text = "Simulating..."
+	message_label.text = "Exploring..."
 	if run_button:
 		run_button.disabled = true
 	await get_tree().process_frame
 
 	var relationship_snapshot := RelationshipManager.get_save_state()
+	var event_snapshot := EventManager.get_save_state()
 
-	var sim := DiveSimulator.new()
+	var sim := ExplorationSimulator.new()
 	last_batch_results.clear()
+	_narrative_log.clear()
+	_sim_day = GameState.game_day
 
 	var party_copy := _copy_party()
 	var level_ups: Array[Dictionary] = []
 	var death_log: Array[Dictionary] = []
 	var dives_completed := 0
 
+	sim.post_combat_callback = func(p: Party, enemies: Array[Monster], p_is_boss: bool, floor_level: int) -> void:
+		_on_sim_post_combat(p, enemies, p_is_boss, floor_level)
+
 	for i in range(num_dives):
 		if i > 0:
 			_rest_between_dives(party_copy)
+			_sim_day += 1
 		_clear_consumables(party_copy)
 		TestFixtures.stock_party_consumables(party_copy, party_copy.get_average_level())
 		var seed_value := randi()
@@ -278,6 +287,7 @@ func _run_simulation() -> void:
 			if not found:
 				loot_items.append(item.item_name if item.item_name != "" else item.id)
 
+	var days_elapsed := _sim_day - GameState.game_day
 	last_rewards = {
 		"total_xp": total_xp_earned,
 		"total_gold": total_gold_earned,
@@ -285,16 +295,19 @@ func _run_simulation() -> void:
 		"death_log": death_log,
 		"loot_items": loot_items,
 		"dives_completed": dives_completed,
+		"days_elapsed": days_elapsed,
+		"narrative_log": _narrative_log.duplicate(true),
 	}
 
 	_apply_results(party_copy)
 	RelationshipManager.load_save_state(relationship_snapshot)
+	EventManager.load_save_state(event_snapshot)
 	last_batch_summary = _compute_summary(last_batch_results)
 
 	is_running = false
 	if run_button:
 		run_button.disabled = false
-	var msg := "Dive complete! Rewards applied. %d dive(s) finished." % dives_completed
+	var msg := "Exploration complete! Rewards applied. %d dive(s) finished." % dives_completed
 	if dives_completed < num_dives:
 		msg += " (stopped early: death threshold reached)"
 	message_label.text = msg
@@ -386,6 +399,105 @@ func _apply_results(copy_party: Party) -> void:
 	real_party.inventory.slots = copy_party.inventory.slots.duplicate(true)
 
 
+func _on_sim_post_combat(party: Party, enemies: Array[Monster], p_is_boss: bool, floor_level: int) -> void:
+	var party_chars: Array[Character] = []
+	for member in party.get_members():
+		party_chars.append(member)
+
+	var new_marks := MarkSystem.evaluate_post_combat(
+		party_chars, enemies, p_is_boss, floor_level, _sim_day
+	)
+	for entry in new_marks:
+		entry.character.add_mark(entry.mark)
+		_narrative_log.append({
+			"type": "mark",
+			"name": entry.character.character_name,
+			"mark_name": entry.mark.get("name", ""),
+		})
+
+	var rel_mods := MarkSystem.evaluate_relationships(
+		party_chars, enemies, p_is_boss, floor_level
+	)
+	for mod in rel_mods:
+		RelationshipManager.add_modifier(mod.id_a, mod.id_b, mod.source, mod.weight, _sim_day)
+		var name_a := _get_name_by_id(party, mod.id_a)
+		var name_b := _get_name_by_id(party, mod.id_b)
+		_narrative_log.append({
+			"type": "relationship",
+			"char_a": name_a,
+			"char_b": name_b,
+			"source": mod.source,
+			"weight": mod.weight,
+		})
+
+	for member in party.get_members():
+		if member.is_dead:
+			continue
+		for axis: int in member.traits.keys():
+			var axis_name := _axis_display_name(axis)
+			var option: int = member.traits[axis]
+			var already_logged := false
+			for entry: Dictionary in _narrative_log:
+				if entry.get("type") == "crystallization" and entry.get("name") == member.character_name and entry.get("axis") == axis_name:
+					already_logged = true
+					break
+			if already_logged:
+				continue
+			var ce_entry: Dictionary = member.crystallization_events.get(axis, {})
+			if not ce_entry.is_empty() and ce_entry.get("day", 0) == _sim_day:
+				_narrative_log.append({
+					"type": "crystallization",
+					"name": member.character_name,
+					"axis": axis_name,
+					"trait": _option_display_name(axis, option),
+				})
+
+
+func _get_name_by_id(party: Party, char_id: String) -> String:
+	for member in party.get_members():
+		if member.id == char_id:
+			return member.character_name
+	return char_id
+
+
+func _axis_display_name(axis: int) -> String:
+	match axis:
+		Personality.Axis.TEMPERAMENT: return "Temperament"
+		Personality.Axis.SOCIAL: return "Social"
+		Personality.Axis.OUTLOOK: return "Outlook"
+		Personality.Axis.VALUES: return "Values"
+	return "Unknown"
+
+
+func _option_display_name(axis: int, option: int) -> String:
+	match axis:
+		Personality.Axis.TEMPERAMENT:
+			match option:
+				Personality.Temperament.BRAVE: return "Brave"
+				Personality.Temperament.CAUTIOUS: return "Cautious"
+				Personality.Temperament.RECKLESS: return "Reckless"
+				Personality.Temperament.CALCULATING: return "Calculating"
+		Personality.Axis.SOCIAL:
+			match option:
+				Personality.Social.FRIENDLY: return "Friendly"
+				Personality.Social.GRUFF: return "Gruff"
+				Personality.Social.SARCASTIC: return "Sarcastic"
+				Personality.Social.EARNEST: return "Earnest"
+		Personality.Axis.OUTLOOK:
+			match option:
+				Personality.Outlook.OPTIMISTIC: return "Optimistic"
+				Personality.Outlook.PESSIMISTIC: return "Pessimistic"
+				Personality.Outlook.STOIC: return "Stoic"
+				Personality.Outlook.CURIOUS: return "Curious"
+		Personality.Axis.VALUES:
+			match option:
+				Personality.Values.MERCIFUL: return "Merciful"
+				Personality.Values.RUTHLESS: return "Ruthless"
+				Personality.Values.PRINCIPLED: return "Principled"
+				Personality.Values.SELF_INTERESTED: return "Self-Interested"
+	return "Unknown"
+
+
 func _compute_summary(results: Array[Dictionary]) -> Dictionary:
 	var total := results.size()
 	var wipes := 0
@@ -465,11 +577,11 @@ func _display_current_tab() -> void:
 
 func _display_summary() -> void:
 	if last_batch_results.is_empty():
-		results_label.text = "Run a simulation to see results."
+		results_label.text = "Press Run to begin exploration."
 		return
 
 	var s := last_batch_summary
-	var text := "[b]SIMULATION RESULTS[/b]\n\n"
+	var text := "[b]AUTOEXPLORE RESULTS[/b]\n\n"
 
 	text += "[color=gray]Scenario:[/color] Floor %d, %d encounters" % [selected_floor, num_encounters]
 	if include_boss:
@@ -533,6 +645,9 @@ func _display_summary() -> void:
 		text += "\n[color=green]--- Rewards Applied ---[/color]\n"
 		text += "Total XP Earned: %d\n" % last_rewards.total_xp
 		text += "Total Gold Earned: %d\n" % last_rewards.total_gold
+		var days: int = last_rewards.get("days_elapsed", 0)
+		if days > 0:
+			text += "Time Elapsed: %d day(s)\n" % days
 
 		var lvl_ups: Array = last_rewards.get("level_ups", [])
 		if not lvl_ups.is_empty():
@@ -554,12 +669,56 @@ func _display_summary() -> void:
 			for d in d_log:
 				text += "  %s (dive %d)\n" % [d.name, d.dive]
 
+		var narr: Array = last_rewards.get("narrative_log", [])
+		if not narr.is_empty():
+			var marks: Array[Dictionary] = []
+			var rels: Array[Dictionary] = []
+			var crystals: Array[Dictionary] = []
+			for entry: Dictionary in narr:
+				match entry.get("type", ""):
+					"mark": marks.append(entry)
+					"relationship": rels.append(entry)
+					"crystallization": crystals.append(entry)
+
+			if not marks.is_empty():
+				text += "\n[color=#cccc44]Marks Earned:[/color]\n"
+				for m in marks:
+					text += "  %s: %s\n" % [m.get("name", ""), m.get("mark_name", "")]
+
+			if not rels.is_empty():
+				text += "\n[color=#88ccee]Relationship Changes:[/color]\n"
+				var aggregated: Array[Dictionary] = []
+				for r in rels:
+					var found := false
+					for a in aggregated:
+						if a.char_a == r.get("char_a", "") and a.char_b == r.get("char_b", "") and a.source == r.get("source", ""):
+							a.weight += int(r.get("weight", 0))
+							found = true
+							break
+					if not found:
+						aggregated.append({
+							"char_a": r.get("char_a", ""),
+							"char_b": r.get("char_b", ""),
+							"source": r.get("source", ""),
+							"weight": int(r.get("weight", 0)),
+						})
+				for a in aggregated:
+					var sign_str := "+" if a.weight > 0 else ""
+					text += "  %s & %s: %s (%s%d)\n" % [a.char_a, a.char_b, a.source, sign_str, a.weight]
+
+			if not crystals.is_empty():
+				text += "\n[color=#ffaa00]Trait Crystallizations:[/color]\n"
+				for c in crystals:
+					text += "  %s's %s crystallized: %s!\n" % [
+						c.get("name", ""), c.get("axis", ""), c.get("trait", "")
+					]
+
 	results_label.text = text
 
 
 func _display_detail() -> void:
 	if last_batch_results.is_empty():
-		results_label.text = "Run a simulation to see encounter details."
+		results_label.text = "Press Run to begin exploration."
 		return
 
 	var text := "[b]ENCOUNTER LOG[/b]\n"

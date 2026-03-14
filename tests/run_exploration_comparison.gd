@@ -15,7 +15,7 @@ func _init() -> void:
 
 func _run_tests() -> void:
 	print("=" .repeat(70))
-	print("DUNGEON DIVE EFFICIENCY COMPARISON")
+	print("AUTOEXPLORE EFFICIENCY COMPARISON")
 	print("=" .repeat(70))
 	print("")
 	print("Configuration:")
@@ -34,7 +34,7 @@ func _run_tests() -> void:
 		])
 	print("")
 
-	var dive := DiveSimulator.new()
+	var dive := ExplorationSimulator.new()
 
 	var thresholds: Array[float] = [0.0, 0.2, 0.5, 0.8, 1.0]
 
