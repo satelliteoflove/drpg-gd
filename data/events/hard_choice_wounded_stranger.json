@@ -1,0 +1,91 @@
+{
+  "id": "wounded_stranger",
+  "category": "hard_choice",
+  "trigger": {
+    "context": "floor_transition",
+    "conditions": {
+      "min_floor": 3,
+      "min_party_alive": 3,
+      "min_days_since_last_event": 5
+    }
+  },
+  "cooldown_days": 20,
+  "weight": 8,
+  "slots": [
+    {
+      "role": "advocate",
+      "label": "Advocate",
+      "requirements": {
+        "trait_match": {"axis": "VALUES", "option": "MERCIFUL"}
+      },
+      "fallback_allowed": true
+    },
+    {
+      "role": "pragmatist",
+      "label": "Pragmatist",
+      "requirements": {
+        "trait_match": {"axis": "TEMPERAMENT", "option": "CALCULATING"}
+      },
+      "fallback_allowed": true
+    }
+  ],
+  "setup_text": "Near the stairs, the party finds a wounded adventurer slumped against the wall. They're conscious but can barely move. Helping them would cost time and supplies.",
+  "dialogue": [
+    {"slot_index": 0, "line": "'We can't just leave them here.'"},
+    {"slot_index": 1, "line": "'We barely have enough supplies for ourselves.'"},
+    {"slot_index": 0, "line": "'That could be any of us tomorrow.'"}
+  ],
+  "choices": [
+    {
+      "id": "help_stranger",
+      "label": "Help them",
+      "description": "Share your supplies and help them to the stairs.",
+      "consequences": {
+        "marks": [
+          {
+            "target_slot": 0,
+            "name": "Showed mercy on floor {floor}",
+            "origin": "Helped a wounded stranger despite the cost",
+            "theme_tags": ["compassion", "moral_choice"],
+            "agency": "actor",
+            "severity": "minor"
+          }
+        ],
+        "relationship_modifiers": [
+          {"slot_a": 0, "slot_b": 1, "source": "disagreed_but_helped", "weight": 3}
+        ],
+        "evidence": [
+          {"target_slot": 0, "axis": "VALUES", "option": "MERCIFUL", "amount": 2}
+        ]
+      }
+    },
+    {
+      "id": "leave_stranger",
+      "label": "Move on",
+      "description": "The dungeon doesn't reward charity.",
+      "consequences": {
+        "marks": [
+          {
+            "target_slot": 1,
+            "name": "Made the hard call on floor {floor}",
+            "origin": "Chose the party's survival over a stranger",
+            "theme_tags": ["pragmatism", "moral_choice"],
+            "agency": "actor",
+            "severity": "minor"
+          }
+        ],
+        "evidence": [
+          {"target_slot": 1, "axis": "VALUES", "option": "SELF_INTERESTED", "amount": 2},
+          {"target_slot": 0, "axis": "VALUES", "option": "MERCIFUL", "amount": 1}
+        ]
+      }
+    }
+  ],
+  "llm_context": {
+    "scene_mood": "Tense moral dilemma. Resources are scarce. A life hangs in the balance.",
+    "slot_guidance": [
+      {"slot_index": 0, "tone": "Compassionate and insistent. Sees a person, not a liability."},
+      {"slot_index": 1, "tone": "Pragmatic, not cruel. Worried about the party's survival."}
+    ]
+  }
+}

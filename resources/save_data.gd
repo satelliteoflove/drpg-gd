@@ -25,7 +25,10 @@ extends Resource
 @export_group("Relationships")
 @export var relationship_state: Dictionary = {}
 
+@export_group("Events")
+@export var event_state: Dictionary = {}
+
 @export_group("Meta")
-@export var save_version: int = 4
+@export var save_version: int = 5
 @export var save_timestamp: int = 0
 @export var play_time_seconds: int = 0

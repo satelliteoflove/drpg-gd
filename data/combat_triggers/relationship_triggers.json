@@ -1,0 +1,36 @@
+[
+	{
+		"id": "fought_side_by_side",
+		"trigger": "adjacent_survive",
+		"min_enemies": 3,
+		"modifier": {
+			"source": "Fought side by side on Floor {floor}",
+			"weight": 2
+		}
+	},
+	{
+		"id": "healed_critical",
+		"trigger": "healed_below_pct",
+		"threshold": 25,
+		"modifier": {
+			"source": "Saved my life on Floor {floor}",
+			"weight": 8
+		}
+	},
+	{
+		"id": "revived_ally",
+		"trigger": "revived",
+		"modifier": {
+			"source": "Brought me back on Floor {floor}",
+			"weight": 12
+		}
+	},
+	{
+		"id": "boss_survive",
+		"trigger": "boss_survived",
+		"modifier": {
+			"source": "Survived {boss_name} together",
+			"weight": 6
+		}
+	}
+]

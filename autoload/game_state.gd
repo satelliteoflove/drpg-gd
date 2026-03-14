@@ -90,6 +90,7 @@ func new_game() -> void:
 	party_formations = []
 	floor_tracker = FloorTracker.new()
 	RelationshipManager.clear()
+	EventManager.clear()
 	dungeon_floors.clear()
 	current_floor = 1
 	current_encounter = {}

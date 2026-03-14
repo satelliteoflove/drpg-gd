@@ -18,11 +18,22 @@ var waiting_for_player: bool = false
 var waiting_for_target: bool = false
 var processing_monster_turn: bool = false
 var is_boss_encounter: bool = false
+var combat_log: Array[Dictionary] = []
+var _combat_id: String = ""
+var _turn_count: int = 0
 
 
 ## Initializes and starts a new combat encounter.
 ## [param p_party]: The player's party participating in combat.
 ## [param enemy_list]: Array of monsters to fight against.
+func _log_action(entry: Dictionary) -> void:
+	entry["event_id"] = combat_log.size()
+	entry["combat_id"] = _combat_id
+	entry["day"] = GameState.game_day
+	entry["category"] = "combat"
+	combat_log.append(entry)
+
+
 func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 	party = p_party
 	party_members = party.get_members()
@@ -31,6 +42,10 @@ func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 	for enemy in enemy_list:
 		var combat_enemy := enemy.duplicate_for_combat()
 		enemies.append(combat_enemy)
+
+	combat_log.clear()
+	_combat_id = "c_%d_%d" % [GameState.game_day, randi() % 10000]
+	_turn_count = 0
 
 	initiative = InitiativeTracker.new()
 	is_active = true
@@ -44,6 +59,20 @@ func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 
 	for enemy in enemies:
 		initiative.add_combatant(enemy.combat_id, false, enemy.agility)
+
+	var party_ids: Array[String] = []
+	for m in party_members:
+		party_ids.append(m.id)
+	var enemy_info: Array[Dictionary] = []
+	for e in enemies:
+		enemy_info.append({"name": e.monster_name, "level": e.level if "level" in e else 0})
+	_log_action({
+		"type": "combat_start",
+		"floor": GameState.current_floor,
+		"is_boss": is_boss_encounter,
+		"party_ids": party_ids,
+		"enemies": enemy_info,
+	})
 
 	var enemy_count := enemies.size()
 	if is_boss_encounter:
@@ -72,6 +101,7 @@ func _advance_turn() -> void:
 	if entry == null:
 		return
 
+	_turn_count += 1
 	current_combatant_id = entry.id
 
 	if entry.is_player:
@@ -180,6 +210,7 @@ func _execute_player_attack(attacker: Character, target: Monster) -> void:
 	accuracy_mod += rel_bonuses.get(attacker.id, {}).get("accuracy", 0)
 	var result := DamageCalculator.calculate_character_attack(attacker, target, accuracy_mod)
 
+	var target_hp_before := target.current_hp
 	if result.hit:
 		var damage: int = result.damage
 		var sleep_mult := StatusEffectSystem.get_damage_multiplier_for_sleeping(target)
@@ -187,6 +218,14 @@ func _execute_player_attack(attacker: Character, target: Monster) -> void:
 			damage = int(damage * sleep_mult)
 
 		var actual_damage := target.take_damage(damage)
+
+		_log_action({
+			"type": "action", "actor_id": attacker.id, "target_id": target.combat_id,
+			"action": "attack", "action_name": attacker.equipped_weapon.item_name if attacker.equipped_weapon else "Unarmed",
+			"result": "hit", "damage": actual_damage, "healing": 0,
+			"target_hp_before": target_hp_before, "target_hp_after": target.current_hp,
+			"target_max_hp": target.max_hp, "is_kill": target.is_dead,
+		})
 
 		var damage_msg := "%s attacks %s for %d damage!" % [
 			attacker.get_display_name(),
@@ -205,6 +244,13 @@ func _execute_player_attack(attacker: Character, target: Monster) -> void:
 			action_performed.emit("%s is defeated!" % target.monster_name)
 			initiative.remove_combatant(target.combat_id)
 	else:
+		_log_action({
+			"type": "action", "actor_id": attacker.id, "target_id": target.combat_id,
+			"action": "attack", "action_name": attacker.equipped_weapon.item_name if attacker.equipped_weapon else "Unarmed",
+			"result": "miss", "damage": 0, "healing": 0,
+			"target_hp_before": target_hp_before, "target_hp_after": target.current_hp,
+			"target_max_hp": target.max_hp, "is_kill": false,
+		})
 		action_performed.emit("%s's attack on %s misses!" % [
 			attacker.get_display_name(),
 			target.monster_name
@@ -228,6 +274,13 @@ func player_defend() -> void:
 	defender.is_defending = true
 	waiting_for_player = false
 	waiting_for_target = false
+
+	_log_action({
+		"type": "action", "actor_id": defender.id, "target_id": defender.id,
+		"action": "defend", "action_name": "Defend",
+		"result": "ok", "damage": 0, "healing": 0,
+	})
+
 	action_performed.emit("%s takes a defensive stance." % defender.get_display_name())
 	initiative.apply_action_delay(current_combatant_id)
 	_check_combat_end()
@@ -255,7 +308,15 @@ func player_breath(target: Monster = null) -> void:
 
 		action_performed.emit("%s breathes acid!" % attacker.get_display_name())
 		for t in targets:
+			var hp_before := t.current_hp
 			var actual := t.take_damage(damage)
+			_log_action({
+				"type": "action", "actor_id": attacker.id, "target_id": t.combat_id,
+				"action": "breath", "action_name": "Acid Breath (AOE)",
+				"result": "hit", "damage": actual, "healing": 0,
+				"target_hp_before": hp_before, "target_hp_after": t.current_hp,
+				"target_max_hp": t.max_hp, "is_kill": t.is_dead,
+			})
 			if t.is_dead:
 				action_performed.emit("%s takes %d acid damage and is defeated!" % [t.monster_name, actual])
 				initiative.remove_combatant(t.combat_id)
@@ -273,8 +334,16 @@ func player_breath(target: Monster = null) -> void:
 				target_selection_requested.emit(living)
 				return
 
+		var hp_before := target.current_hp
 		action_performed.emit("%s breathes acid at %s!" % [attacker.get_display_name(), target.monster_name])
 		var actual := target.take_damage(damage)
+		_log_action({
+			"type": "action", "actor_id": attacker.id, "target_id": target.combat_id,
+			"action": "breath", "action_name": "Acid Breath",
+			"result": "hit", "damage": actual, "healing": 0,
+			"target_hp_before": hp_before, "target_hp_after": target.current_hp,
+			"target_max_hp": target.max_hp, "is_kill": target.is_dead,
+		})
 		if target.is_dead:
 			action_performed.emit("%s takes %d acid damage and is defeated!" % [target.monster_name, actual])
 			initiative.remove_combatant(target.combat_id)
@@ -298,10 +367,23 @@ func player_escape() -> void:
 	waiting_for_target = false
 	var avg_agility := party.get_average_agility()
 
+	var escaper := _get_character(current_combatant_id)
+	var escape_actor_id := escaper.id if escaper else ""
+
 	if DamageCalculator.try_escape(avg_agility):
+		_log_action({
+			"type": "action", "actor_id": escape_actor_id, "target_id": "",
+			"action": "escape", "action_name": "Escape",
+			"result": "ok", "damage": 0, "healing": 0,
+		})
 		action_performed.emit("The party escapes!")
 		_end_combat(false, 0, 0, [])
 	else:
+		_log_action({
+			"type": "action", "actor_id": escape_actor_id, "target_id": "",
+			"action": "escape", "action_name": "Escape",
+			"result": "fail", "damage": 0, "healing": 0,
+		})
 		action_performed.emit("Failed to escape!")
 		initiative.apply_action_delay(current_combatant_id)
 		_advance_turn()
@@ -323,8 +405,18 @@ func player_dispel(target: Monster) -> void:
 	waiting_for_player = false
 	waiting_for_target = false
 
+	var hp_before := target.current_hp
 	var result := DispelUndead.attempt_dispel(character, target)
 	action_performed.emit(result["message"])
+
+	_log_action({
+		"type": "action", "actor_id": character.id, "target_id": target.combat_id,
+		"action": "dispel", "action_name": "Dispel Undead",
+		"result": "hit" if result["success"] else "miss",
+		"damage": target.max_hp if result["success"] else 0, "healing": 0,
+		"target_hp_before": hp_before, "target_hp_after": target.current_hp,
+		"target_max_hp": target.max_hp, "is_kill": result["success"],
+	})
 
 	if result["success"]:
 		initiative.remove_combatant(target.combat_id)
@@ -351,10 +443,58 @@ func player_cast_spell(spell_id: String, targets: Array) -> void:
 	waiting_for_player = false
 	waiting_for_target = false
 
+	var snapshots: Array[Dictionary] = []
+	for target in targets:
+		var tid: String = target.id if target is Character else target.combat_id
+		snapshots.append({
+			"id": tid, "hp_before": target.current_hp, "max_hp": target.max_hp,
+			"was_dead": target.is_dead,
+		})
+
 	var result := SpellCaster.cast_spell(caster, spell, targets, true)
 
 	for msg in result.messages:
 		action_performed.emit(msg)
+
+	_log_action({
+		"type": "action", "actor_id": caster.id, "target_id": "",
+		"action": "spell", "action_name": spell.name,
+		"result": "fizzle" if result.fizzled else ("ok" if result.success else "fail"),
+		"damage": result.total_damage, "healing": result.total_healing,
+	})
+
+	for i in range(targets.size()):
+		var target = targets[i]
+		var snap: Dictionary = snapshots[i]
+		var tid: String = snap["id"]
+		var hp_before: int = snap["hp_before"]
+		var was_dead: bool = snap["was_dead"]
+		var healed: int = maxi(0, target.current_hp - hp_before)
+		var damaged: int = maxi(0, hp_before - target.current_hp)
+		if was_dead and not target.is_dead:
+			_log_action({
+				"type": "action", "actor_id": caster.id, "target_id": tid,
+				"action": "spell_effect", "action_name": spell.name,
+				"result": "revive", "damage": 0, "healing": target.current_hp,
+				"target_hp_before": 0, "target_hp_after": target.current_hp,
+				"target_max_hp": target.max_hp, "is_kill": false,
+			})
+		elif healed > 0:
+			_log_action({
+				"type": "action", "actor_id": caster.id, "target_id": tid,
+				"action": "spell_effect", "action_name": spell.name,
+				"result": "heal", "damage": 0, "healing": healed,
+				"target_hp_before": hp_before, "target_hp_after": target.current_hp,
+				"target_max_hp": target.max_hp, "is_kill": false,
+			})
+		elif damaged > 0:
+			_log_action({
+				"type": "action", "actor_id": caster.id, "target_id": tid,
+				"action": "spell_effect", "action_name": spell.name,
+				"result": "hit", "damage": damaged, "healing": 0,
+				"target_hp_before": hp_before, "target_hp_after": target.current_hp,
+				"target_max_hp": target.max_hp, "is_kill": target.is_dead,
+			})
 
 	var ally_killed := false
 	for target in targets:
@@ -534,6 +674,11 @@ func _execute_monster_turn(monster_id: String) -> void:
 
 func _execute_monster_defend(monster: Monster) -> void:
 	monster.is_defending = true
+	_log_action({
+		"type": "action", "actor_id": monster.combat_id, "target_id": monster.combat_id,
+		"action": "defend", "action_name": "Defend",
+		"result": "ok", "damage": 0, "healing": 0,
+	})
 	action_performed.emit("%s takes a defensive stance." % monster.monster_name)
 
 
@@ -543,10 +688,49 @@ func _execute_monster_spell(monster: Monster, spell_id: String, targets: Array) 
 		_execute_monster_attack(monster, monster.get_random_attack(), [_get_random_alive_front_party_member()])
 		return
 
+	var snapshots: Array[Dictionary] = []
+	for target in targets:
+		var tid: String = target.id if target is Character else target.combat_id
+		snapshots.append({
+			"id": tid, "hp_before": target.current_hp, "max_hp": target.max_hp,
+			"was_dead": target.is_dead,
+		})
+
 	var result := SpellCaster.cast_spell_by_monster(monster, spell, targets)
 
 	for msg in result.messages:
 		action_performed.emit(msg)
+
+	_log_action({
+		"type": "action", "actor_id": monster.combat_id, "target_id": "",
+		"action": "spell", "action_name": spell.name,
+		"result": "ok" if result.success else "fail",
+		"damage": result.total_damage, "healing": result.total_healing,
+	})
+
+	for i in range(targets.size()):
+		var target = targets[i]
+		var snap: Dictionary = snapshots[i]
+		var tid: String = snap["id"]
+		var hp_before: int = snap["hp_before"]
+		var damaged: int = maxi(0, hp_before - target.current_hp)
+		var healed: int = maxi(0, target.current_hp - hp_before)
+		if damaged > 0:
+			_log_action({
+				"type": "action", "actor_id": monster.combat_id, "target_id": tid,
+				"action": "spell_effect", "action_name": spell.name,
+				"result": "hit", "damage": damaged, "healing": 0,
+				"target_hp_before": hp_before, "target_hp_after": target.current_hp,
+				"target_max_hp": target.max_hp, "is_kill": target.is_dead,
+			})
+		elif healed > 0:
+			_log_action({
+				"type": "action", "actor_id": monster.combat_id, "target_id": tid,
+				"action": "spell_effect", "action_name": spell.name,
+				"result": "heal", "damage": 0, "healing": healed,
+				"target_hp_before": hp_before, "target_hp_after": target.current_hp,
+				"target_max_hp": target.max_hp, "is_kill": false,
+			})
 
 	for target in targets:
 		if target is Character and target.is_dead:
@@ -576,6 +760,7 @@ func _execute_monster_single_attack(monster: Monster, attack: MonsterAttack, tar
 	evasion_mod += rel_bonuses.get(target.id, {}).get("evasion", 0)
 	var result := DamageCalculator.calculate_monster_attack(monster, attack, target, evasion_mod)
 
+	var target_hp_before := target.current_hp
 	if result.hit:
 		var damage: int = result.damage
 		var sleep_mult := StatusEffectSystem.get_damage_multiplier_for_sleeping(target)
@@ -590,6 +775,14 @@ func _execute_monster_single_attack(monster: Monster, attack: MonsterAttack, tar
 				resist_suffix = " (%s resistant)" % CharacterEnums.get_element_name(attack.element)
 
 		var actual_damage := target.take_damage(damage)
+
+		_log_action({
+			"type": "action", "actor_id": monster.combat_id, "target_id": target.id,
+			"action": "attack", "action_name": attack.attack_name,
+			"result": "hit", "damage": actual_damage, "healing": 0,
+			"target_hp_before": target_hp_before, "target_hp_after": target.current_hp,
+			"target_max_hp": target.max_hp, "is_kill": target.is_dead,
+		})
 
 		var damage_msg := "%s uses %s on %s for %d damage!%s" % [
 			monster.monster_name,
@@ -611,6 +804,13 @@ func _execute_monster_single_attack(monster: Monster, attack: MonsterAttack, tar
 			initiative.remove_combatant(target.id)
 			_check_party_row_advance()
 	else:
+		_log_action({
+			"type": "action", "actor_id": monster.combat_id, "target_id": target.id,
+			"action": "attack", "action_name": attack.attack_name,
+			"result": "miss", "damage": 0, "healing": 0,
+			"target_hp_before": target_hp_before, "target_hp_after": target.current_hp,
+			"target_max_hp": target.max_hp, "is_kill": false,
+		})
 		action_performed.emit("%s's %s misses %s!" % [
 			monster.monster_name,
 			attack.attack_name,
@@ -636,6 +836,7 @@ func _execute_monster_multi_attack(monster: Monster, attack: MonsterAttack, targ
 		evasion_mod += rel_bonuses_multi.get(char_target.id, {}).get("evasion", 0)
 		var result := DamageCalculator.calculate_monster_attack(monster, attack, char_target, evasion_mod)
 
+		var target_hp_before := char_target.current_hp
 		if result.hit:
 			hit_any = true
 			var damage: int = result.damage
@@ -652,12 +853,27 @@ func _execute_monster_multi_attack(monster: Monster, attack: MonsterAttack, targ
 			total_damage += actual
 			hit_names.append("%s (%d)" % [char_target.get_display_name(), actual])
 
+			_log_action({
+				"type": "action", "actor_id": monster.combat_id, "target_id": char_target.id,
+				"action": "attack", "action_name": attack.attack_name,
+				"result": "hit", "damage": actual, "healing": 0,
+				"target_hp_before": target_hp_before, "target_hp_after": char_target.current_hp,
+				"target_max_hp": char_target.max_hp, "is_kill": char_target.is_dead,
+			})
+
 			var wake_msg := StatusEffectSystem.wake_on_damage(char_target)
 			if wake_msg != "":
 				action_performed.emit(wake_msg)
 
 			_try_apply_attack_effect(attack, char_target)
 		else:
+			_log_action({
+				"type": "action", "actor_id": monster.combat_id, "target_id": char_target.id,
+				"action": "attack", "action_name": attack.attack_name,
+				"result": "miss", "damage": 0, "healing": 0,
+				"target_hp_before": target_hp_before, "target_hp_after": char_target.current_hp,
+				"target_max_hp": char_target.max_hp, "is_kill": false,
+			})
 			miss_names.append(char_target.get_display_name())
 
 	if hit_any:
@@ -765,6 +981,24 @@ func _all_party_dead() -> bool:
 
 
 func _end_combat(victory: bool, xp: int, gold: int, loot: Array[Item]) -> void:
+	var surviving_ids: Array[String] = []
+	var dead_ids: Array[String] = []
+	for c in party_members:
+		if c.is_dead:
+			dead_ids.append(c.id)
+		else:
+			surviving_ids.append(c.id)
+	_log_action({
+		"type": "combat_end",
+		"result": "victory" if victory else "defeat",
+		"floor": GameState.current_floor,
+		"is_boss": is_boss_encounter,
+		"xp_gained": xp, "gold_gained": gold,
+		"loot_count": loot.size(),
+		"surviving_ids": surviving_ids, "dead_ids": dead_ids,
+		"turn_count": _turn_count,
+	})
+
 	is_active = false
 	waiting_for_player = false
 	waiting_for_target = false

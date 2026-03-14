@@ -1,0 +1,78 @@
+[
+	{
+		"id": "near_death",
+		"trigger": "hp_below_pct",
+		"threshold": 25,
+		"target": "surviving",
+		"mark": {
+			"name": "Brushed with death on Floor {floor}",
+			"origin": "Survived combat with critical wounds",
+			"theme_tags": ["near_death", "combat"],
+			"agency": "actor",
+			"severity": "minor"
+		},
+		"upgrade": {
+			"count_theme": "near_death",
+			"count_threshold": 3,
+			"prevents_name": "Death-Defier",
+			"mark": {
+				"name": "Death-Defier",
+				"origin": "Survived near-death too many times to count",
+				"theme_tags": ["near_death", "triumph"],
+				"agency": "actor",
+				"severity": "major"
+			}
+		}
+	},
+	{
+		"id": "ko",
+		"trigger": "on_ko",
+		"target": "victim",
+		"mark": {
+			"name": "Fell on Floor {floor}",
+			"origin": "Knocked out in combat",
+			"theme_tags": ["ko", "combat"],
+			"agency": "subject",
+			"severity": "minor"
+		},
+		"upgrade": {
+			"count_theme": "ko",
+			"count_threshold": 3,
+			"prevents_name": "Thrice-Dead",
+			"mark": {
+				"name": "Thrice-Dead",
+				"origin": "Fell too many times",
+				"theme_tags": ["ko", "combat"],
+				"agency": "subject",
+				"severity": "major"
+			}
+		}
+	},
+	{
+		"id": "sole_survivor",
+		"trigger": "allies_dead_gte",
+		"threshold": 2,
+		"target": "surviving",
+		"unique_per_name": true,
+		"mark": {
+			"name": "Sole Survivor of Floor {floor}",
+			"origin": "Last one standing after {dead_count} allies fell",
+			"theme_tags": ["loss", "combat"],
+			"agency": "witness",
+			"severity": "major"
+		}
+	},
+	{
+		"id": "boss_kill",
+		"trigger": "boss_killed",
+		"target": "surviving",
+		"unique_per_name": true,
+		"mark": {
+			"name": "Slayer of {boss_name}",
+			"origin": "Defeated {boss_name} on Floor {floor}",
+			"theme_tags": ["triumph", "combat"],
+			"agency": "actor",
+			"severity": "major"
+		}
+	}
+]

@@ -1,0 +1,80 @@
+{
+  "id": "strange_inscription",
+  "category": "discovery",
+  "trigger": {
+    "context": "floor_transition",
+    "conditions": {
+      "min_floor": 3,
+      "min_party_alive": 2,
+      "min_days_since_last_event": 5
+    }
+  },
+  "cooldown_days": 20,
+  "weight": 10,
+  "slots": [
+    {
+      "role": "reader",
+      "label": "Reader",
+      "requirements": {
+        "trait_match": {"axis": "OUTLOOK", "option": "CURIOUS"}
+      },
+      "fallback_allowed": true
+    },
+    {
+      "role": "skeptic",
+      "label": "Skeptic",
+      "requirements": {
+        "trait_match": {"axis": "TEMPERAMENT", "option": "CAUTIOUS"}
+      },
+      "fallback_allowed": true
+    }
+  ],
+  "setup_text": "Between floors, the party finds faded writing carved deep into the stone wall. The symbols are old -- older than the dungeon itself. {slot_0} leans in to study them while {slot_1} keeps watch.",
+  "dialogue": [
+    {"slot_index": 0, "line": "'These markings... I think they're a warning. Or maybe directions. I need more time to figure it out.'"},
+    {"slot_index": 1, "line": "'We don't have time. Could be a trap for all we know.'"},
+    {"slot_index": 0, "line": "'Or it could be the key to understanding what this place really is.'"}
+  ],
+  "choices": [
+    {
+      "id": "study_inscription",
+      "label": "Study the inscription",
+      "description": "Take time to decipher the ancient writing.",
+      "consequences": {
+        "marks": [
+          {
+            "target_slot": 0,
+            "name": "Deciphered inscription on floor {floor}",
+            "origin": "Studied ancient writing between dungeon floors",
+            "theme_tags": ["discovery", "lore"],
+            "agency": "actor",
+            "severity": "minor"
+          }
+        ],
+        "relationship_modifiers": [
+          {"slot_a": 0, "slot_b": 1, "source": "shared_discovery", "weight": 3}
+        ],
+        "evidence": [
+          {"target_slot": 0, "axis": "OUTLOOK", "option": "CURIOUS", "amount": 1}
+        ]
+      }
+    },
+    {
+      "id": "keep_moving",
+      "label": "Keep moving",
+      "description": "The dungeon is dangerous enough without stopping to read walls.",
+      "consequences": {
+        "evidence": [
+          {"target_slot": 1, "axis": "TEMPERAMENT", "option": "CAUTIOUS", "amount": 1}
+        ]
+      }
+    }
+  ],
+  "llm_context": {
+    "scene_mood": "Mysterious and tense. Ancient secrets in a dangerous place.",
+    "slot_guidance": [
+      {"slot_index": 0, "tone": "Excited and intellectually driven. Can't resist a mystery."},
+      {"slot_index": 1, "tone": "Practical and wary. Prioritizes safety over curiosity."}
+    ]
+  }
+}

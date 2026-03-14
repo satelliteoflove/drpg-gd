@@ -1,0 +1,71 @@
+{
+  "id": "campfire_reflection",
+  "category": "memory",
+  "trigger": {
+    "context": "floor_transition",
+    "conditions": {
+      "min_floor": 4,
+      "min_party_alive": 2,
+      "min_days_since_last_event": 4
+    }
+  },
+  "cooldown_days": 12,
+  "weight": 6,
+  "slots": [
+    {
+      "role": "veteran",
+      "label": "Veteran",
+      "requirements": {
+        "min_marks": 2
+      },
+      "fallback_allowed": true
+    },
+    {
+      "role": "listener",
+      "label": "Listener",
+      "requirements": {
+        "trait_match": {"axis": "OUTLOOK", "option": "CURIOUS"}
+      },
+      "fallback_allowed": true
+    }
+  ],
+  "setup_text": "The party pauses at a landing between floors. {slot_0} leans against the wall, staring at nothing in particular. {slot_1} notices and sits down nearby.",
+  "dialogue": [
+    {"slot_index": 1, "line": "'Something on your mind?'"},
+    {"slot_index": 0, "line": "'Just thinking about how different things are now.'"},
+    {"slot_index": 1, "line": "'Different how?'"}
+  ],
+  "choices": [
+    {
+      "id": "share_memory",
+      "label": "Open up",
+      "description": "Let the veteran share what they're thinking about.",
+      "consequences": {
+        "relationship_modifiers": [
+          {"slot_a": 0, "slot_b": 1, "source": "shared_a_quiet_moment", "weight": 6}
+        ],
+        "evidence": [
+          {"target_slot": 0, "axis": "SOCIAL", "option": "EARNEST", "amount": 1},
+          {"target_slot": 1, "axis": "SOCIAL", "option": "FRIENDLY", "amount": 1}
+        ]
+      }
+    },
+    {
+      "id": "keep_moving",
+      "label": "Keep moving",
+      "description": "The dungeon waits for no one.",
+      "consequences": {
+        "evidence": [
+          {"target_slot": 0, "axis": "OUTLOOK", "option": "STOIC", "amount": 1}
+        ]
+      }
+    }
+  ],
+  "llm_context": {
+    "scene_mood": "Quiet, reflective. A rare calm moment between dangers.",
+    "slot_guidance": [
+      {"slot_index": 0, "tone": "Reflective and tired. Carrying the weight of experience."},
+      {"slot_index": 1, "tone": "Genuinely interested. Not prying, just present."}
+    ]
+  }
+}

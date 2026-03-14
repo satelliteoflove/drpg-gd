@@ -3,6 +3,8 @@ extends Control
 signal combat_closed(victory: bool)
 
 const ChestModalScene = preload("res://scenes/combat/chest_modal.tscn")
+const EventModalScene = preload("res://scenes/events/event_modal.tscn")
+const MicroEventScene = preload("res://scenes/events/micro_event_overlay.tscn")
 
 const STATUS_ICON_PATHS: Dictionary = {
 	CharacterEnums.StatusEffect.POISONED: "res://textures/ui/status_icons/poison.png",
@@ -23,9 +25,11 @@ var _status_icon_cache: Dictionary = {}
 var combat_system: CombatSystem = null
 var selected_item: Item = null
 var chest_modal: Control = null
+var event_modal: Control = null
 var current_chest: Chest = null
 var pending_loot: Array[Item] = []
 var is_boss_encounter: bool = false
+var _pending_event: Dictionary = {}
 var available_items: Array[Item] = []
 var selected_spell: Spell = null
 var current_spell_level: int = 1
@@ -799,15 +803,42 @@ func _on_combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Ar
 		GameState.party.distribute_experience(exp_gained)
 		GameState.party.distribute_gold(gold_gained)
 
+		var floor_num: int = GameState.current_floor if GameState.current_floor > 0 else 1
 		var new_marks := MarkSystem.evaluate_post_combat(
 			combat_system.get_party(),
 			combat_system.enemies,
 			is_boss_encounter,
-			GameState.current_floor if GameState.current_floor > 0 else 1,
-			GameState.game_day
+			floor_num,
+			GameState.game_day,
+			combat_system.combat_log
 		)
 		for entry in new_marks:
 			entry.character.add_mark(entry.mark)
+
+		var rel_mods := MarkSystem.evaluate_relationships(
+			combat_system.get_party(),
+			combat_system.enemies,
+			is_boss_encounter,
+			floor_num,
+			combat_system.combat_log
+		)
+		for mod in rel_mods:
+			RelationshipManager.add_modifier(
+				mod.id_a, mod.id_b, mod.source, mod.weight, GameState.game_day
+			)
+
+		var dead_count := 0
+		for c in combat_system.get_party():
+			if c.is_dead:
+				dead_count += 1
+		var event_context := {
+			"party": combat_system.get_party(),
+			"floor": floor_num,
+			"day": GameState.game_day,
+			"is_boss": is_boss_encounter,
+			"dead_count": dead_count,
+		}
+		_pending_event = EventManager.check_for_event("post_combat", event_context)
 
 		_show_victory_summary(exp_gained, gold_gained, [], [])
 
@@ -824,6 +855,27 @@ func _on_combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Ar
 
 
 func _exit_combat(victory: bool) -> void:
+	if not _pending_event.is_empty():
+		_show_event_modal(_pending_event)
+		_pending_event = {}
+		return
+	if victory and GameState.party != null:
+		var dead_count := 0
+		for c in combat_system.get_party():
+			if c.is_dead:
+				dead_count += 1
+		var context_type := "combat_close_call" if dead_count > 0 else "combat_victory"
+		MicroEventSystem.try_micro_event(context_type, GameState.get_party_members(), func(data: Dictionary) -> void:
+			if not data.is_empty():
+				_show_micro_event(data)
+			else:
+				_finish_exit_combat(victory)
+		)
+		return
+	_finish_exit_combat(victory)
+
+
+func _finish_exit_combat(victory: bool) -> void:
 	if _active_panel_tween:
 		_active_panel_tween.kill()
 		_active_panel_tween = null
@@ -842,6 +894,15 @@ func _exit_combat(victory: bool) -> void:
 				SceneManager.go_to_town()
 			else:
 				SceneManager.go_to_dungeon()
+
+
+func _show_micro_event(data: Dictionary) -> void:
+	var overlay: CanvasLayer = MicroEventScene.instantiate()
+	add_child(overlay)
+	overlay.setup(data, GameState.get_party_members())
+	overlay.micro_event_closed.connect(func() -> void:
+		_finish_exit_combat(true)
+	)
 
 
 func _show_chest_modal() -> void:
@@ -913,6 +974,32 @@ func _cleanup_chest_modal() -> void:
 	current_chest = null
 	pending_loot.clear()
 	is_boss_encounter = false
+
+
+func _show_event_modal(event_data: Dictionary) -> void:
+	var root: Control = EventModalScene.instantiate()
+	add_child(root)
+	event_modal = root.get_node("EventModal")
+	event_modal.event_resolved.connect(_on_event_resolved)
+
+	var floor_num: int = GameState.current_floor if GameState.current_floor > 0 else 1
+	var event_context := {
+		"floor": floor_num,
+		"day": GameState.game_day,
+	}
+	event_modal.setup(event_data.template, event_data.cast, event_context)
+
+
+func _on_event_resolved(_choice_id: String) -> void:
+	_cleanup_event_modal()
+	_finish_exit_combat(true)
+
+
+func _cleanup_event_modal() -> void:
+	if event_modal:
+		var root := event_modal.get_parent().get_parent()
+		root.queue_free()
+		event_modal = null
 
 
 func _show_victory_summary(xp: int, gold: int, items_added: Array[Item], items_left: Array[Item]) -> void:

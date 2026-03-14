@@ -4,9 +4,12 @@ const PartyMenuScene = preload("res://scenes/common/party_menu.tscn")
 const DungeonMapScene = preload("res://scenes/dungeon/dungeon_map.tscn")
 const CombatScene = preload("res://scenes/combat/combat.tscn")
 const EnemySpriteScene = preload("res://scenes/dungeon/enemy_sprite_3d.tscn")
+const EventModalScene = preload("res://scenes/events/event_modal.tscn")
+const MicroEventScene = preload("res://scenes/events/micro_event_overlay.tscn")
 var menu_open: bool = false
 var map_open: bool = false
 var combat_open: bool = false
+var event_open: bool = false
 var party_menu: Control = null
 var dungeon_map: Control = null
 var combat_ui: Control = null
@@ -528,7 +531,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if menu_open or map_open or combat_open or is_moving:
+	if menu_open or map_open or combat_open or event_open or is_moving:
 		return
 
 	if event.is_action_pressed("strafe_left"):
@@ -736,8 +739,24 @@ func _check_special_tile() -> void:
 
 func _descend_stairs() -> void:
 	var next_floor := GameState.current_floor + 1
-	print("Descending to floor ", next_floor)
-	SceneManager.go_to_dungeon(next_floor, true)
+	var event_context := {
+		"party": GameState.get_party_members(),
+		"floor": GameState.current_floor,
+		"day": GameState.game_day,
+		"is_boss": false,
+		"dead_count": _count_dead(),
+	}
+	var event_result := EventManager.check_for_event("floor_transition", event_context)
+	if not event_result.is_empty():
+		_show_floor_event(event_result, next_floor, true)
+		return
+	MicroEventSystem.try_micro_event("floor_descent", GameState.get_party_members(), func(data: Dictionary) -> void:
+		if not data.is_empty():
+			_show_micro_event(data, next_floor, true)
+		else:
+			print("Descending to floor ", next_floor)
+			SceneManager.go_to_dungeon(next_floor, true)
+	)
 
 
 func _ascend_stairs() -> void:
@@ -748,6 +767,74 @@ func _ascend_stairs() -> void:
 		var prev_floor := GameState.current_floor - 1
 		print("Ascending to floor ", prev_floor)
 		SceneManager.go_to_dungeon(prev_floor, false)
+
+
+func _count_dead() -> int:
+	var count := 0
+	for c in GameState.get_party_members():
+		if c.is_dead:
+			count += 1
+	return count
+
+
+func _show_floor_event(event_data: Dictionary, next_floor: int, descending: bool) -> void:
+	event_open = true
+	var root: Control = EventModalScene.instantiate()
+	$UI.add_child(root)
+	var modal: PanelContainer = root.get_node("EventModal")
+
+	var event_context := {
+		"floor": GameState.current_floor,
+		"day": GameState.game_day,
+	}
+	modal.setup(event_data.template, event_data.cast, event_context)
+	modal.event_resolved.connect(_on_floor_event_resolved.bind(root, next_floor, descending))
+
+
+func _try_exploration_micro_event() -> void:
+	if event_open or combat_open or menu_open or map_open:
+		return
+	MicroEventSystem.try_micro_event("exploration", GameState.get_party_members(), func(data: Dictionary) -> void:
+		if not data.is_empty() and not combat_open and not event_open and not menu_open and not map_open:
+			_show_exploration_micro_event(data)
+	)
+
+
+func _show_exploration_micro_event(data: Dictionary) -> void:
+	event_open = true
+	var overlay: CanvasLayer = MicroEventScene.instantiate()
+	$UI.add_child(overlay)
+	overlay.setup(data, GameState.get_party_members())
+	overlay.micro_event_closed.connect(func() -> void:
+		event_open = false
+	)
+
+
+func _show_micro_event(data: Dictionary, next_floor: int, descending: bool) -> void:
+	event_open = true
+	var overlay: CanvasLayer = MicroEventScene.instantiate()
+	$UI.add_child(overlay)
+	overlay.setup(data, GameState.get_party_members())
+	overlay.micro_event_closed.connect(func() -> void:
+		event_open = false
+		if descending:
+			print("Descending to floor ", next_floor)
+			SceneManager.go_to_dungeon(next_floor, true)
+		else:
+			print("Ascending to floor ", next_floor)
+			SceneManager.go_to_dungeon(next_floor, false)
+	)
+
+
+func _on_floor_event_resolved(_choice_id: String, root: Control, next_floor: int, descending: bool) -> void:
+	root.queue_free()
+	event_open = false
+	if descending:
+		print("Descending to floor ", next_floor)
+		SceneManager.go_to_dungeon(next_floor, true)
+	else:
+		print("Ascending to floor ", next_floor)
+		SceneManager.go_to_dungeon(next_floor, false)
 
 
 func _turn_left() -> void:
@@ -826,6 +913,7 @@ func _on_move_complete() -> void:
 	_check_special_tile()
 	_process_enemy_turn()
 	_update_enemy_door_visuals()
+	_try_exploration_micro_event()
 	_check_held_movement()
 
 
@@ -836,7 +924,7 @@ func _on_turn_complete() -> void:
 
 
 func _check_held_movement() -> void:
-	if menu_open or map_open or combat_open:
+	if menu_open or map_open or combat_open or event_open:
 		return
 
 	if Input.is_action_pressed("strafe_left"):

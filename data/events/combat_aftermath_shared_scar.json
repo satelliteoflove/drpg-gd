@@ -1,0 +1,84 @@
+{
+  "id": "shared_scar",
+  "category": "combat_aftermath",
+  "trigger": {
+    "context": "post_combat",
+    "conditions": {
+      "min_floor": 2,
+      "min_party_alive": 2,
+      "min_days_since_last_event": 3,
+      "requires_party_dead_count_gte": 1
+    }
+  },
+  "cooldown_days": 15,
+  "weight": 10,
+  "slots": [
+    {
+      "role": "survivor",
+      "label": "Survivor",
+      "requirements": {
+        "mark_theme": "near_death"
+      },
+      "fallback_allowed": true
+    },
+    {
+      "role": "mourner",
+      "label": "Mourner",
+      "requirements": {
+        "trait_match": {"axis": "VALUES", "option": "MERCIFUL"}
+      },
+      "fallback_allowed": true
+    }
+  ],
+  "setup_text": "The dust settles after a brutal fight. {slot_0} stands over the wounded, hands still shaking. {slot_1} kneels beside a fallen companion, checking for signs of life.",
+  "dialogue": [
+    {"slot_index": 0, "line": "'We almost lost everything back there.'"},
+    {"slot_index": 1, "line": "'But we didn't. We're still here -- and we owe it to the ones who fell to keep going.'"},
+    {"slot_index": 0, "line": "'I won't forget what it cost us.'"}
+  ],
+  "choices": [
+    {
+      "id": "honor_fallen",
+      "label": "Honor the fallen",
+      "description": "Take a moment of silence for those who fell.",
+      "consequences": {
+        "marks": [
+          {
+            "target_slot": 1,
+            "name": "Mourned the fallen on floor {floor}",
+            "origin": "Paused to honor companions lost in battle",
+            "theme_tags": ["loss", "compassion"],
+            "agency": "actor",
+            "severity": "minor"
+          }
+        ],
+        "relationship_modifiers": [
+          {"slot_a": 0, "slot_b": 1, "source": "shared_grief", "weight": 8}
+        ],
+        "evidence": [
+          {"target_slot": 1, "axis": "VALUES", "option": "MERCIFUL", "amount": 1}
+        ]
+      }
+    },
+    {
+      "id": "press_on",
+      "label": "Press on",
+      "description": "There's no time for sentiment in the dungeon.",
+      "consequences": {
+        "relationship_modifiers": [
+          {"slot_a": 0, "slot_b": 1, "source": "dismissed_grief", "weight": -3}
+        ],
+        "evidence": [
+          {"target_slot": 0, "axis": "TEMPERAMENT", "option": "CALCULATING", "amount": 1}
+        ]
+      }
+    }
+  ],
+  "llm_context": {
+    "scene_mood": "Somber aftermath of a costly battle. The party is wounded and grieving.",
+    "slot_guidance": [
+      {"slot_index": 0, "tone": "Shaken but determined. Survivor's guilt."},
+      {"slot_index": 1, "tone": "Gentle and compassionate. Wants to acknowledge the cost."}
+    ]
+  }
+}

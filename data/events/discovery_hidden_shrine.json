@@ -1,0 +1,81 @@
+{
+  "id": "hidden_shrine",
+  "category": "discovery",
+  "trigger": {
+    "context": "floor_transition",
+    "conditions": {
+      "min_floor": 5,
+      "min_party_alive": 2,
+      "min_days_since_last_event": 4
+    }
+  },
+  "cooldown_days": 25,
+  "weight": 7,
+  "slots": [
+    {
+      "role": "devout",
+      "label": "Devout",
+      "requirements": {
+        "trait_match": {"axis": "VALUES", "option": "PRINCIPLED"}
+      },
+      "fallback_allowed": true
+    },
+    {
+      "role": "skeptic",
+      "label": "Skeptic",
+      "requirements": {
+        "trait_match": {"axis": "OUTLOOK", "option": "PESSIMISTIC"}
+      },
+      "fallback_allowed": true
+    }
+  ],
+  "setup_text": "Tucked into an alcove near the stairs, the party finds a small shrine carved into the stone. Faded offerings sit before a symbol none of them recognize. {slot_0} kneels to examine it. {slot_1} hangs back.",
+  "dialogue": [
+    {"slot_index": 0, "line": "'Someone worshipped here. A long time ago.'"},
+    {"slot_index": 1, "line": "'And look how well it worked out for them.'"},
+    {"slot_index": 0, "line": "'Maybe showing respect costs nothing.'"}
+  ],
+  "choices": [
+    {
+      "id": "pay_respects",
+      "label": "Pay respects",
+      "description": "Leave a small offering at the shrine.",
+      "consequences": {
+        "marks": [
+          {
+            "target_slot": 0,
+            "name": "Honored an old shrine on floor {floor}",
+            "origin": "Paused to show reverence to the forgotten",
+            "theme_tags": ["discovery", "faith"],
+            "agency": "actor",
+            "severity": "minor"
+          }
+        ],
+        "relationship_modifiers": [
+          {"slot_a": 0, "slot_b": 1, "source": "disagreed_over_the_shrine", "weight": -1}
+        ],
+        "evidence": [
+          {"target_slot": 0, "axis": "VALUES", "option": "PRINCIPLED", "amount": 2}
+        ]
+      }
+    },
+    {
+      "id": "ignore_shrine",
+      "label": "Move on",
+      "description": "Old stone and dead offerings. Nothing useful here.",
+      "consequences": {
+        "evidence": [
+          {"target_slot": 1, "axis": "OUTLOOK", "option": "PESSIMISTIC", "amount": 1},
+          {"target_slot": 0, "axis": "VALUES", "option": "SELF_INTERESTED", "amount": 1}
+        ]
+      }
+    }
+  ],
+  "llm_context": {
+    "scene_mood": "Quiet discovery. A reminder that others came before and didn't make it out.",
+    "slot_guidance": [
+      {"slot_index": 0, "tone": "Respectful, contemplative. Sees meaning in small things."},
+      {"slot_index": 1, "tone": "Dismissive but not hostile. Thinks faith is pointless down here."}
+    ]
+  }
+}

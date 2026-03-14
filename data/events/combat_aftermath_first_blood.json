@@ -1,0 +1,96 @@
+{
+  "id": "first_blood",
+  "category": "combat_aftermath",
+  "trigger": {
+    "context": "post_combat",
+    "conditions": {
+      "min_floor": 1,
+      "max_floor": 3,
+      "min_party_alive": 2,
+      "min_days_since_last_event": 2
+    }
+  },
+  "cooldown_days": 999,
+  "weight": 15,
+  "slots": [
+    {
+      "role": "blooded",
+      "label": "Blooded",
+      "requirements": {
+        "max_marks": 1
+      },
+      "fallback_allowed": true
+    },
+    {
+      "role": "mentor",
+      "label": "Mentor",
+      "requirements": {
+        "min_marks": 3
+      },
+      "fallback_allowed": true
+    }
+  ],
+  "setup_text": "The fight is over. {slot_0} stands still, weapon in hand, staring at what they've done. {slot_1} watches them from across the room.",
+  "dialogue": [
+    {"slot_index": 0, "line": "'I didn't think it would feel like that.'"},
+    {"slot_index": 1, "line": "'It never does.'"},
+    {"slot_index": 0, "line": "'Does it get easier?'"}
+  ],
+  "choices": [
+    {
+      "id": "reassure",
+      "label": "Reassure them",
+      "description": "Tell them it gets easier with time.",
+      "consequences": {
+        "marks": [
+          {
+            "target_slot": 0,
+            "name": "Blooded on floor {floor}",
+            "origin": "Came to terms with their first real fight",
+            "theme_tags": ["combat", "growth"],
+            "agency": "actor",
+            "severity": "minor"
+          }
+        ],
+        "relationship_modifiers": [
+          {"slot_a": 0, "slot_b": 1, "source": "mentored_through_first_blood", "weight": 6}
+        ],
+        "evidence": [
+          {"target_slot": 1, "axis": "SOCIAL", "option": "FRIENDLY", "amount": 1},
+          {"target_slot": 0, "axis": "TEMPERAMENT", "option": "BRAVE", "amount": 1}
+        ]
+      }
+    },
+    {
+      "id": "be_honest",
+      "label": "Be honest",
+      "description": "Tell them the truth: it doesn't get easier, you just get used to it.",
+      "consequences": {
+        "marks": [
+          {
+            "target_slot": 0,
+            "name": "Blooded on floor {floor}",
+            "origin": "Faced the reality of combat without comfort",
+            "theme_tags": ["combat", "growth"],
+            "agency": "actor",
+            "severity": "minor"
+          }
+        ],
+        "relationship_modifiers": [
+          {"slot_a": 0, "slot_b": 1, "source": "told_the_hard_truth", "weight": 4}
+        ],
+        "evidence": [
+          {"target_slot": 1, "axis": "SOCIAL", "option": "GRUFF", "amount": 1},
+          {"target_slot": 0, "axis": "OUTLOOK", "option": "STOIC", "amount": 1}
+        ]
+      }
+    }
+  ],
+  "llm_context": {
+    "scene_mood": "Raw and unsteady. The weight of violence hitting someone for the first time.",
+    "slot_guidance": [
+      {"slot_index": 0, "tone": "Shaken, vulnerable. Processing something they weren't ready for."},
+      {"slot_index": 1, "tone": "Steady and experienced. Has seen this before in others."}
+    ]
+  }
+}

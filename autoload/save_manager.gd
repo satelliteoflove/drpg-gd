@@ -180,6 +180,7 @@ func _create_save_data() -> Resource:
 	data.floor_tracker_state = GameState.floor_tracker.save_state()
 
 	data.relationship_state = RelationshipManager.get_save_state()
+	data.event_state = EventManager.get_save_state()
 
 	data.save_timestamp = int(Time.get_unix_time_from_system())
 	data.play_time_seconds = _get_total_play_time()
@@ -228,6 +229,10 @@ func _apply_save_data(data) -> void:
 
 	if data.relationship_state:
 		RelationshipManager.load_save_state(data.relationship_state)
+
+	var event_data: Dictionary = data.get("event_state")
+	if event_data and not event_data.is_empty():
+		EventManager.load_save_state(event_data)
 
 
 func _get_total_play_time() -> int:
