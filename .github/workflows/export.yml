@@ -21,7 +21,7 @@ jobs:
       image: barichello/godot-ci:4.6
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           lfs: true
 
@@ -47,7 +47,7 @@ jobs:
           godot --headless --export-release "Windows Desktop" build/windows/drpg-gd.exe
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows
           path: build/windows/
@@ -60,7 +60,7 @@ jobs:
       image: barichello/godot-ci:4.6
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           lfs: true
 
@@ -86,7 +86,7 @@ jobs:
           godot --headless --export-release "macOS" build/macos/drpg-gd.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos
           path: build/macos/
@@ -99,7 +99,7 @@ jobs:
       image: barichello/godot-ci:4.6
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           lfs: true
 
@@ -125,7 +125,7 @@ jobs:
           godot --headless --export-release "Linux" build/linux/drpg-gd.x86_64
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux
           path: build/linux/
@@ -148,7 +148,7 @@ jobs:
           fi
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
 
       - name: Package archives
         run: |
