@@ -3,9 +3,6 @@
 *.import
 *.translation
 
-# Godot export presets (can contain signing credentials)
-export_presets.cfg
-
 # Godot exports
 /android/
 /ios/
