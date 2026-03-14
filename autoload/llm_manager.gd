@@ -11,6 +11,7 @@ signal binary_download_started(variant: String)
 signal binary_download_progress(percent: float, speed_bps: float)
 signal binary_download_completed
 signal binary_download_failed(reason: String)
+signal setup_finished
 
 const PORT := 8787
 const HEALTH_TIMEOUT := 30.0
@@ -20,7 +21,7 @@ const DEFAULT_N_PREDICT := 200
 const MODEL_NAME := "Qwen3.5-4B-Q8_0"
 const MODEL_FILENAME := "Qwen3.5-4B-Q8_0.gguf"
 const MODEL_URL := "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q8_0.gguf"
-const MODEL_EXPECTED_BYTES := 4694693888
+const MODEL_EXPECTED_BYTES := 4482403488
 
 const LLAMA_VERSION := "b8325"
 const LLAMA_RELEASE_BASE := "https://github.com/ggml-org/llama.cpp/releases/download"
@@ -61,6 +62,7 @@ var _download_start_time := 0.0
 var _binary_download_start_time := 0.0
 var _gpu_vendor := ""
 var _pending_cudart_dir := ""
+var _setup_complete := false
 
 
 func _ready() -> void:
@@ -117,7 +119,7 @@ func _emit_download_progress(request: HTTPRequest, fallback_total: int, start_ti
 	if total <= 0:
 		return
 
-	var percent := clampf((float(downloaded) / float(total)) * 100.0, 0.0, 100.0)
+	var percent := clampf((float(downloaded) / float(total)) * 100.0, 0.0, 99.9)
 	var elapsed := (Time.get_ticks_msec() / 1000.0) - start_time
 	var speed := float(downloaded) / maxf(elapsed, 0.1)
 
@@ -134,6 +136,10 @@ func is_downloading() -> bool:
 
 func is_downloading_binary() -> bool:
 	return _downloading_binary
+
+
+func is_setup_complete() -> bool:
+	return _setup_complete
 
 
 func generate(prompt: String, grammar: String, callback: Callable) -> void:
@@ -275,6 +281,7 @@ func _start_binary_download() -> void:
 		push_warning("[LLMManager] Binary download request failed: %d" % err)
 		_downloading_binary = false
 		binary_download_failed.emit("HTTP request failed")
+		_mark_setup_complete()
 		_binary_download_request.queue_free()
 		_binary_download_request = null
 
@@ -290,6 +297,7 @@ func _on_binary_download_completed(result: int, response_code: int, _headers: Pa
 			DirAccess.remove_absolute(archive_path)
 		binary_download_failed.emit("Download failed (HTTP %d)" % response_code)
 		_enabled = false
+		_mark_setup_complete()
 		return
 
 	print("[LLMManager] Binary archive downloaded, extracting...")
@@ -325,6 +333,7 @@ func _download_cudart(llm_dir: String) -> void:
 		push_warning("[LLMManager] CUDA runtime download failed: %d" % err)
 		_downloading_binary = false
 		binary_download_failed.emit("CUDA runtime download failed")
+		_mark_setup_complete()
 		_binary_download_request.queue_free()
 		_binary_download_request = null
 
@@ -340,6 +349,7 @@ func _on_cudart_download_completed(result: int, response_code: int, _headers: Pa
 			DirAccess.remove_absolute(archive_path)
 		binary_download_failed.emit("CUDA runtime download failed (HTTP %d)" % response_code)
 		_enabled = false
+		_mark_setup_complete()
 		return
 
 	print("[LLMManager] CUDA runtime downloaded, extracting...")
@@ -389,6 +399,7 @@ func _extract_binary_archive(archive_path: String, llm_dir: String) -> bool:
 	if not ok:
 		binary_download_failed.emit("Failed to extract archive")
 		_enabled = false
+		_mark_setup_complete()
 
 	return ok
 
@@ -507,6 +518,7 @@ func _start_model_download() -> void:
 		push_warning("[LLMManager] Download request failed: %d" % err)
 		_downloading = false
 		download_failed.emit("HTTP request failed")
+		_mark_setup_complete()
 		_download_request.queue_free()
 		_download_request = null
 
@@ -521,6 +533,7 @@ func _on_model_download_completed(result: int, response_code: int, _headers: Pac
 		if FileAccess.file_exists(partial_path):
 			DirAccess.remove_absolute(partial_path)
 		download_failed.emit("Download failed (HTTP %d)" % response_code)
+		_mark_setup_complete()
 		return
 
 	var dir := DirAccess.open(partial_path.get_base_dir())
@@ -538,6 +551,7 @@ func _start_server(model_path: String) -> void:
 	if binary_path == "":
 		print("[LLMManager] No llama-server binary found, LLM disabled")
 		_enabled = false
+		_mark_setup_complete()
 		return
 
 	var args := PackedStringArray([
@@ -559,6 +573,7 @@ func _start_server(model_path: String) -> void:
 	if _pid <= 0:
 		push_warning("[LLMManager] Failed to launch llama-server")
 		_enabled = false
+		_mark_setup_complete()
 		return
 
 	_enabled = true
@@ -617,6 +632,7 @@ func _poll_health() -> void:
 		_health_timer = null
 		_enabled = false
 		server_failed.emit()
+		_mark_setup_complete()
 		return
 
 	var url := "http://127.0.0.1:%d/health" % PORT
@@ -634,6 +650,7 @@ func _on_health_completed(_result: int, response_code: int, _headers: PackedStri
 			_health_timer.queue_free()
 			_health_timer = null
 		server_ready.emit()
+		_mark_setup_complete()
 
 
 func _on_completion_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -653,6 +670,13 @@ func _on_completion_completed(_result: int, response_code: int, _headers: Packed
 	else:
 		push_warning("[LLMManager] Failed to parse completion response")
 		_pending_callback.call("")
+
+
+func _mark_setup_complete() -> void:
+	if _setup_complete:
+		return
+	_setup_complete = true
+	setup_finished.emit()
 
 
 func _notification(what: int) -> void:
