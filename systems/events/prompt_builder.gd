@@ -43,8 +43,10 @@ static func event_grammar() -> String:
 
 
 static func _describe_character(character: Character) -> String:
-	var race_name := CharacterEnums.Race.keys()[character.race].capitalize()
-	var class_name_str := CharacterEnums.CharacterClass.keys()[character.character_class].capitalize()
+	var race_name: String = CharacterEnums.Race.keys()[character.race]
+	race_name = race_name.capitalize()
+	var class_name_str: String = CharacterEnums.CharacterClass.keys()[character.character_class]
+	class_name_str = class_name_str.capitalize()
 	var trait_parts: PackedStringArray = []
 	for axis: int in character.traits.keys():
 		var option: int = character.traits[axis]
