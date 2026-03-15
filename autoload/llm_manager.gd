@@ -441,12 +441,13 @@ func _extract_tar(archive_path: String, llm_dir: String, binary_name: String) ->
 		_rm_rf(temp_dir)
 		return false
 
-	var bin_src := temp_dir.path_join("bin/llama-server")
-	if not FileAccess.file_exists(bin_src):
+	var bin_src := _find_file_recursive(temp_dir, "llama-server")
+	if bin_src == "":
 		push_warning("[LLMManager] llama-server not found in archive")
 		_rm_rf(temp_dir)
 		return false
 
+	var archive_dir := bin_src.get_base_dir()
 	var data := FileAccess.get_file_as_bytes(bin_src)
 	var dest := llm_dir.path_join(binary_name)
 	var f := FileAccess.open(dest, FileAccess.WRITE)
@@ -454,26 +455,45 @@ func _extract_tar(archive_path: String, llm_dir: String, binary_name: String) ->
 		f.store_buffer(data)
 		f.close()
 
-	var lib_dir := temp_dir.path_join("lib")
-	if DirAccess.dir_exists_absolute(lib_dir):
-		var dir := DirAccess.open(lib_dir)
-		if dir:
-			dir.list_dir_begin()
-			var fname := dir.get_next()
-			while fname != "":
-				if not dir.current_is_dir() and (fname.ends_with(".dylib") or fname.ends_with(".so") or ".so." in fname):
-					var src := lib_dir.path_join(fname)
-					var lib_dest := llm_dir.path_join(fname)
-					var lib_data := FileAccess.get_file_as_bytes(src)
-					var out := FileAccess.open(lib_dest, FileAccess.WRITE)
-					if out:
-						out.store_buffer(lib_data)
-						out.close()
-				fname = dir.get_next()
-			dir.list_dir_end()
+	var dir := DirAccess.open(archive_dir)
+	if dir:
+		dir.list_dir_begin()
+		var fname := dir.get_next()
+		while fname != "":
+			if not dir.current_is_dir() and (fname.ends_with(".dylib") or fname.ends_with(".so") or ".so." in fname):
+				var src := archive_dir.path_join(fname)
+				var lib_dest := llm_dir.path_join(fname)
+				var lib_data := FileAccess.get_file_as_bytes(src)
+				var out := FileAccess.open(lib_dest, FileAccess.WRITE)
+				if out:
+					out.store_buffer(lib_data)
+					out.close()
+			fname = dir.get_next()
+		dir.list_dir_end()
 
 	_rm_rf(temp_dir)
 	return true
+
+
+func _find_file_recursive(dir_path: String, target: String) -> String:
+	var dir := DirAccess.open(dir_path)
+	if not dir:
+		return ""
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		var full := dir_path.path_join(fname)
+		if dir.current_is_dir():
+			var found := _find_file_recursive(full, target)
+			if found != "":
+				dir.list_dir_end()
+				return found
+		elif fname == target:
+			dir.list_dir_end()
+			return full
+		fname = dir.get_next()
+	dir.list_dir_end()
+	return ""
 
 
 func _rm_rf(path: String) -> void:
