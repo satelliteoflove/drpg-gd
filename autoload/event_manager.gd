@@ -219,10 +219,7 @@ func _has_tendency(character: Character, axis: Personality.Axis, option: int) ->
 	var tendencies: Dictionary = character.tendencies
 	if not tendencies.has(axis):
 		return false
-	var axis_tendencies: Dictionary = tendencies[axis]
-	if not axis_tendencies.has(option):
-		return false
-	return int(axis_tendencies[option]) > 0
+	return int(tendencies[axis]) == option
 
 
 func _has_crystallization_opportunity(character: Character, axis: Personality.Axis, option: int) -> bool:
