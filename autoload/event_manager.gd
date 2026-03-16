@@ -181,6 +181,25 @@ func _score_character_for_slot(character: Character, slot: Dictionary, cast_so_f
 		else:
 			score -= 10.0
 
+	if reqs.has("exclude_mark_theme") and reqs.exclude_mark_theme != null:
+		var theme: String = reqs.exclude_mark_theme
+		for mark: Dictionary in character.marks:
+			var tags: Array = mark.get("theme_tags", [])
+			if tags.has(theme):
+				score -= 100.0
+				break
+
+	if reqs.has("exclude_traits") and reqs.exclude_traits != null:
+		var excluded: Array = reqs.exclude_traits
+		for entry: Dictionary in excluded:
+			var axis := _parse_axis(entry.get("axis", ""))
+			var option := _parse_option(axis, entry.get("option", ""))
+			if axis >= 0 and option >= 0:
+				if character.traits.has(axis) and character.traits[axis] == option:
+					score -= 100.0
+				elif _has_tendency(character, axis, option):
+					score -= 50.0
+
 	if reqs.has("relationship_with_slot") and reqs.relationship_with_slot != null:
 		var ref_slot: int = int(reqs.relationship_with_slot)
 		if cast_so_far.has(ref_slot):
