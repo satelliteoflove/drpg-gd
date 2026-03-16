@@ -3,7 +3,7 @@ extends Resource
 
 enum TileType { SOLID, FLOOR }
 enum WallType { NONE, SOLID, DOOR, SECRET, ILLUSORY }
-enum SpecialType { NONE, STAIRS_UP, STAIRS_DOWN, TREASURE, TRAP }
+enum SpecialType { NONE, STAIRS_UP, STAIRS_DOWN, TREASURE, TRAP, SHRINE, INSCRIPTION }
 
 @export var x: int = 0
 @export var y: int = 0

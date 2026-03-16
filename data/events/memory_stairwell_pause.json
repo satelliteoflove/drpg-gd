@@ -1,5 +1,5 @@
 {
-  "id": "campfire_reflection",
+  "id": "stairwell_pause",
   "category": "memory",
   "trigger": {
     "context": "floor_transition",
@@ -29,20 +29,20 @@
       "fallback_allowed": true
     }
   ],
-  "setup_text": "The party pauses at a landing between floors. {slot_0} leans against the wall, staring at nothing in particular. {slot_1} notices and sits down nearby.",
+  "setup_text": "The party pauses at the stairwell. The deeper floors are quiet for now. {slot_0} leans against the wall and stares at nothing. {slot_1} notices.",
   "dialogue": [
-    {"slot_index": 1, "line": "'Something on your mind?'"},
-    {"slot_index": 0, "line": "'Just thinking about how different things are now.'"},
-    {"slot_index": 1, "line": "'Different how?'"}
+    {"slot_index": 1, "line": "'You alright?'"},
+    {"slot_index": 0, "line": "'Just thinking about how far down we've come. And what it's cost.'"},
+    {"slot_index": 1, "line": "'Want to talk about it?'"}
   ],
   "choices": [
     {
       "id": "share_memory",
       "label": "Open up",
-      "description": "Let the veteran share what they're thinking about.",
+      "description": "Share what's weighing on them.",
       "consequences": {
         "relationship_modifiers": [
-          {"slot_a": 0, "slot_b": 1, "source": "shared_a_quiet_moment", "weight": 6}
+          {"slot_a": 0, "slot_b": 1, "source": "shared_moment_at_the_stairs", "weight": 6}
         ],
         "evidence": [
           {"target_slot": 0, "axis": "SOCIAL", "option": "EARNEST", "amount": 1},
@@ -52,8 +52,8 @@
     },
     {
       "id": "keep_moving",
-      "label": "Keep moving",
-      "description": "The dungeon waits for no one.",
+      "label": "Push on",
+      "description": "Save it for later. The dungeon won't wait.",
       "consequences": {
         "evidence": [
           {"target_slot": 0, "axis": "OUTLOOK", "option": "STOIC", "amount": 1}
@@ -62,10 +62,10 @@
     }
   ],
   "llm_context": {
-    "scene_mood": "Quiet, reflective. A rare calm moment between dangers.",
+    "scene_mood": "A brief quiet moment between floors. The weight of experience catching up.",
     "slot_guidance": [
-      {"slot_index": 0, "tone": "Reflective and tired. Carrying the weight of experience."},
-      {"slot_index": 1, "tone": "Genuinely interested. Not prying, just present."}
+      {"slot_index": 0, "tone": "Tired, reflective. Has been through enough to feel the toll."},
+      {"slot_index": 1, "tone": "Attentive and genuine. Notices what others miss."}
     ]
   }
 }

@@ -2,7 +2,7 @@
   "id": "hidden_shrine",
   "category": "discovery",
   "trigger": {
-    "context": "floor_transition",
+    "context": "discovery_shrine",
     "conditions": {
       "min_floor": 5,
       "min_party_alive": 2,
@@ -29,7 +29,7 @@
       "fallback_allowed": true
     }
   ],
-  "setup_text": "Tucked into an alcove near the stairs, the party finds a small shrine carved into the stone. Faded offerings sit before a symbol none of them recognize. {slot_0} kneels to examine it. {slot_1} hangs back.",
+  "setup_text": "In the corner of the room, the party finds a small shrine carved into the stone. Faded offerings sit before a symbol none of them recognize. {slot_0} kneels to examine it. {slot_1} hangs back.",
   "dialogue": [
     {"slot_index": 0, "line": "'Someone worshipped here. A long time ago.'"},
     {"slot_index": 1, "line": "'And look how well it worked out for them.'"},

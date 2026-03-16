@@ -31,7 +31,7 @@ const HEAD_BOB_SPEED: float = 2.0
 
 enum Facing { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 }
 
-enum FloorMeshItem { FLOOR = 0, STAIRS_UP = 1, STAIRS_DOWN = 2 }
+enum FloorMeshItem { FLOOR = 0, STAIRS_UP = 1, STAIRS_DOWN = 2, SHRINE = 3, INSCRIPTION = 4 }
 enum CeilingMeshItem { CEILING = 0 }
 enum WallMeshItem { WALL = 0, DOOR_CLOSED = 1 }
 
@@ -230,6 +230,22 @@ func _create_floor_library(floor_mat: StandardMaterial3D, up_mat: StandardMateri
 	library.create_item(FloorMeshItem.STAIRS_DOWN)
 	library.set_item_mesh(FloorMeshItem.STAIRS_DOWN, stairs_down_mesh)
 
+	var shrine_mat := StandardMaterial3D.new()
+	shrine_mat.albedo_color = Color(0.6, 0.5, 0.2)
+	var shrine_mesh := BoxMesh.new()
+	shrine_mesh.size = Vector3(CELL_SIZE, 0.1, CELL_SIZE)
+	shrine_mesh.material = shrine_mat
+	library.create_item(FloorMeshItem.SHRINE)
+	library.set_item_mesh(FloorMeshItem.SHRINE, shrine_mesh)
+
+	var inscription_mat := StandardMaterial3D.new()
+	inscription_mat.albedo_color = Color(0.3, 0.4, 0.5)
+	var inscription_mesh := BoxMesh.new()
+	inscription_mesh.size = Vector3(CELL_SIZE, 0.1, CELL_SIZE)
+	inscription_mesh.material = inscription_mat
+	library.create_item(FloorMeshItem.INSCRIPTION)
+	library.set_item_mesh(FloorMeshItem.INSCRIPTION, inscription_mesh)
+
 	return library
 
 
@@ -311,6 +327,10 @@ func _render_tile(x: int, y: int, tile: DungeonTile) -> void:
 
 	var floor_item: int = FloorMeshItem.FLOOR
 	match tile.special:
+		DungeonTile.SpecialType.SHRINE:
+			floor_item = FloorMeshItem.SHRINE
+		DungeonTile.SpecialType.INSCRIPTION:
+			floor_item = FloorMeshItem.INSCRIPTION
 		DungeonTile.SpecialType.STAIRS_UP:
 			floor_item = FloorMeshItem.STAIRS_UP
 		DungeonTile.SpecialType.STAIRS_DOWN:
@@ -735,6 +755,8 @@ func _check_special_tile() -> void:
 		_descend_stairs()
 	elif tile.special == DungeonTile.SpecialType.STAIRS_UP:
 		_ascend_stairs()
+	elif tile.special == DungeonTile.SpecialType.SHRINE or tile.special == DungeonTile.SpecialType.INSCRIPTION:
+		_check_narrative_tile(tile)
 
 
 func _descend_stairs() -> void:
@@ -756,6 +778,41 @@ func _descend_stairs() -> void:
 		else:
 			print("Descending to floor ", next_floor)
 			SceneManager.go_to_dungeon(next_floor, true)
+	)
+
+
+func _check_narrative_tile(tile: DungeonTile) -> void:
+	var context_type := ""
+	match tile.special:
+		DungeonTile.SpecialType.SHRINE:
+			context_type = "discovery_shrine"
+		DungeonTile.SpecialType.INSCRIPTION:
+			context_type = "discovery_inscription"
+
+	var event_context := {
+		"party": GameState.get_party_members(),
+		"floor": GameState.current_floor,
+		"day": GameState.game_day,
+		"is_boss": false,
+		"dead_count": _count_dead(),
+	}
+	var event_result := EventManager.check_for_event(context_type, event_context)
+	if not event_result.is_empty():
+		tile.special = DungeonTile.SpecialType.NONE
+		_render_tile(tile.x, tile.y, tile)
+		_show_narrative_event(event_result)
+
+
+func _show_narrative_event(event_result: Dictionary) -> void:
+	var context := {
+		"floor": GameState.current_floor,
+		"day": GameState.game_day,
+	}
+	var modal: PanelContainer = preload("res://scenes/events/event_modal.tscn").instantiate()
+	add_child(modal)
+	modal.setup(event_result.template, event_result.cast, context)
+	modal.event_resolved.connect(func(_choice_id: String) -> void:
+		modal.queue_free()
 	)
 
 

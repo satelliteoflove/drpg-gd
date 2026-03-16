@@ -2,7 +2,7 @@
   "id": "strange_inscription",
   "category": "discovery",
   "trigger": {
-    "context": "floor_transition",
+    "context": "discovery_inscription",
     "conditions": {
       "min_floor": 3,
       "min_party_alive": 2,
@@ -29,7 +29,7 @@
       "fallback_allowed": true
     }
   ],
-  "setup_text": "Between floors, the party finds faded writing carved deep into the stone wall. The symbols are old -- older than the dungeon itself. {slot_0} leans in to study them while {slot_1} keeps watch.",
+  "setup_text": "Faded writing is carved deep into the stone wall here. The symbols are old -- older than the dungeon itself. {slot_0} leans in to study them while {slot_1} keeps watch.",
   "dialogue": [
     {"slot_index": 0, "line": "'These markings... I think they're a warning. Or maybe directions. I need more time to figure it out.'"},
     {"slot_index": 1, "line": "'We don't have time. Could be a trap for all we know.'"},
@@ -45,7 +45,7 @@
           {
             "target_slot": 0,
             "name": "Deciphered inscription on floor {floor}",
-            "origin": "Studied ancient writing between dungeon floors",
+            "origin": "Studied ancient writing carved into a dungeon wall",
             "theme_tags": ["discovery", "lore"],
             "agency": "actor",
             "severity": "minor"

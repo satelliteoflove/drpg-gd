@@ -48,6 +48,7 @@ func generate(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> Dun
 	_place_stairs(dungeon)
 	_lock_doors(dungeon)
 	_assign_zones(dungeon)
+	_place_narrative_tiles(dungeon)
 
 	return dungeon
 
@@ -734,3 +735,65 @@ func _assign_corridor_zones(
 	)
 	corridor_zone.monster_pool = MonsterDatabase.get_monsters_for_floor(floor_level)
 	dungeon.add_zone(corridor_zone)
+
+
+func _place_narrative_tiles(dungeon: DungeonData) -> void:
+	var candidates: Array[DungeonRoom] = []
+	for room in _rooms:
+		var center := room.get_center()
+		if center == dungeon.stairs_up_pos or center == dungeon.stairs_down_pos:
+			continue
+		candidates.append(room)
+
+	if candidates.is_empty():
+		return
+
+	var shuffled := candidates.duplicate()
+	for i in range(shuffled.size() - 1, 0, -1):
+		var j := _rng.randi_range(0, i)
+		var tmp: DungeonRoom = shuffled[i]
+		shuffled[i] = shuffled[j]
+		shuffled[j] = tmp
+
+	var placed := 0
+	for room in shuffled:
+		if placed >= 2:
+			break
+
+		var special_type: DungeonTile.SpecialType
+		if placed == 0 and floor_level >= 5:
+			special_type = DungeonTile.SpecialType.SHRINE
+		elif placed == 0 and floor_level >= 3:
+			special_type = DungeonTile.SpecialType.INSCRIPTION
+		elif placed == 1 and floor_level >= 5:
+			special_type = DungeonTile.SpecialType.INSCRIPTION
+		else:
+			continue
+
+		var pos := _find_room_corner(room, dungeon)
+		if pos == Vector2i(-1, -1):
+			continue
+
+		var tile := dungeon.get_tile(pos.x, pos.y)
+		if tile and tile.special == DungeonTile.SpecialType.NONE:
+			tile.special = special_type
+			placed += 1
+
+
+func _find_room_corner(room: DungeonRoom, dungeon: DungeonData) -> Vector2i:
+	var corners: Array[Vector2i] = [
+		Vector2i(room.x, room.y),
+		Vector2i(room.x + room.width - 1, room.y),
+		Vector2i(room.x, room.y + room.height - 1),
+		Vector2i(room.x + room.width - 1, room.y + room.height - 1),
+	]
+	for i in range(corners.size() - 1, 0, -1):
+		var j := _rng.randi_range(0, i)
+		var tmp := corners[i]
+		corners[i] = corners[j]
+		corners[j] = tmp
+	for pos in corners:
+		var tile := dungeon.get_tile(pos.x, pos.y)
+		if tile and tile.is_walkable() and tile.special == DungeonTile.SpecialType.NONE:
+			return pos
+	return Vector2i(-1, -1)
