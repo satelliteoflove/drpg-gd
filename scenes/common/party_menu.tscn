@@ -272,6 +272,71 @@ size_flags_horizontal = 3
 layout_mode = 2
 theme_override_constants/separation = 3
 
+[node name="KeybindingsContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="KeybindHBox" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="ActionPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActionList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/ActionPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="BindingPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BindingVBox" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BindingTitle" type="Label" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox"]
+layout_mode = 2
+text = "Current Bindings"
+horizontal_alignment = 1
+
+[node name="PrimaryLabel" type="Label" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox"]
+layout_mode = 2
+text = "Primary: "
+
+[node name="PrimaryBtn" type="Button" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 32)
+text = "..."
+
+[node name="SecondaryLabel" type="Label" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox"]
+layout_mode = 2
+text = "Secondary: "
+
+[node name="SecondaryBtn" type="Button" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 32)
+text = "..."
+
+[node name="Spacer" type="Control" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="ClearSecondaryBtn" type="Button" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 28)
+text = "Clear Secondary"
+
+[node name="ResetBtn" type="Button" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(200, 28)
+text = "Reset All to Defaults"
+
 [node name="InfoPanel" type="PanelContainer" parent="MainPanel/VBox"]
 custom_minimum_size = Vector2(0, 110)
 layout_mode = 2

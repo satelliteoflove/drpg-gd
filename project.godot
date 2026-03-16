@@ -22,6 +22,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+KeybindSettings="*res://autoload/keybind_settings.gd"
 UITheme="*res://autoload/ui_theme.gd"
 GameState="*res://autoload/game_state.gd"
 SaveManager="*res://autoload/save_manager.gd"

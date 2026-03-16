@@ -2,7 +2,7 @@ extends Control
 
 signal closed()
 
-enum Tab { STATUS, EQUIPMENT, INVENTORY, FORMATION, SPELLS }
+enum Tab { STATUS, EQUIPMENT, INVENTORY, FORMATION, SPELLS, KEYBINDINGS }
 
 var current_tab: Tab = Tab.STATUS
 var tab_buttons: Array[Button] = []
@@ -69,6 +69,14 @@ const EQUIPMENT_SLOTS: Array[Item.ItemType] = [
 @onready var spell_list: VBoxContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellListPanel/SpellListVBox/SpellList
 @onready var spell_target_panel: PanelContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellTargetPanel
 @onready var spell_target_list: VBoxContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellTargetPanel/SpellTargetList
+@onready var keybindings_content: Control = $MainPanel/VBox/ContentPanel/KeybindingsContent
+@onready var keybind_action_list: VBoxContainer = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/ActionPanel/ActionList
+@onready var keybind_primary_label: Label = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/PrimaryLabel
+@onready var keybind_primary_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/PrimaryBtn
+@onready var keybind_secondary_label: Label = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/SecondaryLabel
+@onready var keybind_secondary_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/SecondaryBtn
+@onready var keybind_clear_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/ClearSecondaryBtn
+@onready var keybind_reset_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/ResetBtn
 @onready var info_panel: PanelContainer = $MainPanel/VBox/InfoPanel
 @onready var info_label: RichTextLabel = $MainPanel/VBox/InfoPanel/InfoLabel
 @onready var help_label: Label = $MainPanel/VBox/HelpLabel
@@ -84,7 +92,7 @@ func _setup_tabs() -> void:
 		child.queue_free()
 	tab_buttons.clear()
 
-	var tab_names := ["Status", "Equipment", "Inventory", "Formation", "Spells"]
+	var tab_names := ["Status", "Equipment", "Inventory", "Formation", "Spells", "Keys"]
 	for i in range(tab_names.size()):
 		var btn := Button.new()
 		btn.text = tab_names[i]
@@ -109,6 +117,10 @@ func _switch_tab(tab: Tab) -> void:
 	inventory_content.visible = (tab == Tab.INVENTORY)
 	formation_content.visible = (tab == Tab.FORMATION)
 	spells_content.visible = (tab == Tab.SPELLS)
+	keybindings_content.visible = (tab == Tab.KEYBINDINGS)
+
+	if tab != Tab.KEYBINDINGS:
+		_keybind_listening = false
 
 	match tab:
 		Tab.STATUS:
@@ -121,6 +133,8 @@ func _switch_tab(tab: Tab) -> void:
 			_refresh_formation()
 		Tab.SPELLS:
 			_refresh_spells()
+		Tab.KEYBINDINGS:
+			_refresh_keybindings()
 
 	_update_help()
 
@@ -130,6 +144,11 @@ func _on_tab_pressed(tab_index: int) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _keybind_listening and event is InputEventKey and (event as InputEventKey).pressed:
+		_apply_listened_key(event as InputEventKey)
+		get_viewport().set_input_as_handled()
+		return
+
 	if event.is_action_pressed("menu_cancel"):
 		_handle_back()
 		return
@@ -160,6 +179,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_handle_formation_input(event)
 		Tab.SPELLS:
 			_handle_spells_input(event)
+		Tab.KEYBINDINGS:
+			_handle_keybindings_input(event)
 
 
 func _handle_back() -> bool:
@@ -196,6 +217,12 @@ func _handle_back() -> bool:
 				spell_selected_character = null
 				spell_all_spells.clear()
 				_refresh_spells()
+				return true
+		Tab.KEYBINDINGS:
+			if _keybind_listening:
+				_keybind_listening = false
+				_update_keybind_detail()
+				_update_help()
 				return true
 
 	_close()
@@ -246,6 +273,14 @@ func _update_help() -> void:
 					help_label.text = base + "%s | %s: Spell Level | %s: Cast | %s" % [v_nav, tab_help.split(":")[0], confirm.split(":")[0], cancel]
 				SpellPanel.TARGETS:
 					help_label.text = base + "%s | %s: Cast | %s" % [v_nav, confirm.split(":")[0], cancel]
+		Tab.KEYBINDINGS:
+			if _keybind_listening:
+				help_label.text = "Press a key to bind | Esc: Cancel"
+			else:
+				var select_key := KeyBindingHelper.get_action_key("menu_select")
+				var sort_key := KeyBindingHelper.get_action_key("menu_sort")
+				var reorder_key := KeyBindingHelper.get_action_key("menu_reorder")
+				help_label.text = base + "%s | %s: Primary | %s: Secondary | %s: Clear 2nd | %s: Reset All | %s" % [v_nav, confirm.split(":")[0], select_key, sort_key, reorder_key, cancel]
 
 
 # === STATUS TAB ===
@@ -1306,3 +1341,163 @@ func _cycle_spell_level(direction: int) -> void:
 	_refresh_spell_level_tabs()
 	_refresh_spell_list()
 	_update_spell_info()
+
+
+# === KEYBINDINGS TAB ===
+
+var keybind_nav: MenuNavigator = null
+var keybind_buttons: Array[Button] = []
+var keybind_actions: Array[String] = []
+var keybind_selected_action: String = ""
+var _keybind_listening := false
+var _keybind_listen_slot := 0
+
+
+func _refresh_keybindings() -> void:
+	for child in keybind_action_list.get_children():
+		child.queue_free()
+	keybind_buttons.clear()
+	keybind_actions.clear()
+
+	for action: String in KeybindSettings.BINDABLE_ACTIONS:
+		var label: String = KeybindSettings.BINDABLE_ACTIONS[action]
+		var keys := KeybindSettings.get_action_keys(action)
+		var key_text := ""
+		if keys.size() > 0:
+			key_text = KeybindSettings.key_to_label(keys[0])
+		if keys.size() > 1:
+			key_text += " / " + KeybindSettings.key_to_label(keys[1])
+
+		var btn := Button.new()
+		btn.text = "%s  [%s]" % [label, key_text]
+		btn.custom_minimum_size = Vector2(300, 32)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.pressed.connect(_on_keybind_action_selected.bind(action))
+		keybind_action_list.add_child(btn)
+		keybind_buttons.append(btn)
+		keybind_actions.append(action)
+
+	keybind_nav = MenuNavigator.new()
+	keybind_nav.setup(keybind_buttons, 0)
+	keybind_nav.selection_changed.connect(_on_keybind_selection_changed)
+
+	if not keybind_clear_btn.pressed.is_connected(_on_keybind_clear_secondary):
+		keybind_clear_btn.pressed.connect(_on_keybind_clear_secondary)
+		keybind_reset_btn.pressed.connect(_on_keybind_reset_defaults)
+		keybind_primary_btn.pressed.connect(_on_keybind_primary_pressed)
+		keybind_secondary_btn.pressed.connect(_on_keybind_secondary_pressed)
+
+	if not keybind_actions.is_empty():
+		keybind_selected_action = keybind_actions[0]
+		_update_keybind_detail()
+
+	info_label.text = "Select an action to rebind its key."
+	_update_help()
+
+
+func _on_keybind_action_selected(action: String) -> void:
+	keybind_selected_action = action
+	_start_listening(0)
+
+
+func _on_keybind_selection_changed(index: int) -> void:
+	if index >= 0 and index < keybind_actions.size():
+		keybind_selected_action = keybind_actions[index]
+		_update_keybind_detail()
+
+
+func _update_keybind_detail() -> void:
+	if keybind_selected_action.is_empty():
+		keybind_primary_label.text = "Primary: "
+		keybind_primary_btn.text = "(none)"
+		keybind_secondary_label.text = "Secondary: "
+		keybind_secondary_btn.text = "(none)"
+		return
+
+	var keys := KeybindSettings.get_action_keys(keybind_selected_action)
+	var label: String = KeybindSettings.BINDABLE_ACTIONS.get(keybind_selected_action, "")
+	keybind_primary_label.text = "Primary:"
+	keybind_secondary_label.text = "Secondary:"
+
+	if keys.size() > 0:
+		keybind_primary_btn.text = KeybindSettings.key_to_label(keys[0])
+	else:
+		keybind_primary_btn.text = "(none)"
+
+	if keys.size() > 1:
+		keybind_secondary_btn.text = KeybindSettings.key_to_label(keys[1])
+	else:
+		keybind_secondary_btn.text = "(none)"
+
+	info_label.text = "[b]%s[/b]\nEnter: rebind primary | S: rebind secondary" % label
+
+
+func _on_keybind_primary_pressed() -> void:
+	_start_listening(0)
+
+
+func _on_keybind_secondary_pressed() -> void:
+	_start_listening(1)
+
+
+func _start_listening(slot: int) -> void:
+	_keybind_listening = true
+	_keybind_listen_slot = slot
+	var slot_name := "primary" if slot == 0 else "secondary"
+	var label: String = KeybindSettings.BINDABLE_ACTIONS.get(keybind_selected_action, "")
+	info_label.text = "[b]%s[/b]\nPress any key for %s binding..." % [label, slot_name]
+	if slot == 0:
+		keybind_primary_btn.text = "..."
+	else:
+		keybind_secondary_btn.text = "..."
+	_update_help()
+
+
+func _apply_listened_key(event: InputEventKey) -> void:
+	if event.keycode == KEY_ESCAPE:
+		_keybind_listening = false
+		_update_keybind_detail()
+		_update_help()
+		return
+
+	if event.keycode == KEY_SHIFT or event.keycode == KEY_CTRL or event.keycode == KEY_ALT or event.keycode == KEY_META:
+		return
+
+	KeybindSettings.rebind_action(keybind_selected_action, _keybind_listen_slot, event)
+	_keybind_listening = false
+	_refresh_keybindings()
+
+
+func _on_keybind_clear_secondary() -> void:
+	if keybind_selected_action.is_empty():
+		return
+	var keys := KeybindSettings.get_action_keys(keybind_selected_action)
+	if keys.size() > 1:
+		InputMap.action_erase_event(keybind_selected_action, keys[1])
+		KeybindSettings._save_bindings()
+		_refresh_keybindings()
+
+
+func _on_keybind_reset_defaults() -> void:
+	KeybindSettings.reset_defaults()
+	_refresh_keybindings()
+	info_label.text = "All keybindings reset to defaults."
+
+
+func _handle_keybindings_input(event: InputEvent) -> void:
+	if keybind_nav == null:
+		return
+
+	if event.is_action_pressed("menu_select") and not keybind_selected_action.is_empty():
+		_start_listening(1)
+		return
+
+	if event.is_action_pressed("menu_sort"):
+		_on_keybind_clear_secondary()
+		return
+
+	if event.is_action_pressed("menu_reorder"):
+		_on_keybind_reset_defaults()
+		return
+
+	keybind_nav.handle_input(event)
