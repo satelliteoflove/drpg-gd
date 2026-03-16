@@ -4,11 +4,11 @@ extends Node
 signal server_ready
 signal server_failed
 signal download_started(model_name: String)
-signal download_progress(percent: float, speed_bps: float)
+signal download_progress(percent: float, speed_bps: float, downloaded: int, total: int)
 signal download_completed
 signal download_failed(reason: String)
 signal binary_download_started(variant: String)
-signal binary_download_progress(percent: float, speed_bps: float)
+signal binary_download_progress(percent: float, speed_bps: float, downloaded: int, total: int)
 signal binary_download_completed
 signal binary_download_failed(reason: String)
 signal setup_finished
@@ -123,7 +123,7 @@ func _emit_download_progress(request: HTTPRequest, fallback_total: int, start_ti
 	var elapsed := (Time.get_ticks_msec() / 1000.0) - start_time
 	var speed := float(downloaded) / maxf(elapsed, 0.1)
 
-	sig.emit(percent, speed)
+	sig.emit(percent, speed, downloaded, total)
 
 
 func is_available() -> bool:
