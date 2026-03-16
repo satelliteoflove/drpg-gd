@@ -108,14 +108,12 @@ func _process(_delta: float) -> void:
 		_emit_download_progress(_binary_download_request, 0, _binary_download_start_time, binary_download_progress)
 
 
-func _emit_download_progress(request: HTTPRequest, fallback_total: int, start_time: float, sig: Signal) -> void:
+func _emit_download_progress(request: HTTPRequest, known_total: int, start_time: float, sig: Signal) -> void:
 	var downloaded := request.get_downloaded_bytes()
 	if downloaded <= 0:
 		return
 
-	var total := request.get_body_size()
-	if total <= 0:
-		total = fallback_total
+	var total := known_total if known_total > 0 else request.get_body_size()
 	if total <= 0:
 		return
 
