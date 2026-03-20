@@ -669,6 +669,7 @@ func _on_health_completed(_result: int, response_code: int, _headers: PackedStri
 			_health_timer = null
 		server_ready.emit()
 		_mark_setup_complete()
+		_warmup()
 
 
 func _on_completion_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -688,6 +689,25 @@ func _on_completion_completed(_result: int, response_code: int, _headers: Packed
 	else:
 		push_warning("[LLMManager] Failed to parse completion response")
 		_pending_callback.call("")
+
+
+func _warmup() -> void:
+	var warmup_request := HTTPRequest.new()
+	add_child(warmup_request)
+	warmup_request.request_completed.connect(func(_r: int, _c: int, _h: PackedStringArray, _b: PackedByteArray) -> void:
+		print("[LLMManager] Warmup complete")
+		warmup_request.queue_free()
+	)
+	var body := {
+		"prompt": "<|im_start|>user\nSay hello.<|im_end|>\n<|im_start|>assistant\n",
+		"n_predict": 8,
+		"temperature": TEMPERATURE,
+		"stop": ["<|im_end|>"],
+	}
+	var headers := ["Content-Type: application/json"]
+	var url := "http://127.0.0.1:%d/completion" % PORT
+	warmup_request.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(body))
+	print("[LLMManager] Warming up model...")
 
 
 func _mark_setup_complete() -> void:

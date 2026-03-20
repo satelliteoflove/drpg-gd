@@ -977,6 +977,8 @@ func _cleanup_chest_modal() -> void:
 
 
 func _show_event_modal(event_data: Dictionary) -> void:
+	$MainLayout.visible = false
+
 	var root: Control = EventModalScene.instantiate()
 	add_child(root)
 	event_modal = root.get_node("EventModal")

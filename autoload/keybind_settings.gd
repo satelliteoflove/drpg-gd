@@ -39,24 +39,36 @@ func get_default_events(action: String) -> Array[Dictionary]:
 	return _defaults.get(action, []) as Array[Dictionary]
 
 
+func check_conflict(action: String, new_event: InputEventKey) -> String:
+	var normalized := _normalize_event(new_event)
+	for other_action: String in BINDABLE_ACTIONS:
+		if other_action == action:
+			continue
+		for event in InputMap.action_get_events(other_action):
+			if event is InputEventKey and _keys_match(event as InputEventKey, normalized):
+				return BINDABLE_ACTIONS[other_action]
+	return ""
+
+
 func rebind_action(action: String, slot: int, new_event: InputEventKey) -> void:
+	var normalized := _normalize_event(new_event)
+
 	var key_events: Array[InputEventKey] = []
 	for event in InputMap.action_get_events(action):
 		if event is InputEventKey:
 			key_events.append(event as InputEventKey)
 
 	if slot < key_events.size():
-		key_events[slot] = new_event
+		key_events[slot] = normalized
 	elif slot == key_events.size():
-		key_events.append(new_event)
+		key_events.append(normalized)
 	else:
-		key_events.append(new_event)
+		key_events.append(normalized)
 
 	InputMap.action_erase_events(action)
 	for key_event in key_events:
 		InputMap.action_add_event(action, key_event)
 
-	_resolve_conflicts(action, new_event)
 	_save_bindings()
 
 
@@ -94,25 +106,27 @@ func key_to_label(event: InputEventKey) -> String:
 	if event.meta_pressed:
 		parts.append("Meta")
 
-	var key_name := _keycode_to_string(event.keycode)
+	var code: int = event.keycode if event.keycode != 0 else event.physical_keycode
+	var key_name := _keycode_to_string(code)
 	parts.append(key_name)
 	return "+".join(parts)
 
 
-func _resolve_conflicts(bound_action: String, new_event: InputEventKey) -> void:
-	for action: String in BINDABLE_ACTIONS:
-		if action == bound_action:
-			continue
-		var events := InputMap.action_get_events(action)
-		for event in events:
-			if event is InputEventKey:
-				var existing := event as InputEventKey
-				if _keys_match(existing, new_event):
-					InputMap.action_erase_event(action, event)
+
+func _normalize_event(event: InputEventKey) -> InputEventKey:
+	var normalized := InputEventKey.new()
+	normalized.keycode = event.keycode if event.keycode != 0 else event.physical_keycode
+	normalized.shift_pressed = event.shift_pressed
+	normalized.ctrl_pressed = event.ctrl_pressed
+	normalized.alt_pressed = event.alt_pressed
+	normalized.meta_pressed = event.meta_pressed
+	return normalized
 
 
 func _keys_match(a: InputEventKey, b: InputEventKey) -> bool:
-	return a.keycode == b.keycode and a.shift_pressed == b.shift_pressed and a.ctrl_pressed == b.ctrl_pressed and a.alt_pressed == b.alt_pressed and a.meta_pressed == b.meta_pressed
+	var code_a: int = a.keycode if a.keycode != 0 else a.physical_keycode
+	var code_b: int = b.keycode if b.keycode != 0 else b.physical_keycode
+	return code_a == code_b and a.shift_pressed == b.shift_pressed and a.ctrl_pressed == b.ctrl_pressed and a.alt_pressed == b.alt_pressed and a.meta_pressed == b.meta_pressed
 
 
 func _save_bindings() -> void:

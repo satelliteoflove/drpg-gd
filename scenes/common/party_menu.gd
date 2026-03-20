@@ -70,13 +70,13 @@ const EQUIPMENT_SLOTS: Array[Item.ItemType] = [
 @onready var spell_target_panel: PanelContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellTargetPanel
 @onready var spell_target_list: VBoxContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellTargetPanel/SpellTargetList
 @onready var keybindings_content: Control = $MainPanel/VBox/ContentPanel/KeybindingsContent
-@onready var keybind_action_list: VBoxContainer = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/ActionPanel/ActionList
-@onready var keybind_primary_label: Label = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/PrimaryLabel
-@onready var keybind_primary_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/PrimaryBtn
-@onready var keybind_secondary_label: Label = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/SecondaryLabel
-@onready var keybind_secondary_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/SecondaryBtn
-@onready var keybind_clear_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/ClearSecondaryBtn
-@onready var keybind_reset_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindHBox/BindingPanel/BindingVBox/ResetBtn
+@onready var keybind_action_list: VBoxContainer = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/ActionPanel/ActionList
+@onready var keybind_primary_label: Label = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/BindingPanel/BindingVBox/PrimaryLabel
+@onready var keybind_primary_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/BindingPanel/BindingVBox/PrimaryBtn
+@onready var keybind_secondary_label: Label = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/BindingPanel/BindingVBox/SecondaryLabel
+@onready var keybind_secondary_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/BindingPanel/BindingVBox/SecondaryBtn
+@onready var keybind_clear_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/BindingPanel/BindingVBox/ClearSecondaryBtn
+@onready var keybind_reset_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/ResetBtn
 @onready var info_panel: PanelContainer = $MainPanel/VBox/InfoPanel
 @onready var info_label: RichTextLabel = $MainPanel/VBox/InfoPanel/InfoLabel
 @onready var help_label: Label = $MainPanel/VBox/HelpLabel
@@ -1454,13 +1454,23 @@ func _start_listening(slot: int) -> void:
 
 
 func _apply_listened_key(event: InputEventKey) -> void:
-	if event.keycode == KEY_ESCAPE:
+	var code: int = event.keycode if event.keycode != 0 else event.physical_keycode
+	if code == KEY_ESCAPE:
 		_keybind_listening = false
 		_update_keybind_detail()
 		_update_help()
 		return
 
-	if event.keycode == KEY_SHIFT or event.keycode == KEY_CTRL or event.keycode == KEY_ALT or event.keycode == KEY_META:
+	if code == KEY_SHIFT or code == KEY_CTRL or code == KEY_ALT or code == KEY_META:
+		return
+
+	var conflict := KeybindSettings.check_conflict(keybind_selected_action, event)
+	if conflict != "":
+		var key_label := KeybindSettings.key_to_label(KeybindSettings._normalize_event(event))
+		info_label.text = "[color=yellow]%s is already bound to %s.[/color]\nClear it there first, then try again." % [key_label, conflict]
+		_keybind_listening = false
+		_update_keybind_detail()
+		_update_help()
 		return
 
 	KeybindSettings.rebind_action(keybind_selected_action, _keybind_listen_slot, event)
