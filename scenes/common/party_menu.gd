@@ -1377,8 +1377,12 @@ func _refresh_keybindings() -> void:
 		keybind_buttons.append(btn)
 		keybind_actions.append(action)
 
+	var restore_index := keybind_actions.find(keybind_selected_action)
+	if restore_index < 0:
+		restore_index = 0
+
 	keybind_nav = MenuNavigator.new()
-	keybind_nav.setup(keybind_buttons, 0)
+	keybind_nav.setup(keybind_buttons, restore_index)
 	keybind_nav.selection_changed.connect(_on_keybind_selection_changed)
 
 	if not keybind_clear_btn.pressed.is_connected(_on_keybind_clear_secondary):
@@ -1467,10 +1471,10 @@ func _apply_listened_key(event: InputEventKey) -> void:
 	var conflict := KeybindSettings.check_conflict(keybind_selected_action, event)
 	if conflict != "":
 		var key_label := KeybindSettings.key_to_label(KeybindSettings._normalize_event(event))
-		info_label.text = "[color=yellow]%s is already bound to %s.[/color]\nClear it there first, then try again." % [key_label, conflict]
 		_keybind_listening = false
 		_update_keybind_detail()
 		_update_help()
+		info_label.text = "[color=yellow]%s is already bound to %s.[/color]\nClear it there first, then try again." % [key_label, conflict]
 		return
 
 	KeybindSettings.rebind_action(keybind_selected_action, _keybind_listen_slot, event)
