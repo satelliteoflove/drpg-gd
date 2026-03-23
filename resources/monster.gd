@@ -37,6 +37,12 @@ var combat_id: String = ""
 var status_effects: Array[CharacterEnums.StatusEffect] = []
 var active_statuses: Array = []
 
+var boss_phases: Array[Dictionary] = []
+var current_phase: int = 0
+var _phase_turn_count: int = 0
+var _phase_warned: bool = false
+var extra_actions: int = 0
+
 
 class ActiveStatus:
 	var type: CharacterEnums.StatusEffect = CharacterEnums.StatusEffect.NONE
@@ -105,6 +111,11 @@ func get_random_attack() -> MonsterAttack:
 func duplicate_for_combat() -> Monster:
 	var copy := duplicate(true) as Monster
 	copy.grid_position = grid_position
+	copy.boss_phases = boss_phases.duplicate(true)
+	copy.current_phase = 0
+	copy._phase_turn_count = 0
+	copy._phase_warned = false
+	copy.extra_actions = extra_actions
 	copy.init_combat()
 	return copy
 

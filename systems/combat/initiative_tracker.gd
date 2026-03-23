@@ -6,6 +6,8 @@ class CombatantEntry:
 	var is_player: bool
 	var agility: int
 	var ticks: float
+	var is_extra_action: bool = false
+	var accuracy_penalty: int = 0
 
 	func _init(p_id: String, p_is_player: bool, p_agility: int) -> void:
 		id = p_id
@@ -30,7 +32,15 @@ func remove_combatant(id: String) -> void:
 	for i in range(combatants.size() - 1, -1, -1):
 		if combatants[i].id == id:
 			combatants.remove_at(i)
-			return
+
+
+func add_extra_actions(id: String, is_player: bool, agility: int, count: int) -> void:
+	for i in range(count):
+		var entry := CombatantEntry.new(id, is_player, agility)
+		entry.ticks = _calculate_initial_delay(agility) + (i + 1) * 2.0
+		entry.is_extra_action = true
+		entry.accuracy_penalty = -2
+		combatants.append(entry)
 
 
 func get_next_combatant() -> CombatantEntry:

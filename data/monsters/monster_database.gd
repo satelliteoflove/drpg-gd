@@ -10,7 +10,11 @@ static var _boss_minion_map: Dictionary = {2: ["spider", "spider"], 4: ["orc", "
 static func get_monster(monster_id: String) -> Monster:
 	_ensure_initialized()
 	if _monsters.has(monster_id):
-		return _monsters[monster_id].duplicate(true)
+		var original: Monster = _monsters[monster_id]
+		var copy: Monster = original.duplicate(true)
+		copy.boss_phases = original.boss_phases.duplicate(true)
+		copy.extra_actions = original.extra_actions
+		return copy
 	return null
 
 
@@ -58,6 +62,14 @@ static func _ensure_initialized() -> void:
 static func _create_monsters() -> void:
 	_create_slime()
 	_create_goblin()
+	_create_goblin_shaman()
+	_create_orc_warcaster()
+	_create_imp()
+	_create_fungal_creeper()
+	_create_siren()
+	_create_naga()
+	_create_wraith()
+	_create_medusa()
 	_create_kobold()
 	_create_orc()
 	_create_spider()
@@ -761,6 +773,29 @@ static func _create_boss_broodmother() -> void:
 
 	monster.min_floor = 99
 	monster.max_floor = 99
+
+	monster.boss_phases = [
+		{
+			"hp_threshold": 1.0, "min_turns": 0,
+			"transition_message": "",
+			"behavior_modifiers": {},
+			"attack_preferences": {},
+		},
+		{
+			"hp_threshold": 0.50, "min_turns": 2,
+			"warning_message": "The Broodmother hisses with growing fury...",
+			"transition_message": "The Broodmother screeches in fury!",
+			"behavior_modifiers": {"spellcaster": 15.0, "tactical": 10.0},
+			"attack_preferences": {"prefer": ["Acidic Spit", "Venomous Fangs"], "avoid": ["Leg Swipe"]},
+		},
+		{
+			"hp_threshold": 0.25, "min_turns": 2,
+			"warning_message": "The Broodmother's movements become frantic...",
+			"transition_message": "The Broodmother thrashes wildly!",
+			"behavior_modifiers": {"aggressive": 20.0, "tactical": 20.0, "defensive": -20.0},
+			"attack_preferences": {"prefer": ["Web Spray", "Acidic Spit"], "avoid": []},
+		},
+	]
 	_monsters["boss_broodmother"] = monster
 
 
@@ -821,6 +856,29 @@ static func _create_boss_ironjaw() -> void:
 
 	monster.min_floor = 99
 	monster.max_floor = 99
+
+	monster.boss_phases = [
+		{
+			"hp_threshold": 1.0, "min_turns": 0,
+			"transition_message": "",
+			"behavior_modifiers": {},
+			"attack_preferences": {},
+		},
+		{
+			"hp_threshold": 0.60, "min_turns": 2,
+			"warning_message": "Ironjaw snarls and grips his axe tighter...",
+			"transition_message": "Ironjaw roars and raises his axe!",
+			"behavior_modifiers": {"tactical": 15.0, "berserker": 10.0},
+			"attack_preferences": {"prefer": ["Waraxe Cleave", "Crushing Overhead"], "avoid": ["Shield Bash"]},
+		},
+		{
+			"hp_threshold": 0.30, "min_turns": 2,
+			"warning_message": "Blood streams from Ironjaw's wounds...",
+			"transition_message": "Ironjaw enters a blood rage!",
+			"behavior_modifiers": {"berserker": 30.0, "aggressive": 20.0, "defensive": -20.0},
+			"attack_preferences": {"prefer": ["Crushing Overhead", "Battle Axe", "War Cry"], "avoid": []},
+		},
+	]
 	_monsters["boss_ironjaw"] = monster
 
 
@@ -885,6 +943,30 @@ static func _create_boss_lich() -> void:
 
 	monster.min_floor = 99
 	monster.max_floor = 99
+
+	monster.boss_phases = [
+		{
+			"hp_threshold": 1.0, "min_turns": 0,
+			"transition_message": "",
+			"behavior_modifiers": {"spellcaster": 20.0},
+			"attack_preferences": {"prefer": ["Soul Rend", "Death Touch"], "avoid": ["Bone Staff"]},
+		},
+		{
+			"hp_threshold": 0.60, "min_turns": 3,
+			"warning_message": "Nethris's eyes begin to glow with fury...",
+			"transition_message": "Dark energy swirls around Nethris!",
+			"on_transition_spell": "m2_fear",
+			"behavior_modifiers": {"spellcaster": 30.0, "tactical": 15.0},
+			"attack_preferences": {"prefer": ["Soul Rend"], "avoid": ["Bone Staff"]},
+		},
+		{
+			"hp_threshold": 0.30, "min_turns": 3,
+			"warning_message": "Nethris begins to chant forbidden words...",
+			"transition_message": "Nethris channels forbidden magic!",
+			"behavior_modifiers": {"spellcaster": 40.0, "aggressive": -10.0},
+			"attack_preferences": {"prefer": ["Soul Rend", "Death Touch"], "avoid": ["Bone Staff", "Wail of Despair"]},
+		},
+	]
 	_monsters["boss_lich"] = monster
 
 
@@ -949,4 +1031,361 @@ static func _create_boss_drake() -> void:
 
 	monster.min_floor = 99
 	monster.max_floor = 99
+
+	monster.boss_phases = [
+		{
+			"hp_threshold": 1.0, "min_turns": 0,
+			"transition_message": "",
+			"behavior_modifiers": {"berserker": 10.0},
+			"attack_preferences": {"prefer": ["Rending Claws", "Tail Sweep"], "avoid": []},
+		},
+		{
+			"hp_threshold": 0.70, "min_turns": 2,
+			"warning_message": "Vrakthorne spreads its wings wide...",
+			"transition_message": "Vrakthorne takes to the air!",
+			"behavior_modifiers": {"tactical": 25.0, "spellcaster": 15.0, "berserker": -15.0},
+			"attack_preferences": {"prefer": ["Fire Breath", "Terrifying Roar"], "avoid": ["Rending Claws"]},
+		},
+		{
+			"hp_threshold": 0.40, "min_turns": 2,
+			"warning_message": "Vrakthorne's descent shakes the ground...",
+			"transition_message": "Vrakthorne lands with earth-shaking force!",
+			"behavior_modifiers": {"berserker": 25.0, "aggressive": 15.0, "tactical": 10.0},
+			"attack_preferences": {"prefer": ["Crushing Bite", "Tail Sweep"], "avoid": ["Terrifying Roar"]},
+		},
+		{
+			"hp_threshold": 0.15, "min_turns": 1,
+			"warning_message": "Vrakthorne's eyes burn with desperate fury...",
+			"transition_message": "Vrakthorne unleashes a desperate fury!",
+			"behavior_modifiers": {"tactical": 30.0, "berserker": 20.0, "defensive": -30.0},
+			"attack_preferences": {"prefer": ["Fire Breath", "Rending Claws", "Crushing Bite"], "avoid": []},
+		},
+	]
 	_monsters["boss_drake"] = monster
+
+
+static func _create_goblin_shaman() -> void:
+	var monster := Monster.new()
+	monster.monster_name = "Goblin Shaman"
+	monster.max_hp = 14
+	monster.strength = 8
+	monster.agility = 12
+	monster.defense = 1
+	monster.evasion = 6
+	monster.intelligence = 14
+	monster.piety = 14
+	monster.max_mp = 18
+	monster.level = 3
+	monster.luck = 12
+	monster.exp_reward = 22
+	monster.gold_reward_dice = "2d8"
+
+	var staff := MonsterAttack.create_basic("Bone Rattle", "1d4", 0)
+	var hex := MonsterAttack.create_with_effect(
+		"Hex", "1d4", 2,
+		CharacterEnums.StatusEffect.CURSED, 0.40,
+		"", "magical", 2
+	)
+	monster.attacks = [staff, hex]
+	monster.spells = ["p1_heal", "m1_sleep"]
+
+	monster.loot_drops = [
+		LootDrop.create("staff", 0.10),
+		LootDrop.create("healing_potion", 0.15),
+		LootDrop.create("mana_potion", 0.12),
+	]
+
+	monster.min_floor = 3
+	monster.max_floor = 5
+	_monsters["goblin_shaman"] = monster
+
+
+static func _create_orc_warcaster() -> void:
+	var monster := Monster.new()
+	monster.monster_name = "Orc Warcaster"
+	monster.max_hp = 22
+	monster.strength = 12
+	monster.agility = 10
+	monster.defense = 3
+	monster.evasion = 4
+	monster.intelligence = 14
+	monster.piety = 16
+	monster.max_mp = 25
+	monster.level = 5
+	monster.luck = 10
+	monster.exp_reward = 40
+	monster.gold_reward_dice = "3d8"
+
+	var mace := MonsterAttack.create_basic("War Mace", "1d8", 2)
+	var war_shout := MonsterAttack.create_with_effect(
+		"War Shout", "1d4", 0,
+		CharacterEnums.StatusEffect.AFRAID, 0.40,
+		"2+1d3", "mental", 3
+	)
+	war_shout.targets_row = true
+	monster.attacks = [mace, war_shout]
+	monster.spells = ["p1_heal", "p4_greater_heal", "p1_bless"]
+
+	monster.loot_drops = [
+		LootDrop.create("mace", 0.12),
+		LootDrop.create("chain_mail", 0.08),
+		LootDrop.create("greater_healing", 0.15),
+		LootDrop.create("mana_potion", 0.12),
+	]
+
+	monster.min_floor = 5
+	monster.max_floor = 7
+	_monsters["orc_warcaster"] = monster
+
+
+static func _create_imp() -> void:
+	var monster := Monster.new()
+	monster.monster_name = "Imp"
+	monster.max_hp = 10
+	monster.strength = 8
+	monster.agility = 16
+	monster.defense = 1
+	monster.evasion = 10
+	monster.intelligence = 12
+	monster.max_mp = 10
+	monster.creature_type = CharacterEnums.CreatureType.DEMON
+	monster.is_flying = true
+	monster.level = 3
+	monster.luck = 14
+	monster.exp_reward = 20
+	monster.gold_reward_dice = "2d6"
+
+	var spark := MonsterAttack.create_with_effect(
+		"Bewildering Spark", "1d4", 4,
+		CharacterEnums.StatusEffect.CONFUSED, 0.45,
+		"2+1d3", "mental", 2
+	)
+	spark.weapon_range = 2
+	var scratch := MonsterAttack.create_basic("Scratch", "1d4", 2)
+	monster.attacks = [spark, spark, scratch]
+	monster.spells = ["m1_fire_bolt"]
+
+	monster.loot_drops = [
+		LootDrop.create("mana_potion", 0.15),
+		LootDrop.create("healing_potion", 0.12),
+	]
+
+	monster.min_floor = 3
+	monster.max_floor = 5
+	_monsters["imp"] = monster
+
+
+static func _create_fungal_creeper() -> void:
+	var monster := Monster.new()
+	monster.monster_name = "Fungal Creeper"
+	monster.max_hp = 20
+	monster.strength = 10
+	monster.agility = 6
+	monster.defense = 4
+	monster.evasion = 2
+	monster.vitality = 14
+	monster.creature_type = CharacterEnums.CreatureType.PLANT
+	monster.level = 2
+	monster.luck = 8
+	monster.exp_reward = 16
+	monster.gold_reward_dice = "1d8"
+
+	var spore := MonsterAttack.create_with_effect(
+		"Spore Cloud", "1d4", 0,
+		CharacterEnums.StatusEffect.CONFUSED, 0.40,
+		"2+1d2", "physical", 2
+	)
+	spore.targets_row = true
+	var lash := MonsterAttack.create_with_effect(
+		"Poison Lash", "1d6+1", 0,
+		CharacterEnums.StatusEffect.POISONED, 0.40,
+		"", "physical", 1
+	)
+	var slam := MonsterAttack.create_basic("Slam", "1d6", -1)
+	monster.attacks = [spore, lash, slam]
+
+	monster.loot_drops = [
+		LootDrop.create("antidote", 0.15),
+		LootDrop.create("healing_potion", 0.10),
+	]
+
+	monster.min_floor = 2
+	monster.max_floor = 4
+	_monsters["fungal_creeper"] = monster
+
+
+static func _create_siren() -> void:
+	var monster := Monster.new()
+	monster.monster_name = "Siren"
+	monster.max_hp = 18
+	monster.strength = 8
+	monster.agility = 14
+	monster.defense = 2
+	monster.evasion = 10
+	monster.intelligence = 16
+	monster.piety = 12
+	monster.max_mp = 15
+	monster.creature_type = CharacterEnums.CreatureType.BEAST
+	monster.is_flying = true
+	monster.level = 5
+	monster.luck = 14
+	monster.exp_reward = 30
+	monster.gold_reward_dice = "2d8"
+
+	var song := MonsterAttack.create_with_effect(
+		"Enchanting Song", "1d4", 2,
+		CharacterEnums.StatusEffect.CHARMED, 0.50,
+		"3+1d3", "mental", 3
+	)
+	song.targets_row = true
+	var gaze := MonsterAttack.create_with_effect(
+		"Mesmerizing Gaze", "1d4", 2,
+		CharacterEnums.StatusEffect.CHARMED, 0.60,
+		"2+1d3", "mental", 4
+	)
+	var talons := MonsterAttack.create_ranged("Talons", "1d6", 4, 2)
+	monster.attacks = [song, gaze, talons]
+	monster.spells = ["m1_sleep", "m2_fear"]
+
+	monster.loot_drops = [
+		LootDrop.create("mana_potion", 0.15),
+		LootDrop.create("healing_potion", 0.12),
+	]
+
+	monster.min_floor = 5
+	monster.max_floor = 7
+	_monsters["siren"] = monster
+
+
+static func _create_naga() -> void:
+	var monster := Monster.new()
+	monster.monster_name = "Naga"
+	monster.max_hp = 28
+	monster.strength = 12
+	monster.agility = 12
+	monster.defense = 4
+	monster.evasion = 6
+	monster.intelligence = 14
+	monster.piety = 14
+	monster.max_mp = 20
+	monster.creature_type = CharacterEnums.CreatureType.BEAST
+	monster.level = 5
+	monster.luck = 10
+	monster.exp_reward = 40
+	monster.gold_reward_dice = "3d8"
+
+	var constrict := MonsterAttack.create_with_effect(
+		"Constrict", "1d8+2", 2,
+		CharacterEnums.StatusEffect.PARALYZED, 0.35,
+		"1+1d2", "physical", 3
+	)
+	var fangs := MonsterAttack.create_with_effect(
+		"Venomous Fangs", "1d6", 3,
+		CharacterEnums.StatusEffect.POISONED, 0.45,
+		"", "physical", 2
+	)
+	var hiss := MonsterAttack.create_with_effect(
+		"Silencing Hiss", "1d4", 2,
+		CharacterEnums.StatusEffect.SILENCED, 0.50,
+		"3+1d4", "mental", 3
+	)
+	hiss.targets_row = true
+	monster.attacks = [constrict, fangs, hiss]
+	monster.spells = ["m3_silence"]
+
+	monster.loot_drops = [
+		LootDrop.create("antidote", 0.15),
+		LootDrop.create("greater_healing", 0.10),
+		LootDrop.create("mana_potion", 0.10),
+	]
+
+	monster.min_floor = 5
+	monster.max_floor = 7
+	_monsters["naga"] = monster
+
+
+static func _create_wraith() -> void:
+	var monster := Monster.new()
+	monster.monster_name = "Wraith"
+	monster.max_hp = 24
+	monster.strength = 8
+	monster.agility = 14
+	monster.defense = 2
+	monster.evasion = 12
+	monster.intelligence = 16
+	monster.piety = 14
+	monster.max_mp = 25
+	monster.creature_type = CharacterEnums.CreatureType.UNDEAD
+	monster.level = 6
+	monster.luck = 12
+	monster.exp_reward = 55
+	monster.gold_reward_dice = "3d10"
+
+	var drain := MonsterAttack.create_magical("Soul Drain", "2d6", CharacterEnums.Element.DARK, 4)
+	var wither := MonsterAttack.create_with_effect(
+		"Withering Touch", "1d6", 2,
+		CharacterEnums.StatusEffect.CURSED, 0.55,
+		"", "magical", 4
+	)
+	wither.is_magical = true
+	wither.element = CharacterEnums.Element.DARK
+	var dread := MonsterAttack.create_with_effect(
+		"Dread Gaze", "1d4", 2,
+		CharacterEnums.StatusEffect.AFRAID, 0.50,
+		"2+1d3", "mental", 4
+	)
+	monster.attacks = [drain, wither, dread]
+	monster.spells = ["m2_fear", "m3_silence"]
+
+	monster.loot_drops = [
+		LootDrop.create("mana_potion", 0.20),
+		LootDrop.create("greater_healing", 0.12),
+		LootDrop.create("staff", 0.08),
+	]
+
+	monster.min_floor = 6
+	monster.max_floor = 8
+	_monsters["wraith"] = monster
+
+
+static func _create_medusa() -> void:
+	var monster := Monster.new()
+	monster.monster_name = "Medusa"
+	monster.max_hp = 32
+	monster.strength = 10
+	monster.agility = 12
+	monster.defense = 4
+	monster.evasion = 8
+	monster.intelligence = 16
+	monster.piety = 14
+	monster.max_mp = 20
+	monster.creature_type = CharacterEnums.CreatureType.BEAST
+	monster.level = 7
+	monster.luck = 12
+	monster.exp_reward = 75
+	monster.gold_reward_dice = "4d10"
+
+	var gaze := MonsterAttack.create_with_effect(
+		"Petrifying Gaze", "1d4", 2,
+		CharacterEnums.StatusEffect.STONED, 0.30,
+		"", "magical", 5
+	)
+	gaze.targets_row = true
+	var bite := MonsterAttack.create_with_effect(
+		"Snake Bite", "1d8", 4,
+		CharacterEnums.StatusEffect.POISONED, 0.50,
+		"", "physical", 3
+	)
+	var whip := MonsterAttack.create_basic("Tail Whip", "1d6+2", 2)
+	monster.attacks = [gaze, bite, whip]
+	monster.spells = ["m3_silence", "m2_fear"]
+
+	monster.loot_drops = [
+		LootDrop.create("greater_healing", 0.20),
+		LootDrop.create("mana_potion", 0.15),
+		LootDrop.create("staff", 0.10),
+	]
+
+	monster.min_floor = 7
+	monster.max_floor = 8
+	_monsters["medusa"] = monster

@@ -14,10 +14,21 @@ static func score_party_target(member: Character, party: Party, is_melee: bool =
 	if hp_percent <= CombatConstants.FOCUS_FIRE_KILL_THRESHOLD:
 		score += CombatConstants.FOCUS_FIRE_KILL_BONUS
 
+	if member.has_status(CharacterEnums.StatusEffect.ASLEEP):
+		score += CombatConstants.TARGET_SLEEPING_BONUS
+	if member.has_status(CharacterEnums.StatusEffect.PARALYZED) or member.has_status(CharacterEnums.StatusEffect.STONED):
+		score += CombatConstants.TARGET_DISABLED_PENALTY
+	if member.is_defending:
+		score += CombatConstants.TARGET_DEFENDING_PENALTY
+	if member.has_status(CharacterEnums.StatusEffect.CHARMED):
+		score += CombatConstants.TARGET_CHARMED_PENALTY
+	if member.has_status(CharacterEnums.StatusEffect.CONFUSED):
+		score += CombatConstants.TARGET_CONFUSED_PENALTY
+
 	if is_melee and party.is_back_row(member.id):
 		score *= CombatConstants.THREAT_BACK_ROW_MULTIPLIER
 
-	return score
+	return maxf(1.0, score)
 
 
 static func score_monster_target(monster: Monster, _all_enemies: Array[Monster]) -> float:
@@ -46,7 +57,7 @@ static func calculate_adaptive_cast_chance(monster: Monster, alive_target_count:
 	var chance := CombatConstants.CAST_CHANCE_BASE
 
 	var hp_percent := float(monster.current_hp) / float(maxi(1, monster.max_hp))
-	if hp_percent > 0.5:
+	if hp_percent < 0.5:
 		chance += CombatConstants.CAST_CHANCE_HP_BONUS
 
 	if alive_target_count >= 3:

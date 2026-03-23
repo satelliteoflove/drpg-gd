@@ -52,6 +52,8 @@ func setup(p_party: Party, p_enemies: Array[Monster], seed_value: int) -> void:
 
 	for enemy in enemies:
 		_initiative.add_combatant(enemy.combat_id, false, enemy.agility)
+		if enemy.extra_actions > 0:
+			_initiative.add_extra_actions(enemy.combat_id, false, enemy.agility, enemy.extra_actions)
 
 	metrics.record_party_state_start(_get_total_party_hp(), _get_total_party_mp())
 
@@ -134,6 +136,14 @@ func _execute_player_turn(character_id: String) -> Dictionary:
 	if StatusEffectSystem.may_skip_turn_from_fear(character):
 		return {"skipped": true, "reason": "afraid", "messages": tick_messages}
 
+	if StatusEffectSystem.is_mentally_controlled(character):
+		var result := _execute_mental_player_turn(character)
+		result["turn"] = _current_turn
+		result["actor"] = character.get_display_name()
+		result["is_player"] = true
+		result["tick_messages"] = tick_messages
+		return result
+
 	var decision := PartyAI.decide_action(character, party, enemies, party_strategy, cast_threshold)
 
 	ai_log.log_decision(_current_turn, character.get_display_name(), decision)
@@ -152,8 +162,35 @@ func _execute_monster_turn(monster_id: String) -> Dictionary:
 	if monster == null or monster.is_dead:
 		return {"skipped": true, "reason": "dead"}
 
+	var tick_messages := StatusEffectSystem.tick_effects(monster, "combat")
+
+	if monster.is_dead:
+		_initiative.remove_combatant(monster_id)
+		return {"skipped": true, "reason": "died from status", "messages": tick_messages}
+
 	if StatusEffectSystem.is_disabled(monster):
-		return {"skipped": true, "reason": "disabled"}
+		return {"skipped": true, "reason": "disabled", "messages": tick_messages}
+
+	if StatusEffectSystem.may_skip_turn_from_fear(monster):
+		return {"skipped": true, "reason": "afraid", "messages": tick_messages}
+
+	if StatusEffectSystem.is_mentally_controlled(monster):
+		var result := _execute_mental_monster_turn(monster)
+		result["turn"] = _current_turn
+		result["actor"] = monster.monster_name
+		result["is_player"] = false
+		result["tick_messages"] = tick_messages
+		return result
+
+	var phase_messages := MonsterAI.check_boss_phase(monster)
+	for phase_msg in phase_messages:
+		if phase_msg.begins_with("__cast_spell:"):
+			var spell_id := phase_msg.substr(13)
+			var spell := SpellDatabase.get_spell(spell_id)
+			if spell and monster.current_mp >= spell.mp_cost:
+				var spell_targets := MonsterAI._get_spell_targets_for_monster(spell, party, enemies, monster)
+				var spell_result := SpellCaster.cast_spell_by_monster(monster, spell, spell_targets)
+				tick_messages.append_array(spell_result.messages)
 
 	var decision := MonsterAI.decide_action(monster, party, enemies, ai_log)
 
@@ -165,12 +202,175 @@ func _execute_monster_turn(monster_id: String) -> Dictionary:
 	}
 	ai_log.log_decision(_current_turn, monster.monster_name, decision_dict)
 
+	var target_statuses: Array[String] = []
+	if not decision.targets.is_empty() and decision.targets[0] is Character:
+		var t: Character = decision.targets[0]
+		for active in t.active_statuses:
+			target_statuses.append(CharacterEnums.get_status_name(active.type))
+
 	var result := _execute_monster_action(monster, decision)
 	result["turn"] = _current_turn
 	result["actor"] = monster.monster_name
 	result["is_player"] = false
+	result["behavior"] = _behavior_to_string(decision.behavior)
+	result["fumbled"] = decision.fumbled
+	result["target_statuses"] = target_statuses
+	result["phase_messages"] = phase_messages
+	result["boss_phase"] = monster.current_phase if monster.is_boss else -1
 
 	return result
+
+
+func _execute_mental_player_turn(character: Character) -> Dictionary:
+	if character.has_status(CharacterEnums.StatusEffect.BERSERK):
+		var living: Array[Monster] = []
+		for e in enemies:
+			if not e.is_dead:
+				living.append(e)
+		if living.is_empty():
+			return {"action": "berserk", "skipped": true, "reason": "no enemies"}
+		var target: Monster = living[CombatRNG.randi() % living.size()]
+		var accuracy_mod := StatusEffectSystem.get_accuracy_modifier(character)
+		var result := DamageCalculator.calculate_character_attack(character, target, accuracy_mod)
+		if result.hit:
+			var damage := int(result.damage * CombatConstants.BERSERK_DAMAGE_MULTIPLIER)
+			var actual := target.take_damage(damage)
+			if target.is_dead:
+				_initiative.remove_combatant(target.combat_id)
+			return {"action": "berserk_attack", "hit": true, "damage": actual, "target": target.monster_name}
+		return {"action": "berserk_attack", "hit": false, "target": target.monster_name}
+
+	var roll := CombatRNG.randf()
+	var is_confused := character.has_status(CharacterEnums.StatusEffect.CONFUSED)
+
+	if roll < CombatConstants.CONFUSED_ACTION_ATTACK:
+		var all_targets: Array = []
+		for c in party.get_members():
+			if c != character and not c.is_dead:
+				all_targets.append(c)
+		for e in enemies:
+			if not e.is_dead:
+				all_targets.append(e)
+		if all_targets.is_empty():
+			return {"action": "confused" if is_confused else "charmed", "skipped": true}
+		var target = all_targets[CombatRNG.randi() % all_targets.size()] if is_confused else _sim_get_weakest_ally(character)
+		if target == null:
+			return {"action": "charmed", "skipped": true}
+		if target is Monster:
+			var accuracy_mod := StatusEffectSystem.get_accuracy_modifier(character)
+			var result := DamageCalculator.calculate_character_attack(character, target, accuracy_mod)
+			if result.hit:
+				var actual: int = target.take_damage(result.damage)
+				if target.is_dead:
+					_initiative.remove_combatant(target.combat_id)
+				return {"action": "mental_attack", "hit": true, "damage": actual, "target": target.monster_name}
+			return {"action": "mental_attack", "hit": false, "target": target.monster_name}
+		elif target is Character:
+			var result := DamageCalculator.calculate_generic_attack(
+				character.accuracy, target.evasion, character.weapon_dice, character.strength, target.defense)
+			if result.hit:
+				var actual: int = target.take_damage(result.damage)
+				if target.is_dead:
+					_initiative.remove_combatant(target.id)
+				return {"action": "mental_attack", "hit": true, "damage": actual, "target": target.get_display_name()}
+			return {"action": "mental_attack", "hit": false, "target": target.get_display_name()}
+
+	elif roll < CombatConstants.CONFUSED_ACTION_DEFEND:
+		character.is_defending = true
+		return {"action": "mental_defend"}
+
+	return {"action": "mental_daze"}
+
+
+func _execute_mental_monster_turn(monster: Monster) -> Dictionary:
+	if monster.has_status(CharacterEnums.StatusEffect.BERSERK):
+		var alive_party := party.get_alive_members()
+		if alive_party.is_empty():
+			return {"action": "berserk", "skipped": true}
+		var target: Character = alive_party[CombatRNG.randi() % alive_party.size()]
+		var attack: MonsterAttack = monster.get_random_attack()
+		if attack == null:
+			return {"action": "berserk", "skipped": true, "reason": "no attack"}
+		var evasion_mod := StatusEffectSystem.get_evasion_modifier(target)
+		var result := DamageCalculator.calculate_monster_attack(monster, attack, target, evasion_mod)
+		if result.hit:
+			var damage := int(result.damage * CombatConstants.BERSERK_DAMAGE_MULTIPLIER)
+			var actual := target.take_damage(damage)
+			if target.is_dead:
+				_initiative.remove_combatant(target.id)
+			return {"action": "berserk_attack", "hit": true, "damage": actual, "target": target.get_display_name()}
+		return {"action": "berserk_attack", "hit": false, "target": target.get_display_name()}
+
+	var roll := CombatRNG.randf()
+	var is_confused := monster.has_status(CharacterEnums.StatusEffect.CONFUSED)
+
+	if roll < CombatConstants.CONFUSED_ACTION_ATTACK:
+		var all_targets: Array = []
+		for c in party.get_members():
+			if not c.is_dead:
+				all_targets.append(c)
+		for e in enemies:
+			if e != monster and not e.is_dead:
+				all_targets.append(e)
+		if all_targets.is_empty():
+			return {"action": "mental", "skipped": true}
+		var target
+		if is_confused:
+			target = all_targets[CombatRNG.randi() % all_targets.size()]
+		else:
+			target = _sim_get_weakest_monster_ally(monster)
+		if target == null:
+			return {"action": "mental", "skipped": true}
+		var attack: MonsterAttack = monster.get_random_attack()
+		if attack == null:
+			return {"action": "mental", "skipped": true}
+		if target is Character:
+			var evasion_mod := StatusEffectSystem.get_evasion_modifier(target)
+			var result := DamageCalculator.calculate_monster_attack(monster, attack, target, evasion_mod)
+			if result.hit:
+				var actual: int = target.take_damage(result.damage)
+				if target.is_dead:
+					_initiative.remove_combatant(target.id)
+				return {"action": "mental_attack", "hit": true, "damage": actual, "target": target.get_display_name()}
+			return {"action": "mental_attack", "hit": false, "target": target.get_display_name()}
+		elif target is Monster:
+			var result := DamageCalculator.calculate_generic_attack(
+				attack.accuracy_bonus, target.evasion, attack.damage_dice, monster.strength, target.defense)
+			if result.hit:
+				var actual_damage := mini(result.damage, target.current_hp)
+				target.current_hp -= actual_damage
+				if target.current_hp <= 0:
+					target.current_hp = 0
+					target.is_dead = true
+					_initiative.remove_combatant(target.combat_id)
+				return {"action": "mental_attack", "hit": true, "damage": actual_damage, "target": target.monster_name}
+			return {"action": "mental_attack", "hit": false, "target": target.monster_name}
+
+	elif roll < CombatConstants.CONFUSED_ACTION_DEFEND:
+		monster.is_defending = true
+		return {"action": "mental_defend"}
+
+	return {"action": "mental_daze"}
+
+
+func _sim_get_weakest_ally(character: Character) -> Character:
+	var weakest: Character = null
+	var lowest_hp := 999999
+	for c in party.get_members():
+		if c != character and not c.is_dead and c.current_hp < lowest_hp:
+			lowest_hp = c.current_hp
+			weakest = c
+	return weakest
+
+
+func _sim_get_weakest_monster_ally(monster: Monster) -> Monster:
+	var weakest: Monster = null
+	var lowest_hp := 999999
+	for e in enemies:
+		if e != monster and not e.is_dead and e.current_hp < lowest_hp:
+			lowest_hp = e.current_hp
+			weakest = e
+	return weakest
 
 
 func _execute_party_action(character: Character, decision: Dictionary) -> Dictionary:
@@ -185,6 +385,8 @@ func _execute_party_action(character: Character, decision: Dictionary) -> Dictio
 			return _execute_character_spell(character, spell_id, target)
 		"dispel":
 			return _execute_dispel(character, target)
+		"item":
+			return _execute_item_use(decision)
 		"defend":
 			character.is_defending = true
 			return {"action": "defend"}
@@ -209,6 +411,8 @@ func _execute_character_attack(attacker: Character, target: Monster) -> Dictiona
 		var actual := target.take_damage(damage)
 		metrics.record_damage(attacker.get_display_name(), target.monster_name, actual)
 
+		var snap_msgs := StatusEffectSystem.snap_out_on_damage(target)
+
 		if target.is_dead:
 			_initiative.remove_combatant(target.combat_id)
 			metrics.record_death(target.monster_name, _current_turn)
@@ -219,7 +423,8 @@ func _execute_character_attack(attacker: Character, target: Monster) -> Dictiona
 			"hit": true,
 			"damage": actual,
 			"target": target.monster_name,
-			"target_killed": target.is_dead
+			"target_killed": target.is_dead,
+			"messages": snap_msgs
 		}
 	else:
 		return {"action": "attack", "hit": false, "target": target.monster_name}
@@ -290,6 +495,30 @@ func _execute_dispel(character: Character, target: Monster) -> Dictionary:
 	}
 
 
+func _execute_item_use(decision: Dictionary) -> Dictionary:
+	var item: Item = decision.get("item")
+	var target: Character = decision.get("target")
+	if item == null or target == null:
+		return {"action": "item", "success": false}
+
+	var cured: Array[String] = []
+	for status in item.cures_status:
+		if target.has_status(status):
+			target.remove_status(status)
+			cured.append(CharacterEnums.get_status_name(status))
+
+	if party.inventory:
+		party.inventory.remove_item(item.id, 1)
+
+	return {
+		"action": "item",
+		"item_name": item.item_name,
+		"target": target.get_display_name(),
+		"success": not cured.is_empty(),
+		"cured": cured,
+	}
+
+
 func _execute_monster_action(monster: Monster, decision: MonsterAI.AIDecision) -> Dictionary:
 	match decision.action_type:
 		MonsterAI.ActionType.DEFEND:
@@ -310,6 +539,7 @@ func _execute_monster_attack(monster: Monster, attack: MonsterAttack, targets: A
 	var total_damage := 0
 	var hits: Array[String] = []
 	var misses: Array[String] = []
+	var snap_messages: Array[String] = []
 
 	for target in targets:
 		if target == null or not target is Character:
@@ -333,12 +563,16 @@ func _execute_monster_attack(monster: Monster, attack: MonsterAttack, targets: A
 			metrics.record_damage(monster.monster_name, char_target.get_display_name(), actual)
 			hits.append(char_target.get_display_name())
 
+			var snap_msgs := StatusEffectSystem.snap_out_on_damage(char_target)
+
 			if not char_target.is_dead:
 				_try_apply_attack_effect(monster, attack, char_target)
 
 			if char_target.is_dead:
 				_initiative.remove_combatant(char_target.id)
 				metrics.record_death(char_target.get_display_name(), _current_turn)
+
+			snap_messages.append_array(snap_msgs)
 		else:
 			misses.append(char_target.get_display_name())
 
@@ -347,7 +581,8 @@ func _execute_monster_attack(monster: Monster, attack: MonsterAttack, targets: A
 		"attack_name": attack.attack_name,
 		"damage": total_damage,
 		"hits": hits,
-		"misses": misses
+		"misses": misses,
+		"messages": snap_messages,
 	}
 
 
@@ -480,8 +715,22 @@ func _action_type_to_string(action_type: MonsterAI.ActionType) -> String:
 	return "unknown"
 
 
+func _behavior_to_string(behavior: MonsterAI.AIBehavior) -> String:
+	match behavior:
+		MonsterAI.AIBehavior.AGGRESSIVE: return "aggressive"
+		MonsterAI.AIBehavior.DEFENSIVE: return "defensive"
+		MonsterAI.AIBehavior.SPELLCASTER: return "spellcaster"
+		MonsterAI.AIBehavior.SUPPORT: return "support"
+		MonsterAI.AIBehavior.RANGED: return "ranged"
+		MonsterAI.AIBehavior.BERSERKER: return "berserker"
+		MonsterAI.AIBehavior.TACTICAL: return "tactical"
+	return "unknown"
+
+
 func _try_apply_attack_effect(monster: Monster, attack: MonsterAttack, target: Character) -> void:
 	if attack.effect_type < 0 or attack.effect_chance <= 0:
+		return
+	if attack.effect_type in CharacterEnums.BENEFICIAL_STATUSES:
 		return
 	if CombatRNG.randf() > attack.effect_chance:
 		return

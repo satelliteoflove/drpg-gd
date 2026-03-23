@@ -18,6 +18,41 @@ var allow_spawn_near_stairs: bool = true
 var _pending_door_closes: Array[Dictionary] = []
 var changed_doors: Array[Dictionary] = []
 
+const TEMPLATE_CHANCE: float = 0.4
+
+static var _encounter_templates: Array[Dictionary] = [
+	{"id": "slime_pack", "variants": [["slime", "slime"], ["slime", "slime", "slime"]], "min_floor": 1, "max_floor": 2, "weight": 10},
+	{"id": "undead_patrol", "variants": [["skeleton", "skeleton"], ["skeleton", "zombie"]], "min_floor": 1, "max_floor": 3, "weight": 10},
+	{"id": "goblin_scouts", "variants": [["goblin"], ["goblin", "goblin"]], "min_floor": 1, "max_floor": 3, "weight": 10},
+	{"id": "wolf_hunt", "variants": [["wolf"], ["wolf", "wolf"]], "min_floor": 2, "max_floor": 3, "weight": 10},
+
+	{"id": "spider_nest", "variants": [["spider", "spider"], ["spider", "spider", "spider"]], "min_floor": 3, "max_floor": 4, "weight": 10},
+	{"id": "bandit_ambush", "variants": [["bandit", "bandit"], ["bandit", "bandit", "kobold"]], "min_floor": 3, "max_floor": 4, "weight": 10},
+	{"id": "undead_warband", "variants": [["skeleton", "skeleton_mage"], ["skeleton", "skeleton", "skeleton_mage"]], "min_floor": 3, "max_floor": 5, "weight": 10},
+	{"id": "wild_pack", "variants": [["wolf", "wolf", "harpy"]], "min_floor": 4, "max_floor": 5, "weight": 8},
+
+	{"id": "witch_coven", "variants": [["witch", "skeleton", "skeleton"], ["witch", "witch"]], "min_floor": 5, "max_floor": 6, "weight": 10},
+	{"id": "ogre_smash", "variants": [["ogre", "goblin", "goblin"], ["ogre"]], "min_floor": 5, "max_floor": 6, "weight": 8},
+	{"id": "haunted", "variants": [["ghost", "ghost"], ["ghost", "skeleton_mage"]], "min_floor": 5, "max_floor": 8, "weight": 10},
+	{"id": "dark_cabal", "variants": [["dark_mage", "skeleton"], ["dark_mage", "skeleton", "skeleton"]], "min_floor": 6, "max_floor": 8, "weight": 10},
+
+	{"id": "goblin_warband", "variants": [["goblin", "goblin", "goblin_shaman"], ["goblin", "goblin_shaman"]], "min_floor": 3, "max_floor": 5, "weight": 10},
+	{"id": "demon_mischief", "variants": [["imp", "imp"], ["imp", "imp", "imp"]], "min_floor": 3, "max_floor": 5, "weight": 8},
+	{"id": "fungal_grove", "variants": [["fungal_creeper", "fungal_creeper"], ["fungal_creeper", "spider"]], "min_floor": 2, "max_floor": 4, "weight": 8},
+
+	{"id": "enchanted_grove", "variants": [["siren", "fungal_creeper"]], "min_floor": 5, "max_floor": 5, "weight": 6},
+	{"id": "orc_raiding_party", "variants": [["orc", "orc", "orc_warcaster"], ["orc", "orc_warcaster"]], "min_floor": 5, "max_floor": 7, "weight": 10},
+	{"id": "serpent_den", "variants": [["naga", "naga"], ["naga", "spider"]], "min_floor": 5, "max_floor": 7, "weight": 8},
+
+	{"id": "death_procession", "variants": [["wraith", "ghost"], ["wraith", "skeleton_mage"]], "min_floor": 6, "max_floor": 8, "weight": 8},
+	{"id": "medusa_lair", "variants": [["medusa"], ["medusa", "naga"]], "min_floor": 7, "max_floor": 8, "weight": 4},
+
+	{"id": "minotaur_guard", "variants": [["minotaur"], ["minotaur", "orc"], ["minotaur", "orc_warcaster"]], "min_floor": 7, "max_floor": 99, "weight": 10},
+	{"id": "troll_pair", "variants": [["troll", "troll"], ["troll"]], "min_floor": 7, "max_floor": 99, "weight": 8},
+	{"id": "dark_escort", "variants": [["dark_mage", "troll"], ["dark_mage", "ogre"]], "min_floor": 7, "max_floor": 99, "weight": 10},
+	{"id": "elite_undead", "variants": [["ghost", "dark_mage", "skeleton_mage"]], "min_floor": 7, "max_floor": 99, "weight": 6},
+]
+
 
 func initialize(data: DungeonData, tracker: FloorTracker) -> void:
 	dungeon_data = data
@@ -132,6 +167,11 @@ func _generate_monsters(zone: EncounterZone) -> Array[Monster]:
 	if zone.zone_type == EncounterZone.ZoneType.BOSS:
 		return _generate_boss_encounter()
 
+	if randf() < TEMPLATE_CHANCE:
+		var template_monsters := _generate_from_template()
+		if not template_monsters.is_empty():
+			return template_monsters
+
 	var monsters: Array[Monster] = []
 	var count := _roll_enemy_count()
 
@@ -152,6 +192,54 @@ func _generate_monsters(zone: EncounterZone) -> Array[Monster]:
 			monsters.append(monster)
 
 	return monsters
+
+
+func _generate_from_template() -> Array[Monster]:
+	var floor_num := dungeon_data.floor_level
+	var valid_templates: Array[Dictionary] = []
+
+	for template in _encounter_templates:
+		if floor_num >= template.min_floor and floor_num <= template.max_floor:
+			valid_templates.append(template)
+
+	if valid_templates.is_empty():
+		return []
+
+	var weighted: Array = []
+	for template in valid_templates:
+		weighted.append({"item": template, "weight": float(template.weight)})
+	var picked: Dictionary = CombatEvaluator.weighted_random_pick(weighted)
+	if picked.is_empty():
+		return []
+
+	var variants: Array = picked.variants
+	if variants.is_empty():
+		return []
+	var monster_ids: Array = variants[randi() % variants.size()]
+
+	var monsters: Array[Monster] = []
+	var positions := _get_formation_positions(monster_ids.size())
+	for i in range(monster_ids.size()):
+		var monster := MonsterDatabase.get_monster(monster_ids[i])
+		if monster != null:
+			if i < positions.size():
+				monster.grid_position = positions[i]
+			monster.init_combat()
+			monsters.append(monster)
+
+	return monsters
+
+
+func _get_formation_positions(count: int) -> Array[Vector2i]:
+	match count:
+		1: return [Vector2i(1, 0)]
+		2: return [Vector2i(0, 0), Vector2i(2, 0)]
+		3: return [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)]
+		_:
+			var positions: Array[Vector2i] = []
+			for i in range(mini(count, 9)):
+				positions.append(Vector2i(i % 3, i / 3))
+			return positions
 
 
 func _generate_boss_encounter() -> Array[Monster]:
