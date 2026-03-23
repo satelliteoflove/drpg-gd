@@ -247,6 +247,7 @@ func _start_combat() -> void:
 	combat_system.layout_changed.connect(_on_layout_changed)
 
 	combat_system.start_combat(GameState.party, typed_enemies)
+	GameState.party_member_died.connect(_on_party_member_died_in_combat)
 	_build_enemy_display()
 	_build_party_display()
 	_update_display()
@@ -795,6 +796,25 @@ func _on_action_performed(message: String) -> void:
 	_schedule_display_update()
 
 
+func _on_party_member_died_in_combat(character: Resource) -> void:
+	var living: Array[Character] = []
+	for c in combat_system.get_party():
+		if not c.is_dead and c.id != character.id:
+			living.append(c)
+	if living.is_empty():
+		return
+
+	var reactor: Character = living[randi() % living.size()]
+	var fallen_name: String = character.character_name
+	var reactor_name: String = reactor.character_name
+
+	MicroEventSystem._ensure_loaded()
+	var line := MicroEventSystem._get_fallback("ally_fallen", reactor)
+	if line == "":
+		line = "No!"
+	message_log.append_text("[color=cyan]%s:[/color] \"%s\"\n" % [reactor_name, line])
+
+
 func _on_combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Array[Item]) -> void:
 	_set_actions_enabled(false)
 	GameState.end_combat(victory)
@@ -876,6 +896,8 @@ func _exit_combat(victory: bool) -> void:
 
 
 func _finish_exit_combat(victory: bool) -> void:
+	if GameState.party_member_died.is_connected(_on_party_member_died_in_combat):
+		GameState.party_member_died.disconnect(_on_party_member_died_in_combat)
 	if _active_panel_tween:
 		_active_panel_tween.kill()
 		_active_panel_tween = null

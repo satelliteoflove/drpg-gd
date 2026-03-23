@@ -200,6 +200,9 @@ func _duplicate_dungeon_floors() -> Dictionary:
 func _apply_save_data(data) -> void:
 	GameState.roster = data.roster.duplicate(true)
 
+	for character in GameState.roster.get_all():
+		character.restore_active_statuses()
+
 	GameState.party = Party.new()
 	for char_id in data.party_member_ids:
 		var character: Character = GameState.roster.get_character(char_id)

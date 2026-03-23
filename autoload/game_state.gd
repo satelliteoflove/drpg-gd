@@ -192,7 +192,17 @@ func clear_encounter() -> void:
 ## [param victory]: True if the party won.
 func end_combat(victory: bool) -> void:
 	in_combat = false
+	if party:
+		for member in party.get_members():
+			if not member.is_dead:
+				_clear_combat_only_statuses(member)
 	combat_ended.emit(victory)
+
+
+func _clear_combat_only_statuses(character: Resource) -> void:
+	for status in CharacterEnums.BENEFICIAL_STATUSES:
+		if character.has_status(status):
+			character.remove_status(status)
 
 
 func advance_game_days(days: int) -> void:

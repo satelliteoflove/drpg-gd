@@ -110,6 +110,21 @@ static func calculate_monster_attack(attacker: Monster, attack: MonsterAttack, t
 	return {"hit": true, "damage": damage}
 
 
+## Resolves a generic attack using raw stats. Used for friendly-fire from mental statuses.
+## [param accuracy]: Attacker's accuracy value.
+## [param evasion]: Target's evasion value.
+## [param damage_dice]: Weapon damage dice string.
+## [param strength]: Attacker's strength stat.
+## [param defense]: Target's defense stat.
+## [return]: Dictionary with "hit" (bool) and "damage" (int).
+static func calculate_generic_attack(accuracy: int, evasion: int, damage_dice: String, strength: int, defense: int) -> Dictionary:
+	var hit := check_hit(accuracy, evasion)
+	if not hit:
+		return {"hit": false, "damage": 0}
+	var damage := calculate_damage(damage_dice, strength, 0, defense)
+	return {"hit": true, "damage": damage}
+
+
 ## Calculates the chance of successfully escaping combat.
 ## [param party_agility]: Average agility of the party.
 ## [return]: Escape probability between 0.1 and 0.9.

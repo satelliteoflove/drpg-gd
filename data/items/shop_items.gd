@@ -37,6 +37,11 @@ static func _create_items() -> void:
 	_items["long_sword"] = Item.create_weapon("long_sword", "Long Sword", "1d8", 1, 100, Item.WeaponType.SWORD)
 	_items["long_sword"].required_races.assign(LARGE_RACES)
 
+	_items["berserker_sword"] = Item.create_weapon("berserker_sword", "Berserker's Longsword", "1d10", 2, 250, Item.WeaponType.SWORD)
+	_items["berserker_sword"].required_races.assign(LARGE_RACES)
+	_items["berserker_sword"].grants_status = CharacterEnums.StatusEffect.BERSERK
+	_items["berserker_sword"].description = "A blood-red blade that fills its wielder with uncontrollable fury. Grants permanent berserk in combat."
+
 	_items["battle_axe"] = Item.create_weapon("battle_axe", "Battle Axe", "1d10", 0, 150, Item.WeaponType.AXE)
 	_items["battle_axe"].required_races.assign(LARGE_RACES)
 	_items["battle_axe"].two_handed = true
@@ -129,6 +134,35 @@ static func _create_items() -> void:
 	_items["mana_potion"] = Item.create_consumable("mana_potion", "Mana Potion", 0, 15, 15)
 	_items["antidote"] = Item.create_consumable("antidote", "Antidote", 0, 0, 20)
 	_items["antidote"].cures_status.append(CharacterEnums.StatusEffect.POISONED)
+
+	_items["throat_salve"] = Item.create_consumable("throat_salve", "Throat Salve", 0, 0, 30)
+	_items["throat_salve"].cures_status.append(CharacterEnums.StatusEffect.SILENCED)
+
+	_items["eye_drops"] = Item.create_consumable("eye_drops", "Clear Sight Drops", 0, 0, 30)
+	_items["eye_drops"].cures_status.append(CharacterEnums.StatusEffect.BLINDED)
+
+	_items["smelling_salts"] = Item.create_consumable("smelling_salts", "Smelling Salts", 0, 0, 25)
+	_items["smelling_salts"].cures_status.append(CharacterEnums.StatusEffect.CONFUSED)
+
+	_items["clarity_draught"] = Item.create_consumable("clarity_draught", "Clarity Draught", 0, 0, 40)
+	_items["clarity_draught"].cures_status.append(CharacterEnums.StatusEffect.CONFUSED)
+	_items["clarity_draught"].cures_status.append(CharacterEnums.StatusEffect.CHARMED)
+	_items["clarity_draught"].cures_status.append(CharacterEnums.StatusEffect.AFRAID)
+
+	_items["courage_tonic"] = Item.create_consumable("courage_tonic", "Courage Tonic", 0, 0, 25)
+	_items["courage_tonic"].cures_status.append(CharacterEnums.StatusEffect.AFRAID)
+
+	_items["wake_dust"] = Item.create_consumable("wake_dust", "Wake Dust", 0, 0, 15)
+	_items["wake_dust"].cures_status.append(CharacterEnums.StatusEffect.ASLEEP)
+
+	_items["muscle_relaxant"] = Item.create_consumable("muscle_relaxant", "Muscle Relaxant", 0, 0, 75)
+	_items["muscle_relaxant"].cures_status.append(CharacterEnums.StatusEffect.PARALYZED)
+
+	_items["stone_salve"] = Item.create_consumable("stone_salve", "Stone Salve", 0, 0, 150)
+	_items["stone_salve"].cures_status.append(CharacterEnums.StatusEffect.STONED)
+
+	_items["holy_water"] = Item.create_consumable("holy_water", "Holy Water", 0, 0, 100)
+	_items["holy_water"].cures_status.append(CharacterEnums.StatusEffect.CURSED)
 
 	_items["scroll_revelation"] = Item.create_consumable("scroll_revelation", "Scroll of Revelation", 0, 0, 150)
 	_items["scroll_revelation"].reveal_duration = 40

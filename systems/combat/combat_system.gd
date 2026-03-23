@@ -59,6 +59,8 @@ func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 
 	for enemy in enemies:
 		initiative.add_combatant(enemy.combat_id, false, enemy.agility)
+		if enemy.extra_actions > 0:
+			initiative.add_extra_actions(enemy.combat_id, false, enemy.agility, enemy.extra_actions)
 
 	var party_ids: Array[String] = []
 	for m in party_members:
@@ -131,6 +133,27 @@ func _advance_turn() -> void:
 
 		if StatusEffectSystem.may_skip_turn_from_fear(character):
 			action_performed.emit("%s is too afraid to act!" % character.get_display_name())
+			initiative.apply_action_delay(entry.id)
+			_check_combat_end()
+			return
+
+		if character.has_status(CharacterEnums.StatusEffect.CONFUSED):
+			character.is_defending = false
+			_execute_confused_player_turn(character)
+			initiative.apply_action_delay(entry.id)
+			_check_combat_end()
+			return
+
+		if character.has_status(CharacterEnums.StatusEffect.CHARMED):
+			character.is_defending = false
+			_execute_charmed_player_turn(character)
+			initiative.apply_action_delay(entry.id)
+			_check_combat_end()
+			return
+
+		if character.has_status(CharacterEnums.StatusEffect.BERSERK):
+			character.is_defending = false
+			_execute_berserk_player_turn(character)
 			initiative.apply_action_delay(entry.id)
 			_check_combat_end()
 			return
@@ -239,6 +262,9 @@ func _execute_player_attack(attacker: Character, target: Monster) -> void:
 		var wake_msg := StatusEffectSystem.wake_on_damage(target)
 		if wake_msg != "":
 			action_performed.emit(wake_msg)
+
+		for snap_msg in StatusEffectSystem.snap_out_on_damage(target):
+			action_performed.emit(snap_msg)
 
 		if target.is_dead:
 			action_performed.emit("%s is defeated!" % target.monster_name)
@@ -645,6 +671,16 @@ func _execute_monster_turn(monster_id: String) -> void:
 		_advance_turn()
 		return
 
+	var tick_messages := StatusEffectSystem.tick_effects(monster, "combat")
+	for msg in tick_messages:
+		action_performed.emit(msg)
+
+	if monster.is_dead:
+		initiative.remove_combatant(monster_id)
+		processing_monster_turn = false
+		_check_combat_end()
+		return
+
 	if StatusEffectSystem.is_disabled(monster):
 		var status_name := _get_monster_disabling_status_name(monster)
 		action_performed.emit("%s is %s and cannot act!" % [monster.monster_name, status_name])
@@ -653,7 +689,48 @@ func _execute_monster_turn(monster_id: String) -> void:
 		_check_combat_end()
 		return
 
+	if StatusEffectSystem.may_skip_turn_from_fear(monster):
+		action_performed.emit("%s is too afraid to act!" % monster.monster_name)
+		initiative.apply_action_delay(monster_id)
+		processing_monster_turn = false
+		_check_combat_end()
+		return
+
+	if monster.has_status(CharacterEnums.StatusEffect.CONFUSED):
+		monster.is_defending = false
+		_execute_confused_monster_turn(monster)
+		initiative.apply_action_delay(monster_id)
+		processing_monster_turn = false
+		_check_combat_end()
+		return
+
+	if monster.has_status(CharacterEnums.StatusEffect.CHARMED):
+		monster.is_defending = false
+		_execute_charmed_monster_turn(monster)
+		initiative.apply_action_delay(monster_id)
+		processing_monster_turn = false
+		_check_combat_end()
+		return
+
+	if monster.has_status(CharacterEnums.StatusEffect.BERSERK):
+		monster.is_defending = false
+		_execute_berserk_monster_turn(monster)
+		initiative.apply_action_delay(monster_id)
+		processing_monster_turn = false
+		_check_combat_end()
+		return
+
 	monster.is_defending = false
+
+	var phase_messages := MonsterAI.check_boss_phase(monster)
+	for phase_msg in phase_messages:
+		if phase_msg.begins_with("__cast_spell:"):
+			var spell_id := phase_msg.substr(13)
+			var spell := SpellDatabase.get_spell(spell_id)
+			if spell and monster.current_mp >= spell.mp_cost:
+				_execute_monster_spell(monster, spell_id, MonsterAI._get_spell_targets_for_monster(spell, party, enemies, monster))
+		else:
+			action_performed.emit(phase_msg)
 
 	var decision := MonsterAI.decide_action(monster, party, enemies)
 
@@ -797,6 +874,9 @@ func _execute_monster_single_attack(monster: Monster, attack: MonsterAttack, tar
 		if wake_msg != "":
 			action_performed.emit(wake_msg)
 
+		for snap_msg in StatusEffectSystem.snap_out_on_damage(target):
+			action_performed.emit(snap_msg)
+
 		_try_apply_attack_effect(attack, target)
 
 		if target.is_dead:
@@ -865,6 +945,9 @@ func _execute_monster_multi_attack(monster: Monster, attack: MonsterAttack, targ
 			if wake_msg != "":
 				action_performed.emit(wake_msg)
 
+			for snap_msg in StatusEffectSystem.snap_out_on_damage(char_target):
+				action_performed.emit(snap_msg)
+
 			_try_apply_attack_effect(attack, char_target)
 		else:
 			_log_action({
@@ -894,6 +977,9 @@ func _execute_monster_multi_attack(monster: Monster, attack: MonsterAttack, targ
 
 func _try_apply_attack_effect(attack: MonsterAttack, target: Character) -> void:
 	if attack.effect_type < 0 or attack.effect_chance <= 0:
+		return
+
+	if attack.effect_type in CharacterEnums.BENEFICIAL_STATUSES:
 		return
 
 	if CombatRNG.randf() > attack.effect_chance:
@@ -933,6 +1019,536 @@ func _get_monster_disabling_status_name(monster: Monster) -> String:
 	if monster.has_status(CharacterEnums.StatusEffect.STONED):
 		return "petrified"
 	return "incapacitated"
+
+
+func _execute_confused_player_turn(character: Character) -> void:
+	action_performed.emit("%s is confused!" % character.get_display_name())
+	var roll := CombatRNG.randf()
+
+	if roll < CombatConstants.CONFUSED_ACTION_ATTACK:
+		var all_targets := _get_all_alive_combatants_except(character)
+		if all_targets.is_empty():
+			action_performed.emit("%s flails wildly at nothing!" % character.get_display_name())
+			return
+		var target = all_targets[CombatRNG.randi() % all_targets.size()]
+		_execute_mental_player_attack(character, target)
+
+	elif roll < CombatConstants.CONFUSED_ACTION_SPELL:
+		var spell := _get_random_low_level_spell_for_character(character)
+		if spell == null:
+			var all_targets := _get_all_alive_combatants_except(character)
+			if all_targets.is_empty():
+				action_performed.emit("%s stares blankly into space." % character.get_display_name())
+				return
+			var target = all_targets[CombatRNG.randi() % all_targets.size()]
+			_execute_mental_player_attack(character, target)
+			return
+		var targets := _get_confused_spell_targets(spell, character)
+		_execute_mental_player_spell(character, spell, targets)
+
+	elif roll < CombatConstants.CONFUSED_ACTION_DEFEND:
+		character.is_defending = true
+		action_performed.emit("%s takes a confused defensive stance." % character.get_display_name())
+
+	else:
+		action_performed.emit("%s stares blankly into space." % character.get_display_name())
+
+
+func _execute_charmed_player_turn(character: Character) -> void:
+	action_performed.emit("%s is charmed and turns against the party!" % character.get_display_name())
+	var roll := CombatRNG.randf()
+
+	if roll < CombatConstants.CHARMED_ACTION_ATTACK:
+		var target := _get_weakest_ally(character)
+		if target == null:
+			action_performed.emit("%s finds no one to attack." % character.get_display_name())
+			return
+		_execute_mental_player_attack(character, target)
+
+	elif roll < CombatConstants.CHARMED_ACTION_SPELL:
+		var spell := _get_random_low_level_spell_for_character(character)
+		if spell == null:
+			var target := _get_weakest_ally(character)
+			if target == null:
+				character.is_defending = true
+				action_performed.emit("%s takes a defensive stance." % character.get_display_name())
+				return
+			_execute_mental_player_attack(character, target)
+			return
+		var targets := _get_charmed_spell_targets(spell, character)
+		_execute_mental_player_spell(character, spell, targets)
+
+	else:
+		character.is_defending = true
+		action_performed.emit("%s takes a defensive stance." % character.get_display_name())
+
+
+func _execute_berserk_player_turn(character: Character) -> void:
+	action_performed.emit("%s attacks in a berserk rage!" % character.get_display_name())
+	var living := get_living_enemies()
+	if living.is_empty():
+		action_performed.emit("%s rages but finds no enemies!" % character.get_display_name())
+		return
+	var target: Monster = living[CombatRNG.randi() % living.size()]
+	var accuracy_mod := StatusEffectSystem.get_accuracy_modifier(character)
+	var result := DamageCalculator.calculate_character_attack(character, target, accuracy_mod)
+
+	var target_hp_before := target.current_hp
+	if result.hit:
+		var damage: int = int(result.damage * CombatConstants.BERSERK_DAMAGE_MULTIPLIER)
+		var actual_damage := target.take_damage(damage)
+		action_performed.emit("%s savagely strikes %s for %d damage!" % [
+			character.get_display_name(), target.monster_name, actual_damage])
+		if target.is_dead:
+			action_performed.emit("%s is defeated!" % target.monster_name)
+			initiative.remove_combatant(target.combat_id)
+	else:
+		action_performed.emit("%s swings wildly at %s and misses!" % [
+			character.get_display_name(), target.monster_name])
+
+
+func _execute_confused_monster_turn(monster: Monster) -> void:
+	action_performed.emit("%s is confused!" % monster.monster_name)
+	var roll := CombatRNG.randf()
+
+	if roll < CombatConstants.CONFUSED_ACTION_ATTACK:
+		var all_targets := _get_all_alive_combatants_except_monster(monster)
+		if all_targets.is_empty():
+			action_performed.emit("%s flails wildly!" % monster.monster_name)
+			return
+		var target = all_targets[CombatRNG.randi() % all_targets.size()]
+		_execute_mental_monster_attack(monster, target)
+
+	elif roll < CombatConstants.CONFUSED_ACTION_SPELL:
+		var spell := _get_random_low_level_spell_for_monster(monster)
+		if spell == null:
+			var all_targets := _get_all_alive_combatants_except_monster(monster)
+			if all_targets.is_empty():
+				action_performed.emit("%s stumbles around in confusion." % monster.monster_name)
+				return
+			var target = all_targets[CombatRNG.randi() % all_targets.size()]
+			_execute_mental_monster_attack(monster, target)
+			return
+		var targets := _get_confused_monster_spell_targets(spell, monster)
+		_execute_mental_monster_spell(monster, spell, targets)
+
+	elif roll < CombatConstants.CONFUSED_ACTION_DEFEND:
+		monster.is_defending = true
+		action_performed.emit("%s takes a confused defensive stance." % monster.monster_name)
+
+	else:
+		action_performed.emit("%s stumbles around in confusion." % monster.monster_name)
+
+
+func _execute_charmed_monster_turn(monster: Monster) -> void:
+	action_performed.emit("%s is charmed and turns against its allies!" % monster.monster_name)
+	var roll := CombatRNG.randf()
+
+	if roll < CombatConstants.CHARMED_ACTION_ATTACK:
+		var target := _get_weakest_monster_ally(monster)
+		if target == null:
+			action_performed.emit("%s finds no allies to attack." % monster.monster_name)
+			return
+		_execute_mental_monster_attack(monster, target)
+
+	elif roll < CombatConstants.CHARMED_ACTION_SPELL:
+		var spell := _get_random_low_level_spell_for_monster(monster)
+		if spell == null:
+			var target := _get_weakest_monster_ally(monster)
+			if target == null:
+				monster.is_defending = true
+				action_performed.emit("%s takes a defensive stance." % monster.monster_name)
+				return
+			_execute_mental_monster_attack(monster, target)
+			return
+		var targets := _get_charmed_monster_spell_targets(spell, monster)
+		_execute_mental_monster_spell(monster, spell, targets)
+
+	else:
+		monster.is_defending = true
+		action_performed.emit("%s takes a defensive stance." % monster.monster_name)
+
+
+func _execute_berserk_monster_turn(monster: Monster) -> void:
+	action_performed.emit("%s attacks in a berserk rage!" % monster.monster_name)
+	var target := _get_random_alive_front_party_member()
+	if target == null:
+		action_performed.emit("%s rages but finds no targets!" % monster.monster_name)
+		return
+	var attack: MonsterAttack = monster.get_random_attack()
+	if attack == null:
+		action_performed.emit("%s rages but has no attacks!" % monster.monster_name)
+		return
+	var evasion_mod := StatusEffectSystem.get_evasion_modifier(target)
+	var result := DamageCalculator.calculate_monster_attack(monster, attack, target, evasion_mod)
+
+	if result.hit:
+		var damage: int = int(result.damage * CombatConstants.BERSERK_DAMAGE_MULTIPLIER)
+		var actual_damage := target.take_damage(damage)
+		action_performed.emit("%s savagely strikes %s for %d damage!" % [
+			monster.monster_name, target.get_display_name(), actual_damage])
+		var wake_msg := StatusEffectSystem.wake_on_damage(target)
+		if wake_msg != "":
+			action_performed.emit(wake_msg)
+		for snap_msg in StatusEffectSystem.snap_out_on_damage(target):
+			action_performed.emit(snap_msg)
+		if target.is_dead:
+			action_performed.emit("%s falls!" % target.get_display_name())
+			initiative.remove_combatant(target.id)
+			_check_party_row_advance()
+	else:
+		action_performed.emit("%s swings wildly at %s and misses!" % [
+			monster.monster_name, target.get_display_name()])
+
+
+func _execute_mental_player_attack(attacker: Character, target: Variant) -> void:
+	if target is Monster:
+		var accuracy_mod := StatusEffectSystem.get_accuracy_modifier(attacker)
+		var result := DamageCalculator.calculate_character_attack(attacker, target, accuracy_mod)
+		if result.hit:
+			var actual: int = target.take_damage(result.damage)
+			action_performed.emit("%s attacks %s for %d damage!" % [
+				attacker.get_display_name(), target.monster_name, actual])
+			var wake_msg := StatusEffectSystem.wake_on_damage(target)
+			if wake_msg != "":
+				action_performed.emit(wake_msg)
+			for snap_msg in StatusEffectSystem.snap_out_on_damage(target):
+				action_performed.emit(snap_msg)
+			if target.is_dead:
+				action_performed.emit("%s is defeated!" % target.monster_name)
+				initiative.remove_combatant(target.combat_id)
+		else:
+			action_performed.emit("%s swings at %s and misses!" % [
+				attacker.get_display_name(), target.monster_name])
+	elif target is Character:
+		var result := DamageCalculator.calculate_generic_attack(
+			attacker.accuracy, target.evasion, attacker.weapon_dice, attacker.strength, target.defense)
+		if result.hit:
+			var actual: int = target.take_damage(result.damage)
+			action_performed.emit("%s attacks %s for %d damage!" % [
+				attacker.get_display_name(), target.get_display_name(), actual])
+			var wake_msg := StatusEffectSystem.wake_on_damage(target)
+			if wake_msg != "":
+				action_performed.emit(wake_msg)
+			for snap_msg in StatusEffectSystem.snap_out_on_damage(target):
+				action_performed.emit(snap_msg)
+			if target.is_dead:
+				action_performed.emit("%s falls!" % target.get_display_name())
+				initiative.remove_combatant(target.id)
+				_check_party_row_advance()
+		else:
+			action_performed.emit("%s swings at %s and misses!" % [
+				attacker.get_display_name(), target.get_display_name()])
+
+
+func _execute_mental_monster_attack(monster: Monster, target: Variant) -> void:
+	var attack: MonsterAttack = monster.get_random_attack()
+	if attack == null:
+		action_performed.emit("%s flails wildly!" % monster.monster_name)
+		return
+
+	if target is Character:
+		var evasion_mod := StatusEffectSystem.get_evasion_modifier(target)
+		var result := DamageCalculator.calculate_monster_attack(monster, attack, target, evasion_mod)
+		if result.hit:
+			var actual: int = target.take_damage(result.damage)
+			action_performed.emit("%s attacks %s for %d damage!" % [
+				monster.monster_name, target.get_display_name(), actual])
+			var wake_msg := StatusEffectSystem.wake_on_damage(target)
+			if wake_msg != "":
+				action_performed.emit(wake_msg)
+			for snap_msg in StatusEffectSystem.snap_out_on_damage(target):
+				action_performed.emit(snap_msg)
+			if target.is_dead:
+				action_performed.emit("%s falls!" % target.get_display_name())
+				initiative.remove_combatant(target.id)
+				_check_party_row_advance()
+		else:
+			action_performed.emit("%s swings at %s and misses!" % [
+				monster.monster_name, target.get_display_name()])
+	elif target is Monster:
+		var result := DamageCalculator.calculate_generic_attack(
+			attack.accuracy_bonus, target.evasion, attack.damage_dice, monster.strength, target.defense)
+		if result.hit:
+			var actual_damage := mini(result.damage, target.current_hp)
+			target.current_hp -= actual_damage
+			if target.current_hp <= 0:
+				target.current_hp = 0
+				target.is_dead = true
+			action_performed.emit("%s attacks %s for %d damage!" % [
+				monster.monster_name, target.monster_name, actual_damage])
+			if target.is_dead:
+				action_performed.emit("%s is defeated!" % target.monster_name)
+				initiative.remove_combatant(target.combat_id)
+		else:
+			action_performed.emit("%s swings at %s and misses!" % [
+				monster.monster_name, target.monster_name])
+
+
+func _execute_mental_player_spell(caster: Character, spell: Spell, targets: Array) -> void:
+	var result := SpellCaster.cast_spell(caster, spell, targets, true)
+	for msg in result.messages:
+		action_performed.emit(msg)
+	for target in targets:
+		if target is Monster and target.is_dead:
+			initiative.remove_combatant(target.combat_id)
+		elif target is Character and target.is_dead:
+			initiative.remove_combatant(target.id)
+			_check_party_row_advance()
+
+
+func _execute_mental_monster_spell(monster: Monster, spell: Spell, targets: Array) -> void:
+	var result := SpellCaster.cast_spell_by_monster(monster, spell, targets)
+	for msg in result.messages:
+		action_performed.emit(msg)
+	for target in targets:
+		if target is Monster and target.is_dead:
+			initiative.remove_combatant(target.combat_id)
+		elif target is Character and target.is_dead:
+			initiative.remove_combatant(target.id)
+			_check_party_row_advance()
+
+
+func _get_all_alive_combatants_except(character: Character) -> Array:
+	var result: Array = []
+	for c in party_members:
+		if c != character and not c.is_dead:
+			result.append(c)
+	for e in enemies:
+		if not e.is_dead:
+			result.append(e)
+	return result
+
+
+func _get_all_alive_combatants_except_monster(monster: Monster) -> Array:
+	var result: Array = []
+	for c in party_members:
+		if not c.is_dead:
+			result.append(c)
+	for e in enemies:
+		if e != monster and not e.is_dead:
+			result.append(e)
+	return result
+
+
+func _get_weakest_ally(character: Character) -> Character:
+	var weakest: Character = null
+	var lowest_hp := 999999
+	for c in party_members:
+		if c != character and not c.is_dead and c.current_hp < lowest_hp:
+			lowest_hp = c.current_hp
+			weakest = c
+	return weakest
+
+
+func _get_weakest_monster_ally(monster: Monster) -> Monster:
+	var weakest: Monster = null
+	var lowest_hp := 999999
+	for e in enemies:
+		if e != monster and not e.is_dead and e.current_hp < lowest_hp:
+			lowest_hp = e.current_hp
+			weakest = e
+	return weakest
+
+
+func _get_most_wounded_enemy() -> Monster:
+	var most_wounded: Monster = null
+	var lowest_pct := 1.0
+	for e in enemies:
+		if not e.is_dead:
+			var pct := float(e.current_hp) / float(maxi(1, e.max_hp))
+			if pct < lowest_pct:
+				lowest_pct = pct
+				most_wounded = e
+	return most_wounded
+
+
+func _get_most_wounded_party_member() -> Character:
+	var most_wounded: Character = null
+	var lowest_pct := 1.0
+	for c in party_members:
+		if not c.is_dead:
+			var pct := float(c.current_hp) / float(maxi(1, c.max_hp))
+			if pct < lowest_pct:
+				lowest_pct = pct
+				most_wounded = c
+	return most_wounded
+
+
+func _get_random_low_level_spell_for_character(character: Character) -> Spell:
+	var valid_spells: Array[Spell] = []
+	for spell_id in character.known_spells:
+		var spell := SpellDatabase.get_spell(spell_id)
+		if spell and spell.in_combat and spell.level <= CombatConstants.MENTAL_STATUS_MAX_SPELL_LEVEL:
+			if character.current_mp >= spell.mp_cost:
+				valid_spells.append(spell)
+	if valid_spells.is_empty():
+		return null
+	return valid_spells[CombatRNG.randi() % valid_spells.size()]
+
+
+func _get_random_low_level_spell_for_monster(monster: Monster) -> Spell:
+	var valid_spells: Array[Spell] = []
+	for spell_id in monster.spells:
+		var spell := SpellDatabase.get_spell(spell_id)
+		if spell and spell.in_combat and spell.level <= CombatConstants.MENTAL_STATUS_MAX_SPELL_LEVEL:
+			if monster.current_mp >= spell.mp_cost:
+				valid_spells.append(spell)
+	if valid_spells.is_empty():
+		return null
+	return valid_spells[CombatRNG.randi() % valid_spells.size()]
+
+
+func _get_confused_spell_targets(spell: Spell, caster: Character) -> Array:
+	var all_alive: Array = []
+	for c in party_members:
+		if not c.is_dead:
+			all_alive.append(c)
+	for e in enemies:
+		if not e.is_dead:
+			all_alive.append(e)
+
+	match spell.target_type:
+		CharacterEnums.SpellTargetType.SELF:
+			return [caster]
+		CharacterEnums.SpellTargetType.SINGLE_ENEMY, CharacterEnums.SpellTargetType.SINGLE_ALLY:
+			if all_alive.is_empty():
+				return []
+			return [all_alive[CombatRNG.randi() % all_alive.size()]]
+		CharacterEnums.SpellTargetType.ALL_ENEMIES:
+			if CombatRNG.randf() < 0.5:
+				var result: Array = []
+				for e in enemies:
+					if not e.is_dead:
+						result.append(e)
+				return result
+			else:
+				var result: Array = []
+				for c in party_members:
+					if not c.is_dead:
+						result.append(c)
+				return result
+		CharacterEnums.SpellTargetType.ALL_ALLIES:
+			if CombatRNG.randf() < 0.5:
+				var result: Array = []
+				for c in party_members:
+					if not c.is_dead:
+						result.append(c)
+				return result
+			else:
+				var result: Array = []
+				for e in enemies:
+					if not e.is_dead:
+						result.append(e)
+				return result
+		_:
+			if all_alive.is_empty():
+				return []
+			return [all_alive[CombatRNG.randi() % all_alive.size()]]
+
+
+func _get_charmed_spell_targets(spell: Spell, caster: Character) -> Array:
+	match spell.target_type:
+		CharacterEnums.SpellTargetType.SELF:
+			return [caster]
+		CharacterEnums.SpellTargetType.SINGLE_ENEMY:
+			var target := _get_weakest_ally(caster)
+			return [target] if target else []
+		CharacterEnums.SpellTargetType.SINGLE_ALLY:
+			var target := _get_most_wounded_enemy()
+			return [target] if target else []
+		CharacterEnums.SpellTargetType.ALL_ENEMIES:
+			var result: Array = []
+			for c in party_members:
+				if not c.is_dead:
+					result.append(c)
+			return result
+		CharacterEnums.SpellTargetType.ALL_ALLIES:
+			var result: Array = []
+			for e in enemies:
+				if not e.is_dead:
+					result.append(e)
+			return result
+		CharacterEnums.SpellTargetType.DEAD_ALLY:
+			return []
+		_:
+			var target := _get_weakest_ally(caster)
+			return [target] if target else []
+
+
+func _get_confused_monster_spell_targets(spell: Spell, caster: Monster) -> Array:
+	var all_alive: Array = []
+	for c in party_members:
+		if not c.is_dead:
+			all_alive.append(c)
+	for e in enemies:
+		if not e.is_dead:
+			all_alive.append(e)
+
+	match spell.target_type:
+		CharacterEnums.SpellTargetType.SELF:
+			return [caster]
+		CharacterEnums.SpellTargetType.SINGLE_ENEMY, CharacterEnums.SpellTargetType.SINGLE_ALLY:
+			if all_alive.is_empty():
+				return []
+			return [all_alive[CombatRNG.randi() % all_alive.size()]]
+		CharacterEnums.SpellTargetType.ALL_ENEMIES:
+			if CombatRNG.randf() < 0.5:
+				var result: Array = []
+				for c in party_members:
+					if not c.is_dead:
+						result.append(c)
+				return result
+			else:
+				var result: Array = []
+				for e in enemies:
+					if not e.is_dead:
+						result.append(e)
+				return result
+		CharacterEnums.SpellTargetType.ALL_ALLIES:
+			if CombatRNG.randf() < 0.5:
+				var result: Array = []
+				for e in enemies:
+					if not e.is_dead:
+						result.append(e)
+				return result
+			else:
+				var result: Array = []
+				for c in party_members:
+					if not c.is_dead:
+						result.append(c)
+				return result
+		_:
+			if all_alive.is_empty():
+				return []
+			return [all_alive[CombatRNG.randi() % all_alive.size()]]
+
+
+func _get_charmed_monster_spell_targets(spell: Spell, caster: Monster) -> Array:
+	match spell.target_type:
+		CharacterEnums.SpellTargetType.SELF:
+			return [caster]
+		CharacterEnums.SpellTargetType.SINGLE_ENEMY:
+			var target := _get_weakest_monster_ally(caster)
+			return [target] if target else []
+		CharacterEnums.SpellTargetType.SINGLE_ALLY:
+			var target := _get_most_wounded_party_member()
+			return [target] if target else []
+		CharacterEnums.SpellTargetType.ALL_ENEMIES:
+			var result: Array = []
+			for e in enemies:
+				if e != caster and not e.is_dead:
+					result.append(e)
+			return result
+		CharacterEnums.SpellTargetType.ALL_ALLIES:
+			var result: Array = []
+			for c in party_members:
+				if not c.is_dead:
+					result.append(c)
+			return result
+		_:
+			var target := _get_weakest_monster_ally(caster)
+			return [target] if target else []
 
 
 func _check_combat_end() -> void:

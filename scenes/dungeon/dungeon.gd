@@ -6,6 +6,8 @@ const CombatScene = preload("res://scenes/combat/combat.tscn")
 const EnemySpriteScene = preload("res://scenes/dungeon/enemy_sprite_3d.tscn")
 const EventModalScene = preload("res://scenes/events/event_modal.tscn")
 const MicroEventScene = preload("res://scenes/events/micro_event_overlay.tscn")
+const MICRO_EVENT_COOLDOWN_STEPS := 30
+var _steps_since_micro_event := 0
 var menu_open: bool = false
 var map_open: bool = false
 var combat_open: bool = false
@@ -86,6 +88,7 @@ func _ready() -> void:
 	_setup_message_label()
 	$UI/BottomBar/TownButton.pressed.connect(_on_town_pressed)
 	$UI/BottomBar/MenuButton.pressed.connect(_on_menu_pressed)
+	GameState.party_member_died.connect(_on_party_member_died_in_dungeon)
 
 
 func _process(delta: float) -> void:
@@ -533,7 +536,20 @@ func _update_ui() -> void:
 
 
 func _on_step_taken(_total_steps: int) -> void:
+	_tick_exploration_effects()
 	_update_ui()
+
+
+func _tick_exploration_effects() -> void:
+	if GameState.party == null:
+		return
+	for member in GameState.party.get_members():
+		if member.is_dead:
+			continue
+		var messages := StatusEffectSystem.tick_effects(member, "exploration")
+		for msg in messages:
+			_show_dungeon_message(msg)
+
 
 
 func _input(event: InputEvent) -> void:
@@ -849,12 +865,43 @@ func _show_floor_event(event_data: Dictionary, next_floor: int, descending: bool
 
 
 func _try_exploration_micro_event() -> void:
+	_steps_since_micro_event += 1
+	if _steps_since_micro_event < MICRO_EVENT_COOLDOWN_STEPS:
+		return
 	if event_open or combat_open or menu_open or map_open:
 		return
 	MicroEventSystem.try_micro_event("exploration", GameState.get_party_members(), func(data: Dictionary) -> void:
 		if not data.is_empty() and not combat_open and not event_open and not menu_open and not map_open:
+			_steps_since_micro_event = 0
 			_show_exploration_micro_event(data)
 	)
+
+
+func _on_party_member_died_in_dungeon(character: Resource) -> void:
+	if combat_open:
+		return
+	var living: Array[Character] = []
+	for c in GameState.get_party_members():
+		if not c.is_dead and c.id != character.id:
+			living.append(c)
+	if living.is_empty():
+		return
+	var speaker: Character = living[randi() % living.size()]
+	var situation := "%s has fallen." % character.character_name
+	if LLMManager.is_available():
+		var prompt := PromptBuilder.build_micro_prompt(speaker, situation)
+		var grammar := PromptBuilder.micro_grammar()
+		LLMManager.generate(prompt, grammar, func(content: String) -> void:
+			var line := MicroEventSystem._parse_micro_response(content)
+			if line == "":
+				line = MicroEventSystem._get_fallback("ally_fallen", speaker)
+			if line != "":
+				_show_exploration_micro_event({"speaker": speaker, "line": line, "context": "ally_fallen"})
+		)
+	else:
+		var line := MicroEventSystem._get_fallback("ally_fallen", speaker)
+		if line != "":
+			_show_exploration_micro_event({"speaker": speaker, "line": line, "context": "ally_fallen"})
 
 
 func _show_exploration_micro_event(data: Dictionary) -> void:

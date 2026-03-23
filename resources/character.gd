@@ -79,6 +79,7 @@ class ActiveStatus:
 @export var is_dead: bool = false
 @export var status_effects: Array[CharacterEnums.StatusEffect] = []
 @export var death_count: int = 0
+@export var _active_status_data: Array[Dictionary] = []
 var is_defending: bool = false
 var active_statuses: Array[ActiveStatus] = []
 
@@ -537,6 +538,15 @@ func init_combat() -> void:
 	is_defending = false
 	breath_used = false
 	_recalculate_derived_stats()
+	_apply_equipment_statuses()
+
+
+func _apply_equipment_statuses() -> void:
+	var slots := [equipped_weapon, equipped_armor, equipped_shield, equipped_helmet, equipped_gloves, equipped_boots]
+	for item in slots:
+		if item and item.grants_status != CharacterEnums.StatusEffect.NONE:
+			if not has_status(item.grants_status):
+				add_status(item.grants_status, -1, "equipment")
 
 
 func can_use_breath() -> bool:
@@ -655,6 +665,7 @@ func _die() -> void:
 	MarkSystem.add_ko_mark(self)
 	add_status(CharacterEnums.StatusEffect.DEAD, -1, "", 0)
 	died.emit()
+	GameState.party_member_died.emit(self)
 
 
 ## Resurrects a dead character, restoring them to life with reduced vitality.
@@ -778,6 +789,7 @@ func add_status(effect: CharacterEnums.StatusEffect, duration: int = -1, source:
 
 	status_effects.append(effect)
 	active_statuses.append(ActiveStatus.new(effect, duration, source, power))
+	_sync_status_data()
 	status_applied.emit(effect)
 	return true
 
@@ -788,6 +800,7 @@ func remove_status(effect: CharacterEnums.StatusEffect) -> void:
 		if active_statuses[i].type == effect:
 			active_statuses.remove_at(i)
 			break
+	_sync_status_data()
 	status_removed.emit(effect)
 
 
@@ -809,6 +822,30 @@ func clear_status_effects() -> void:
 	if is_dead:
 		status_effects.append(CharacterEnums.StatusEffect.DEAD)
 		active_statuses.append(ActiveStatus.new(CharacterEnums.StatusEffect.DEAD, -1, "", 0))
+	_sync_status_data()
+
+
+func _sync_status_data() -> void:
+	_active_status_data.clear()
+	for active in active_statuses:
+		_active_status_data.append({
+			"type": active.type,
+			"duration": active.duration,
+			"source": active.source,
+			"power": active.power
+		})
+
+
+func restore_active_statuses() -> void:
+	if not active_statuses.is_empty() or _active_status_data.is_empty():
+		return
+	for data in _active_status_data:
+		active_statuses.append(ActiveStatus.new(
+			data.get("type", CharacterEnums.StatusEffect.NONE) as CharacterEnums.StatusEffect,
+			data.get("duration", -1),
+			data.get("source", ""),
+			data.get("power", 0)
+		))
 
 
 func is_disabled() -> bool:

@@ -1169,7 +1169,7 @@ func _refresh_spell_list() -> void:
 			btn.modulate = UIColors.MODULATE_DISABLED
 		elif spell_selected_character.current_mp < spell.mp_cost:
 			btn.modulate = UIColors.MODULATE_DISABLED
-		elif spell_selected_character.is_dead or spell_selected_character.is_silenced():
+		elif spell_selected_character.is_dead or spell_selected_character.is_silenced() or spell_selected_character.is_disabled():
 			btn.modulate = UIColors.MODULATE_DISABLED
 
 		btn.pressed.connect(_on_spell_selected.bind(spell))

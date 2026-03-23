@@ -123,7 +123,7 @@ static func _create_priest_spells() -> void:
 	_spells["p1_bless"] = spell
 
 	spell = Spell.create("p2_divine_favor", "Divine Favor", "", CharacterEnums.SpellSchool.PRIEST, 2, CharacterEnums.SpellTargetType.ALL_ALLIES, "Grants divine blessing to the party.")
-	spell.add_status_effect(CharacterEnums.StatusEffect.BLESSED, "", CharacterEnums.SaveType.MAGICAL, 0)
+	spell.add_status_effect(CharacterEnums.StatusEffect.BLESSED, "5+1d6", CharacterEnums.SaveType.MAGICAL, 0)
 	_spells["p2_divine_favor"] = spell
 
 	spell = Spell.create("p2_light", "Light", "", CharacterEnums.SpellSchool.PRIEST, 2, CharacterEnums.SpellTargetType.SELF, "Creates light to see in darkness.")
@@ -206,6 +206,10 @@ static func _create_alchemist_spells() -> void:
 	spell.add_status_effect(CharacterEnums.StatusEffect.POISONED, "", CharacterEnums.SaveType.PHYSICAL, 2)
 	_spells["a2_poison_cloud"] = spell
 
+	spell = Spell.create("a2_rage_draught", "Rage Draught", "", CharacterEnums.SpellSchool.ALCHEMIST, 2, CharacterEnums.SpellTargetType.SINGLE_ALLY, "A volatile compound that sends one ally into a berserk fury, boosting damage but removing control.")
+	spell.add_status_effect(CharacterEnums.StatusEffect.BERSERK, "", CharacterEnums.SaveType.PHYSICAL, 0)
+	_spells["a2_rage_draught"] = spell
+
 	spell = Spell.create("a3_bottled_lightning", "Bottled Lightning", "", CharacterEnums.SpellSchool.ALCHEMIST, 3, CharacterEnums.SpellTargetType.COLUMN, "Electrical discharge strikes enemies in a line.")
 	spell.add_damage_effect(CharacterEnums.Element.LIGHTNING, "3d6", 0)
 	_spells["a3_bottled_lightning"] = spell
@@ -262,10 +266,18 @@ static func _create_psionic_spells() -> void:
 	spell.add_buff_effect("evasion", 4, -1)
 	_spells["s2_blur_mind"] = spell
 
+	spell = Spell.create("s2_battle_fury", "Battle Fury", "", CharacterEnums.SpellSchool.PSIONIC, 2, CharacterEnums.SpellTargetType.SINGLE_ALLY, "Unleashes primal rage in one ally's mind, boosting damage but removing control.")
+	spell.add_status_effect(CharacterEnums.StatusEffect.BERSERK, "", CharacterEnums.SaveType.MENTAL, 0)
+	_spells["s2_battle_fury"] = spell
+
 	spell = Spell.create("s2_mind_sense", "Mind Sense", "", CharacterEnums.SpellSchool.PSIONIC, 2, CharacterEnums.SpellTargetType.SELF, "Senses all enemy minds on the current floor.")
 	spell.effects.append(SpellEffect.create_reveal_enemies(40))
 	spell.set_in_combat(false).set_out_of_combat(true)
 	_spells["s2_mind_sense"] = spell
+
+	spell = Spell.create("s2_mind_ward", "Mind Ward", "", CharacterEnums.SpellSchool.PSIONIC, 2, CharacterEnums.SpellTargetType.SINGLE_ALLY, "Fortifies one ally's mind against mental attacks, granting strong resistance to confusion, charm, and fear.")
+	spell.add_status_effect(CharacterEnums.StatusEffect.MIND_WARDED, "8+1d6", CharacterEnums.SaveType.MENTAL, 0)
+	_spells["s2_mind_ward"] = spell
 
 	spell = Spell.create("s3_mind_cleanse", "Mind Cleanse", "", CharacterEnums.SpellSchool.PSIONIC, 3, CharacterEnums.SpellTargetType.SINGLE_ALLY, "Cures mental afflictions.")
 	spell.add_cure_effect("mental")
@@ -273,7 +285,7 @@ static func _create_psionic_spells() -> void:
 	_spells["s3_mind_cleanse"] = spell
 
 	spell = Spell.create("s3_psychic_surge", "Psychic Surge", "", CharacterEnums.SpellSchool.PSIONIC, 3, CharacterEnums.SpellTargetType.ALL_ALLIES, "Empowers the entire party mentally.")
-	spell.add_status_effect(CharacterEnums.StatusEffect.BLESSED, "", CharacterEnums.SaveType.MAGICAL, 0)
+	spell.add_status_effect(CharacterEnums.StatusEffect.BLESSED, "5+1d6", CharacterEnums.SaveType.MAGICAL, 0)
 	_spells["s3_psychic_surge"] = spell
 
 	spell = Spell.create("s4_mind_lock", "Mind Lock", "", CharacterEnums.SpellSchool.PSIONIC, 4, CharacterEnums.SpellTargetType.SPLASH, "Freezes enemies in place via mental force.")

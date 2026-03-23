@@ -151,6 +151,38 @@
       "Be more careful ahead."
     ]
   },
+  "ally_fallen": {
+    "brave": [
+      "No! Get up! We're not done yet!",
+      "Stay with us! Don't you dare give up!",
+      "Fall back! Protect them!"
+    ],
+    "cautious": [
+      "We have to pull back!",
+      "This is getting out of hand...",
+      "We need to end this quickly."
+    ],
+    "friendly": [
+      "No... please, no...",
+      "Hold on! We'll get you through this!",
+      "Someone help them!"
+    ],
+    "gruff": [
+      "Damn it. Focus! Avenge them!",
+      "Don't look. Keep fighting.",
+      "They'll pay for that."
+    ],
+    "sarcastic": [
+      "This just got serious.",
+      "Well... that changes things.",
+      "No more holding back."
+    ],
+    "default": [
+      "No!",
+      "We have to keep fighting!",
+      "Stay focused!"
+    ]
+  },
   "rest": {
     "friendly": [
       "Let me tend to those wounds.",

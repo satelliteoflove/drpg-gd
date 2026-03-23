@@ -79,6 +79,7 @@ enum StatusEffect {
 	BERSERK,
 	CURSED,
 	BLESSED,
+	MIND_WARDED,
 	DEAD,
 	ASHED,
 	LOST
@@ -192,6 +193,7 @@ const STATUS_NAMES: Dictionary = {
 	StatusEffect.BERSERK: "Berserk",
 	StatusEffect.CURSED: "Cursed",
 	StatusEffect.BLESSED: "Blessed",
+	StatusEffect.MIND_WARDED: "Mind Warded",
 	StatusEffect.DEAD: "Dead",
 	StatusEffect.ASHED: "Ashed",
 	StatusEffect.LOST: "Lost"
@@ -211,6 +213,7 @@ const STATUS_NOUN_NAMES: Dictionary = {
 	StatusEffect.BERSERK: "frenzy",
 	StatusEffect.CURSED: "a curse",
 	StatusEffect.BLESSED: "a blessing",
+	StatusEffect.MIND_WARDED: "a mind ward",
 	StatusEffect.DEAD: "death",
 	StatusEffect.ASHED: "incineration",
 	StatusEffect.LOST: "banishment"
@@ -230,6 +233,7 @@ const STATUS_ABBREVIATIONS: Dictionary = {
 	StatusEffect.BERSERK: "BRK",
 	StatusEffect.CURSED: "CRS",
 	StatusEffect.BLESSED: "BLS",
+	StatusEffect.MIND_WARDED: "MWD",
 	StatusEffect.DEAD: "DEAD",
 	StatusEffect.ASHED: "ASH",
 	StatusEffect.LOST: "LOST"
@@ -244,7 +248,6 @@ const DISABLING_STATUSES: Array[StatusEffect] = [
 const MENTAL_STATUSES: Array[StatusEffect] = [
 	StatusEffect.CONFUSED,
 	StatusEffect.CHARMED,
-	StatusEffect.BERSERK,
 	StatusEffect.AFRAID
 ]
 
@@ -256,6 +259,8 @@ const DEATH_STATUSES: Array[StatusEffect] = [
 
 const BENEFICIAL_STATUSES: Array[StatusEffect] = [
 	StatusEffect.BLESSED,
+	StatusEffect.BERSERK,
+	StatusEffect.MIND_WARDED,
 ]
 
 const RACIAL_RESISTANCES: Dictionary = {

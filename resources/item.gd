@@ -82,6 +82,9 @@ enum ItemRarity {
 
 @export var upgrades: Dictionary = {}
 
+@export_group("Equipment Effects")
+@export var grants_status: CharacterEnums.StatusEffect = CharacterEnums.StatusEffect.NONE
+
 @export_group("Consumable Effects")
 @export var heal_amount: int = 0
 @export var mp_restore: int = 0
