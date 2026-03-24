@@ -37,6 +37,10 @@ Note: Reload only triggers when the Godot editor window gains focus.
 3. Use Quick Start for fast dungeon entry
 4. Only restart when necessary
 
+### Issue Tracking
+
+Always use the GitHub issue tracker for bugs and feature requests that are not being resolved immediately. When the user flags an issue during playtesting or conversation that will not be fixed right now, create a GitHub issue for it. Do not rely on memory files for issue tracking.
+
 ### Suggesting Changes
 
 When advising on fixes or adjustments, start with the most elegant (and usually simple) solution to the problem. Try to avoid unnecessary changes and technical debt.

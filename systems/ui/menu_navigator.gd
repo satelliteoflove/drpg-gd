@@ -14,8 +14,17 @@ func setup(buttons: Array[Button], initial_index: int = 0) -> void:
 	items = buttons
 	current_index = clampi(initial_index, 0, items.size() - 1)
 
-	for btn in items:
-		btn.focus_entered.connect(_on_button_focus_entered.bind(btn))
+	for i in items.size():
+		var btn := items[i]
+		var callable := _on_button_focus_entered.bind(btn)
+		if not btn.focus_entered.is_connected(callable):
+			btn.focus_entered.connect(callable)
+		var prev := items[wrapi(i - 1, 0, items.size())]
+		var next := items[wrapi(i + 1, 0, items.size())]
+		btn.focus_neighbor_top = prev.get_path()
+		btn.focus_neighbor_bottom = next.get_path()
+		btn.focus_neighbor_left = btn.get_path()
+		btn.focus_neighbor_right = btn.get_path()
 
 	_update_focus()
 
