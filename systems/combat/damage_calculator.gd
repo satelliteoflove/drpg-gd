@@ -7,11 +7,11 @@ const FLYING_EVASION_BONUS: int = 8
 const RANGED_WEAPON_MIN_RANGE: int = 3
 
 static var _dice_regex: RegEx = null
+static var last_hit_detail: String = ""
+static var last_damage_detail: String = ""
+static var last_save_detail: String = ""
 
 
-## Rolls dice based on standard notation (e.g., "2d6+3", "1d8", "3d4-1").
-## [param dice_string]: Dice notation string.
-## [return]: Total result of the roll.
 static func roll_dice(dice_string: String) -> int:
 	if _dice_regex == null:
 		_dice_regex = RegEx.new()
@@ -44,7 +44,11 @@ static func roll_d20() -> int:
 ## [return]: True if the attack hits.
 static func check_hit(accuracy: int, evasion: int) -> bool:
 	var roll := roll_d20()
-	return roll + accuracy >= HIT_BASE_DC + evasion
+	var needed := HIT_BASE_DC + evasion
+	var total := roll + accuracy
+	var hit := total >= needed
+	last_hit_detail = "d20(%d) + acc(%d) = %d vs DC %d (10+eva%d) -> %s" % [roll, accuracy, total, needed, evasion, "HIT" if hit else "MISS"]
+	return hit
 
 
 ## Calculates final damage from a hit.
@@ -56,8 +60,11 @@ static func check_hit(accuracy: int, evasion: int) -> bool:
 static func calculate_damage(base_dice: String, strength: int, bonus: int, reduction: int) -> int:
 	var dice_damage := roll_dice(base_dice)
 	var str_bonus := strength / CombatConstants.STR_DAMAGE_DIVISOR
-	var total := dice_damage + str_bonus + bonus - reduction
-	return maxi(1, total)
+	var raw := dice_damage + str_bonus + bonus
+	var total := raw - reduction
+	var final_dmg := maxi(1, total)
+	last_damage_detail = "%s(%d) + str(%d) + bon(%d) - def(%d) = %d" % [base_dice, dice_damage, str_bonus, bonus, reduction, final_dmg]
+	return final_dmg
 
 
 ## Resolves a character's attack against a monster.

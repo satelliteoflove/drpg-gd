@@ -94,7 +94,7 @@ static func _create_monsters() -> void:
 static func _create_slime() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Slime"
-	monster.max_hp = 15
+	monster.max_hp = 22
 	monster.strength = 8
 	monster.agility = 8
 	monster.defense = 0
@@ -120,7 +120,7 @@ static func _create_slime() -> void:
 static func _create_goblin() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Goblin"
-	monster.max_hp = 12
+	monster.max_hp = 18
 	monster.strength = 10
 	monster.agility = 12
 	monster.defense = 2
@@ -153,7 +153,7 @@ static func _create_goblin() -> void:
 static func _create_kobold() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Kobold"
-	monster.max_hp = 8
+	monster.max_hp = 12
 	monster.strength = 6
 	monster.agility = 14
 	monster.defense = 1
@@ -187,7 +187,7 @@ static func _create_kobold() -> void:
 static func _create_orc() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Orc"
-	monster.max_hp = 24
+	monster.max_hp = 36
 	monster.strength = 14
 	monster.agility = 8
 	monster.defense = 4
@@ -223,7 +223,7 @@ static func _create_orc() -> void:
 static func _create_spider() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Giant Spider"
-	monster.max_hp = 14
+	monster.max_hp = 21
 	monster.strength = 10
 	monster.agility = 12
 	monster.defense = 2
@@ -262,7 +262,7 @@ static func _create_spider() -> void:
 static func _create_witch() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Witch"
-	monster.max_hp = 16
+	monster.max_hp = 24
 	monster.strength = 6
 	monster.agility = 10
 	monster.defense = 1
@@ -309,7 +309,7 @@ static func _create_witch() -> void:
 static func _create_skeleton() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Skeleton"
-	monster.max_hp = 10
+	monster.max_hp = 15
 	monster.strength = 10
 	monster.agility = 10
 	monster.defense = 2
@@ -341,7 +341,7 @@ static func _create_skeleton() -> void:
 static func _create_zombie() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Zombie"
-	monster.max_hp = 20
+	monster.max_hp = 30
 	monster.strength = 12
 	monster.agility = 4
 	monster.defense = 3
@@ -378,7 +378,7 @@ static func _create_zombie() -> void:
 static func _create_wolf() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Dire Wolf"
-	monster.max_hp = 14
+	monster.max_hp = 21
 	monster.strength = 12
 	monster.agility = 16
 	monster.defense = 1
@@ -410,7 +410,7 @@ static func _create_wolf() -> void:
 static func _create_bandit() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Bandit"
-	monster.max_hp = 16
+	monster.max_hp = 24
 	monster.strength = 11
 	monster.agility = 13
 	monster.defense = 3
@@ -445,7 +445,7 @@ static func _create_bandit() -> void:
 static func _create_troll() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Troll"
-	monster.max_hp = 40
+	monster.max_hp = 60
 	monster.strength = 16
 	monster.agility = 8
 	monster.defense = 6
@@ -478,7 +478,7 @@ static func _create_troll() -> void:
 static func _create_ghost() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Ghost"
-	monster.max_hp = 18
+	monster.max_hp = 27
 	monster.strength = 6
 	monster.agility = 14
 	monster.defense = 0
@@ -523,7 +523,7 @@ static func _create_ghost() -> void:
 static func _create_dark_mage() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Dark Mage"
-	monster.max_hp = 22
+	monster.max_hp = 33
 	monster.strength = 6
 	monster.agility = 10
 	monster.defense = 2
@@ -569,7 +569,7 @@ static func _create_dark_mage() -> void:
 static func _create_ogre() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Ogre"
-	monster.max_hp = 35
+	monster.max_hp = 52
 	monster.strength = 18
 	monster.agility = 6
 	monster.defense = 5
@@ -608,7 +608,7 @@ static func _create_ogre() -> void:
 static func _create_harpy() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Harpy"
-	monster.max_hp = 16
+	monster.max_hp = 24
 	monster.strength = 10
 	monster.agility = 16
 	monster.defense = 2
@@ -650,7 +650,7 @@ static func _create_harpy() -> void:
 static func _create_skeleton_mage() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Skeleton Mage"
-	monster.max_hp = 12
+	monster.max_hp = 18
 	monster.strength = 6
 	monster.agility = 10
 	monster.defense = 1
@@ -686,7 +686,7 @@ static func _create_skeleton_mage() -> void:
 static func _create_minotaur() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Minotaur"
-	monster.max_hp = 50
+	monster.max_hp = 75
 	monster.strength = 20
 	monster.agility = 10
 	monster.defense = 8
@@ -1067,7 +1067,7 @@ static func _create_boss_drake() -> void:
 static func _create_goblin_shaman() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Goblin Shaman"
-	monster.max_hp = 14
+	monster.max_hp = 21
 	monster.strength = 8
 	monster.agility = 12
 	monster.defense = 1
@@ -1103,7 +1103,7 @@ static func _create_goblin_shaman() -> void:
 static func _create_orc_warcaster() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Orc Warcaster"
-	monster.max_hp = 22
+	monster.max_hp = 33
 	monster.strength = 12
 	monster.agility = 10
 	monster.defense = 3
@@ -1141,7 +1141,7 @@ static func _create_orc_warcaster() -> void:
 static func _create_imp() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Imp"
-	monster.max_hp = 10
+	monster.max_hp = 15
 	monster.strength = 8
 	monster.agility = 16
 	monster.defense = 1
@@ -1178,7 +1178,7 @@ static func _create_imp() -> void:
 static func _create_fungal_creeper() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Fungal Creeper"
-	monster.max_hp = 20
+	monster.max_hp = 30
 	monster.strength = 10
 	monster.agility = 6
 	monster.defense = 4
@@ -1217,7 +1217,7 @@ static func _create_fungal_creeper() -> void:
 static func _create_siren() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Siren"
-	monster.max_hp = 18
+	monster.max_hp = 27
 	monster.strength = 8
 	monster.agility = 14
 	monster.defense = 2
@@ -1260,7 +1260,7 @@ static func _create_siren() -> void:
 static func _create_naga() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Naga"
-	monster.max_hp = 28
+	monster.max_hp = 42
 	monster.strength = 12
 	monster.agility = 12
 	monster.defense = 4
@@ -1307,7 +1307,7 @@ static func _create_naga() -> void:
 static func _create_wraith() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Wraith"
-	monster.max_hp = 24
+	monster.max_hp = 36
 	monster.strength = 8
 	monster.agility = 14
 	monster.defense = 2
@@ -1351,7 +1351,7 @@ static func _create_wraith() -> void:
 static func _create_medusa() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Medusa"
-	monster.max_hp = 32
+	monster.max_hp = 48
 	monster.strength = 10
 	monster.agility = 12
 	monster.defense = 4

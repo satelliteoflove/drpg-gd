@@ -152,15 +152,24 @@ static func roll_saving_throw(
 	var roll: int = CombatRNG.randi_range(1, 20)
 	var bonus: int = _get_save_bonus(target, save_type)
 	var luck_bonus: int = (target.luck - 10) / 4
+	var ward_bonus: int = 0
 
 	if save_type == CharacterEnums.SaveType.MENTAL and target.has_status(CharacterEnums.StatusEffect.MIND_WARDED):
-		bonus += CombatConstants.MIND_WARD_SAVE_BONUS
+		ward_bonus = CombatConstants.MIND_WARD_SAVE_BONUS
 
-	var total: int = roll + bonus + luck_bonus
-
+	var total: int = roll + bonus + luck_bonus + ward_bonus
 	var actual_dc := dc + power_modifier
+	var saved := total >= actual_dc
 
-	return total >= actual_dc
+	var save_name := "PHYS"
+	match save_type:
+		CharacterEnums.SaveType.MENTAL: save_name = "MENT"
+		CharacterEnums.SaveType.MAGICAL: save_name = "MAGI"
+		CharacterEnums.SaveType.DEATH: save_name = "DETH"
+	var ward_str := "+ward(%d)" % ward_bonus if ward_bonus > 0 else ""
+	DamageCalculator.last_save_detail = "%s save: d20(%d) + bon(%d) + luck(%d)%s = %d vs DC %d -> %s" % [save_name, roll, bonus, luck_bonus, ward_str, total, actual_dc, "RESIST" if saved else "FAIL"]
+
+	return saved
 
 
 static func _get_save_bonus(target: Resource, save_type: CharacterEnums.SaveType) -> int:

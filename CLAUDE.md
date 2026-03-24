@@ -39,7 +39,7 @@ Note: Reload only triggers when the Godot editor window gains focus.
 
 ### Suggesting Changes
 
-When advising on fixes or adjustments, start with the smallest change that solves the problem. Tweak one property before restructuring a layout. Adjust a value before rearchitecting a system. Only escalate to larger changes if the simple option genuinely won't work.
+When advising on fixes or adjustments, start with the most elegant (and usually simple) solution to the problem. Try to avoid unnecessary changes and technical debt.
 
 ### Python Scripts
 

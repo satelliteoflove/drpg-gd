@@ -70,7 +70,7 @@ const EQUIPMENT_SLOTS: Array[Item.ItemType] = [
 @onready var spell_target_panel: PanelContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellTargetPanel
 @onready var spell_target_list: VBoxContainer = $MainPanel/VBox/ContentPanel/SpellsContent/SpellsHBox/SpellTargetPanel/SpellTargetList
 @onready var keybindings_content: Control = $MainPanel/VBox/ContentPanel/KeybindingsContent
-@onready var keybind_action_list: VBoxContainer = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/ActionPanel/ActionList
+@onready var keybind_action_list: VBoxContainer = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/ActionPanel/ActionScroll/ActionList
 @onready var keybind_primary_label: Label = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/BindingPanel/BindingVBox/PrimaryLabel
 @onready var keybind_primary_btn: Button = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/BindingPanel/BindingVBox/PrimaryBtn
 @onready var keybind_secondary_label: Label = $MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/BindingPanel/BindingVBox/SecondaryLabel
@@ -1376,6 +1376,36 @@ func _refresh_keybindings() -> void:
 		keybind_action_list.add_child(btn)
 		keybind_buttons.append(btn)
 		keybind_actions.append(action)
+
+	var separator := Label.new()
+	separator.text = ""
+	keybind_action_list.add_child(separator)
+	var header := Label.new()
+	header.text = "--- Debug Keys (Dungeon) ---"
+	header.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	keybind_action_list.add_child(header)
+
+	var debug_keys := [
+		["X", "Force Combat"],
+		["Shift+X", "Level Party +1"],
+		["Ctrl+X", "Level Party +5"],
+		["Shift+C", "Toggle Combat Math"],
+		["Shift+F", "Next Floor"],
+		["Ctrl+F", "Previous Floor"],
+		["G", "Add 1000 Gold"],
+		["K", "Add Dungeon Key"],
+		["Shift+S", "Run Simulation"],
+		["Shift+B", "Run Batch Sim"],
+		["Shift+L", "Toggle AI Log"],
+	]
+	for entry in debug_keys:
+		var dbtn := Button.new()
+		dbtn.text = "%s  [%s]" % [entry[1], entry[0]]
+		dbtn.custom_minimum_size = Vector2(300, 32)
+		dbtn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		dbtn.disabled = true
+		dbtn.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5))
+		keybind_action_list.add_child(dbtn)
 
 	var restore_index := keybind_actions.find(keybind_selected_action)
 	if restore_index < 0:

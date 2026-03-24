@@ -571,6 +571,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if menu_open or map_open or combat_open or event_open or is_moving:
 		return
 
+	if event is InputEventKey and event.pressed and _handle_debug_keys(event as InputEventKey):
+		return
+
 	if event.is_action_pressed("strafe_left"):
 		_strafe_left()
 	elif event.is_action_pressed("strafe_right"):
@@ -591,18 +594,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_open_map()
 	elif event.is_action_pressed("go_to_town"):
 		_on_town_pressed()
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_X:
+		_force_combat()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_G:
 		_debug_add_gold()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_K:
 		_debug_add_key()
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_S and event.shift_pressed:
-		_run_single_simulation()
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_B and event.shift_pressed:
-		_run_batch_simulation()
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_L and event.shift_pressed:
-		_toggle_ai_logging()
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_TAB and event.shift_pressed:
-		_cycle_debug_material()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_EQUAL:
 		_adjust_material_normal(0.05)
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_MINUS:
@@ -611,18 +608,42 @@ func _unhandled_input(event: InputEvent) -> void:
 		_adjust_material_roughness(0.05)
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_BRACKETLEFT:
 		_adjust_material_roughness(-0.05)
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_X:
-		if event.shift_pressed:
-			_debug_level_party(1)
-		elif event.ctrl_pressed:
-			_debug_level_party(5)
-		else:
-			_force_combat()
-	elif event is InputEventKey and event.pressed and event.keycode == KEY_F:
-		if event.shift_pressed:
-			_debug_teleport_floor(GameState.current_floor + 1)
-		elif event.ctrl_pressed and GameState.current_floor > 1:
-			_debug_teleport_floor(GameState.current_floor - 1)
+
+
+func _handle_debug_keys(event: InputEventKey) -> bool:
+	if not event.shift_pressed and not event.ctrl_pressed:
+		return false
+
+	if event.keycode == KEY_C and event.shift_pressed:
+		GameState.show_combat_math = not GameState.show_combat_math
+		_show_dungeon_message("Combat math: %s" % ("ON" if GameState.show_combat_math else "OFF"))
+		return true
+	elif event.keycode == KEY_X and event.shift_pressed:
+		_debug_level_party(1)
+		return true
+	elif event.keycode == KEY_X and event.ctrl_pressed:
+		_debug_level_party(5)
+		return true
+	elif event.keycode == KEY_F and event.shift_pressed:
+		_debug_teleport_floor(GameState.current_floor + 1)
+		return true
+	elif event.keycode == KEY_F and event.ctrl_pressed and GameState.current_floor > 1:
+		_debug_teleport_floor(GameState.current_floor - 1)
+		return true
+	elif event.keycode == KEY_S and event.shift_pressed:
+		_run_single_simulation()
+		return true
+	elif event.keycode == KEY_B and event.shift_pressed:
+		_run_batch_simulation()
+		return true
+	elif event.keycode == KEY_L and event.shift_pressed:
+		_toggle_ai_logging()
+		return true
+	elif event.keycode == KEY_TAB and event.shift_pressed:
+		_cycle_debug_material()
+		return true
+
+	return false
 
 
 func _get_debug_material() -> StandardMaterial3D:
@@ -1171,7 +1192,6 @@ func _debug_add_key() -> void:
 func _generate_encounter() -> Dictionary:
 	var enemy_count := _roll_enemy_count()
 	var enemies: Array[Monster] = []
-	var positions := _get_formation_positions(enemy_count)
 
 	var available_monsters := MonsterDatabase.get_monsters_for_floor(GameState.current_floor)
 	if available_monsters.is_empty():
@@ -1183,11 +1203,48 @@ func _generate_encounter() -> Dictionary:
 		if enemy == null:
 			enemy = MonsterDatabase.get_monster("slime")
 		if enemy != null:
-			enemy.grid_position = positions[i]
 			enemy.init_combat()
 			enemies.append(enemy)
 
+	var positions := _assign_smart_positions(enemies)
+	for i in range(enemies.size()):
+		if i < positions.size():
+			enemies[i].grid_position = positions[i]
+
 	return {"enemies": enemies}
+
+
+func _assign_smart_positions(monsters: Array[Monster]) -> Array[Vector2i]:
+	if monsters.size() <= 1:
+		return [Vector2i(1, 0)]
+
+	var front: Array[int] = []
+	var back: Array[int] = []
+	for i in range(monsters.size()):
+		var m := monsters[i]
+		if m.max_mp > 0 and not m.spells.is_empty():
+			back.append(i)
+		elif m.strength < 10 and m.agility > m.strength:
+			back.append(i)
+		else:
+			front.append(i)
+
+	if front.is_empty():
+		front.append(back.pop_front())
+	while back.size() > 3:
+		front.append(back.pop_front())
+
+	var positions: Array[Vector2i] = []
+	positions.resize(monsters.size())
+	var col := 0
+	for idx in front:
+		positions[idx] = Vector2i(col % 3, 0)
+		col += 1
+	col = 0
+	for idx in back:
+		positions[idx] = Vector2i(col % 3, 1)
+		col += 1
+	return positions
 
 
 func _roll_enemy_count() -> int:

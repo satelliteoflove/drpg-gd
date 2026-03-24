@@ -14,6 +14,7 @@ enum GameMode { MAIN_MENU, TOWN, DUNGEON, COMBAT }
 var current_mode: GameMode = GameMode.MAIN_MENU
 var current_floor: int = 1
 var in_combat: bool = false
+var show_combat_math: bool = true
 
 var party: Party = null
 var roster: CharacterRoster = null

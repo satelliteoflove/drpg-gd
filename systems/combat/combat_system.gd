@@ -34,6 +34,20 @@ func _log_action(entry: Dictionary) -> void:
 	combat_log.append(entry)
 
 
+func _emit_combat_math() -> void:
+	if not GameState.show_combat_math:
+		return
+	if DamageCalculator.last_hit_detail != "":
+		action_performed.emit("[color=#888888]  %s[/color]" % DamageCalculator.last_hit_detail)
+		DamageCalculator.last_hit_detail = ""
+	if DamageCalculator.last_damage_detail != "":
+		action_performed.emit("[color=#888888]  %s[/color]" % DamageCalculator.last_damage_detail)
+		DamageCalculator.last_damage_detail = ""
+	if DamageCalculator.last_save_detail != "":
+		action_performed.emit("[color=#888888]  %s[/color]" % DamageCalculator.last_save_detail)
+		DamageCalculator.last_save_detail = ""
+
+
 func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 	party = p_party
 	party_members = party.get_members()
@@ -255,6 +269,7 @@ func _execute_player_attack(attacker: Character, target: Monster) -> void:
 		if sleep_mult > 1.0:
 			damage_msg += " (Critical - target was asleep!)"
 		action_performed.emit(damage_msg)
+		_emit_combat_math()
 
 		var wake_msg := StatusEffectSystem.wake_on_damage(target)
 		if wake_msg != "":
@@ -278,6 +293,7 @@ func _execute_player_attack(attacker: Character, target: Monster) -> void:
 			attacker.get_display_name(),
 			target.monster_name
 		])
+		_emit_combat_math()
 
 	initiative.apply_action_delay(current_combatant_id)
 	_check_combat_end()
@@ -478,6 +494,7 @@ func player_cast_spell(spell_id: String, targets: Array) -> void:
 
 	for msg in result.messages:
 		action_performed.emit(msg)
+	_emit_combat_math()
 
 	_log_action({
 		"type": "action", "actor_id": caster.id, "target_id": "",
@@ -774,6 +791,7 @@ func _execute_monster_spell(monster: Monster, spell_id: String, targets: Array) 
 
 	for msg in result.messages:
 		action_performed.emit(msg)
+	_emit_combat_math()
 
 	_log_action({
 		"type": "action", "actor_id": monster.combat_id, "target_id": "",
@@ -866,6 +884,7 @@ func _execute_monster_single_attack(monster: Monster, attack: MonsterAttack, tar
 			resist_suffix
 		]
 		action_performed.emit(damage_msg)
+		_emit_combat_math()
 
 		var wake_msg := StatusEffectSystem.wake_on_damage(target)
 		if wake_msg != "":
@@ -893,6 +912,7 @@ func _execute_monster_single_attack(monster: Monster, attack: MonsterAttack, tar
 			attack.attack_name,
 			target.get_display_name()
 		])
+		_emit_combat_math()
 
 
 func _execute_monster_multi_attack(monster: Monster, attack: MonsterAttack, targets: Array) -> void:
@@ -979,8 +999,17 @@ func _try_apply_attack_effect(attack: MonsterAttack, target: Character) -> void:
 	if attack.effect_type in CharacterEnums.BENEFICIAL_STATUSES:
 		return
 
-	if CombatRNG.randf() > attack.effect_chance:
+	var proc_roll := CombatRNG.randf()
+	if proc_roll > attack.effect_chance:
+		if GameState.show_combat_math:
+			action_performed.emit("[color=#888888]  %s proc: rolled %.0f%% vs %d%% chance -> NO PROC[/color]" % [
+				CharacterEnums.get_status_name(attack.effect_type),
+				proc_roll * 100, int(attack.effect_chance * 100)])
 		return
+	if GameState.show_combat_math:
+		action_performed.emit("[color=#888888]  %s proc: rolled %.0f%% vs %d%% chance -> PROC[/color]" % [
+			CharacterEnums.get_status_name(attack.effect_type),
+			proc_roll * 100, int(attack.effect_chance * 100)])
 
 	var duration := -1
 	if attack.effect_duration_dice != "":
@@ -992,7 +1021,9 @@ func _try_apply_attack_effect(attack: MonsterAttack, target: Character) -> void:
 	if save_type >= 0:
 		if StatusEffectSystem.roll_saving_throw(target, save_type, dc):
 			action_performed.emit("%s resists %s!" % [target.get_display_name(), CharacterEnums.get_status_noun(attack.effect_type)])
+			_emit_combat_math()
 			return
+		_emit_combat_math()
 
 	var effect_result := StatusEffectSystem.apply_status(target, attack.effect_type, duration, "monster_attack", attack.effect_power)
 	if effect_result.message != "":
@@ -1286,6 +1317,7 @@ func _execute_mental_player_spell(caster: Character, spell: Spell, targets: Arra
 	var result := SpellCaster.cast_spell(caster, spell, targets, true)
 	for msg in result.messages:
 		action_performed.emit(msg)
+	_emit_combat_math()
 	for target in targets:
 		if target is Monster and target.is_dead:
 			initiative.remove_combatant(target.combat_id)
@@ -1298,6 +1330,7 @@ func _execute_mental_monster_spell(monster: Monster, spell: Spell, targets: Arra
 	var result := SpellCaster.cast_spell_by_monster(monster, spell, targets)
 	for msg in result.messages:
 		action_performed.emit(msg)
+	_emit_combat_math()
 	for target in targets:
 		if target is Monster and target.is_dead:
 			initiative.remove_combatant(target.combat_id)

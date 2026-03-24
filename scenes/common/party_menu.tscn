@@ -21,7 +21,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.12, 0.1, 0.14, 0.95)
+color = Color(0.12, 0.1, 0.14, 1.0)
 
 [node name="MainPanel" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -292,9 +292,16 @@ theme_override_constants/separation = 20
 [node name="ActionPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 
-[node name="ActionList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/ActionPanel"]
+[node name="ActionScroll" type="ScrollContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/ActionPanel"]
 layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="ActionList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/ActionPanel/ActionScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
 [node name="BindingPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox"]

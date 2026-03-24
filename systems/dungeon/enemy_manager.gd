@@ -191,6 +191,11 @@ func _generate_monsters(zone: EncounterZone) -> Array[Monster]:
 			monster.init_combat()
 			monsters.append(monster)
 
+	var positions := _get_smart_formation(monsters)
+	for i in range(monsters.size()):
+		if i < positions.size():
+			monsters[i].grid_position = positions[i]
+
 	return monsters
 
 
@@ -218,14 +223,16 @@ func _generate_from_template() -> Array[Monster]:
 	var monster_ids: Array = variants[randi() % variants.size()]
 
 	var monsters: Array[Monster] = []
-	var positions := _get_formation_positions(monster_ids.size())
-	for i in range(monster_ids.size()):
-		var monster := MonsterDatabase.get_monster(monster_ids[i])
+	for mid in monster_ids:
+		var monster := MonsterDatabase.get_monster(mid)
 		if monster != null:
-			if i < positions.size():
-				monster.grid_position = positions[i]
 			monster.init_combat()
 			monsters.append(monster)
+
+	var positions := _get_smart_formation(monsters)
+	for i in range(monsters.size()):
+		if i < positions.size():
+			monsters[i].grid_position = positions[i]
 
 	return monsters
 
@@ -240,6 +247,44 @@ func _get_formation_positions(count: int) -> Array[Vector2i]:
 			for i in range(mini(count, 9)):
 				positions.append(Vector2i(i % 3, i / 3))
 			return positions
+
+
+func _get_smart_formation(monsters: Array[Monster]) -> Array[Vector2i]:
+	var count := monsters.size()
+	if count <= 1:
+		return [Vector2i(1, 0)]
+
+	var front: Array[int] = []
+	var back: Array[int] = []
+
+	for i in range(count):
+		var m := monsters[i]
+		if m.max_mp > 0 and not m.spells.is_empty():
+			back.append(i)
+		elif m.strength < 10 and m.agility > m.strength:
+			back.append(i)
+		else:
+			front.append(i)
+
+	if front.is_empty():
+		front.append(back.pop_front())
+	if back.size() > 3:
+		while back.size() > 3:
+			front.append(back.pop_front())
+
+	var positions: Array[Vector2i] = []
+	positions.resize(count)
+
+	var col := 0
+	for idx in front:
+		positions[idx] = Vector2i(col % 3, 0)
+		col += 1
+	col = 0
+	for idx in back:
+		positions[idx] = Vector2i(col % 3, 1)
+		col += 1
+
+	return positions
 
 
 func _generate_boss_encounter() -> Array[Monster]:

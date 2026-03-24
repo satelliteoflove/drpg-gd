@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://bqs867fu6bl5b"]
+[gd_scene format=3 uid="uid://bqs867fu6bl5b"]
 
 [ext_resource type="Script" uid="uid://cfd0xgcoau40k" path="res://scenes/combat/combat.gd" id="1_5vqsm"]
 
-[node name="Combat" type="Control"]
+[node name="Combat" type="Control" unique_id=1619366633]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,16 +11,16 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_5vqsm")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=149304052]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.0, 0.0, 0.05, 0.2)
+color = Color(0, 0, 0.05, 0.2)
 
-[node name="MainLayout" type="VBoxContainer" parent="."]
+[node name="MainLayout" type="VBoxContainer" parent="." unique_id=1825774602]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -31,42 +31,42 @@ offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 2
-alignment = 1
 theme_override_constants/separation = 6
+alignment = 1
 
-[node name="EnemySection" type="PanelContainer" parent="MainLayout"]
+[node name="EnemySection" type="PanelContainer" parent="MainLayout" unique_id=1728870626]
+self_modulate = Color(1, 1, 1, 0.7)
 layout_mode = 2
 size_flags_vertical = 0
-self_modulate = Color(1, 1, 1, 0.7)
 
-[node name="EnemyMargin" type="MarginContainer" parent="MainLayout/EnemySection"]
+[node name="EnemyMargin" type="MarginContainer" parent="MainLayout/EnemySection" unique_id=1811577533]
 layout_mode = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 4
 
-[node name="EnemyVBox" type="VBoxContainer" parent="MainLayout/EnemySection/EnemyMargin"]
+[node name="EnemyVBox" type="VBoxContainer" parent="MainLayout/EnemySection/EnemyMargin" unique_id=1028711981]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="EnemyLabel" type="Label" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox"]
+[node name="EnemyLabel" type="Label" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox" unique_id=1526171096]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.85, 0.25, 0.25, 1)
 text = "Enemies"
 horizontal_alignment = 1
 
-[node name="EnemyGridHBox" type="HBoxContainer" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox"]
+[node name="EnemyGridHBox" type="HBoxContainer" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox" unique_id=1619012894]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 6
 
-[node name="RowLabels" type="VBoxContainer" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox"]
+[node name="RowLabels" type="VBoxContainer" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox" unique_id=30574777]
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="BackLabel" type="Label" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels"]
+[node name="BackLabel" type="Label" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels" unique_id=49597127]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.35, 0.65, 0.9, 1)
@@ -74,7 +74,7 @@ theme_override_font_sizes/font_size = 11
 text = "Back"
 vertical_alignment = 1
 
-[node name="MiddleLabel" type="Label" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels"]
+[node name="MiddleLabel" type="Label" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels" unique_id=900708985]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.7, 0.4, 1)
@@ -82,7 +82,7 @@ theme_override_font_sizes/font_size = 11
 text = "Mid"
 vertical_alignment = 1
 
-[node name="FrontLabel" type="Label" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels"]
+[node name="FrontLabel" type="Label" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels" unique_id=599963854]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.45, 0.35, 1)
@@ -90,62 +90,62 @@ theme_override_font_sizes/font_size = 11
 text = "Front"
 vertical_alignment = 1
 
-[node name="EnemyGrid" type="GridContainer" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox"]
+[node name="EnemyGrid" type="GridContainer" parent="MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox" unique_id=321045306]
 layout_mode = 2
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
 columns = 3
 
-[node name="TurnOrderBar" type="PanelContainer" parent="MainLayout"]
+[node name="TurnOrderBar" type="PanelContainer" parent="MainLayout" unique_id=294659465]
+self_modulate = Color(1, 1, 1, 0.7)
 layout_mode = 2
 size_flags_vertical = 0
-self_modulate = Color(1, 1, 1, 0.7)
 
-[node name="TurnOrderMargin" type="MarginContainer" parent="MainLayout/TurnOrderBar"]
+[node name="TurnOrderMargin" type="MarginContainer" parent="MainLayout/TurnOrderBar" unique_id=2129298830]
 layout_mode = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 4
 
-[node name="TurnOrderHBox" type="HBoxContainer" parent="MainLayout/TurnOrderBar/TurnOrderMargin"]
+[node name="TurnOrderHBox" type="HBoxContainer" parent="MainLayout/TurnOrderBar/TurnOrderMargin" unique_id=1117852707]
 layout_mode = 2
+theme_override_constants/separation = 4
 alignment = 1
-theme_override_constants/separation = 4
 
-[node name="PartySection" type="PanelContainer" parent="MainLayout"]
-layout_mode = 2
-size_flags_vertical = 0
+[node name="PartySection" type="PanelContainer" parent="MainLayout" unique_id=207814295]
 self_modulate = Color(1, 1, 1, 0.7)
+layout_mode = 2
+size_flags_vertical = 4
 
-[node name="PartyMargin" type="MarginContainer" parent="MainLayout/PartySection"]
+[node name="PartyMargin" type="MarginContainer" parent="MainLayout/PartySection" unique_id=1109029445]
 layout_mode = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 4
 
-[node name="PartyVBox" type="VBoxContainer" parent="MainLayout/PartySection/PartyMargin"]
+[node name="PartyVBox" type="VBoxContainer" parent="MainLayout/PartySection/PartyMargin" unique_id=569720982]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="PartyLabel" type="Label" parent="MainLayout/PartySection/PartyMargin/PartyVBox"]
+[node name="PartyLabel" type="Label" parent="MainLayout/PartySection/PartyMargin/PartyVBox" unique_id=1595129816]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.7, 0.9, 1)
 text = "Party"
 horizontal_alignment = 1
 
-[node name="PartyGridHBox" type="HBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox"]
+[node name="PartyGridHBox" type="HBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox" unique_id=1127108566]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 6
 
-[node name="RowLabels" type="VBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox"]
+[node name="RowLabels" type="VBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox" unique_id=2102052131]
 custom_minimum_size = Vector2(40, 0)
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="FrontLabel" type="Label" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/RowLabels"]
+[node name="FrontLabel" type="Label" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/RowLabels" unique_id=345275924]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0.9, 0.45, 0.35, 1)
@@ -153,7 +153,7 @@ theme_override_font_sizes/font_size = 11
 text = "Front"
 vertical_alignment = 1
 
-[node name="BackLabel" type="Label" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/RowLabels"]
+[node name="BackLabel" type="Label" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/RowLabels" unique_id=1845304087]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0.35, 0.65, 0.9, 1)
@@ -161,94 +161,93 @@ theme_override_font_sizes/font_size = 11
 text = "Back"
 vertical_alignment = 1
 
-[node name="PartyGrid" type="VBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox"]
+[node name="PartyGrid" type="VBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox" unique_id=1968870228]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="FrontRow" type="HBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid"]
+[node name="FrontRow" type="HBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid" unique_id=545925259]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="BackRow" type="HBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid"]
+[node name="BackRow" type="HBoxContainer" parent="MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid" unique_id=1091328266]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="ActionSection" type="PanelContainer" parent="MainLayout"]
+[node name="ActionSection" type="PanelContainer" parent="MainLayout" unique_id=761498261]
+self_modulate = Color(1, 1, 1, 0.7)
 layout_mode = 2
 size_flags_vertical = 0
-self_modulate = Color(1, 1, 1, 0.7)
 
-[node name="ActionVBox" type="VBoxContainer" parent="MainLayout/ActionSection"]
+[node name="ActionVBox" type="VBoxContainer" parent="MainLayout/ActionSection" unique_id=1199847147]
 layout_mode = 2
-alignment = 1
 theme_override_constants/separation = 4
+alignment = 1
 
-[node name="ActiveCharLabel" type="Label" parent="MainLayout/ActionSection/ActionVBox"]
+[node name="ActiveCharLabel" type="Label" parent="MainLayout/ActionSection/ActionVBox" unique_id=460929405]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 1.0, 0.3, 1)
+theme_override_colors/font_color = Color(0.3, 1, 0.3, 1)
 theme_override_font_sizes/font_size = 13
-text = ""
 horizontal_alignment = 1
 
-[node name="ActionHBox" type="HBoxContainer" parent="MainLayout/ActionSection/ActionVBox"]
+[node name="ActionHBox" type="HBoxContainer" parent="MainLayout/ActionSection/ActionVBox" unique_id=235562067]
 layout_mode = 2
-alignment = 1
 theme_override_constants/separation = 10
+alignment = 1
 
-[node name="AttackButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox"]
+[node name="AttackButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox" unique_id=128299904]
 custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
 text = "Attack"
 
-[node name="DefendButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox"]
+[node name="DefendButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox" unique_id=918541028]
 custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
 text = "Defend"
 
-[node name="SpellButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox"]
+[node name="SpellButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox" unique_id=1047395174]
 custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
 text = "Spell"
 
-[node name="DispelButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox"]
+[node name="DispelButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox" unique_id=1914851634]
 custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
 text = "Dispel"
 
-[node name="BreathButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox"]
+[node name="BreathButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox" unique_id=707539096]
 custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
 text = "Breath"
 
-[node name="ItemButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox"]
+[node name="ItemButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox" unique_id=257973844]
 custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
 text = "Item"
 
-[node name="EscapeButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox"]
+[node name="EscapeButton" type="Button" parent="MainLayout/ActionSection/ActionVBox/ActionHBox" unique_id=1691020796]
 custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
 text = "Escape"
 
-[node name="MessageSection" type="PanelContainer" parent="MainLayout"]
-custom_minimum_size = Vector2(0, 80)
+[node name="MessageSection" type="PanelContainer" parent="MainLayout" unique_id=1135429418]
+self_modulate = Color(1, 1, 1, 0.7)
+custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 size_flags_vertical = 0
-self_modulate = Color(1, 1, 1, 0.7)
 
-[node name="MessageMargin" type="MarginContainer" parent="MainLayout/MessageSection"]
+[node name="MessageMargin" type="MarginContainer" parent="MainLayout/MessageSection" unique_id=827257288]
 layout_mode = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 4
 
-[node name="MessageLog" type="RichTextLabel" parent="MainLayout/MessageSection/MessageMargin"]
+[node name="MessageLog" type="RichTextLabel" parent="MainLayout/MessageSection/MessageMargin" unique_id=1144414736]
 layout_mode = 2
 size_flags_vertical = 3
 scroll_following = true
 
-[node name="ModalOverlay" type="ColorRect" parent="."]
+[node name="ModalOverlay" type="ColorRect" parent="." unique_id=672250064]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -258,7 +257,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.6)
 
-[node name="ItemModal" type="PanelContainer" parent="."]
+[node name="ItemModal" type="PanelContainer" parent="." unique_id=777880108]
 visible = false
 custom_minimum_size = Vector2(350, 300)
 layout_mode = 1
@@ -274,31 +273,31 @@ offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ItemModalVBox" type="VBoxContainer" parent="ItemModal"]
+[node name="ItemModalVBox" type="VBoxContainer" parent="ItemModal" unique_id=2073059122]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="ItemModalHeader" type="Label" parent="ItemModal/ItemModalVBox"]
+[node name="ItemModalHeader" type="Label" parent="ItemModal/ItemModalVBox" unique_id=1426819948]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Select Item"
 horizontal_alignment = 1
 
-[node name="ItemScrollContainer" type="ScrollContainer" parent="ItemModal/ItemModalVBox"]
+[node name="ItemScrollContainer" type="ScrollContainer" parent="ItemModal/ItemModalVBox" unique_id=995367604]
 custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 size_flags_vertical = 3
 follow_focus = true
 
-[node name="ItemList" type="VBoxContainer" parent="ItemModal/ItemModalVBox/ItemScrollContainer"]
+[node name="ItemList" type="VBoxContainer" parent="ItemModal/ItemModalVBox/ItemScrollContainer" unique_id=1751190814]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ItemCancelButton" type="Button" parent="ItemModal/ItemModalVBox"]
+[node name="ItemCancelButton" type="Button" parent="ItemModal/ItemModalVBox" unique_id=2106453144]
 layout_mode = 2
 text = "Cancel"
 
-[node name="SpellModal" type="PanelContainer" parent="."]
+[node name="SpellModal" type="PanelContainer" parent="." unique_id=818651632]
 visible = false
 custom_minimum_size = Vector2(350, 300)
 layout_mode = 1
@@ -314,31 +313,31 @@ offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="SpellModalVBox" type="VBoxContainer" parent="SpellModal"]
+[node name="SpellModalVBox" type="VBoxContainer" parent="SpellModal" unique_id=1985945201]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="SpellModalHeader" type="Label" parent="SpellModal/SpellModalVBox"]
+[node name="SpellModalHeader" type="Label" parent="SpellModal/SpellModalVBox" unique_id=532097569]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Select Spell"
 horizontal_alignment = 1
 
-[node name="SpellScrollContainer" type="ScrollContainer" parent="SpellModal/SpellModalVBox"]
+[node name="SpellScrollContainer" type="ScrollContainer" parent="SpellModal/SpellModalVBox" unique_id=1693309954]
 custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 size_flags_vertical = 3
 follow_focus = true
 
-[node name="SpellList" type="VBoxContainer" parent="SpellModal/SpellModalVBox/SpellScrollContainer"]
+[node name="SpellList" type="VBoxContainer" parent="SpellModal/SpellModalVBox/SpellScrollContainer" unique_id=399507914]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SpellCancelButton" type="Button" parent="SpellModal/SpellModalVBox"]
+[node name="SpellCancelButton" type="Button" parent="SpellModal/SpellModalVBox" unique_id=185907305]
 layout_mode = 2
 text = "Cancel"
 
-[node name="TargetModal" type="PanelContainer" parent="."]
+[node name="TargetModal" type="PanelContainer" parent="." unique_id=1645084858]
 visible = false
 custom_minimum_size = Vector2(300, 250)
 layout_mode = 1
@@ -354,25 +353,25 @@ offset_bottom = 125.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="TargetModalVBox" type="VBoxContainer" parent="TargetModal"]
+[node name="TargetModalVBox" type="VBoxContainer" parent="TargetModal" unique_id=1732378140]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="TargetModalHeader" type="Label" parent="TargetModal/TargetModalVBox"]
+[node name="TargetModalHeader" type="Label" parent="TargetModal/TargetModalVBox" unique_id=917889407]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Select Target"
 horizontal_alignment = 1
 
-[node name="TargetList" type="VBoxContainer" parent="TargetModal/TargetModalVBox"]
+[node name="TargetList" type="VBoxContainer" parent="TargetModal/TargetModalVBox" unique_id=314344056]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="TargetCancelButton" type="Button" parent="TargetModal/TargetModalVBox"]
+[node name="TargetCancelButton" type="Button" parent="TargetModal/TargetModalVBox" unique_id=1863316146]
 layout_mode = 2
 text = "Cancel"
 
-[node name="EnemyTargetModal" type="PanelContainer" parent="."]
+[node name="EnemyTargetModal" type="PanelContainer" parent="." unique_id=880816768]
 visible = false
 custom_minimum_size = Vector2(350, 300)
 layout_mode = 1
@@ -388,26 +387,26 @@ offset_bottom = 150.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="EnemyTargetModalVBox" type="VBoxContainer" parent="EnemyTargetModal"]
+[node name="EnemyTargetModalVBox" type="VBoxContainer" parent="EnemyTargetModal" unique_id=506234319]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="EnemyTargetModalHeader" type="Label" parent="EnemyTargetModal/EnemyTargetModalVBox"]
+[node name="EnemyTargetModalHeader" type="Label" parent="EnemyTargetModal/EnemyTargetModalVBox" unique_id=738572825]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Select Enemy"
 horizontal_alignment = 1
 
-[node name="EnemyTargetScrollContainer" type="ScrollContainer" parent="EnemyTargetModal/EnemyTargetModalVBox"]
+[node name="EnemyTargetScrollContainer" type="ScrollContainer" parent="EnemyTargetModal/EnemyTargetModalVBox" unique_id=677989040]
 custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 size_flags_vertical = 3
 follow_focus = true
 
-[node name="EnemyTargetList" type="VBoxContainer" parent="EnemyTargetModal/EnemyTargetModalVBox/EnemyTargetScrollContainer"]
+[node name="EnemyTargetList" type="VBoxContainer" parent="EnemyTargetModal/EnemyTargetModalVBox/EnemyTargetScrollContainer" unique_id=948006702]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="EnemyTargetCancelButton" type="Button" parent="EnemyTargetModal/EnemyTargetModalVBox"]
+[node name="EnemyTargetCancelButton" type="Button" parent="EnemyTargetModal/EnemyTargetModalVBox" unique_id=437322638]
 layout_mode = 2
 text = "Cancel"

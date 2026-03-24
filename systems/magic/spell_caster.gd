@@ -89,6 +89,7 @@ static func _process_damage(
 	var level_bonus := effect.damage_per_level * caster.level
 	var spell_power := _calculate_spell_power(caster)
 	var total_base := int((base_damage + level_bonus) * spell_power / 100.0)
+	DamageCalculator.last_damage_detail = "%s(%d) + lvl(%d) x power(%d%%) = %d" % [effect.damage_dice, base_damage, level_bonus, spell_power, total_base]
 
 	for target in targets:
 		if target.is_dead:
