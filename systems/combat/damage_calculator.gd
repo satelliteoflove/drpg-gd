@@ -103,8 +103,13 @@ static func calculate_character_attack(attacker: Character, target: Monster, acc
 ## [param evasion_modifier]: Optional evasion bonus/penalty from status effects.
 ## [return]: Dictionary with "hit" (bool) and "damage" (int).
 static func calculate_monster_attack(attacker: Monster, attack: MonsterAttack, target: Character, evasion_modifier: int = 0) -> Dictionary:
-	var total_evasion := target.evasion + evasion_modifier
-	var hit := check_hit(attack.accuracy_bonus, total_evasion)
+	var hit: bool
+	if attack.auto_hit:
+		hit = true
+		last_hit_detail = "AUTO-HIT (creature ability)"
+	else:
+		var total_evasion := target.evasion + evasion_modifier
+		hit = check_hit(attack.accuracy_bonus, total_evasion)
 	if not hit:
 		return {"hit": false, "damage": 0}
 

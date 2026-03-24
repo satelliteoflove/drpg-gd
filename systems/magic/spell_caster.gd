@@ -403,6 +403,7 @@ static func _process_monster_damage(
 	var level_bonus := effect.damage_per_level * caster.level
 	var spell_power := _calculate_monster_spell_power(caster)
 	var total_base := int((base_damage + level_bonus) * spell_power / 100.0)
+	DamageCalculator.last_damage_detail = "%s(%d) + lvl(%d) x power(%d%%) = %d" % [effect.damage_dice, base_damage, level_bonus, spell_power, total_base]
 
 	for target in targets:
 		if target.is_dead:
@@ -477,7 +478,7 @@ static func _process_monster_status(
 	if effect.duration_dice != "":
 		duration = DamageCalculator.roll_dice(effect.duration_dice)
 
-	var dc := 10 + effect.status_power + caster.level / 2
+	var dc := CombatConstants.ATTACK_EFFECT_BASE_DC + effect.status_power + caster.level / 2
 	var is_beneficial := effect.status_type in CharacterEnums.BENEFICIAL_STATUSES
 
 	for target in targets:
@@ -486,6 +487,8 @@ static func _process_monster_status(
 
 		if not is_beneficial and StatusEffectSystem.roll_saving_throw(target, effect.save_type, dc):
 			result.messages.append("%s resists %s!" % [target.get_display_name(), CharacterEnums.get_status_noun(effect.status_type)])
+			if GameState.show_combat_math:
+				result.messages.append("[color=#888888]  %s[/color]" % DamageCalculator.last_save_detail)
 			continue
 
 		var apply_result := StatusEffectSystem.apply_status(
@@ -498,6 +501,8 @@ static func _process_monster_status(
 		)
 		if apply_result.message != "":
 			result.messages.append(apply_result.message)
+			if GameState.show_combat_math and not is_beneficial:
+				result.messages.append("[color=#888888]  %s[/color]" % DamageCalculator.last_save_detail)
 		if apply_result.get("success", false) and not is_beneficial:
 			result.statuses_applied.append({
 				"target": target.get_display_name(),

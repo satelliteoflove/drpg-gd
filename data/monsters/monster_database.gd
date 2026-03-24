@@ -199,8 +199,8 @@ static func _create_orc() -> void:
 
 	var attack1 := MonsterAttack.create_basic("Great Axe", "1d12", 2)
 	var attack2 := MonsterAttack.create_basic("Heavy Punch", "1d6+2", 0)
-	var war_shout := MonsterAttack.create_with_effect(
-		"War Shout", "1d4", 0,
+	var war_shout := MonsterAttack.create_ability(
+		"War Shout", "1d4",
 		CharacterEnums.StatusEffect.AFRAID, 0.45, "2+1d3", "mental", 2
 	)
 	war_shout.targets_row = true
@@ -278,21 +278,10 @@ static func _create_witch() -> void:
 	var fire_bolt := MonsterAttack.create_magical("Fire Bolt", "2d6", CharacterEnums.Element.FIRE, 4)
 	fire_bolt.is_magical = true
 
-	var curse := MonsterAttack.create_with_effect(
-		"Curse",
-		"1d4",
-		2,
-		CharacterEnums.StatusEffect.CURSED,
-		0.65,
-		"",
-		"magical",
-		4
-	)
-
 	var scratch := MonsterAttack.create_basic("Scratch", "1d4", 0)
 
-	monster.attacks = [fire_bolt, fire_bolt, curse, scratch]
-	monster.spells = ["m1_fire_bolt", "m1_sleep"]
+	monster.attacks = [fire_bolt, fire_bolt, scratch]
+	monster.spells = ["m1_fire_bolt", "m1_sleep", "m3_curse"]
 
 	monster.loot_drops = [
 		LootDrop.create("staff", 0.12),
@@ -494,10 +483,9 @@ static func _create_ghost() -> void:
 
 	var drain := MonsterAttack.create_magical("Life Drain", "1d8", CharacterEnums.Element.DARK, 4)
 
-	var touch := MonsterAttack.create_with_effect(
+	var touch := MonsterAttack.create_ability(
 		"Chilling Touch",
 		"1d4",
-		2,
 		CharacterEnums.StatusEffect.PARALYZED,
 		0.45,
 		"1+1d2",
@@ -538,21 +526,10 @@ static func _create_dark_mage() -> void:
 
 	var bolt := MonsterAttack.create_magical("Shadow Bolt", "2d6", CharacterEnums.Element.DARK, 4)
 
-	var curse := MonsterAttack.create_with_effect(
-		"Curse",
-		"1d4",
-		2,
-		CharacterEnums.StatusEffect.CURSED,
-		0.60,
-		"",
-		"magical",
-		4
-	)
-
 	var staff := MonsterAttack.create_basic("Staff Strike", "1d4", 0)
 
-	monster.attacks = [bolt, bolt, curse, staff]
-	monster.spells = ["m1_fire_bolt", "m1_sleep", "m2_fear", "m3_silence"]
+	monster.attacks = [bolt, bolt, staff]
+	monster.spells = ["m1_fire_bolt", "m1_sleep", "m2_fear", "m3_silence", "m3_curse"]
 
 	monster.loot_drops = [
 		LootDrop.create("staff", 0.15),
@@ -583,8 +560,8 @@ static func _create_ogre() -> void:
 	var slam := MonsterAttack.create_basic("Crushing Blow", "2d8+2", -2)
 	slam.targets_row = true
 
-	var stomp := MonsterAttack.create_with_effect(
-		"Ground Stomp", "1d6", 0,
+	var stomp := MonsterAttack.create_ability(
+		"Ground Stomp", "1d6",
 		CharacterEnums.StatusEffect.CONFUSED, 0.35, "2+1d3", "physical", 3
 	)
 	stomp.targets_all = true
@@ -622,10 +599,9 @@ static func _create_harpy() -> void:
 
 	var talon := MonsterAttack.create_ranged("Diving Talon", "1d8", 4, 2)
 
-	var screech := MonsterAttack.create_with_effect(
+	var screech := MonsterAttack.create_ability(
 		"Terrifying Screech",
 		"1d4",
-		2,
 		CharacterEnums.StatusEffect.AFRAID,
 		0.55,
 		"2+1d3",
@@ -830,10 +806,9 @@ static func _create_boss_ironjaw() -> void:
 		3
 	)
 
-	var war_cry := MonsterAttack.create_with_effect(
+	var war_cry := MonsterAttack.create_ability(
 		"War Cry",
 		"1d4",
-		0,
 		CharacterEnums.StatusEffect.AFRAID,
 		0.40,
 		"2+1d3",
@@ -915,10 +890,9 @@ static func _create_boss_lich() -> void:
 	death_touch.is_magical = true
 	death_touch.element = CharacterEnums.Element.DARK
 
-	var wail := MonsterAttack.create_with_effect(
+	var wail := MonsterAttack.create_ability(
 		"Wail of Despair",
 		"1d6",
-		0,
 		CharacterEnums.StatusEffect.AFRAID,
 		0.45,
 		"2+1d3",
@@ -996,10 +970,9 @@ static func _create_boss_drake() -> void:
 
 	var rending_claws := MonsterAttack.create_basic("Rending Claws", "3d8+3", 4)
 
-	var terrifying_roar := MonsterAttack.create_with_effect(
+	var terrifying_roar := MonsterAttack.create_ability(
 		"Terrifying Roar",
 		"1d4",
-		0,
 		CharacterEnums.StatusEffect.AFRAID,
 		0.50,
 		"2+1d3",
@@ -1190,8 +1163,8 @@ static func _create_fungal_creeper() -> void:
 	monster.exp_reward = 16
 	monster.gold_reward_dice = "1d8"
 
-	var spore := MonsterAttack.create_with_effect(
-		"Spore Cloud", "1d4", 0,
+	var spore := MonsterAttack.create_ability(
+		"Spore Cloud", "1d4",
 		CharacterEnums.StatusEffect.CONFUSED, 0.40,
 		"2+1d2", "physical", 2
 	)
@@ -1232,14 +1205,14 @@ static func _create_siren() -> void:
 	monster.exp_reward = 30
 	monster.gold_reward_dice = "2d8"
 
-	var song := MonsterAttack.create_with_effect(
-		"Enchanting Song", "1d4", 2,
+	var song := MonsterAttack.create_ability(
+		"Enchanting Song", "1d4",
 		CharacterEnums.StatusEffect.CHARMED, 0.50,
 		"3+1d3", "mental", 3
 	)
 	song.targets_row = true
-	var gaze := MonsterAttack.create_with_effect(
-		"Mesmerizing Gaze", "1d4", 2,
+	var gaze := MonsterAttack.create_ability(
+		"Mesmerizing Gaze", "1d4",
 		CharacterEnums.StatusEffect.CHARMED, 0.60,
 		"2+1d3", "mental", 4
 	)
@@ -1284,8 +1257,8 @@ static func _create_naga() -> void:
 		CharacterEnums.StatusEffect.POISONED, 0.45,
 		"", "physical", 2
 	)
-	var hiss := MonsterAttack.create_with_effect(
-		"Silencing Hiss", "1d4", 2,
+	var hiss := MonsterAttack.create_ability(
+		"Silencing Hiss", "1d4",
 		CharacterEnums.StatusEffect.SILENCED, 0.50,
 		"3+1d4", "mental", 3
 	)
@@ -1329,8 +1302,8 @@ static func _create_wraith() -> void:
 	)
 	wither.is_magical = true
 	wither.element = CharacterEnums.Element.DARK
-	var dread := MonsterAttack.create_with_effect(
-		"Dread Gaze", "1d4", 2,
+	var dread := MonsterAttack.create_ability(
+		"Dread Gaze", "1d4",
 		CharacterEnums.StatusEffect.AFRAID, 0.50,
 		"2+1d3", "mental", 4
 	)
@@ -1365,8 +1338,8 @@ static func _create_medusa() -> void:
 	monster.exp_reward = 75
 	monster.gold_reward_dice = "4d10"
 
-	var gaze := MonsterAttack.create_with_effect(
-		"Petrifying Gaze", "1d4", 2,
+	var gaze := MonsterAttack.create_ability(
+		"Petrifying Gaze", "1d4",
 		CharacterEnums.StatusEffect.STONED, 0.30,
 		"", "magical", 5
 	)

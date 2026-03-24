@@ -73,6 +73,14 @@ static func _create_mage_spells() -> void:
 	spell.add_damage_effect(CharacterEnums.Element.FIRE, "3d8", 0)
 	_spells["m3_fireball"] = spell
 
+	spell = Spell.create("m3_curse", "Curse", "", CharacterEnums.SpellSchool.MAGE, 3, CharacterEnums.SpellTargetType.SINGLE_ENEMY, "Places a dark curse on one enemy, reducing accuracy and evasion.")
+	spell.add_status_effect(CharacterEnums.StatusEffect.CURSED, "", CharacterEnums.SaveType.MAGICAL, 3)
+	_spells["m3_curse"] = spell
+
+	spell = Spell.create("m3_dread", "Dread", "", CharacterEnums.SpellSchool.MAGE, 3, CharacterEnums.SpellTargetType.SPLASH, "A wave of dread washes over enemies in an area.")
+	spell.add_status_effect(CharacterEnums.StatusEffect.AFRAID, "3+1d4", CharacterEnums.SaveType.MENTAL, 3)
+	_spells["m3_dread"] = spell
+
 	spell = Spell.create("m3_silence", "Silence", "", CharacterEnums.SpellSchool.MAGE, 3, CharacterEnums.SpellTargetType.SPLASH, "Silences enemies in an area.")
 	spell.add_status_effect(CharacterEnums.StatusEffect.SILENCED, "4+1d4", CharacterEnums.SaveType.MAGICAL, 2)
 	_spells["m3_silence"] = spell

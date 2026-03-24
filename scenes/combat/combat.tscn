@@ -231,7 +231,7 @@ text = "Escape"
 
 [node name="MessageSection" type="PanelContainer" parent="MainLayout" unique_id=1135429418]
 self_modulate = Color(1, 1, 1, 0.7)
-custom_minimum_size = Vector2(0, 200)
+custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
 size_flags_vertical = 0
 
