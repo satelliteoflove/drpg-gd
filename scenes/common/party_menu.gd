@@ -726,7 +726,7 @@ func _refresh_inv_items() -> void:
 
 		var btn := Button.new()
 		var qty_text := " x%d" % qty if qty > 1 else ""
-		btn.text = "%s%s" % [item.item_name, qty_text]
+		btn.text = "%s%s" % [item.get_display_name(), qty_text]
 		btn.custom_minimum_size = Vector2(200, 28)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.pressed.connect(_on_inv_item_selected.bind(i, item))

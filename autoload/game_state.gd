@@ -203,6 +203,7 @@ func _clear_combat_only_statuses(character: Resource) -> void:
 	for status in CharacterEnums.BENEFICIAL_STATUSES:
 		if character.has_status(status):
 			character.remove_status(status)
+	character.is_defending = false
 
 
 func advance_game_days(days: int) -> void:

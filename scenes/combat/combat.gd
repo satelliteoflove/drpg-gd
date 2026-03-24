@@ -919,10 +919,12 @@ func _finish_exit_combat(victory: bool) -> void:
 
 
 func _show_micro_event(data: Dictionary) -> void:
+	$MainLayout.visible = false
 	var overlay: CanvasLayer = MicroEventScene.instantiate()
 	add_child(overlay)
 	overlay.setup(data, GameState.get_party_members())
 	overlay.micro_event_closed.connect(func() -> void:
+		$MainLayout.visible = true
 		_finish_exit_combat(true)
 	)
 
@@ -1185,10 +1187,6 @@ func _on_dispel_pressed() -> void:
 		message_log.append_text("[color=#aaaaaa]>[/color] No undead to dispel.\n")
 		return
 
-	if undead_targets.size() == 1:
-		combat_system.player_dispel(undead_targets[0])
-		return
-
 	_close_all_modals()
 	_set_actions_enabled(false)
 	for child in enemy_target_list.get_children():
@@ -1240,10 +1238,6 @@ func _on_breath_pressed() -> void:
 		return
 
 	var living := combat_system.get_living_enemies()
-	if living.size() == 1:
-		combat_system.player_breath(living[0])
-		return
-
 	_close_all_modals()
 	_set_actions_enabled(false)
 	for child in enemy_target_list.get_children():

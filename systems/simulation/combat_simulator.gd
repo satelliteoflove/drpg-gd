@@ -738,7 +738,7 @@ func _try_apply_attack_effect(monster: Monster, attack: MonsterAttack, target: C
 	if attack.effect_duration_dice != "":
 		duration = DamageCalculator.roll_dice(attack.effect_duration_dice)
 	var save_type := _get_save_type_from_string(attack.effect_save_type)
-	var dc := 10 + attack.effect_power
+	var dc := CombatConstants.ATTACK_EFFECT_BASE_DC + attack.effect_power
 	if save_type >= 0:
 		if StatusEffectSystem.roll_saving_throw(target, save_type, dc):
 			return

@@ -397,6 +397,7 @@ func _spawn_player() -> void:
 		grid_position = dungeon_data.stairs_down_pos
 		facing = Facing.NORTH
 
+	previous_grid_position = grid_position
 	_update_camera_transform()
 	_mark_current_tile_discovered()
 
@@ -610,6 +611,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		_adjust_material_roughness(0.05)
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_BRACKETLEFT:
 		_adjust_material_roughness(-0.05)
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_X:
+		if event.shift_pressed:
+			_debug_level_party(1)
+		elif event.ctrl_pressed:
+			_debug_level_party(5)
+		else:
+			_force_combat()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_F:
 		if event.shift_pressed:
 			_debug_teleport_floor(GameState.current_floor + 1)
@@ -1124,6 +1132,31 @@ func _debug_add_gold() -> void:
 	if GameState.party:
 		GameState.party.gold += 1000
 		print("[DEBUG] Added 1000 gold. Total: %d" % GameState.party.gold)
+
+
+func _debug_level_party(levels: int) -> void:
+	if GameState.party == null:
+		return
+	for member in GameState.party.get_members():
+		if member.is_dead:
+			continue
+		for i in range(levels):
+			member.level += 1
+			member._recalculate_derived_stats()
+			SpellLearning.try_learn_spells_on_level_up(member)
+		var learnable := SpellLearning.get_learnable_spells(member)
+		for spell in learnable:
+			if not member.known_spells.has(spell.id):
+				member.known_spells.append(spell.id)
+		member.current_hp = member.max_hp
+		member.current_mp = member.max_mp
+		member.pending_level_up = false
+	print("[DEBUG] Party leveled up by %d. All members now:" % levels)
+	for member in GameState.party.get_members():
+		print("  %s: Level %d, HP %d/%d, MP %d/%d" % [
+			member.get_display_name(), member.level,
+			member.current_hp, member.max_hp,
+			member.current_mp, member.max_mp])
 
 
 func _debug_add_key() -> void:

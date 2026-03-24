@@ -222,10 +222,8 @@ static func _decide_aggressive(monster: Monster, party: Party, _allies: Array[Mo
 	var decision := AIDecision.new()
 	decision.action_type = ActionType.ATTACK
 	decision.attack = _select_best_attack(monster, party)
-	var is_melee := decision.attack == null or decision.attack.weapon_range <= 1
-	var target := _score_and_select_target(party, is_melee)
-	decision.targets = [target] if target else []
-	decision.message = "attack %s (threat: %.1f)" % [target.get_display_name() if target else "none", _last_target_score]
+	decision.targets = _build_attack_targets(decision.attack, party)
+	decision.message = "attack (%d targets)" % decision.targets.size()
 	return decision
 
 
@@ -238,10 +236,8 @@ static func _decide_berserker(monster: Monster, party: Party, _allies: Array[Mon
 	if decision.attack == null:
 		decision.attack = monster.get_random_attack()
 
-	var is_melee := decision.attack == null or decision.attack.weapon_range <= 1
-	var target := _score_and_select_target(party, is_melee)
-	decision.targets = [target] if target else []
-	decision.message = "berserker attack %s (threat: %.1f)" % [target.get_display_name() if target else "none", _last_target_score]
+	decision.targets = _build_attack_targets(decision.attack, party)
+	decision.message = "berserker attack (%d targets)" % decision.targets.size()
 	return decision
 
 
@@ -258,10 +254,8 @@ static func _decide_defensive(monster: Monster, party: Party, allies: Array[Mons
 
 	decision.action_type = ActionType.ATTACK
 	decision.attack = _select_best_attack(monster, party)
-	var is_melee := decision.attack == null or decision.attack.weapon_range <= 1
-	var target := _score_and_select_target(party, is_melee)
-	decision.targets = [target] if target else []
-	decision.message = "defensive attack %s (threat: %.1f)" % [target.get_display_name() if target else "none", _last_target_score]
+	decision.targets = _build_attack_targets(decision.attack, party)
+	decision.message = "defensive attack (%d targets)" % decision.targets.size()
 	return decision
 
 
@@ -279,10 +273,8 @@ static func _decide_ranged(monster: Monster, party: Party, _allies: Array[Monste
 	else:
 		decision.attack = monster.get_random_attack()
 
-	var is_melee := decision.attack == null or decision.attack.weapon_range <= 1
-	var target := _score_and_select_target(party, is_melee)
-	decision.targets = [target] if target else []
-	decision.message = "ranged attack %s (threat: %.1f)" % [target.get_display_name() if target else "none", _last_target_score]
+	decision.targets = _build_attack_targets(decision.attack, party)
+	decision.message = "ranged attack (%d targets)" % decision.targets.size()
 	return decision
 
 
@@ -665,6 +657,29 @@ static func get_phase_behavior_modifiers(monster: Monster) -> Dictionary:
 	if monster.boss_phases.is_empty() or monster.current_phase >= monster.boss_phases.size():
 		return {}
 	return monster.boss_phases[monster.current_phase].get("behavior_modifiers", {})
+
+
+static func _build_attack_targets(attack: MonsterAttack, party: Party) -> Array:
+	if attack == null:
+		return []
+
+	if attack.targets_all:
+		var targets: Array = []
+		for member in party.get_alive_members():
+			targets.append(member)
+		return targets
+
+	if attack.targets_row:
+		var front := party.get_front_row_alive()
+		if front.size() >= 1:
+			var targets: Array = []
+			for member in front:
+				targets.append(member)
+			return targets
+
+	var is_melee := attack.weapon_range <= 1
+	var target := _score_and_select_target(party, is_melee)
+	return [target] if target else []
 
 
 static func _has_living_allies(allies: Array[Monster], exclude: Monster) -> bool:

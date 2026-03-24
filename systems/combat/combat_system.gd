@@ -211,12 +211,9 @@ func player_attack(target: Monster = null) -> void:
 		return
 
 	if target == null:
-		if reachable.size() == 1:
-			target = reachable[0]
-		else:
-			waiting_for_target = true
-			target_selection_requested.emit(reachable)
-			return
+		waiting_for_target = true
+		target_selection_requested.emit(reachable)
+		return
 
 	if not target in reachable:
 		action_performed.emit("%s cannot reach that enemy!" % attacker.get_display_name())
@@ -990,7 +987,7 @@ func _try_apply_attack_effect(attack: MonsterAttack, target: Character) -> void:
 		duration = DamageCalculator.roll_dice(attack.effect_duration_dice)
 
 	var save_type := _get_save_type_from_string(attack.effect_save_type)
-	var dc := 10 + attack.effect_power
+	var dc := CombatConstants.ATTACK_EFFECT_BASE_DC + attack.effect_power
 
 	if save_type >= 0:
 		if StatusEffectSystem.roll_saving_throw(target, save_type, dc):

@@ -106,7 +106,7 @@ static func _process_status_tick(target: Resource, active: Variant, context: Str
 				damage = CombatConstants.EXPLORATION_POISON_DAMAGE
 			else:
 				damage = maxi(1, DamageCalculator.roll_dice(CombatConstants.POISON_DAMAGE_DICE))
-			var actual: int = target.take_damage(damage)
+			var actual: int = target.take_damage(damage, true)
 			if target.is_dead:
 				return "%s takes %d poison damage and dies!" % [target.get_display_name(), actual]
 			return "%s takes %d poison damage." % [target.get_display_name(), actual]

@@ -564,9 +564,9 @@ func is_breath_aoe() -> bool:
 ## Applies damage to the character, potentially killing them.
 ## [param amount]: Raw damage before defense/defending reduction.
 ## [return]: Actual damage dealt after reductions.
-func take_damage(amount: int) -> int:
+func take_damage(amount: int, ignore_defense: bool = false) -> int:
 	var reduced_amount := amount
-	if is_defending:
+	if is_defending and not ignore_defense:
 		reduced_amount = amount / 2
 	var actual := mini(reduced_amount, current_hp)
 	current_hp -= actual
