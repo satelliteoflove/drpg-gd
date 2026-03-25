@@ -9,6 +9,9 @@ var _chosen_choice_id: String = ""
 var _choice_nav: MenuNavigator = null
 var _choice_buttons: Array[Button] = []
 var _continue_mode := false
+var _loading := false
+var _loading_timer := 0.0
+var _dot_count := 1
 
 @onready var _header: Label = $EventVBox/HeaderLabel
 @onready var _setup_text: RichTextLabel = $EventVBox/SetupText
@@ -22,7 +25,7 @@ func _ready() -> void:
 	_continue_button.visible = false
 
 
-func setup(template: Dictionary, cast: Dictionary, context: Dictionary) -> void:
+func setup(template: Dictionary, cast: Dictionary, context: Dictionary, pregenerated_dialogue: String = "", awaiting_pregeneration: bool = false) -> void:
 	_template = template
 	_cast = cast
 	_context = context
@@ -30,8 +33,12 @@ func setup(template: Dictionary, cast: Dictionary, context: Dictionary) -> void:
 	_header.text = _format_category(template.get("category", "event"))
 	_setup_text.text = _substitute(template.get("setup_text", ""))
 
-	if LLMManager.is_available() and template.has("llm_context"):
-		_dialogue_box.text = "[color=#666666]...[/color]"
+	if pregenerated_dialogue != "":
+		_on_llm_dialogue_received(pregenerated_dialogue)
+	elif awaiting_pregeneration:
+		_start_loading()
+	elif LLMManager.is_available() and template.has("llm_context"):
+		_start_loading()
 		var prompt := PromptBuilder.build_event_prompt(template, cast, context)
 		var grammar := PromptBuilder.event_grammar()
 		LLMManager.generate(prompt, grammar, _on_llm_dialogue_received)
@@ -39,6 +46,27 @@ func setup(template: Dictionary, cast: Dictionary, context: Dictionary) -> void:
 		_render_static_dialogue()
 
 	_populate_choices()
+
+
+func deliver_dialogue(content: String) -> void:
+	_on_llm_dialogue_received(content)
+
+
+func _start_loading() -> void:
+	_loading = true
+	_loading_timer = 0.0
+	_dot_count = 1
+	_dialogue_box.text = "[color=#666666].[/color]"
+
+
+func _process(delta: float) -> void:
+	if not _loading:
+		return
+	_loading_timer += delta
+	if _loading_timer >= 0.4:
+		_loading_timer -= 0.4
+		_dot_count = (_dot_count % 3) + 1
+		_dialogue_box.text = "[color=#666666]%s[/color]" % ".".repeat(_dot_count)
 
 
 func _render_static_dialogue() -> void:
@@ -54,6 +82,7 @@ func _render_static_dialogue() -> void:
 
 
 func _on_llm_dialogue_received(content: String) -> void:
+	_loading = false
 	if content == "":
 		_render_static_dialogue()
 		return

@@ -30,6 +30,9 @@ var current_chest: Chest = null
 var pending_loot: Array[Item] = []
 var is_boss_encounter: bool = false
 var _pending_event: Dictionary = {}
+var _pregenerated_dialogue: String = ""
+var _dialogue_ready := false
+var _dialogue_prefiring := false
 var available_items: Array[Item] = []
 var selected_spell: Spell = null
 var current_spell_level: int = 1
@@ -859,6 +862,7 @@ func _on_combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Ar
 			"dead_count": dead_count,
 		}
 		_pending_event = EventManager.check_for_event("post_combat", event_context)
+		_pregenerate_event_dialogue()
 
 		_show_victory_summary(exp_gained, gold_gained, [], [])
 
@@ -1000,6 +1004,30 @@ func _cleanup_chest_modal() -> void:
 	is_boss_encounter = false
 
 
+func _pregenerate_event_dialogue() -> void:
+	if _pending_event.is_empty():
+		return
+	var template: Dictionary = _pending_event.get("template", {})
+	var cast: Dictionary = _pending_event.get("cast", {})
+	if not LLMManager.is_available() or not template.has("llm_context"):
+		return
+	var floor_num: int = GameState.current_floor if GameState.current_floor > 0 else 1
+	var context := {"floor": floor_num, "day": GameState.game_day}
+	var prompt := PromptBuilder.build_event_prompt(template, cast, context)
+	var grammar := PromptBuilder.event_grammar()
+	_dialogue_ready = false
+	_dialogue_prefiring = true
+	_pregenerated_dialogue = ""
+	LLMManager.generate(prompt, grammar, func(content: String) -> void:
+		_dialogue_prefiring = false
+		if event_modal:
+			event_modal.deliver_dialogue(content)
+		else:
+			_pregenerated_dialogue = content
+			_dialogue_ready = true
+	)
+
+
 func _show_event_modal(event_data: Dictionary) -> void:
 	$MainLayout.visible = false
 
@@ -1013,7 +1041,11 @@ func _show_event_modal(event_data: Dictionary) -> void:
 		"floor": floor_num,
 		"day": GameState.game_day,
 	}
-	event_modal.setup(event_data.template, event_data.cast, event_context)
+	var cached := _pregenerated_dialogue if _dialogue_ready else ""
+	var awaiting := _dialogue_prefiring and not _dialogue_ready
+	_pregenerated_dialogue = ""
+	_dialogue_ready = false
+	event_modal.setup(event_data.template, event_data.cast, event_context, cached, awaiting)
 
 
 func _on_event_resolved(_choice_id: String) -> void:
