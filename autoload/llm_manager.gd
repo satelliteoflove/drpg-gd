@@ -78,6 +78,13 @@ func _ready() -> void:
 	add_child(overlay)
 
 	_gpu_vendor = _detect_gpu_vendor()
+	_deferred_boot()
+
+
+func _deferred_boot() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
 	_boot()
 
 
