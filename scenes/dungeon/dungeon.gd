@@ -636,7 +636,7 @@ func _handle_debug_keys(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_B and event.shift_pressed:
 		_run_batch_simulation()
 		return true
-	elif event.keycode == KEY_L and event.shift_pressed:
+	elif event.keycode == KEY_L and event.ctrl_pressed:
 		_toggle_ai_logging()
 		return true
 	elif event.keycode == KEY_TAB and event.shift_pressed:

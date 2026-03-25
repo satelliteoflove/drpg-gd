@@ -1396,7 +1396,7 @@ func _refresh_keybindings() -> void:
 		["K", "Add Dungeon Key"],
 		["Shift+S", "Run Simulation"],
 		["Shift+B", "Run Batch Sim"],
-		["Shift+L", "Toggle AI Log"],
+		["Ctrl+L", "Toggle AI Log"],
 	]
 	for entry in debug_keys:
 		var dbtn := Button.new()
