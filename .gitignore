@@ -53,6 +53,9 @@ venv/
 # LLM binaries and models
 llm/
 
+# GDExtension build artifacts
+gdextension/build/
+
 # Logs and temp files
 *.log
 *.tmp

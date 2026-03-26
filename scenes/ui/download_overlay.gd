@@ -40,21 +40,12 @@ func _ready() -> void:
 	visible = false
 	flavor_label.text = ""
 
-	LLMManager.binary_download_started.connect(_on_binary_download_started)
-	LLMManager.binary_download_progress.connect(_on_binary_download_progress)
-	LLMManager.binary_download_completed.connect(_on_binary_download_completed)
-	LLMManager.binary_download_failed.connect(_on_binary_download_failed)
 	LLMManager.download_started.connect(_on_download_started)
 	LLMManager.download_progress.connect(_on_download_progress)
 	LLMManager.download_completed.connect(_on_download_completed)
 	LLMManager.download_failed.connect(_on_download_failed)
 
-	if LLMManager.is_downloading_binary():
-		visible = true
-		_showing_download = true
-		status_label.text = "Downloading AI engine (detecting GPU)..."
-		progress_bar.value = 0.0
-	elif LLMManager.is_downloading():
+	if LLMManager.is_downloading():
 		visible = true
 		_showing_download = true
 		status_label.text = "Downloading AI model..."
@@ -70,39 +61,6 @@ func _process(delta: float) -> void:
 	if _flavor_timer >= FLAVOR_INTERVAL:
 		_flavor_timer = 0.0
 		_advance_flavor()
-
-
-func _on_binary_download_started(variant: String) -> void:
-	visible = true
-	_showing_download = true
-	status_label.text = "Downloading AI engine (%s)..." % variant
-	progress_bar.value = 0.0
-	speed_label.text = ""
-	_advance_flavor()
-
-
-func _on_binary_download_progress(percent: float, speed_bps: float, downloaded: int, total: int) -> void:
-	progress_bar.value = percent
-	speed_label.text = "%s  -  %s at %s" % [_format_bytes_of(downloaded, total), _format_percent(percent), _format_speed(speed_bps)]
-
-
-func _on_binary_download_completed() -> void:
-	status_label.text = "AI engine ready"
-	progress_bar.value = 100.0
-	speed_label.text = ""
-	flavor_label.text = ""
-	_showing_download = false
-
-
-func _on_binary_download_failed(reason: String) -> void:
-	status_label.text = "AI engine download failed"
-	speed_label.text = reason
-	progress_bar.value = 0.0
-	flavor_label.text = ""
-	_showing_download = false
-	var tween := create_tween()
-	tween.tween_interval(5.0)
-	tween.tween_property(self, "visible", false, 0.0)
 
 
 func _on_download_started(model_name: String) -> void:
