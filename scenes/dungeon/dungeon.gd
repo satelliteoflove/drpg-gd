@@ -644,6 +644,10 @@ func _handle_debug_keys(event: InputEventKey) -> bool:
 	elif event.is_action_pressed("debug_force_micro_event"):
 		_debug_force_micro_event()
 		return true
+	elif event.keycode == KEY_V and event.ctrl_pressed:
+		GameState.debug_verbose = not GameState.debug_verbose
+		_show_dungeon_message("Verbose debug: %s" % ("ON" if GameState.debug_verbose else "OFF"))
+		return true
 	elif event.keycode == KEY_TAB and event.shift_pressed:
 		_cycle_debug_material()
 		return true

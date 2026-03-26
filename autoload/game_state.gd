@@ -15,6 +15,7 @@ var current_mode: GameMode = GameMode.MAIN_MENU
 var current_floor: int = 1
 var in_combat: bool = false
 var show_combat_math: bool = true
+var debug_verbose: bool = false
 
 var party: Party = null
 var roster: CharacterRoster = null

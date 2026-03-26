@@ -1398,6 +1398,7 @@ func _refresh_keybindings() -> void:
 		["Shift+B", "Run Batch Sim"],
 		["Ctrl+L", "Toggle AI Log"],
 		["Ctrl+E", "Force Micro Event"],
+		["Ctrl+V", "Toggle Verbose Debug"],
 	]
 	for entry in debug_keys:
 		var dbtn := Button.new()
