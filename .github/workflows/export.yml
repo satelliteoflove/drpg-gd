@@ -60,7 +60,7 @@ jobs:
 
       - name: Build
         working-directory: gdextension
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build --config Release --parallel 4
 
       - name: Collect binaries (macOS)
         if: matrix.platform == 'macos'
