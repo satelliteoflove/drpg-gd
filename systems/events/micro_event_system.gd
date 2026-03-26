@@ -6,6 +6,15 @@ const FALLBACK_PATH := "res://data/fallback_lines.json"
 
 static var _fallback_lines: Dictionary = {}
 static var _loaded := false
+static var recent_responders: Array[String] = []
+
+const MAX_RECENT_RESPONDERS := 3
+
+
+static func record_responder(char_id: String) -> void:
+	recent_responders.append(char_id)
+	while recent_responders.size() > MAX_RECENT_RESPONDERS:
+		recent_responders.pop_front()
 
 
 static func _ensure_loaded() -> void:

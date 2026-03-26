@@ -13,6 +13,7 @@ var map_open: bool = false
 var combat_open: bool = false
 var event_open: bool = false
 var party_menu: Control = null
+var _chat_log: PartyChatLog = null
 var dungeon_map: Control = null
 var combat_ui: Control = null
 var _simulation_logging_enabled: bool = false
@@ -86,6 +87,7 @@ func _ready() -> void:
 	GameState.floor_tracker.step_taken.connect(_on_step_taken)
 
 	_setup_message_label()
+	_setup_chat_log()
 	$UI/BottomBar/TownButton.pressed.connect(_on_town_pressed)
 	$UI/BottomBar/MenuButton.pressed.connect(_on_menu_pressed)
 	GameState.party_member_died.connect(_on_party_member_died_in_dungeon)
@@ -639,6 +641,9 @@ func _handle_debug_keys(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_L and event.ctrl_pressed:
 		_toggle_ai_logging()
 		return true
+	elif event.is_action_pressed("debug_force_micro_event"):
+		_debug_force_micro_event()
+		return true
 	elif event.keycode == KEY_TAB and event.shift_pressed:
 		_cycle_debug_material()
 		return true
@@ -897,10 +902,10 @@ func _try_exploration_micro_event() -> void:
 	_steps_since_micro_event += 1
 	if _steps_since_micro_event < MICRO_EVENT_COOLDOWN_STEPS:
 		return
-	if event_open or combat_open or menu_open or map_open:
+	if combat_open or event_open:
 		return
 	MicroEventSystem.try_micro_event("exploration", GameState.get_party_members(), func(data: Dictionary) -> void:
-		if not data.is_empty() and not combat_open and not event_open and not menu_open and not map_open:
+		if not data.is_empty() and not combat_open:
 			_steps_since_micro_event = 0
 			_show_exploration_micro_event(data)
 	)
@@ -934,12 +939,46 @@ func _on_party_member_died_in_dungeon(character: Resource) -> void:
 
 
 func _show_exploration_micro_event(data: Dictionary) -> void:
-	event_open = true
-	var overlay: CanvasLayer = MicroEventScene.instantiate()
-	$UI.add_child(overlay)
-	overlay.setup(data, GameState.get_party_members())
-	overlay.micro_event_closed.connect(func() -> void:
-		event_open = false
+	if not _chat_log:
+		return
+	var speaker: Character = data.speaker
+	var line: String = data.line
+	_chat_log.add_line(speaker.character_name, line)
+
+	var party := GameState.get_party_members()
+	var responder := _pick_chat_responder(speaker, party)
+	if responder:
+		_generate_chat_response(responder, speaker, line, data.get("context", ""))
+
+
+func _pick_chat_responder(speaker: Character, party: Array[Character]) -> Character:
+	var living: Array[Character] = []
+	for c in party:
+		if not c.is_dead and c.id != speaker.id:
+			living.append(c)
+	if living.is_empty():
+		return null
+	var recent: Array[String] = MicroEventSystem.recent_responders
+	var preferred: Array[Character] = []
+	for c in living:
+		if c.id not in recent:
+			preferred.append(c)
+	if preferred.is_empty():
+		preferred = living
+	return preferred[randi() % preferred.size()]
+
+
+func _generate_chat_response(responder: Character, speaker: Character, line: String, context_type: String) -> void:
+	MicroEventSystem.record_responder(responder.id)
+	MicroEventSystem.generate_response(
+		responder, speaker, line, context_type,
+		func(response_line: String) -> void:
+			if response_line != "" and _chat_log:
+				RelationshipManager.add_modifier(
+					speaker.id, responder.id,
+					"Shared a moment", 1, GameState.game_day
+				)
+				_chat_log.add_response(responder.character_name, response_line)
 	)
 
 
@@ -1365,6 +1404,20 @@ func _mark_current_tile_discovered() -> void:
 		tile.discovered = true
 
 
+func _setup_chat_log() -> void:
+	_chat_log = PartyChatLog.new()
+	_chat_log.anchor_left = 0.15
+	_chat_log.anchor_right = 0.85
+	_chat_log.anchor_top = 1.0
+	_chat_log.anchor_bottom = 1.0
+	_chat_log.offset_top = -120
+	_chat_log.offset_bottom = -8
+	_chat_log.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_chat_log.add_theme_font_size_override("normal_font_size", 13)
+	_chat_log.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$UI.add_child(_chat_log)
+
+
 func _setup_message_label() -> void:
 	_message_label = Label.new()
 	_message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1546,3 +1599,31 @@ func _toggle_ai_logging() -> void:
 	_simulation_logging_enabled = not _simulation_logging_enabled
 	var status := "ENABLED - Shift+S will include AI decision log" if _simulation_logging_enabled else "DISABLED"
 	print("[Simulation] AI decision logging: %s" % status)
+
+
+func _debug_force_micro_event() -> void:
+	var living: Array[Character] = []
+	for c in GameState.get_party_members():
+		if not c.is_dead:
+			living.append(c)
+	if living.is_empty():
+		return
+	var speaker: Character = living[randi() % living.size()]
+	if LLMManager.is_available():
+		var prompt := PromptBuilder.build_micro_prompt(speaker, "The party is exploring the dungeon corridors.")
+		var grammar := PromptBuilder.micro_grammar()
+		LLMManager.generate(prompt, grammar, func(content: String) -> void:
+			var line := MicroEventSystem._parse_micro_response(content)
+			if line == "":
+				line = MicroEventSystem._get_fallback("exploration", speaker)
+			if line != "":
+				_show_exploration_micro_event({"speaker": speaker, "line": line, "context": "exploration"})
+			else:
+				print("[Debug] No micro event content generated")
+		)
+	else:
+		var line := MicroEventSystem._get_fallback("exploration", speaker)
+		if line != "":
+			_show_exploration_micro_event({"speaker": speaker, "line": line, "context": "exploration"})
+		else:
+			print("[Debug] LLM unavailable and no fallback lines")
