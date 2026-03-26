@@ -84,10 +84,15 @@ jobs:
           mkdir -p dist
           cp gdextension/build/libdrpg_llm.linux.template_release.x86_64.so dist/
           cp dist/libdrpg_llm.linux.template_release.x86_64.so dist/libdrpg_llm.linux.template_debug.x86_64.so
-          for lib in libllama.so libggml.so libggml-base.so libggml-cpu.so libggml-vulkan.so; do
-            found=$(find gdextension/build/bin -name "$lib*" -type f -o -name "$lib*" -type l | head -1)
+          for lib in libllama libggml libggml-base libggml-cpu libggml-vulkan; do
+            found=$(find gdextension/build/bin -name "${lib}.so*" \( -type f -o -type l \) | head -1)
             if [ -n "$found" ]; then
-              cp -L "$found" dist/$lib
+              real=$(readlink -f "$found")
+              cp "$real" "dist/${lib}.so"
+              # Create versioned symlinks the dynamic linker expects
+              for versioned in $(find gdextension/build/bin -name "${lib}.so.*" -type l 2>/dev/null); do
+                ln -sf "${lib}.so" "dist/$(basename $versioned)"
+              done
             fi
           done
           for f in dist/*.so; do
