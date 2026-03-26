@@ -47,9 +47,10 @@ jobs:
         shell: pwsh
         run: |
           $ver = (Invoke-WebRequest -Uri "https://vulkan.lunarg.com/sdk/latest/windows.txt" -UseBasicParsing).Content.Trim()
-          $url = "https://sdk.lunarg.com/sdk/download/$ver/windows/VulkanSDK-$ver-Installer.exe"
+          $url = "https://sdk.lunarg.com/sdk/download/$ver/windows/InstallVulkan-$ver.exe"
+          Write-Host "Downloading Vulkan SDK $ver from $url"
           Invoke-WebRequest -Uri $url -OutFile VulkanSDK.exe
-          .\VulkanSDK.exe --accept-licenses --default-answer --confirm-command install 2>&1 | Out-Null
+          Start-Process -FilePath .\VulkanSDK.exe -ArgumentList "--accept-licenses --default-answer --confirm-command install" -Wait
           $sdkPath = "C:\VulkanSDK\$ver"
           echo "VULKAN_SDK=$sdkPath" >> $env:GITHUB_ENV
           echo "$sdkPath\Bin" >> $env:GITHUB_PATH
