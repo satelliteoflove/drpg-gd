@@ -99,11 +99,13 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          $buildBin = "gdextension/build/bin/Release"
-          if (-not (Test-Path $buildBin)) { $buildBin = "gdextension/build/bin" }
-          Copy-Item "$buildBin/drpg_llm.windows.template_release.x86_64.dll" dist/
-          Copy-Item dist/drpg_llm.windows.template_release.x86_64.dll dist/drpg_llm.windows.template_debug.x86_64.dll
-          Get-ChildItem "$buildBin" -Filter "*.dll" | Where-Object { $_.Name -match "^(llama|ggml)" } | ForEach-Object {
+          Write-Host "Searching for built DLLs..."
+          Get-ChildItem -Path gdextension/build -Recurse -Filter "*.dll" | ForEach-Object { Write-Host "  Found: $($_.FullName)" }
+          $ext = Get-ChildItem -Path gdextension/build -Recurse -Filter "drpg_llm.windows.template_release.x86_64.dll" | Select-Object -First 1
+          if (-not $ext) { Write-Error "Extension DLL not found"; exit 1 }
+          Copy-Item $ext.FullName dist/
+          Copy-Item $ext.FullName dist/drpg_llm.windows.template_debug.x86_64.dll
+          Get-ChildItem $ext.Directory -Filter "*.dll" | Where-Object { $_.Name -match "^(llama|ggml)" } | ForEach-Object {
             Copy-Item $_.FullName dist/
           }
 
