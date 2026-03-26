@@ -1,7 +1,7 @@
 class_name PromptBuilder
 extends RefCounted
 
-const SYSTEM_PREFIX := "<|im_start|>system\nYou write short, punchy in-character dialogue for a dungeon crawler RPG. Stay in character. No narration, no actions, no stage directions. Just the spoken line. Each character has a distinct voice shaped by their personality and history.<|im_end|>\n"
+const SYSTEM_PREFIX := "<|im_start|>system\nYou write short, punchy in-character dialogue for a dungeon crawler RPG. Stay in character. No narration, no actions, no stage directions. Just the spoken line. Each character has a distinct voice shaped by their personality and history. /no_think<|im_end|>\n"
 
 const MAX_MARKS_IN_PROMPT := 3
 const MAX_RELATIONSHIPS_IN_PROMPT := 2
@@ -80,7 +80,7 @@ static func micro_grammar() -> String:
 
 
 static func micro_conversation_grammar() -> String:
-	return "root ::= \"[\" ws entry \",\" ws entry ws \"]\" ws\nentry ::= \"{\" ws \"\\\"name\\\"\" ws \":\" ws \"\\\"\" [^\"]+ \"\\\"\" ws \",\" ws \"\\\"line\\\"\" ws \":\" ws \"\\\"\" [^\"]+ \"\\\"\" ws \"}\" ws\nws ::= [ \\t\\n]*\n"
+	return ""
 
 
 static func event_grammar() -> String:
@@ -297,5 +297,5 @@ static func _get_evidence_count(character: Character, axis: int, option: int) ->
 
 static func _json_object_grammar(keys: Array[String]) -> String:
 	if keys.size() == 1:
-		return "root ::= \"{\" ws \"\\\"\" \"%s\" \"\\\"\" ws \":\" ws \"\\\"\" [^\"]+ \"\\\"\" ws \"}\" ws\nws ::= [ \\t\\n]*\n" % keys[0]
+		return "root ::= \"{\" ws \"\\\"\" \"%s\" \"\\\"\" ws \":\" ws \"\\\"\" [^\"]+ \"\\\"\" ws \"}\" ws\nws ::= [ \\t]*\n" % keys[0]
 	return ""

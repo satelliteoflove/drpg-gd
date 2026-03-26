@@ -31,6 +31,7 @@ var _downloading := false
 var _download_start_time := 0.0
 var _setup_complete := false
 var _pending_callbacks: Array[Callable] = []
+var _request_queue: Array[Dictionary] = []
 var _warming_up := false
 
 
@@ -109,8 +110,28 @@ func generate(prompt: String, grammar: String, callback: Callable) -> void:
 		callback.call("")
 		return
 
+	if _llm.is_running() or _warming_up:
+		_request_queue.append({"prompt": prompt, "grammar": grammar, "callback": callback})
+		return
+
 	_pending_callbacks.append(callback)
 	_llm.generate_async(prompt, grammar)
+
+
+func _process_queue() -> void:
+	if _request_queue.is_empty():
+		return
+	if _llm.is_running() or _warming_up:
+		return
+	if not is_available():
+		for req: Dictionary in _request_queue:
+			var cb: Callable = req.callback
+			cb.call("")
+		_request_queue.clear()
+		return
+	var req: Dictionary = _request_queue.pop_front()
+	_pending_callbacks.append(req.callback)
+	_llm.generate_async(req.prompt, req.grammar)
 
 
 func _load_model(model_path: String) -> void:
@@ -146,15 +167,18 @@ func _on_generate_completed(text: String) -> void:
 	if _warming_up:
 		_warming_up = false
 		print("[LLMManager] Warmup complete")
+		_process_queue()
 		return
 
-	var stop_idx := text.find("\n\n")
-	if stop_idx >= 0:
-		text = text.substr(0, stop_idx)
+	var think_end := text.find("</think>")
+	if think_end >= 0:
+		text = text.substr(think_end + 8).strip_edges()
 
 	if not _pending_callbacks.is_empty():
 		var cb: Callable = _pending_callbacks.pop_front()
 		cb.call(text)
+
+	_process_queue()
 
 
 func _find_model() -> String:

@@ -281,14 +281,6 @@ void LLMInference::_generate_thread(std::string prompt, std::string grammar) {
         int piece_len = llama_token_to_piece(vocab, new_token, piece_buf, sizeof(piece_buf), 0, false);
         if (piece_len > 0) {
             result.append(piece_buf, piece_len);
-
-            if (result.size() >= 2) {
-                size_t pos = result.find("\n\n");
-                if (pos != std::string::npos) {
-                    result.resize(pos);
-                    break;
-                }
-            }
         }
 
         batch = llama_batch_get_one(&new_token, 1);
