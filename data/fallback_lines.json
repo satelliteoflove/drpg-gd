@@ -3,108 +3,378 @@
     "brave": [
       "Ha! They never stood a chance.",
       "Who's next? I could do this all day.",
-      "That was a good fight. I needed that."
+      "That was a good fight. I needed that.",
+      "Barely broke a sweat. Disappointing.",
+      "That's how it's done. Take notes."
     ],
     "cautious": [
       "That could have gone badly. Let's stay sharp.",
       "We made it. Barely.",
-      "Check your gear before we move on."
+      "Check your gear before we move on.",
+      "Don't let your guard down yet.",
+      "We got lucky. Let's not push it."
+    ],
+    "reckless": [
+      "That was a RUSH! Again! Let's find more!",
+      "Ha! Did you see that? I was incredible!",
+      "They should've run when they had the chance.",
+      "I barely even tried. What a waste.",
+      "More where that came from, I hope."
+    ],
+    "calculating": [
+      "Fought within expected parameters. Good.",
+      "We need to adjust formation for next time.",
+      "I counted their attacks. They were predictable.",
+      "Acceptable losses. We can sustain this pace.",
+      "Note their weaknesses for future reference."
     ],
     "friendly": [
       "Great teamwork back there, everyone!",
       "Couldn't have done it without all of you.",
-      "Is everyone alright? Good, good."
+      "Is everyone alright? Good, good.",
+      "That's what happens when we work together.",
+      "Nice work! I'm proud of this group."
     ],
     "gruff": [
       "Hmph. They were barely worth the effort.",
       "Stop celebrating. More will come.",
-      "Wipe your blade and keep moving."
+      "Wipe your blade and keep moving.",
+      "That all they had? Pathetic.",
+      "Less talking. More walking."
     ],
     "sarcastic": [
       "Well, that was almost challenging.",
       "Remind me why we're down here again?",
-      "Oh good, more blood on my boots."
+      "Oh good, more blood on my boots.",
+      "Another glorious victory for the history books.",
+      "I'm sure they had families. Anyway, loot?"
+    ],
+    "earnest": [
+      "I'm glad everyone made it through.",
+      "That felt important. We're getting stronger.",
+      "I was scared, but we pulled through together.",
+      "Every fight teaches us something new.",
+      "I really believe in this group."
+    ],
+    "optimistic": [
+      "See? Nothing to worry about!",
+      "We're getting better at this every time!",
+      "That went even better than I hoped!",
+      "Things are looking up from here!",
+      "I knew we could handle it!"
+    ],
+    "pessimistic": [
+      "We won. This time.",
+      "Don't celebrate. The next fight will be worse.",
+      "One down, who knows how many to go.",
+      "Enjoy this feeling. It won't last.",
+      "I keep waiting for our luck to run out."
+    ],
+    "stoic": [
+      "It's done. Move on.",
+      "Another fight behind us.",
+      "We did what was necessary.",
+      "No point dwelling on it.",
+      "Ready for what comes next."
+    ],
+    "curious": [
+      "Did anyone notice how they fought? Fascinating.",
+      "I wonder what brought them here.",
+      "Those markings on their weapons - what were they?",
+      "Strange. They seemed almost organized.",
+      "I want to study their remains later."
     ],
     "default": [
       "We won. Let's keep moving.",
       "Another fight behind us.",
-      "Stay alert. There will be more."
+      "Stay alert. There will be more.",
+      "That's done. What's next?",
+      "Gather what's useful and move on.",
+      "Not bad. Not bad at all.",
+      "Keep your guard up. Always.",
+      "One less threat between us and the exit."
     ]
   },
   "combat_close_call": {
     "brave": [
       "That was close. But we're still standing.",
       "I've had worse. Probably.",
-      "They almost had us. Almost."
+      "They almost had us. Almost.",
+      "Pain just means we're still alive.",
+      "Close fights make the best stories."
     ],
     "cautious": [
       "We can't take another hit like that.",
       "Maybe we should turn back...",
-      "That was too close for comfort."
+      "That was too close for comfort.",
+      "We need a better plan next time.",
+      "I warned you this would happen."
     ],
     "friendly": [
       "I'm glad we all made it through that.",
       "Everyone patch up. We need each other.",
-      "That scared me. Is everyone okay?"
+      "That scared me. Is everyone okay?",
+      "Lean on me if you need to. We rest together.",
+      "Nobody walks alone after a fight like that."
     ],
     "gruff": [
       "Sloppy. We need to do better.",
       "Pain is temporary. Death is worse.",
-      "Walk it off. We're not done."
+      "Walk it off. We're not done.",
+      "Tighten up. That was embarrassing.",
+      "Save the groaning. We've got ground to cover."
+    ],
+    "sarcastic": [
+      "So THAT was fun. Let's never do it again.",
+      "I think my life just flashed before my eyes. It was boring.",
+      "Great plan, everyone. Really nailed it.",
+      "Well, at least we're consistent. Consistently almost dead.",
+      "Anyone else need a moment? No? Just me? Cool."
     ],
     "default": [
       "We barely survived that.",
       "Let's be more careful next time.",
-      "That was a close one."
+      "That was a close one.",
+      "We need to recover before going further.",
+      "Not every fight will go our way.",
+      "Tend the wounds. We push on when ready."
     ]
   },
   "floor_descent": {
     "brave": [
       "Deeper we go. Bring it on.",
       "Whatever's down there, we'll handle it.",
-      "I can feel the danger. Good."
+      "I can feel the danger. Good.",
+      "New floor, new challenges. I'm ready.",
+      "The deeper the dungeon, the greater the glory."
     ],
     "cautious": [
       "The air feels heavier down here.",
       "Everyone stay close.",
-      "I don't like the look of this."
+      "I don't like the look of this.",
+      "We should proceed carefully from here.",
+      "Listen. The sounds are different on this level."
     ],
     "curious": [
       "I wonder what we'll find down here.",
       "The architecture is different on this level.",
-      "Can you feel that? Something's changed."
+      "Can you feel that? Something's changed.",
+      "New floor! The stonework looks older here.",
+      "I want to map every room on this level."
+    ],
+    "reckless": [
+      "Race you to the bottom!",
+      "Deeper is better! More treasure, more danger!",
+      "I bet this floor has something amazing.",
+      "Last one down is a coward!",
+      "Finally! I was getting bored up there."
+    ],
+    "pessimistic": [
+      "Deeper into the darkness. Wonderful.",
+      "Every floor down is one more floor between us and safety.",
+      "I have a bad feeling about this level.",
+      "The odds get worse from here.",
+      "We're pushing our luck going deeper."
     ],
     "default": [
       "Another floor. Stay sharp.",
       "Going deeper.",
-      "Watch your step down here."
+      "Watch your step down here.",
+      "New level. Stay focused.",
+      "Deeper into the dungeon we go.",
+      "Keep formation. This floor could be anything."
     ]
   },
   "exploration": {
     "brave": [
       "I hear something ahead. Let's check it out.",
       "These corridors don't scare me.",
-      "Keep your weapons ready."
+      "Keep your weapons ready.",
+      "I'll take point. Stay behind me.",
+      "Feels quiet. Too quiet for my taste.",
+      "Anyone else itching for something to happen?",
+      "I was born for places like this.",
+      "Stay sharp. I want first crack at whatever's out there.",
+      "My sword arm's getting restless.",
+      "Whatever lurks here, I say we meet it head-on."
     ],
     "cautious": [
       "Quiet. Did you hear that?",
       "Check corners before you turn them.",
-      "Something doesn't feel right."
+      "Something doesn't feel right.",
+      "Watch the shadows. Things move in them.",
+      "Keep your voices down.",
+      "We should mark our path. These corridors all look alike.",
+      "I don't trust how quiet it is.",
+      "Stay in formation. No wandering off.",
+      "Does anyone else smell that? It's not right.",
+      "This silence is making me nervous."
     ],
-    "curious": [
-      "These walls have markings on them.",
-      "I wonder who built this place.",
-      "There's got to be more to this floor."
+    "reckless": [
+      "Let's just pick a direction and run with it.",
+      "Traps? Traps are for people who slow down.",
+      "I bet there's treasure behind that wall.",
+      "Who needs a map? That's half the fun.",
+      "I touched something. Why? Seemed interesting.",
+      "Shortcuts! That's what I call this dead end.",
+      "What's the worst that could happen?",
+      "I wonder what's behind this suspiciously stained door.",
+      "Boring! Where are all the monsters?",
+      "If we're lost, at least we're lost together!"
+    ],
+    "calculating": [
+      "We've been walking in circles. Check the walls.",
+      "This corridor narrows ahead. Tactically concerning.",
+      "Note the draft. There's a passage we missed.",
+      "We should conserve our strength for what's ahead.",
+      "The architecture changes here. We're in a new section.",
+      "Count your supplies. We may need them soon.",
+      "Three passages. I say we go left.",
+      "By my count, we've covered about a third of this floor.",
+      "Something carved these tunnels with purpose.",
+      "If I had to guess, we're being funneled somewhere."
+    ],
+    "friendly": [
+      "How's everyone holding up?",
+      "Stick close, friends. We'll get through this.",
+      "I packed extra rations if anyone's hungry.",
+      "Hey, at least we're together, right?",
+      "Don't worry. I've got your backs.",
+      "Anyone need a break? No shame in resting.",
+      "I'm glad it's you lot I'm stuck down here with.",
+      "Tell me something about yourselves. Keeps the fear away.",
+      "We make a good team, you know that?",
+      "Nobody gets left behind. That's our rule."
+    ],
+    "gruff": [
+      "Less talking, more walking.",
+      "Quit gawking and move.",
+      "These walls won't kill themselves. Wait.",
+      "Pick up the pace.",
+      "Save your breath for running.",
+      "This dungeon smells like something died. Probably did.",
+      "Stop touching things.",
+      "I've been in worse places. Marginally.",
+      "Keep up or get left behind.",
+      "We're here for a job. Let's do it."
     ],
     "sarcastic": [
       "Another lovely corridor of doom.",
       "Charming decor. Very 'abandoned dungeon chic.'",
-      "I'm sure nothing terrible is around the next corner."
+      "I'm sure nothing terrible is around the next corner.",
+      "What a delightful vacation this has turned out to be.",
+      "I love the ambiance. Damp, dark, and vaguely threatening.",
+      "Remind me whose idea this was?",
+      "Ah yes, more identical stone walls. Thrilling.",
+      "If I had a coin for every corridor, I'd buy my way out.",
+      "The dungeon designer had a real flair for monotony.",
+      "I'd write a bad review, but I don't think they care."
+    ],
+    "earnest": [
+      "I really think we're making good progress.",
+      "It means a lot that we're all here together.",
+      "I trust you all. Just wanted to say that.",
+      "Does anyone need a rest? Just say the word.",
+      "This is what adventuring is about, isn't it?",
+      "I believe in us. We'll find what we came for.",
+      "Honest question - are we lost?",
+      "I've never been this deep before. It's something.",
+      "Whatever happens, I'm glad I came.",
+      "I'll do my best. That's all I can promise."
+    ],
+    "optimistic": [
+      "I bet the next room has something good!",
+      "We're making great time, you know.",
+      "This place isn't so bad once you get used to it.",
+      "Every step forward is progress!",
+      "I have a good feeling about this corridor.",
+      "We'll be home before we know it.",
+      "The deeper we go, the closer we are to the goal!",
+      "Look on the bright side - at least it's not raining.",
+      "I think things are about to turn around for us.",
+      "This dungeon has character. I kind of like it."
+    ],
+    "pessimistic": [
+      "This place will be our grave if we're not careful.",
+      "Every step deeper is a step further from safety.",
+      "I don't think we're getting out the way we came in.",
+      "The walls are closing in. Can anyone else feel that?",
+      "We're running low on everything. Especially luck.",
+      "Has anyone else noticed how dark it's getting?",
+      "I keep thinking I see something behind us.",
+      "There's no way this ends well.",
+      "Even if we survive, we'll carry this place with us.",
+      "I should have written a will before we came down here."
+    ],
+    "stoic": [
+      "We press on.",
+      "One foot in front of the other.",
+      "Focus on the path ahead.",
+      "Worrying changes nothing. Keep moving.",
+      "It is what it is.",
+      "There's work to be done.",
+      "Save your energy for what matters.",
+      "Stay the course.",
+      "We endure. That's what we do.",
+      "No complaints. Just forward."
+    ],
+    "curious": [
+      "These walls have markings on them.",
+      "I wonder who built this place.",
+      "There's got to be more to this floor.",
+      "Look at the stonework here. It's ancient.",
+      "What's this residue on the walls? It's warm.",
+      "The echo is different in this section. Larger room ahead?",
+      "Someone lived here once. You can see where they carved shelves.",
+      "I've read about places like this. The reality is... more pungent.",
+      "There's a pattern in the floor tiles. What does it mean?",
+      "These scratches on the wall - claw marks, or writing?"
+    ],
+    "merciful": [
+      "I hope we don't have to fight everything we meet.",
+      "Not every creature down here chose this life.",
+      "Let's try to avoid bloodshed where we can.",
+      "I wonder if anything down here is friendly.",
+      "Even monsters have their reasons.",
+      "We're the intruders here, if you think about it."
+    ],
+    "ruthless": [
+      "Kill anything that moves. Don't give them the first hit.",
+      "Mercy is a luxury we can't afford down here.",
+      "The only good monster is a dead one.",
+      "Strike first. Ask questions never.",
+      "Everything down here is either prey or a threat.",
+      "Efficiency. That's all that matters."
+    ],
+    "principled": [
+      "We have a duty to clear this place out.",
+      "Stay honorable, even down here.",
+      "Our purpose is just. Remember that.",
+      "We fight for those who can't fight for themselves.",
+      "The darkness tests our character as much as our steel.",
+      "Hold to the code, no matter what we face."
+    ],
+    "self_interested": [
+      "There better be good loot after all this walking.",
+      "How much are we getting paid for this again?",
+      "I'm keeping track of what I find first.",
+      "Risk and reward, that's what it's all about.",
+      "Someone remind me there's a payoff at the end of this.",
+      "First dibs on anything valuable. I called it."
     ],
     "default": [
       "Let's keep moving.",
       "Stay together.",
-      "Eyes open, everyone."
+      "Eyes open, everyone.",
+      "Watch your step.",
+      "One room at a time.",
+      "Stay alert. You never know.",
+      "Keep moving. We'll rest when we're out.",
+      "Listen. Do you hear anything?",
+      "This way looks as good as any.",
+      "Careful now.",
+      "Stay close.",
+      "We've come this far. No turning back."
     ]
   },
   "treasure_found": {
@@ -123,10 +393,17 @@
       "I'm sure this isn't cursed at all.",
       "Treasure in a dungeon. How unexpected."
     ],
+    "self_interested": [
+      "I saw it first. Remember that.",
+      "Now THIS is why we came down here.",
+      "Finally, something that makes the risk worth it."
+    ],
     "default": [
       "Nice find.",
       "That'll come in handy.",
-      "Let's take it and go."
+      "Let's take it and go.",
+      "About time we found something.",
+      "Split it later. Pocket it now."
     ]
   },
   "trap_triggered": {
@@ -145,10 +422,17 @@
       "Is that the best this dungeon's got?",
       "Traps won't stop us."
     ],
+    "reckless": [
+      "Oops. My bad.",
+      "Well, now we know it's there.",
+      "That was almost cool! In a painful way."
+    ],
     "default": [
       "Watch out for more traps.",
       "That was unpleasant.",
-      "Be more careful ahead."
+      "Be more careful ahead.",
+      "Everyone alright?",
+      "Mark this spot. Don't come back this way."
     ]
   },
   "ally_fallen": {
@@ -177,10 +461,17 @@
       "Well... that changes things.",
       "No more holding back."
     ],
+    "earnest": [
+      "We can't lose anyone. Not today.",
+      "I won't let this happen again.",
+      "Please be okay. Please."
+    ],
     "default": [
       "No!",
       "We have to keep fighting!",
-      "Stay focused!"
+      "Stay focused!",
+      "Don't let their sacrifice be wasted.",
+      "Keep going. For them."
     ]
   },
   "rest": {
@@ -207,7 +498,9 @@
     "default": [
       "Let's rest here for a bit.",
       "Good spot to catch our breath.",
-      "We need this."
+      "We need this.",
+      "A moment to gather ourselves.",
+      "Rest while we can."
     ]
   }
 }

@@ -904,82 +904,40 @@ func _try_exploration_micro_event() -> void:
 		return
 	if combat_open or event_open:
 		return
-	MicroEventSystem.try_micro_event("exploration", GameState.get_party_members(), func(data: Dictionary) -> void:
+	var context := _build_micro_context()
+	MicroEventSystem.try_micro_conversation("exploration", GameState.get_party_members(), func(data: Dictionary) -> void:
 		if not data.is_empty() and not combat_open:
 			_steps_since_micro_event = 0
 			_show_exploration_micro_event(data)
-	)
+	, context)
 
 
 func _on_party_member_died_in_dungeon(character: Resource) -> void:
 	if combat_open:
 		return
-	var living: Array[Character] = []
-	for c in GameState.get_party_members():
-		if not c.is_dead and c.id != character.id:
-			living.append(c)
-	if living.is_empty():
-		return
-	var speaker: Character = living[randi() % living.size()]
-	var situation := "%s has fallen." % character.character_name
-	if LLMManager.is_available():
-		var prompt := PromptBuilder.build_micro_prompt(speaker, situation)
-		var grammar := PromptBuilder.micro_grammar()
-		LLMManager.generate(prompt, grammar, func(content: String) -> void:
-			var line := MicroEventSystem._parse_micro_response(content)
-			if line == "":
-				line = MicroEventSystem._get_fallback("ally_fallen", speaker)
-			if line != "":
-				_show_exploration_micro_event({"speaker": speaker, "line": line, "context": "ally_fallen"})
-		)
-	else:
-		var line := MicroEventSystem._get_fallback("ally_fallen", speaker)
-		if line != "":
-			_show_exploration_micro_event({"speaker": speaker, "line": line, "context": "ally_fallen"})
+	var context := _build_micro_context()
+	context["dead_names"] = [character.character_name]
+	MicroEventSystem.try_micro_conversation("ally_fallen", GameState.get_party_members(), func(data: Dictionary) -> void:
+		if not data.is_empty():
+			_show_exploration_micro_event(data)
+	, context)
 
 
 func _show_exploration_micro_event(data: Dictionary) -> void:
 	if not _chat_log:
 		return
 	var speaker: Character = data.speaker
-	var line: String = data.line
-	_chat_log.add_line(speaker.character_name, line)
+	var speaker_line: String = data.speaker_line
+	_chat_log.add_line(speaker.character_name, speaker_line)
 
-	var party := GameState.get_party_members()
-	var responder := _pick_chat_responder(speaker, party)
-	if responder:
-		_generate_chat_response(responder, speaker, line, data.get("context", ""))
-
-
-func _pick_chat_responder(speaker: Character, party: Array[Character]) -> Character:
-	var living: Array[Character] = []
-	for c in party:
-		if not c.is_dead and c.id != speaker.id:
-			living.append(c)
-	if living.is_empty():
-		return null
-	var recent: Array[String] = MicroEventSystem.recent_responders
-	var preferred: Array[Character] = []
-	for c in living:
-		if c.id not in recent:
-			preferred.append(c)
-	if preferred.is_empty():
-		preferred = living
-	return preferred[randi() % preferred.size()]
-
-
-func _generate_chat_response(responder: Character, speaker: Character, line: String, context_type: String) -> void:
-	MicroEventSystem.record_responder(responder.id)
-	MicroEventSystem.generate_response(
-		responder, speaker, line, context_type,
-		func(response_line: String) -> void:
-			if response_line != "" and _chat_log:
-				RelationshipManager.add_modifier(
-					speaker.id, responder.id,
-					"Shared a moment", 1, GameState.game_day
-				)
-				_chat_log.add_response(responder.character_name, response_line)
-	)
+	var responder: Character = data.get("responder")
+	var responder_line: String = data.get("responder_line", "")
+	if responder and responder_line != "":
+		RelationshipManager.add_modifier(
+			speaker.id, responder.id,
+			"Shared a moment", 1, GameState.game_day
+		)
+		_chat_log.add_response(responder.character_name, responder_line)
 
 
 func _show_micro_event(data: Dictionary, next_floor: int, descending: bool) -> void:
@@ -1404,6 +1362,38 @@ func _mark_current_tile_discovered() -> void:
 		tile.discovered = true
 
 
+func _build_micro_context() -> Dictionary:
+	var dead_names: Array[String] = []
+	for c in GameState.get_party_members():
+		if c.is_dead:
+			dead_names.append(c.character_name)
+	return {
+		"floor": GameState.current_floor,
+		"party_hp_state": _get_party_hp_state(),
+		"dead_names": dead_names,
+		"returning_from_combat": GameState.returning_from_combat,
+	}
+
+
+func _get_party_hp_state() -> String:
+	var total_ratio := 0.0
+	var count := 0
+	for c: Character in GameState.get_party_members():
+		if c.is_dead:
+			continue
+		if c.max_hp > 0:
+			total_ratio += float(c.current_hp) / float(c.max_hp)
+		count += 1
+	if count == 0:
+		return "critical"
+	var avg: float = total_ratio / float(count)
+	if avg < 0.35:
+		return "critical"
+	elif avg < 0.7:
+		return "wounded"
+	return "healthy"
+
+
 func _setup_chat_log() -> void:
 	_chat_log = PartyChatLog.new()
 	_chat_log.anchor_left = 0.15
@@ -1602,28 +1592,10 @@ func _toggle_ai_logging() -> void:
 
 
 func _debug_force_micro_event() -> void:
-	var living: Array[Character] = []
-	for c in GameState.get_party_members():
-		if not c.is_dead:
-			living.append(c)
-	if living.is_empty():
-		return
-	var speaker: Character = living[randi() % living.size()]
-	if LLMManager.is_available():
-		var prompt := PromptBuilder.build_micro_prompt(speaker, "The party is exploring the dungeon corridors.")
-		var grammar := PromptBuilder.micro_grammar()
-		LLMManager.generate(prompt, grammar, func(content: String) -> void:
-			var line := MicroEventSystem._parse_micro_response(content)
-			if line == "":
-				line = MicroEventSystem._get_fallback("exploration", speaker)
-			if line != "":
-				_show_exploration_micro_event({"speaker": speaker, "line": line, "context": "exploration"})
-			else:
-				print("[Debug] No micro event content generated")
-		)
-	else:
-		var line := MicroEventSystem._get_fallback("exploration", speaker)
-		if line != "":
-			_show_exploration_micro_event({"speaker": speaker, "line": line, "context": "exploration"})
+	var context := _build_micro_context()
+	MicroEventSystem.force_micro_conversation("exploration", GameState.get_party_members(), func(data: Dictionary) -> void:
+		if not data.is_empty():
+			_show_exploration_micro_event(data)
 		else:
-			print("[Debug] LLM unavailable and no fallback lines")
+			print("[Debug] No micro event content generated")
+	, context)

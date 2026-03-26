@@ -6,20 +6,51 @@ const SYSTEM_PREFIX := "<|im_start|>system\nYou write short, punchy in-character
 const MAX_MARKS_IN_PROMPT := 3
 const MAX_RELATIONSHIPS_IN_PROMPT := 2
 
+const VOICE_DIRECTION: Dictionary = {
+	"Brave": "bold, direct, eager for action",
+	"Cautious": "wary, alert, warns others",
+	"Reckless": "impulsive, cocky, laughs at danger",
+	"Calculating": "measured, analytical, thinks aloud",
+	"Friendly": "warm, encouraging, checks on others",
+	"Gruff": "blunt, few words, no nonsense",
+	"Sarcastic": "dry wit, ironic, deadpan",
+	"Earnest": "sincere, open, says what they feel",
+	"Optimistic": "hopeful, finds silver linings",
+	"Pessimistic": "expects the worst, darkly realistic",
+	"Stoic": "quiet, unfazed, matter-of-fact",
+	"Curious": "asks questions, notices details",
+	"Merciful": "compassionate, concerned for others",
+	"Ruthless": "cold, practical about violence",
+	"Principled": "appeals to duty and honor",
+	"Self-Interested": "thinks about personal gain",
+}
 
-static func build_micro_prompt(speaker: Character, situation: String) -> String:
-	var char_desc := _describe_character_full(speaker)
-	return SYSTEM_PREFIX + "<|im_start|>user\n%s\nSituation: %s\nWrite a single short spoken line (5-15 words) as this character. Their history and personality should color what they say. Respond with JSON: {\"line\": \"...\"}<|im_end|>\n<|im_start|>assistant\n" % [char_desc, situation]
 
-
-static func build_response_prompt(speaker: Character, original_speaker: Character, original_line: String, situation: String) -> String:
-	var char_desc := _describe_character_full(speaker)
-	var orig_name := original_speaker.character_name
-	var rel_line := _describe_relationship_between(speaker, original_speaker)
+static func build_micro_conversation_prompt(speaker: Character, responder: Character, situation: String, recent_lines: Array[String] = [], purpose: String = "") -> String:
+	var speaker_desc := _describe_character_with_voice(speaker)
+	var responder_desc := _describe_character_with_voice(responder)
+	var rel_line := _describe_relationship_between(speaker, responder)
 	var rel_ctx := ""
 	if rel_line != "":
-		rel_ctx = "\nRelationship: %s" % rel_line
-	return SYSTEM_PREFIX + "<|im_start|>user\n%s%s\nSituation: %s\n%s just said: \"%s\"\nWrite a short reply (5-15 words) as this character. Respond with JSON: {\"line\": \"...\"}<|im_end|>\n<|im_start|>assistant\n" % [char_desc, rel_ctx, situation, orig_name, original_line]
+		rel_ctx = "\nRelationship: %s." % rel_line
+	var avoid := ""
+	if not recent_lines.is_empty():
+		avoid = "\nAvoid repeating: %s" % "; ".join(recent_lines)
+	var direction := ""
+	if purpose != "":
+		direction = " " + purpose
+	return SYSTEM_PREFIX + "<|im_start|>user\nSpeaker: %s\nResponder: %s%s\nSituation: %s%s\nWrite two lines: first %s speaks (5-20 words), then %s replies to what they said (5-20 words).%s Respond with JSON array: [{\"name\": \"%s\", \"line\": \"...\"}, {\"name\": \"%s\", \"line\": \"...\"}]<|im_end|>\n<|im_start|>assistant\n" % [speaker_desc, responder_desc, rel_ctx, situation, avoid, speaker.character_name, responder.character_name, direction, speaker.character_name, responder.character_name]
+
+
+static func build_micro_solo_prompt(speaker: Character, situation: String, recent_lines: Array[String] = [], purpose: String = "") -> String:
+	var char_desc := _describe_character_with_voice(speaker)
+	var avoid := ""
+	if not recent_lines.is_empty():
+		avoid = "\nAvoid repeating: %s" % "; ".join(recent_lines)
+	var direction := ""
+	if purpose != "":
+		direction = " " + purpose
+	return SYSTEM_PREFIX + "<|im_start|>user\n%s\nSituation: %s%s\nWrite one short spoken line (5-20 words).%s Respond with JSON: {\"line\": \"...\"}<|im_end|>\n<|im_start|>assistant\n" % [char_desc, situation, avoid, direction]
 
 
 static func build_event_prompt(template: Dictionary, cast: Dictionary, context: Dictionary) -> String:
@@ -30,7 +61,7 @@ static func build_event_prompt(template: Dictionary, cast: Dictionary, context: 
 	var cast_lines := ""
 	for idx: int in cast.keys():
 		var character: Character = cast[idx]
-		cast_lines += "Slot %d - %s\n" % [idx, _describe_character_full(character)]
+		cast_lines += "Slot %d - %s\n" % [idx, _describe_character_with_voice(character)]
 		var rel_lines := _describe_relationships_with_cast(character, cast, idx)
 		if rel_lines != "":
 			cast_lines += "  Relationships: %s\n" % rel_lines
@@ -48,8 +79,30 @@ static func micro_grammar() -> String:
 	return _json_object_grammar(["line"])
 
 
+static func micro_conversation_grammar() -> String:
+	return "root ::= \"[\" ws entry \",\" ws entry ws \"]\" ws\nentry ::= \"{\" ws \"\\\"name\\\"\" ws \":\" ws \"\\\"\" [^\"]+ \"\\\"\" ws \",\" ws \"\\\"line\\\"\" ws \":\" ws \"\\\"\" [^\"]+ \"\\\"\" ws \"}\" ws\nws ::= [ \\t\\n]*\n"
+
+
 static func event_grammar() -> String:
 	return ""
+
+
+static func _describe_character_with_voice(character: Character) -> String:
+	var parts: PackedStringArray = []
+	parts.append(_describe_identity(character))
+
+	var personality_and_voice := _describe_personality_with_voice(character)
+	parts.append(personality_and_voice)
+
+	var history := _describe_marks(character)
+	if history != "":
+		parts.append(history)
+
+	var bonds := _describe_notable_bonds(character)
+	if bonds != "":
+		parts.append(bonds)
+
+	return " ".join(parts)
 
 
 static func _describe_character_full(character: Character) -> String:
@@ -103,6 +156,47 @@ static func _describe_personality(character: Character) -> String:
 	if all_parts.is_empty():
 		return "Personality: unremarkable."
 	return "Personality: %s." % ", ".join(all_parts)
+
+
+static func _describe_personality_with_voice(character: Character) -> String:
+	var trait_names: PackedStringArray = []
+	var voice_parts: PackedStringArray = []
+
+	for axis: int in character.traits.keys():
+		var option: int = character.traits[axis]
+		var name := Personality.get_option_name(axis as Personality.Axis, option)
+		trait_names.append(name)
+		var direction: String = VOICE_DIRECTION.get(name, "")
+		if direction != "":
+			voice_parts.append(direction)
+
+	for axis: int in character.tendencies.keys():
+		if character.traits.has(axis):
+			continue
+		var option: int = character.tendencies[axis]
+		var name := Personality.get_option_name(axis as Personality.Axis, option)
+		var evidence_count := _get_evidence_count(character, axis, option)
+		if evidence_count >= 3:
+			trait_names.append("%s (strongly developing)" % name)
+		elif evidence_count >= 1:
+			trait_names.append("%s (developing)" % name)
+		else:
+			trait_names.append("%s (tendency)" % name)
+		if voice_parts.size() < 3:
+			var direction: String = VOICE_DIRECTION.get(name, "")
+			if direction != "":
+				voice_parts.append(direction)
+
+	var result := ""
+	if trait_names.is_empty():
+		result = "Personality: unremarkable."
+	else:
+		result = "Personality: %s." % ", ".join(trait_names)
+
+	if not voice_parts.is_empty():
+		result += " Voice: %s." % "; ".join(voice_parts)
+
+	return result
 
 
 static func _describe_marks(character: Character) -> String:
