@@ -14,8 +14,106 @@ env:
   GODOT_VERSION: "4.6"
 
 jobs:
+  build-llm:
+    name: Build LLM Extension (${{ matrix.platform }})
+    strategy:
+      matrix:
+        include:
+          - platform: macos
+            os: macos-14
+            cmake_flags: -DGGML_METAL=ON
+          - platform: linux
+            os: ubuntu-24.04
+            cmake_flags: -DGGML_VULKAN=ON
+          - platform: windows
+            os: windows-2022
+            cmake_flags: -DGGML_VULKAN=ON
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Install Vulkan SDK (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-noble.list https://packages.lunarg.com/vulkan/1.4.304/lunarg-vulkan-noble.list
+          sudo apt-get update
+          sudo apt-get install -y vulkan-sdk patchelf
+
+      - name: Install Vulkan SDK (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          $url = "https://sdk.lunarg.com/sdk/download/1.4.304.0/windows/VulkanSDK-1.4.304.0-Installer.exe"
+          Invoke-WebRequest -Uri $url -OutFile VulkanSDK.exe
+          Start-Process -FilePath .\VulkanSDK.exe -Args "--accept-licenses --default-answer --confirm-command install" -Wait
+          echo "VULKAN_SDK=C:\VulkanSDK\1.4.304.0" >> $env:GITHUB_ENV
+          echo "C:\VulkanSDK\1.4.304.0\Bin" >> $env:GITHUB_PATH
+
+      - name: Configure CMake
+        working-directory: gdextension
+        run: cmake -B build ${{ matrix.cmake_flags }} -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        working-directory: gdextension
+        run: cmake --build build --config Release --parallel
+
+      - name: Collect binaries (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          mkdir -p dist
+          cp gdextension/build/libdrpg_llm.macos.template_release.universal.dylib dist/
+          cp gdextension/build/libdrpg_llm.macos.template_release.universal.dylib dist/libdrpg_llm.macos.template_debug.universal.dylib
+          install_name_tool -id @rpath/libdrpg_llm.macos.template_debug.universal.dylib dist/libdrpg_llm.macos.template_debug.universal.dylib
+          for lib in libllama.0.dylib libggml.0.dylib libggml-base.0.dylib libggml-cpu.0.dylib libggml-metal.0.dylib libggml-blas.0.dylib; do
+            cp -L gdextension/build/bin/$lib dist/
+          done
+          for f in dist/*.dylib; do
+            install_name_tool -add_rpath @loader_path "$f" 2>/dev/null || true
+            codesign --force --sign - "$f"
+          done
+
+      - name: Collect binaries (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          mkdir -p dist
+          cp gdextension/build/libdrpg_llm.linux.template_release.x86_64.so dist/
+          cp dist/libdrpg_llm.linux.template_release.x86_64.so dist/libdrpg_llm.linux.template_debug.x86_64.so
+          for lib in libllama.so libggml.so libggml-base.so libggml-cpu.so libggml-vulkan.so; do
+            found=$(find gdextension/build/bin -name "$lib*" -type f -o -name "$lib*" -type l | head -1)
+            if [ -n "$found" ]; then
+              cp -L "$found" dist/$lib
+            fi
+          done
+          for f in dist/*.so; do
+            patchelf --set-rpath '$ORIGIN' "$f" 2>/dev/null || true
+          done
+
+      - name: Collect binaries (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          $buildBin = "gdextension/build/bin/Release"
+          if (-not (Test-Path $buildBin)) { $buildBin = "gdextension/build/bin" }
+          Copy-Item "$buildBin/drpg_llm.windows.template_release.x86_64.dll" dist/
+          Copy-Item dist/drpg_llm.windows.template_release.x86_64.dll dist/drpg_llm.windows.template_debug.x86_64.dll
+          Get-ChildItem "$buildBin" -Filter "*.dll" | Where-Object { $_.Name -match "^(llama|ggml)" } | ForEach-Object {
+            Copy-Item $_.FullName dist/
+          }
+
+      - name: Upload LLM binaries
+        uses: actions/upload-artifact@v5
+        with:
+          name: llm-${{ matrix.platform }}
+          path: dist/
+          retention-days: 1
+
   export-windows:
     name: Export Windows
+    needs: build-llm
     runs-on: ubuntu-24.04
     container:
       image: barichello/godot-ci:4.6
@@ -24,6 +122,12 @@ jobs:
         uses: actions/checkout@v5
         with:
           lfs: true
+
+      - name: Download LLM binaries
+        uses: actions/download-artifact@v5
+        with:
+          name: llm-windows
+          path: addons/drpg_llm/bin/
 
       - name: Setup export templates
         run: |
@@ -55,6 +159,7 @@ jobs:
 
   export-macos:
     name: Export macOS
+    needs: build-llm
     runs-on: ubuntu-24.04
     container:
       image: barichello/godot-ci:4.6
@@ -63,6 +168,12 @@ jobs:
         uses: actions/checkout@v5
         with:
           lfs: true
+
+      - name: Download LLM binaries
+        uses: actions/download-artifact@v5
+        with:
+          name: llm-macos
+          path: addons/drpg_llm/bin/
 
       - name: Setup export templates
         run: |
@@ -94,6 +205,7 @@ jobs:
 
   export-linux:
     name: Export Linux
+    needs: build-llm
     runs-on: ubuntu-24.04
     container:
       image: barichello/godot-ci:4.6
@@ -102,6 +214,12 @@ jobs:
         uses: actions/checkout@v5
         with:
           lfs: true
+
+      - name: Download LLM binaries
+        uses: actions/download-artifact@v5
+        with:
+          name: llm-linux
+          path: addons/drpg_llm/bin/
 
       - name: Setup export templates
         run: |

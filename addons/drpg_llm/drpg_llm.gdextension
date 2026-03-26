@@ -27,3 +27,31 @@ macos.release = {
     "res://addons/drpg_llm/bin/libggml-metal.0.dylib": "",
     "res://addons/drpg_llm/bin/libggml-blas.0.dylib": "",
 }
+windows.debug.x86_64 = {
+    "res://addons/drpg_llm/bin/llama.dll": "",
+    "res://addons/drpg_llm/bin/ggml.dll": "",
+    "res://addons/drpg_llm/bin/ggml-base.dll": "",
+    "res://addons/drpg_llm/bin/ggml-cpu.dll": "",
+    "res://addons/drpg_llm/bin/ggml-vulkan.dll": "",
+}
+windows.release.x86_64 = {
+    "res://addons/drpg_llm/bin/llama.dll": "",
+    "res://addons/drpg_llm/bin/ggml.dll": "",
+    "res://addons/drpg_llm/bin/ggml-base.dll": "",
+    "res://addons/drpg_llm/bin/ggml-cpu.dll": "",
+    "res://addons/drpg_llm/bin/ggml-vulkan.dll": "",
+}
+linux.debug.x86_64 = {
+    "res://addons/drpg_llm/bin/libllama.so": "",
+    "res://addons/drpg_llm/bin/libggml.so": "",
+    "res://addons/drpg_llm/bin/libggml-base.so": "",
+    "res://addons/drpg_llm/bin/libggml-cpu.so": "",
+    "res://addons/drpg_llm/bin/libggml-vulkan.so": "",
+}
+linux.release.x86_64 = {
+    "res://addons/drpg_llm/bin/libllama.so": "",
+    "res://addons/drpg_llm/bin/libggml.so": "",
+    "res://addons/drpg_llm/bin/libggml-base.so": "",
+    "res://addons/drpg_llm/bin/libggml-cpu.so": "",
+    "res://addons/drpg_llm/bin/libggml-vulkan.so": "",
+}

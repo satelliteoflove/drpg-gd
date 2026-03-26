@@ -38,7 +38,11 @@ target_link_libraries(drpg_llm PRIVATE
     llama
 )
 
-set_source_files_properties(src/llm_inference.cpp PROPERTIES COMPILE_OPTIONS -fexceptions)
+if(MSVC)
+    set_source_files_properties(src/llm_inference.cpp PROPERTIES COMPILE_OPTIONS /EHsc)
+else()
+    set_source_files_properties(src/llm_inference.cpp PROPERTIES COMPILE_OPTIONS -fexceptions)
+endif()
 
 set_target_properties(drpg_llm PROPERTIES
     PREFIX "lib"
