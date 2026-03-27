@@ -55,6 +55,14 @@ jobs:
           echo "VULKAN_SDK=$sdkPath" >> $env:GITHUB_ENV
           echo "$sdkPath\Bin" >> $env:GITHUB_PATH
 
+      - name: Cache CMake build
+        uses: actions/cache@v4
+        with:
+          path: gdextension/build
+          key: llm-build-${{ matrix.platform }}-${{ hashFiles('gdextension/src/**', 'gdextension/CMakeLists.txt', 'gdextension/godot-cpp', 'gdextension/llama.cpp') }}
+          restore-keys: |
+            llm-build-${{ matrix.platform }}-
+
       - name: Configure CMake
         working-directory: gdextension
         run: cmake -B build ${{ matrix.cmake_flags }} -DCMAKE_BUILD_TYPE=Release
