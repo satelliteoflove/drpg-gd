@@ -815,7 +815,8 @@ func _on_party_member_died_in_combat(character: Resource) -> void:
 	var line := MicroEventSystem._get_fallback("ally_fallen", reactor)
 	if line == "":
 		line = "No!"
-	message_log.append_text("[color=cyan]%s:[/color] \"%s\"\n" % [reactor_name, line])
+	var reaction_text := "[color=cyan]%s:[/color] \"%s\"\n" % [reactor_name, line]
+	message_log.call_deferred("append_text", reaction_text)
 
 
 func _on_combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Array[Item]) -> void:
