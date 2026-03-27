@@ -110,7 +110,8 @@ jobs:
           if (-not $ext) { Write-Error "Extension DLL not found"; exit 1 }
           Copy-Item $ext.FullName dist/
           Copy-Item $ext.FullName dist/drpg_llm.windows.template_debug.x86_64.dll
-          Get-ChildItem $ext.Directory -Filter "*.dll" | Where-Object { $_.Name -match "^(llama|ggml)" } | ForEach-Object {
+          Get-ChildItem -Path gdextension/build -Recurse -Filter "*.dll" | Where-Object { $_.Name -match "^(llama|ggml)" } | ForEach-Object {
+            Write-Host "  Copying dep: $($_.Name)"
             Copy-Item $_.FullName dist/
           }
 
