@@ -9,7 +9,8 @@ signal download_completed
 signal download_failed(reason: String)
 signal setup_finished
 
-const DEFAULT_N_PREDICT := 200
+const DEFAULT_N_PREDICT := 100
+const GENERATE_TIMEOUT_SEC := 8.0
 
 const MODEL_NAME := "Qwen3.5-4B-Q8_0"
 const MODEL_FILENAME := "Qwen3.5-4B-Q8_0.gguf"
@@ -33,6 +34,7 @@ var _setup_complete := false
 var _pending_callbacks: Array[Callable] = []
 var _request_queue: Array[Dictionary] = []
 var _warming_up := false
+var _generate_timer: Timer = null
 
 
 func _ready() -> void:
@@ -47,6 +49,11 @@ func _ready() -> void:
 	_llm.generate_completed.connect(_on_generate_completed)
 	_llm.model_loaded.connect(_on_model_loaded)
 	add_child(_llm)
+
+	_generate_timer = Timer.new()
+	_generate_timer.one_shot = true
+	_generate_timer.timeout.connect(_on_generate_timeout)
+	add_child(_generate_timer)
 
 	var overlay := DOWNLOAD_OVERLAY_SCENE.instantiate()
 	add_child(overlay)
@@ -115,6 +122,7 @@ func generate(prompt: String, grammar: String, callback: Callable) -> void:
 		return
 
 	_pending_callbacks.append(callback)
+	_generate_timer.start(GENERATE_TIMEOUT_SEC)
 	_llm.generate_async(prompt, grammar)
 
 
@@ -131,6 +139,7 @@ func _process_queue() -> void:
 		return
 	var req: Dictionary = _request_queue.pop_front()
 	_pending_callbacks.append(req.callback)
+	_generate_timer.start(GENERATE_TIMEOUT_SEC)
 	_llm.generate_async(req.prompt, req.grammar)
 
 
@@ -164,6 +173,8 @@ func _warmup() -> void:
 
 
 func _on_generate_completed(text: String) -> void:
+	_generate_timer.stop()
+
 	if _warming_up:
 		_warming_up = false
 		print("[LLMManager] Warmup complete")
@@ -178,6 +189,14 @@ func _on_generate_completed(text: String) -> void:
 		var cb: Callable = _pending_callbacks.pop_front()
 		cb.call(text)
 
+	_process_queue()
+
+
+func _on_generate_timeout() -> void:
+	push_warning("[LLMManager] Generation timed out after %ds - dialogue skipped" % int(GENERATE_TIMEOUT_SEC))
+	if not _pending_callbacks.is_empty():
+		var cb: Callable = _pending_callbacks.pop_front()
+		cb.call("")
 	_process_queue()
 
 
