@@ -8,6 +8,7 @@
 
 #include <ggml.h>
 
+#include <chrono>
 #include <cstring>
 #include <vector>
 
@@ -95,6 +96,7 @@ void LLMInference::_bind_methods() {
     ClassDB::bind_method(D_METHOD("is_loading"), &LLMInference::is_loading);
     ClassDB::bind_method(D_METHOD("unload_model"), &LLMInference::unload_model);
     ClassDB::bind_method(D_METHOD("generate_async", "prompt", "grammar"), &LLMInference::generate_async);
+    ClassDB::bind_method(D_METHOD("cancel_generate"), &LLMInference::cancel_generate);
     ClassDB::bind_method(D_METHOD("is_running"), &LLMInference::is_running);
     ClassDB::bind_method(D_METHOD("is_model_loaded"), &LLMInference::is_model_loaded);
 
@@ -176,6 +178,10 @@ void LLMInference::unload_model() {
     }
 }
 
+void LLMInference::cancel_generate() {
+    cancel_requested.store(true);
+}
+
 bool LLMInference::is_running() const {
     return running.load();
 }
@@ -211,6 +217,9 @@ void LLMInference::generate_async(const String &prompt, const String &grammar) {
 
 void LLMInference::_generate_thread(std::string prompt, std::string grammar) {
     std::string result;
+    char stats[256] = {0};
+
+    auto t_start = std::chrono::high_resolution_clock::now();
 
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = n_ctx;
@@ -225,6 +234,8 @@ void LLMInference::_generate_thread(std::string prompt, std::string grammar) {
         return;
     }
 
+    auto t_ctx = std::chrono::high_resolution_clock::now();
+
     try {
 
     int n_prompt_tokens = -llama_tokenize(vocab, prompt.c_str(), prompt.size(), nullptr, 0, true, true);
@@ -236,6 +247,18 @@ void LLMInference::_generate_thread(std::string prompt, std::string grammar) {
 
     if (presence_penalty != 0.0f) {
         llama_sampler_chain_add(sampler, llama_sampler_init_penalties(64, 1.0f, 0.0f, presence_penalty));
+    }
+
+    // Ban the <think> token to prevent the model from wasting tokens on reasoning
+    {
+        const char *think_str = "<think>";
+        llama_token buf[4];
+        int n = llama_tokenize(vocab, think_str, strlen(think_str), buf, 4, false, true);
+        if (n == 1) {
+            llama_logit_bias bias = { buf[0], -INFINITY };
+            llama_sampler_chain_add(sampler, llama_sampler_init_logit_bias(
+                llama_vocab_n_tokens(vocab), 1, &bias));
+        }
     }
 
     if (!grammar.empty()) {
@@ -266,14 +289,18 @@ void LLMInference::_generate_thread(std::string prompt, std::string grammar) {
         return;
     }
 
+    auto t_prompt = std::chrono::high_resolution_clock::now();
+
     llama_token eos = llama_vocab_eos(vocab);
     int generated = 0;
+    const char *stop_reason = "n_predict";
 
     while (generated < n_predict && !cancel_requested.load()) {
         llama_token new_token = llama_sampler_sample(sampler, ctx, -1);
         llama_sampler_accept(sampler, new_token);
 
         if (new_token == eos) {
+            stop_reason = "eos";
             break;
         }
 
@@ -281,15 +308,38 @@ void LLMInference::_generate_thread(std::string prompt, std::string grammar) {
         int piece_len = llama_token_to_piece(vocab, new_token, piece_buf, sizeof(piece_buf), 0, false);
         if (piece_len > 0) {
             result.append(piece_buf, piece_len);
+            // Early stop when JSON array/object closes
+            if (piece_len == 1 && (piece_buf[0] == ']' || piece_buf[0] == '}')) {
+                stop_reason = "json_close";
+                break;
+            }
         }
 
         batch = llama_batch_get_one(&new_token, 1);
         if (llama_decode(ctx, batch) != 0) {
+            stop_reason = "decode_error";
             break;
         }
 
         generated++;
     }
+
+    if (cancel_requested.load()) {
+        stop_reason = "cancelled";
+    }
+
+    auto t_done = std::chrono::high_resolution_clock::now();
+
+    auto ms_ctx = std::chrono::duration_cast<std::chrono::milliseconds>(t_ctx - t_start).count();
+    auto ms_prompt = std::chrono::duration_cast<std::chrono::milliseconds>(t_prompt - t_ctx).count();
+    auto ms_gen = std::chrono::duration_cast<std::chrono::milliseconds>(t_done - t_prompt).count();
+    float tok_per_sec = generated > 0 && ms_gen > 0 ? (generated * 1000.0f / ms_gen) : 0.0f;
+
+    snprintf(stats, sizeof(stats),
+        "[LLMInference] ctx=%ldms prompt_eval=%ldms (%d tok, %.0f t/s) gen=%ldms (%d tok, %.1f t/s) stop=%s",
+        (long)ms_ctx, (long)ms_prompt, n_prompt_tokens,
+        n_prompt_tokens > 0 && ms_prompt > 0 ? (n_prompt_tokens * 1000.0f / ms_prompt) : 0.0f,
+        (long)ms_gen, generated, tok_per_sec, stop_reason);
 
     llama_sampler_free(sampler);
     llama_free(ctx);
@@ -302,6 +352,7 @@ void LLMInference::_generate_thread(std::string prompt, std::string grammar) {
     {
         std::lock_guard<std::mutex> lock(result_mutex);
         pending_result = result;
+        pending_stats = stats;
     }
     result_ready.store(true);
     running.store(false);
@@ -321,10 +372,16 @@ void LLMInference::_process(double delta) {
     if (result_ready.load()) {
         result_ready.store(false);
         std::string result_copy;
+        std::string stats_copy;
         {
             std::lock_guard<std::mutex> lock(result_mutex);
             result_copy = pending_result;
+            stats_copy = pending_stats;
             pending_result.clear();
+            pending_stats.clear();
+        }
+        if (!stats_copy.empty()) {
+            UtilityFunctions::print(stats_copy.c_str());
         }
         emit_signal("generate_completed", String(result_copy.c_str()));
     }

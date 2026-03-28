@@ -48,6 +48,9 @@ var _highlighted_panels: Array[PanelContainer] = []
 var _display_dirty: bool = false
 var _effect_cache: Dictionary = {}
 var _turn_order_entries: Array[PanelContainer] = []
+var _monster_texture_cache: Dictionary = {}
+var _silhouette_texture: Texture2D = null
+var _grid_target_buttons: Array[Button] = []
 
 var action_nav: MenuNavigator = null
 var item_nav: MenuNavigator = null
@@ -91,24 +94,26 @@ class EnemyUI:
 	var status_label: Label
 	var status_icons_hbox: HBoxContainer
 
-@onready var enemy_grid: GridContainer = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/EnemyGrid
-@onready var row_labels: VBoxContainer = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels
-@onready var back_label: Label = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/BackLabel
-@onready var middle_label: Label = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/MiddleLabel
-@onready var front_label: Label = $MainLayout/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/FrontLabel
-@onready var party_front_row: HBoxContainer = $MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/FrontRow
-@onready var party_back_row: HBoxContainer = $MainLayout/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/BackRow
-@onready var turn_order_hbox: HBoxContainer = $MainLayout/TurnOrderBar/TurnOrderMargin/TurnOrderHBox
-@onready var message_log: RichTextLabel = $MainLayout/MessageSection/MessageMargin/MessageLog
-@onready var active_char_label: Label = $MainLayout/ActionSection/ActionVBox/ActiveCharLabel
+@onready var portrait_texture: TextureRect = $MainLayout/PortraitSection/PortraitMargin/PortraitVBox/PortraitTexture
+@onready var portrait_name: Label = $MainLayout/PortraitSection/PortraitMargin/PortraitVBox/PortraitName
+@onready var enemy_grid: GridContainer = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/EnemyGrid
+@onready var row_labels: VBoxContainer = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels
+@onready var back_label: Label = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/BackLabel
+@onready var middle_label: Label = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/MiddleLabel
+@onready var front_label: Label = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/FrontLabel
+@onready var party_front_row: HBoxContainer = $MainLayout/RightColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/FrontRow
+@onready var party_back_row: HBoxContainer = $MainLayout/RightColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/BackRow
+@onready var turn_order_hbox: HBoxContainer = $MainLayout/RightColumn/TurnOrderBar/TurnOrderMargin/TurnOrderHBox
+@onready var message_log: RichTextLabel = $MainLayout/RightColumn/MessageSection/MessageMargin/MessageLog
+@onready var active_char_label: Label = $MainLayout/RightColumn/ActionSection/ActionVBox/ActiveCharLabel
 
-@onready var attack_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/AttackButton
-@onready var defend_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/DefendButton
-@onready var spell_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/SpellButton
-@onready var dispel_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/DispelButton
-@onready var breath_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/BreathButton
-@onready var item_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/ItemButton
-@onready var escape_button: Button = $MainLayout/ActionSection/ActionVBox/ActionHBox/EscapeButton
+@onready var attack_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/AttackButton
+@onready var defend_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/DefendButton
+@onready var spell_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/SpellButton
+@onready var dispel_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/DispelButton
+@onready var breath_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/BreathButton
+@onready var item_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/ItemButton
+@onready var escape_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/EscapeButton
 
 @onready var modal_overlay: ColorRect = $ModalOverlay
 @onready var item_modal: PanelContainer = $ItemModal
@@ -142,6 +147,9 @@ func _ready() -> void:
 	spell_cancel_button.pressed.connect(_on_cancel_spell)
 	target_cancel_button.pressed.connect(_on_cancel_target)
 	enemy_target_cancel_button.pressed.connect(_on_cancel_enemy_target)
+
+	_style_modal(spell_modal)
+	_style_modal(item_modal)
 
 	_setup_action_nav()
 	_setup_spell_level_tabs()
@@ -306,6 +314,25 @@ func _build_enemy_display() -> void:
 			enemy_grid.add_child(cell)
 
 
+func _style_modal(modal: PanelContainer) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.10, 0.09, 0.13, 1.0)
+	style.border_color = Color(0.55, 0.50, 0.65, 1.0)
+	style.border_width_left = 3
+	style.border_width_top = 3
+	style.border_width_right = 3
+	style.border_width_bottom = 3
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_left = 6
+	style.corner_radius_bottom_right = 6
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	modal.add_theme_stylebox_override("panel", style)
+
+
 func _style_bar(bar: ProgressBar, fill_color: Color) -> void:
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = fill_color.darkened(0.7)
@@ -321,6 +348,34 @@ func _style_bar(bar: ProgressBar, fill_color: Color) -> void:
 	fill.corner_radius_bottom_left = 2
 	fill.corner_radius_bottom_right = 2
 	bar.add_theme_stylebox_override("fill", fill)
+
+
+func _get_monster_texture(monster_name: String) -> Texture2D:
+	if _monster_texture_cache.has(monster_name):
+		return _monster_texture_cache[monster_name]
+	var path := "res://textures/monsters/%s.png" % monster_name.to_lower().replace(" ", "_")
+	if ResourceLoader.exists(path):
+		var tex: Texture2D = load(path)
+		_monster_texture_cache[monster_name] = tex
+		return tex
+	if _silhouette_texture != null:
+		_monster_texture_cache[monster_name] = _silhouette_texture
+		return _silhouette_texture
+	var fallback_path := "res://textures/monsters/goblin.png"
+	if not ResourceLoader.exists(fallback_path):
+		_monster_texture_cache[monster_name] = null
+		return null
+	var base_tex: Texture2D = load(fallback_path)
+	var img := base_tex.get_image()
+	img = img.duplicate()
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var pixel := img.get_pixel(x, y)
+			if pixel.a > 0.0:
+				img.set_pixel(x, y, Color(0.15, 0.12, 0.20, pixel.a * 0.8))
+	_silhouette_texture = ImageTexture.create_from_image(img)
+	_monster_texture_cache[monster_name] = _silhouette_texture
+	return _silhouette_texture
 
 
 func _create_enemy_panel(enemy: Monster) -> EnemyUI:
@@ -475,6 +530,7 @@ func _update_display() -> void:
 	_update_enemy_display()
 	_update_party_stats()
 	_update_turn_order()
+	_update_portrait_for_active_combatant()
 
 
 func _schedule_display_update() -> void:
@@ -540,6 +596,43 @@ func _update_row_labels() -> void:
 			row_labels_list[i].add_theme_color_override("font_color", UIColors.TEXT_STATUS)
 		else:
 			row_labels_list[i].remove_theme_color_override("font_color")
+
+
+func _update_portrait_for_enemy(enemy: Monster) -> void:
+	if enemy == null:
+		portrait_texture.texture = null
+		portrait_name.text = ""
+		return
+	portrait_texture.texture = _get_monster_texture(enemy.monster_name)
+	portrait_name.text = enemy.monster_name
+	if enemy.is_dead:
+		portrait_texture.modulate = UIColors.DEAD_TINT
+	else:
+		portrait_texture.modulate = Color.WHITE
+
+
+func _update_portrait_for_character(character: Character) -> void:
+	if character == null:
+		portrait_texture.texture = null
+		portrait_name.text = ""
+		return
+	portrait_texture.texture = null
+	portrait_name.text = character.character_name
+
+
+func _update_portrait_for_active_combatant() -> void:
+	if combat_system == null:
+		return
+	var combatant_id := combat_system.current_combatant_id
+	if combatant_id.is_empty():
+		return
+	for enemy in combat_system.get_enemies():
+		if enemy.combat_id == combatant_id:
+			_update_portrait_for_enemy(enemy)
+			return
+	var character := _get_character_by_id(combatant_id)
+	if character:
+		_update_portrait_for_character(character)
 
 
 func _update_party_stats() -> void:
@@ -1089,38 +1182,47 @@ func _on_target_selection_requested(reachable_enemies: Array[Monster]) -> void:
 	_close_all_modals()
 	_set_actions_enabled(false)
 	_populate_enemy_target_list(reachable_enemies)
-	modal_overlay.visible = true
-	enemy_target_modal.visible = true
 
 	if enemy_target_nav and not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
 
 
 func _populate_enemy_target_list(reachable_enemies: Array[Monster]) -> void:
-	for child in enemy_target_list.get_children():
-		child.queue_free()
+	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
 	for enemy in reachable_enemies:
+		if not enemy_panels.has(enemy.combat_id):
+			continue
+		var ui: EnemyUI = enemy_panels[enemy.combat_id]
+		var cell: PanelContainer = ui.panel.get_parent()
 		var btn := Button.new()
-		var row_names: Array[String] = ["Front", "Middle", "Back"]
-		var row_label: String = row_names[enemy.get_row()]
-		btn.text = "%s (%s Row) - %d/%d HP" % [
-			enemy.monster_name,
-			row_label,
-			enemy.current_hp,
-			enemy.max_hp
-		]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.custom_minimum_size = Vector2(0, 32)
+		btn.text = ""
+		btn.flat = true
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		var transparent := StyleBoxFlat.new()
+		transparent.bg_color = Color.TRANSPARENT
+		btn.add_theme_stylebox_override("normal", transparent)
+		btn.add_theme_stylebox_override("hover", transparent)
+		btn.add_theme_stylebox_override("pressed", transparent)
+		btn.add_theme_stylebox_override("focus", transparent)
+		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 		btn.pressed.connect(_on_enemy_target_selected.bind(enemy))
 		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
-		enemy_target_list.add_child(btn)
+		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
+		_grid_target_buttons.append(btn)
 
 	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
+
+
+func _clear_grid_target_buttons() -> void:
+	for btn in _grid_target_buttons:
+		if is_instance_valid(btn):
+			btn.queue_free()
+	_grid_target_buttons.clear()
 
 
 func _on_enemy_target_selected(enemy: Monster) -> void:
@@ -1139,7 +1241,6 @@ func _on_cancel_enemy_target() -> void:
 		_set_actions_enabled(true)
 	elif spell_target_mode in ["enemy", "splash", "row", "column"]:
 		_close_all_modals()
-		modal_overlay.visible = true
 		spell_modal.visible = true
 		selected_spell = null
 		spell_target_mode = ""
@@ -1195,7 +1296,6 @@ func _on_spell_pressed() -> void:
 
 	_close_all_modals()
 	_set_actions_enabled(false)
-	modal_overlay.visible = true
 	spell_modal.visible = true
 
 	if spell_nav and not spell_buttons.is_empty():
@@ -1222,34 +1322,36 @@ func _on_dispel_pressed() -> void:
 
 	_close_all_modals()
 	_set_actions_enabled(false)
-	for child in enemy_target_list.get_children():
-		child.queue_free()
+	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
 	for enemy in undead_targets:
+		if not enemy_panels.has(enemy.combat_id):
+			continue
+		var ui: EnemyUI = enemy_panels[enemy.combat_id]
+		var cell: PanelContainer = ui.panel.get_parent()
 		var btn := Button.new()
-		var row_names: Array[String] = ["Front", "Middle", "Back"]
-		var row_label: String = row_names[enemy.get_row()]
-		var chance := int(DispelUndead.calculate_success_chance(character.level, enemy.level) * 100)
-		btn.text = "%s (%s Row) - %d%% chance" % [
-			enemy.monster_name,
-			row_label,
-			chance
-		]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.custom_minimum_size = Vector2(0, 32)
+		btn.text = ""
+		btn.flat = true
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		var transparent := StyleBoxFlat.new()
+		transparent.bg_color = Color.TRANSPARENT
+		btn.add_theme_stylebox_override("normal", transparent)
+		btn.add_theme_stylebox_override("hover", transparent)
+		btn.add_theme_stylebox_override("pressed", transparent)
+		btn.add_theme_stylebox_override("focus", transparent)
+		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 		btn.pressed.connect(_on_dispel_target_selected.bind(enemy))
 		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
-		enemy_target_list.add_child(btn)
+		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
+		_grid_target_buttons.append(btn)
 
 	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
 
 	dispel_target_mode = true
-	modal_overlay.visible = true
-	enemy_target_modal.visible = true
 
 
 func _on_dispel_target_selected(enemy: Monster) -> void:
@@ -1273,29 +1375,36 @@ func _on_breath_pressed() -> void:
 	var living := combat_system.get_living_enemies()
 	_close_all_modals()
 	_set_actions_enabled(false)
-	for child in enemy_target_list.get_children():
-		child.queue_free()
+	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
 	for enemy in living:
+		if not enemy_panels.has(enemy.combat_id):
+			continue
+		var ui: EnemyUI = enemy_panels[enemy.combat_id]
+		var cell: PanelContainer = ui.panel.get_parent()
 		var btn := Button.new()
-		var row_names: Array[String] = ["Front", "Middle", "Back"]
-		var row_label: String = row_names[enemy.get_row()]
-		btn.text = "%s (%s Row) - %d HP" % [enemy.monster_name, row_label, enemy.current_hp]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.custom_minimum_size = Vector2(0, 32)
+		btn.text = ""
+		btn.flat = true
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		var transparent := StyleBoxFlat.new()
+		transparent.bg_color = Color.TRANSPARENT
+		btn.add_theme_stylebox_override("normal", transparent)
+		btn.add_theme_stylebox_override("hover", transparent)
+		btn.add_theme_stylebox_override("pressed", transparent)
+		btn.add_theme_stylebox_override("focus", transparent)
+		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 		btn.pressed.connect(_on_breath_target_selected.bind(enemy))
 		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
-		enemy_target_list.add_child(btn)
+		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
+		_grid_target_buttons.append(btn)
 
 	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
 
 	breath_target_mode = true
-	modal_overlay.visible = true
-	enemy_target_modal.visible = true
 
 
 func _on_breath_target_selected(enemy: Monster) -> void:
@@ -1315,7 +1424,6 @@ func _on_item_pressed() -> void:
 
 	_close_all_modals()
 	_set_actions_enabled(false)
-	modal_overlay.visible = true
 	item_modal.visible = true
 
 	if item_nav and not item_buttons.is_empty():
@@ -1637,6 +1745,7 @@ func _populate_spell_ally_target_list(dead_only: bool) -> void:
 
 
 func _populate_spell_enemy_target_list() -> void:
+	modal_overlay.visible = false
 	var enemies := combat_system.get_living_enemies()
 
 	if enemies.is_empty():
@@ -1646,32 +1755,34 @@ func _populate_spell_enemy_target_list() -> void:
 		selected_spell = null
 		return
 
-	for child in enemy_target_list.get_children():
-		child.queue_free()
+	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
 	for enemy in enemies:
+		if not enemy_panels.has(enemy.combat_id):
+			continue
+		var ui: EnemyUI = enemy_panels[enemy.combat_id]
+		var cell: PanelContainer = ui.panel.get_parent()
 		var btn := Button.new()
-		var row_names: Array[String] = ["Front", "Middle", "Back"]
-		var row_label: String = row_names[enemy.get_row()]
-		btn.text = "%s (%s Row) - %d/%d HP" % [
-			enemy.monster_name,
-			row_label,
-			enemy.current_hp,
-			enemy.max_hp
-		]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.custom_minimum_size = Vector2(0, 32)
+		btn.text = ""
+		btn.flat = true
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		var transparent := StyleBoxFlat.new()
+		transparent.bg_color = Color.TRANSPARENT
+		btn.add_theme_stylebox_override("normal", transparent)
+		btn.add_theme_stylebox_override("hover", transparent)
+		btn.add_theme_stylebox_override("pressed", transparent)
+		btn.add_theme_stylebox_override("focus", transparent)
+		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 		btn.pressed.connect(_on_spell_enemy_target_selected.bind(enemy))
 		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
-		enemy_target_list.add_child(btn)
+		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
+		_grid_target_buttons.append(btn)
 
 	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
-
-	enemy_target_modal.visible = true
 
 
 func _on_spell_ally_target_selected(character: Character) -> void:
@@ -1690,6 +1801,7 @@ func _on_spell_enemy_target_selected(enemy: Monster) -> void:
 
 
 func _populate_spell_splash_target_list() -> void:
+	modal_overlay.visible = false
 	var enemies := combat_system.get_living_enemies()
 
 	if enemies.is_empty():
@@ -1699,35 +1811,39 @@ func _populate_spell_splash_target_list() -> void:
 		selected_spell = null
 		return
 
-	for child in enemy_target_list.get_children():
-		child.queue_free()
+	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
 	for enemy in enemies:
+		if not enemy_panels.has(enemy.combat_id):
+			continue
+		var ui: EnemyUI = enemy_panels[enemy.combat_id]
+		var cell: PanelContainer = ui.panel.get_parent()
 		var btn := Button.new()
+		btn.text = ""
+		btn.flat = true
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		var transparent := StyleBoxFlat.new()
+		transparent.bg_color = Color.TRANSPARENT
+		btn.add_theme_stylebox_override("normal", transparent)
+		btn.add_theme_stylebox_override("hover", transparent)
+		btn.add_theme_stylebox_override("pressed", transparent)
+		btn.add_theme_stylebox_override("focus", transparent)
+		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 		var splash_targets := combat_system.get_splash_targets(enemy)
-		var row_names: Array[String] = ["Front", "Middle", "Back"]
-		var row_label: String = row_names[enemy.get_row()]
-		btn.text = "%s (%s) - hits %d enemies" % [
-			enemy.monster_name,
-			row_label,
-			splash_targets.size()
-		]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.custom_minimum_size = Vector2(0, 32)
 		btn.pressed.connect(_on_spell_enemy_target_selected.bind(enemy))
 		btn.focus_entered.connect(_highlight_enemy_targets.bind(splash_targets))
-		enemy_target_list.add_child(btn)
+		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
+		_grid_target_buttons.append(btn)
 
 	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
 
-	enemy_target_modal.visible = true
-
 
 func _populate_spell_row_target_list() -> void:
+	modal_overlay.visible = false
 	var available_rows := combat_system.get_available_rows()
 
 	if available_rows.is_empty():
@@ -1737,28 +1853,38 @@ func _populate_spell_row_target_list() -> void:
 		selected_spell = null
 		return
 
-	for child in enemy_target_list.get_children():
-		child.queue_free()
+	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
-	var row_names: Array[String] = ["Front Row", "Middle Row", "Back Row"]
-
 	for row in available_rows:
-		var btn := Button.new()
 		var row_targets := combat_system.get_row_targets(row)
-		btn.text = "%s - %d enemies" % [row_names[row], row_targets.size()]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.custom_minimum_size = Vector2(0, 32)
+		if row_targets.is_empty():
+			continue
+		var first_enemy: Monster = row_targets[0]
+		if not enemy_panels.has(first_enemy.combat_id):
+			continue
+		var ui: EnemyUI = enemy_panels[first_enemy.combat_id]
+		var cell: PanelContainer = ui.panel.get_parent()
+		var btn := Button.new()
+		btn.text = ""
+		btn.flat = true
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		var transparent := StyleBoxFlat.new()
+		transparent.bg_color = Color.TRANSPARENT
+		btn.add_theme_stylebox_override("normal", transparent)
+		btn.add_theme_stylebox_override("hover", transparent)
+		btn.add_theme_stylebox_override("pressed", transparent)
+		btn.add_theme_stylebox_override("focus", transparent)
+		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 		btn.pressed.connect(_on_spell_row_selected.bind(row))
 		btn.focus_entered.connect(_highlight_enemy_targets.bind(row_targets))
-		enemy_target_list.add_child(btn)
+		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
+		_grid_target_buttons.append(btn)
 
 	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
-
-	enemy_target_modal.visible = true
 
 
 func _on_spell_row_selected(row: int) -> void:
@@ -1770,6 +1896,7 @@ func _on_spell_row_selected(row: int) -> void:
 
 
 func _populate_spell_column_target_list() -> void:
+	modal_overlay.visible = false
 	var available_cols := combat_system.get_available_columns()
 
 	if available_cols.is_empty():
@@ -1779,28 +1906,40 @@ func _populate_spell_column_target_list() -> void:
 		selected_spell = null
 		return
 
-	for child in enemy_target_list.get_children():
-		child.queue_free()
+	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
 	var col_names: Array[String] = ["Left Column", "Center Column", "Right Column"]
 
 	for col in available_cols:
-		var btn := Button.new()
 		var col_targets := combat_system.get_column_targets(col)
-		btn.text = "%s - %d enemies" % [col_names[col], col_targets.size()]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.custom_minimum_size = Vector2(0, 32)
+		if col_targets.is_empty():
+			continue
+		var first_enemy: Monster = col_targets[0]
+		if not enemy_panels.has(first_enemy.combat_id):
+			continue
+		var ui: EnemyUI = enemy_panels[first_enemy.combat_id]
+		var cell: PanelContainer = ui.panel.get_parent()
+		var btn := Button.new()
+		btn.text = ""
+		btn.flat = true
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		var transparent := StyleBoxFlat.new()
+		transparent.bg_color = Color.TRANSPARENT
+		btn.add_theme_stylebox_override("normal", transparent)
+		btn.add_theme_stylebox_override("hover", transparent)
+		btn.add_theme_stylebox_override("pressed", transparent)
+		btn.add_theme_stylebox_override("focus", transparent)
+		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 		btn.pressed.connect(_on_spell_column_selected.bind(col))
 		btn.focus_entered.connect(_highlight_enemy_targets.bind(col_targets))
-		enemy_target_list.add_child(btn)
+		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
+		_grid_target_buttons.append(btn)
 
 	enemy_target_nav = MenuNavigator.new()
 	if not enemy_target_buttons.is_empty():
 		enemy_target_nav.setup(enemy_target_buttons, 0)
-
-	enemy_target_modal.visible = true
 
 
 func _on_spell_column_selected(col: int) -> void:
@@ -1825,7 +1964,6 @@ func _cast_spell_on_targets(targets: Array) -> void:
 
 func _on_cancel_spell_ally_target() -> void:
 	_close_all_modals()
-	modal_overlay.visible = true
 	spell_modal.visible = true
 	selected_spell = null
 	spell_target_mode = ""
@@ -1848,13 +1986,13 @@ func _on_cancel_spell() -> void:
 
 func _on_cancel_target() -> void:
 	_close_all_modals()
-	modal_overlay.visible = true
 	item_modal.visible = true
 	selected_item = null
 
 
 func _close_all_modals() -> void:
 	_clear_target_highlights()
+	_clear_grid_target_buttons()
 	modal_overlay.visible = false
 	item_modal.visible = false
 	spell_modal.visible = false
@@ -1873,6 +2011,7 @@ func _highlight_enemy_target(enemy: Monster) -> void:
 	var ui: EnemyUI = enemy_panels[enemy.combat_id]
 	var panel: VBoxContainer = ui.panel
 	var cell: PanelContainer = panel.get_parent()
+	_update_portrait_for_enemy(enemy)
 	_target_highlight_style = StyleBoxFlat.new()
 	_target_highlight_style.bg_color = Color.TRANSPARENT
 	_target_highlight_style.border_color = UIColors.TEXT_DANGER
@@ -1895,6 +2034,8 @@ func _highlight_enemy_target(enemy: Monster) -> void:
 
 func _highlight_enemy_targets(enemies: Array[Monster]) -> void:
 	_clear_target_highlights()
+	if not enemies.is_empty():
+		_update_portrait_for_enemy(enemies[0])
 	_target_highlight_style = StyleBoxFlat.new()
 	_target_highlight_style.bg_color = Color.TRANSPARENT
 	_target_highlight_style.border_color = UIColors.TEXT_DANGER
@@ -1924,6 +2065,7 @@ func _highlight_enemy_targets(enemies: Array[Monster]) -> void:
 
 func _highlight_party_target(character: Character) -> void:
 	_clear_target_highlights()
+	_update_portrait_for_character(character)
 	if not party_panels.has(character.id):
 		return
 	var ui: PartyMemberUI = party_panels[character.id]
@@ -1956,6 +2098,7 @@ func _clear_target_highlights() -> void:
 			panel.remove_theme_stylebox_override("panel")
 	_highlighted_panels.clear()
 	_target_highlight_style = null
+	_update_portrait_for_active_combatant()
 
 
 func _set_actions_enabled(enabled: bool) -> void:
@@ -2058,7 +2201,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if chest_modal and chest_modal.visible:
 		return
 
-	if enemy_target_modal.visible:
+	if not _grid_target_buttons.is_empty():
 		if event.is_action_pressed("menu_cancel"):
 			_on_cancel_enemy_target()
 		elif enemy_target_nav:
