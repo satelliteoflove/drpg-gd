@@ -28,6 +28,7 @@ class LLMInference : public Node {
     float presence_penalty = 1.5f;
 
     llama_model *model = nullptr;
+    llama_context *ctx = nullptr;
     const llama_vocab *vocab = nullptr;
 
     std::thread worker;
