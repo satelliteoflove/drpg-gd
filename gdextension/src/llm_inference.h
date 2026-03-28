@@ -40,6 +40,7 @@ class LLMInference : public Node {
 
     std::mutex result_mutex;
     std::string pending_result;
+    std::string pending_stats;
 
     std::thread loader;
 
@@ -73,6 +74,7 @@ public:
     bool is_loading() const;
     void unload_model();
     void generate_async(const String &prompt, const String &grammar);
+    void cancel_generate();
     bool is_running() const;
     bool is_model_loaded() const;
 

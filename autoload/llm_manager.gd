@@ -9,7 +9,7 @@ signal download_completed
 signal download_failed(reason: String)
 signal setup_finished
 
-const DEFAULT_N_PREDICT := 100
+const DEFAULT_N_PREDICT := 150
 const GENERATE_TIMEOUT_SEC := 8.0
 
 const MODEL_NAME := "Qwen3.5-4B-Q8_0"
@@ -35,6 +35,7 @@ var _pending_callbacks: Array[Callable] = []
 var _request_queue: Array[Dictionary] = []
 var _warming_up := false
 var _generate_timer: Timer = null
+var _generate_start_msec := 0
 
 
 func _ready() -> void:
@@ -122,7 +123,9 @@ func generate(prompt: String, grammar: String, callback: Callable) -> void:
 		return
 
 	_pending_callbacks.append(callback)
+	_generate_start_msec = Time.get_ticks_msec()
 	_generate_timer.start(GENERATE_TIMEOUT_SEC)
+	print("[LLMManager] Generate started (prompt %d chars)" % prompt.length())
 	_llm.generate_async(prompt, grammar)
 
 
@@ -139,7 +142,9 @@ func _process_queue() -> void:
 		return
 	var req: Dictionary = _request_queue.pop_front()
 	_pending_callbacks.append(req.callback)
+	_generate_start_msec = Time.get_ticks_msec()
 	_generate_timer.start(GENERATE_TIMEOUT_SEC)
+	print("[LLMManager] Generate started from queue (prompt %d chars)" % req.prompt.length())
 	_llm.generate_async(req.prompt, req.grammar)
 
 
@@ -165,6 +170,8 @@ func _on_model_loaded(success: bool) -> void:
 
 func _warmup() -> void:
 	_warming_up = true
+	_generate_start_msec = Time.get_ticks_msec()
+	_llm.n_predict = 10
 	print("[LLMManager] Warming up model...")
 	_llm.generate_async(
 		"<|im_start|>user\nSay hello.<|im_end|>\n<|im_start|>assistant\n",
@@ -177,13 +184,18 @@ func _on_generate_completed(text: String) -> void:
 
 	if _warming_up:
 		_warming_up = false
-		print("[LLMManager] Warmup complete")
+		_llm.n_predict = DEFAULT_N_PREDICT
+		var elapsed := (Time.get_ticks_msec() - _generate_start_msec) / 1000.0
+		print("[LLMManager] Warmup complete (%.1fs)" % elapsed)
 		_process_queue()
 		return
 
-	var think_end := text.find("</think>")
-	if think_end >= 0:
-		text = text.substr(think_end + 8).strip_edges()
+	var elapsed := (Time.get_ticks_msec() - _generate_start_msec) / 1000.0
+	var result_len := text.length()
+	if result_len == 0:
+		print("[LLMManager] Generate done in %.1fs - empty result" % elapsed)
+	else:
+		print("[LLMManager] Generate done in %.1fs - %d chars" % [elapsed, result_len])
 
 	if not _pending_callbacks.is_empty():
 		var cb: Callable = _pending_callbacks.pop_front()
@@ -194,6 +206,7 @@ func _on_generate_completed(text: String) -> void:
 
 func _on_generate_timeout() -> void:
 	push_warning("[LLMManager] Generation timed out after %ds - dialogue skipped" % int(GENERATE_TIMEOUT_SEC))
+	_llm.cancel_generate()
 	if not _pending_callbacks.is_empty():
 		var cb: Callable = _pending_callbacks.pop_front()
 		cb.call("")

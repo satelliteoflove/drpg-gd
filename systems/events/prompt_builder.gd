@@ -1,7 +1,7 @@
 class_name PromptBuilder
 extends RefCounted
 
-const SYSTEM_PREFIX := "<|im_start|>system\nYou write short, punchy in-character dialogue for a dungeon crawler RPG. Stay in character. No narration, no actions, no stage directions. Just the spoken line. Each character has a distinct voice shaped by their personality and history. /no_think<|im_end|>\n"
+const SYSTEM_PREFIX := "<|im_start|>system\nYou write short, punchy in-character dialogue for a dungeon crawler RPG. Stay in character. No narration, no actions, no stage directions. Just the spoken line. Each character has a distinct voice shaped by their personality and history.<|im_end|>\n"
 
 const MAX_MARKS_IN_PROMPT := 3
 const MAX_RELATIONSHIPS_IN_PROMPT := 2
