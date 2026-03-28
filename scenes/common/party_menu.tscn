@@ -297,6 +297,7 @@ size_flags_vertical = 3
 [node name="ActionScroll" type="ScrollContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/ActionPanel"]
 layout_mode = 2
 size_flags_vertical = 3
+follow_focus = true
 horizontal_scroll_mode = 0
 
 [node name="ActionList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/KeybindingsContent/KeybindVBox/KeybindHBox/ActionPanel/ActionScroll"]
