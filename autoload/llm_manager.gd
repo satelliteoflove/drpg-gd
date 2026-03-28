@@ -12,10 +12,10 @@ signal setup_finished
 const DEFAULT_N_PREDICT := 150
 const GENERATE_TIMEOUT_SEC := 8.0
 
-const MODEL_NAME := "Qwen2.5-3B-Instruct-Q8_0"
-const MODEL_FILENAME := "qwen2.5-3b-instruct-q8_0.gguf"
-const MODEL_URL := "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q8_0.gguf"
-const MODEL_EXPECTED_BYTES := 3616088480
+const MODEL_NAME := "Qwen3.5-4B-Q8_0"
+const MODEL_FILENAME := "Qwen3.5-4B-Q8_0.gguf"
+const MODEL_URL := "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q8_0.gguf"
+const MODEL_EXPECTED_BYTES := 4482403488
 
 const DOWNLOAD_OVERLAY_SCENE := preload("res://scenes/ui/download_overlay.tscn")
 
