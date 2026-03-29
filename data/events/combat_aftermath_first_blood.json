@@ -38,7 +38,7 @@
   "setup_text": "The fight is over. {slot_0} stands still, weapon in hand, staring at what they've done. {slot_1} watches them from across the room.",
   "dialogue": [
     {"slot_index": 0, "line": "'I didn't think it would feel like that.'"},
-    {"slot_index": 1, "line": "'It never does.'"},
+    {"slot_index": 1, "line": "'No one ever does.'"},
     {"slot_index": 0, "line": "'Does it get easier?'"}
   ],
   "choices": [
