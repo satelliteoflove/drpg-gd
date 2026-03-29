@@ -180,7 +180,7 @@ static func create_consumable(
 	item.id = p_id
 	item.item_name = p_name
 	item.item_type = ItemType.CONSUMABLE
-	item.stackable = false
+	item.stackable = true
 	item.heal_amount = p_heal
 	item.mp_restore = p_mp
 	item.buy_price = p_price

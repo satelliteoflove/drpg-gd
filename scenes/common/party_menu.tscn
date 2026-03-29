@@ -1,9 +1,7 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scenes/common/party_menu.gd" id="1_script"]
-[ext_resource type="Script" path="res://systems/ui/radar_chart.gd" id="2_radar"]
-[ext_resource type="Script" path="res://systems/ui/attribute_bars.gd" id="3_bars"]
-[ext_resource type="Script" path="res://systems/ui/party_summary.gd" id="4_summary"]
+[ext_resource type="Script" path="res://systems/ui/character_sheet.gd" id="2_sheet"]
 
 [node name="PartyMenu" type="Control"]
 layout_mode = 3
@@ -58,100 +56,23 @@ theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 10
 
-[node name="StatusHBox" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent"]
+[node name="StatusVBox" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent"]
 layout_mode = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 8
 
-[node name="StatusListPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox"]
-custom_minimum_size = Vector2(280, 0)
+[node name="CharacterTabs" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusVBox"]
 layout_mode = 2
+theme_override_constants/separation = 6
 
-[node name="StatusList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/StatusListPanel"]
-layout_mode = 2
-theme_override_constants/separation = 5
-
-[node name="AttributePanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox"]
-custom_minimum_size = Vector2(220, 0)
-layout_mode = 2
-
-[node name="AttributeVBox" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/AttributePanel"]
-layout_mode = 2
-
-[node name="AttributeLabel" type="Label" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/AttributePanel/AttributeVBox"]
-layout_mode = 2
-text = "Attributes"
-horizontal_alignment = 1
-
-[node name="AttributeBars" type="Control" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/AttributePanel/AttributeVBox"]
-custom_minimum_size = Vector2(200, 150)
+[node name="DetailPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusVBox"]
 layout_mode = 2
 size_flags_vertical = 3
-script = ExtResource("3_bars")
 
-[node name="ChartPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox"]
-custom_minimum_size = Vector2(250, 250)
+[node name="CharacterSheet" type="Control" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusVBox/DetailPanel"]
 layout_mode = 2
-
-[node name="ChartVBox" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/ChartPanel"]
-layout_mode = 2
-
-[node name="ChartLabel" type="Label" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/ChartPanel/ChartVBox"]
-layout_mode = 2
-text = "Combat"
-horizontal_alignment = 1
-
-[node name="RadarChart" type="Control" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/ChartPanel/ChartVBox"]
-custom_minimum_size = Vector2(220, 220)
-layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
-script = ExtResource("2_radar")
-
-[node name="SummaryPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox"]
-custom_minimum_size = Vector2(200, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="PartySummary" type="Control" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/SummaryPanel"]
-custom_minimum_size = Vector2(180, 280)
-layout_mode = 2
-size_flags_vertical = 3
-script = ExtResource("4_summary")
-
-[node name="EquipmentContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]
-visible = false
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
-
-[node name="EquipHBox" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="PartyPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="PartyList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox/PartyPanel"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="SlotsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="SlotsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox/SlotsPanel"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="ItemsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="ItemsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox/ItemsPanel"]
-layout_mode = 2
-theme_override_constants/separation = 3
+script = ExtResource("2_sheet")
 
 [node name="InventoryContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]
 visible = false
@@ -168,18 +89,34 @@ theme_override_constants/separation = 10
 [node name="ItemsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 
-[node name="ItemsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/ItemsPanel"]
+[node name="ItemsScroll" type="ScrollContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/ItemsPanel"]
 layout_mode = 2
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="ItemsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/ItemsPanel/ItemsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
 [node name="TargetsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox"]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 
-[node name="TargetsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel"]
+[node name="TargetsScroll" type="ScrollContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel"]
 layout_mode = 2
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="TargetsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel/TargetsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
 [node name="FormationContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]

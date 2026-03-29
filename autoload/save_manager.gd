@@ -214,6 +214,7 @@ func _apply_save_data(data) -> void:
 	GameState.party_formations = data.party_formations.duplicate(true) if data.party_formations else []
 	if data.party_inventory:
 		GameState.party.inventory = data.party_inventory.duplicate(true)
+		_deduplicate_inventory_items(GameState.party.inventory)
 
 	GameState.current_floor = data.current_floor
 	GameState.dungeon_floors.clear()
@@ -241,3 +242,15 @@ func _apply_save_data(data) -> void:
 func _get_total_play_time() -> int:
 	var current_session := int(Time.get_unix_time_from_system()) - play_start_time
 	return accumulated_play_time + current_session
+
+
+func _deduplicate_inventory_items(inventory: Inventory) -> void:
+	var seen_items: Array = []
+	for slot in inventory.slots:
+		var item = slot.get("item")
+		if item == null:
+			continue
+		if item in seen_items:
+			slot["item"] = item.duplicate() as Item
+		else:
+			seen_items.append(item)

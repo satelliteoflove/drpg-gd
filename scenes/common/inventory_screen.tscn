@@ -168,7 +168,7 @@ func _update_item_info() -> void:
 	if item.item_type == Item.ItemType.CONSUMABLE:
 		text += \"\\n[Press Enter to use]\"
 	elif item.is_equipment():
-		text += \"\\n[Equip from Equipment screen]\"
+		text += \"\\n[Equip from Status screen]\"
 
 	if not item.is_identified and GameState.party.has_living_bishop():
 		text += \"\\n[color=cyan][Press I to identify (Bishop)][/color]\"
@@ -182,7 +182,7 @@ func _on_item_highlight_changed(_index: int) -> void:
 
 func _on_item_selected(slot_index: int, item: Item) -> void:
 	if item.item_type != Item.ItemType.CONSUMABLE:
-		message_label.text = \"Cannot use %s here. Equip from Equipment screen.\" % item.get_display_name()
+		message_label.text = \"Cannot use %s here. Equip from Status screen.\" % item.get_display_name()
 		return
 
 	if item.heal_amount <= 0 and item.mp_restore <= 0 and item.cures_status.is_empty():
