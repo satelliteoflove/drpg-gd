@@ -8,8 +8,8 @@ var current_tab: Tab = Tab.STATUS
 var tab_buttons: Array[Button] = []
 var tab_nav: MenuNavigator = null
 
-var status_nav: MenuNavigator = null
 var status_buttons: Array[Button] = []
+var _status_on_character_tabs: bool = false
 
 var equip_party_nav: MenuNavigator = null
 var equip_slots_nav: MenuNavigator = null
@@ -118,6 +118,10 @@ func _switch_tab(tab: Tab) -> void:
 	formation_content.visible = (tab == Tab.FORMATION)
 	spells_content.visible = (tab == Tab.SPELLS)
 	keybindings_content.visible = (tab == Tab.KEYBINDINGS)
+	info_panel.visible = (tab != Tab.STATUS)
+	_status_on_character_tabs = false
+	for btn in tab_buttons:
+		btn.modulate.a = 1.0
 
 	if tab != Tab.KEYBINDINGS:
 		_keybind_listening = false
@@ -154,6 +158,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.is_action_pressed("menu_left"):
+		if current_tab == Tab.STATUS and _status_on_character_tabs:
+			var new_index := (_status_selected_index - 1 + status_buttons.size()) % status_buttons.size()
+			_update_status_info(new_index)
+			return
 		if current_tab == Tab.SPELLS and spell_panel == SpellPanel.LIST:
 			_cycle_spell_level(-1)
 			return
@@ -161,6 +169,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_switch_tab(new_tab as Tab)
 		return
 	if event.is_action_pressed("menu_right"):
+		if current_tab == Tab.STATUS and _status_on_character_tabs:
+			var new_index := (_status_selected_index + 1) % status_buttons.size()
+			_update_status_info(new_index)
+			return
 		if current_tab == Tab.SPELLS and spell_panel == SpellPanel.LIST:
 			_cycle_spell_level(1)
 			return
@@ -185,6 +197,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _handle_back() -> bool:
 	match current_tab:
+		Tab.STATUS:
+			if _status_on_character_tabs:
+				_status_on_character_tabs = false
+				_update_status_tab_highlight()
+				_update_help()
+				return true
 		Tab.EQUIPMENT:
 			if equip_panel == EquipPanel.ITEMS:
 				equip_panel = EquipPanel.SLOTS
@@ -246,7 +264,10 @@ func _update_help() -> void:
 
 	match current_tab:
 		Tab.STATUS:
-			help_label.text = base + "%s | %s" % [v_nav, cancel]
+			if _status_on_character_tabs:
+				help_label.text = "%s: Switch character | K: Main tabs | %s" % [tab_help, cancel]
+			else:
+				help_label.text = base + "J: Characters | %s" % cancel
 		Tab.EQUIPMENT:
 			match equip_panel:
 				EquipPanel.PARTY:
@@ -285,168 +306,54 @@ func _update_help() -> void:
 
 # === STATUS TAB ===
 
-@onready var status_list: VBoxContainer = $MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/StatusListPanel/StatusList
-@onready var attribute_bars: AttributeBars = $MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/AttributePanel/AttributeVBox/AttributeBars
-@onready var radar_chart: RadarChart = $MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/ChartPanel/ChartVBox/RadarChart
-@onready var party_summary: Control = $MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/SummaryPanel/PartySummary
+@onready var character_tabs: HBoxContainer = $MainPanel/VBox/ContentPanel/StatusContent/StatusVBox/CharacterTabs
+@onready var character_sheet: Control = $MainPanel/VBox/ContentPanel/StatusContent/StatusVBox/DetailPanel/CharacterSheet
+var _status_selected_index: int = 0
 
 func _refresh_status() -> void:
-	for child in status_list.get_children():
+	for child in character_tabs.get_children():
 		child.queue_free()
 	status_buttons.clear()
 
-	if party_summary:
-		party_summary.set_party(GameState.party)
-
 	if GameState.party == null or GameState.party.is_empty():
-		var label := Label.new()
-		label.text = "(No party members)"
-		status_list.add_child(label)
-		info_label.text = "Visit the Guild Hall to recruit party members."
+		character_sheet.clear()
 		return
 
 	for i in range(GameState.party.size()):
 		var member: Character = GameState.party.get_member_at(i)
 		var btn := Button.new()
-		var row_marker := "[F]" if i < 3 else "[B]"
-		var status_indicator := _get_brief_status(member)
-		btn.text = "%s %s - L%d %s %s" % [row_marker, member.character_name, member.level, CharacterEnums.get_class_name(member.character_class), status_indicator]
-		btn.custom_minimum_size = Vector2(350, 32)
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.text = member.character_name
+		btn.custom_minimum_size = Vector2(0, 28)
+		btn.toggle_mode = true
 		if member.is_dead:
 			btn.modulate = UIColors.MODULATE_DEAD
 		elif _has_negative_status(member):
 			btn.modulate = UIColors.TEXT_WARNING
 		btn.pressed.connect(_on_status_member_selected.bind(i))
-		status_list.add_child(btn)
+		character_tabs.add_child(btn)
 		status_buttons.append(btn)
 
-	status_nav = MenuNavigator.new()
-	status_nav.setup(status_buttons, 0)
-	status_nav.selection_changed.connect(_on_status_selection_changed)
+	_status_selected_index = 0
 	_update_status_info(0)
 
 
 func _on_status_member_selected(index: int) -> void:
+	_status_on_character_tabs = true
 	_update_status_info(index)
-
-
-func _on_status_selection_changed(index: int) -> void:
-	_update_status_info(index)
+	_update_status_tab_highlight()
+	_update_help()
 
 
 func _update_status_info(index: int) -> void:
 	if GameState.party == null or index >= GameState.party.size():
 		return
 
+	_status_selected_index = index
+	for i in range(status_buttons.size()):
+		status_buttons[i].button_pressed = (i == index)
+
 	var member: Character = GameState.party.get_member_at(index)
-	var row := "Front Row" if index < 3 else "Back Row"
-	var text := "[b]%s[/b] (%s)\n" % [member.character_name, row]
-	text += "Level %d %s %s  |  %s  |  Age: %d (%s)\n" % [member.level, CharacterEnums.get_race_name(member.race), CharacterEnums.get_class_name(member.character_class), CharacterEnums.get_alignment_name(member.alignment), member.get_age_years(), member.get_life_phase_name()]
-	text += "HP: %d/%d    MP: %d/%d    XP: %d\n" % [member.current_hp, member.max_hp, member.current_mp, member.max_mp, member.experience]
-	text += "Weapon: %s  |  Defense: %d  |  Accuracy: %+d" % [member.weapon_dice, member.defense, member.accuracy]
-
-	var status_text := _get_status_effects_text(member)
-	if status_text == "OK":
-		text += "\nStatus: [color=green]OK[/color]"
-	else:
-		text += "\nStatus: [color=yellow]%s[/color]" % status_text
-
-	if member.is_dead:
-		text += "\n[color=red]DEAD - Visit the Temple for resurrection[/color]"
-
-	if not member.is_dead:
-		var avg_level := GameState.party.get_average_level()
-		if member.level < avg_level:
-			var catchup_pct := mini(50, 5 * (avg_level - member.level))
-			text += "\n[color=green]Catch-up: +%d%% XP[/color]" % catchup_pct
-		if member.rest_bonus_xp_multiplier > 1.0:
-			text += "\n[color=green]Rested: +%.0f%% XP[/color]" % ((member.rest_bonus_xp_multiplier - 1.0) * 100)
-
-	info_label.text = text
-	_update_combat_radar(member)
-
-
-func _update_combat_radar(member: Character) -> void:
-	if attribute_bars:
-		attribute_bars.set_character(member)
-
-	if radar_chart:
-		var combat_stats := _calculate_combat_stats(member)
-		radar_chart.set_data(combat_stats)
-
-
-func _calculate_combat_stats(member: Character) -> Array[Dictionary]:
-	var stats: Array[Dictionary] = []
-
-	var dpt_val := _calculate_expected_dpt(member)
-	var dpt_max := 25.0
-
-	var mitigation_val := _calculate_mitigation(member)
-	var mitigation_max := 40.0
-
-	var evasion_val := float(member.evasion) + float(member.agility) / 4.0
-	var evasion_max := 20.0
-
-	var speed_val := float(member.agility)
-	var speed_max := 25.0
-
-	var survivability_val := _calculate_survivability(member)
-	var survivability_max := 50.0
-
-	stats.append({ "label": "DPT", "value": dpt_val, "max_value": dpt_max })
-	stats.append({ "label": "MIT", "value": mitigation_val, "max_value": mitigation_max })
-	stats.append({ "label": "EVA", "value": evasion_val, "max_value": evasion_max })
-	stats.append({ "label": "SPD", "value": speed_val, "max_value": speed_max })
-	stats.append({ "label": "SRV", "value": survivability_val, "max_value": survivability_max })
-
-	return stats
-
-
-func _calculate_mitigation(member: Character) -> float:
-	return float(member.defense) + float(member.vitality) / 4.0
-
-
-func _calculate_survivability(member: Character) -> float:
-	return float(member.max_hp) + float(member.vitality) / 2.0
-
-
-func _calculate_expected_dpt(member: Character) -> float:
-	var dice_str := member.weapon_dice
-	var expected := _parse_dice_expected(dice_str)
-	var str_bonus := float(member.strength - 10) / 4.0
-	var dmg_bonus := float(member.damage_bonus)
-	return expected + str_bonus + dmg_bonus
-
-
-func _parse_dice_expected(dice_str: String) -> float:
-	if dice_str.is_empty():
-		return 1.0
-
-	var parts := dice_str.to_lower().split("d")
-	if parts.size() != 2:
-		return 1.0
-
-	var num_dice := parts[0].to_int()
-	if num_dice <= 0:
-		num_dice = 1
-
-	var die_sides := parts[1].to_int()
-	if die_sides <= 0:
-		die_sides = 4
-
-	return num_dice * (die_sides + 1.0) / 2.0
-
-
-func _get_status_effects_text(member: Character) -> String:
-	var effects: Array[String] = []
-	for status in member.status_effects:
-		if status == CharacterEnums.StatusEffect.DEAD:
-			continue
-		effects.append(CharacterEnums.get_status_name(status))
-	if effects.is_empty():
-		return "OK"
-	return ", ".join(effects)
+	character_sheet.set_character(member, index)
 
 
 func _get_brief_status(member: Character) -> String:
@@ -469,10 +376,35 @@ func _has_negative_status(member: Character) -> bool:
 	return false
 
 
+func _update_status_tab_highlight() -> void:
+	var main_alpha := 0.5 if _status_on_character_tabs else 1.0
+	var char_alpha := 1.0 if _status_on_character_tabs else 0.6
+	for btn in tab_buttons:
+		btn.modulate.a = main_alpha
+	for i in range(status_buttons.size()):
+		var base_modulate := Color.WHITE
+		var member: Character = GameState.party.get_member_at(i)
+		if member.is_dead:
+			base_modulate = UIColors.MODULATE_DEAD
+		elif _has_negative_status(member):
+			base_modulate = UIColors.TEXT_WARNING
+		status_buttons[i].modulate = base_modulate
+		status_buttons[i].modulate.a = char_alpha
+
+
 func _handle_status_input(event: InputEvent) -> void:
-	if status_nav == null:
+	if status_buttons.is_empty():
 		return
-	status_nav.handle_input(event)
+	if event.is_action_pressed("menu_down") and not _status_on_character_tabs:
+		_status_on_character_tabs = true
+		_update_status_tab_highlight()
+		_update_help()
+		return
+	if event.is_action_pressed("menu_up") and _status_on_character_tabs:
+		_status_on_character_tabs = false
+		_update_status_tab_highlight()
+		_update_help()
+		return
 
 
 # === EQUIPMENT TAB ===
