@@ -74,42 +74,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("2_sheet")
 
-[node name="EquipmentContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]
-visible = false
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
-
-[node name="EquipHBox" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="PartyPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="PartyList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox/PartyPanel"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="SlotsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="SlotsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox/SlotsPanel"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="ItemsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="ItemsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/EquipmentContent/EquipHBox/ItemsPanel"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
 [node name="InventoryContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]
 visible = false
 layout_mode = 2
