@@ -44,11 +44,15 @@ func _ready() -> void:
 	LLMManager.download_progress.connect(_on_download_progress)
 	LLMManager.download_completed.connect(_on_download_completed)
 	LLMManager.download_failed.connect(_on_download_failed)
+	LLMManager.binary_download_started.connect(_on_binary_download_started)
+	LLMManager.binary_download_progress.connect(_on_download_progress)
+	LLMManager.binary_download_completed.connect(_on_download_completed)
+	LLMManager.binary_download_failed.connect(_on_download_failed)
 
-	if LLMManager.is_downloading():
+	if LLMManager.is_downloading() or LLMManager.is_downloading_binary():
 		visible = true
 		_showing_download = true
-		status_label.text = "Downloading AI model..."
+		status_label.text = "Downloading AI components..."
 		progress_bar.value = 0.0
 
 	_shuffle_flavor()
@@ -67,6 +71,15 @@ func _on_download_started(model_name: String) -> void:
 	visible = true
 	_showing_download = true
 	status_label.text = "Downloading AI model %s..." % model_name
+	progress_bar.value = 0.0
+	speed_label.text = ""
+	_advance_flavor()
+
+
+func _on_binary_download_started(variant: String) -> void:
+	visible = true
+	_showing_download = true
+	status_label.text = "Downloading AI engine (%s)..." % variant
 	progress_bar.value = 0.0
 	speed_label.text = ""
 	_advance_flavor()
