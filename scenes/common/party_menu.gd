@@ -254,7 +254,8 @@ func _update_help() -> void:
 			if inv_showing_targets:
 				help_label.text = base + "%s | %s: Use | %s" % [v_nav, confirm.split(":")[0], cancel]
 			else:
-				help_label.text = base + "%s | %s: Use | %s" % [v_nav, confirm.split(":")[0], cancel]
+				var id_hint := " | I: Identify" if GameState.party and GameState.party.has_living_bishop() else ""
+				help_label.text = base + "%s | %s: Use%s | %s" % [v_nav, confirm.split(":")[0], id_hint, cancel]
 		Tab.FORMATION:
 			if form_selected_index >= 0:
 				help_label.text = base + "%s | %s: Swap | %s" % [arrow_nav, confirm.split(":")[0], cancel]
@@ -453,8 +454,8 @@ func _update_equip_info_label() -> void:
 
 # === INVENTORY TAB ===
 
-@onready var inv_list: VBoxContainer = $MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/ItemsPanel/ItemsList
-@onready var inv_targets: VBoxContainer = $MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel/TargetsList
+@onready var inv_list: VBoxContainer = $MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/ItemsPanel/ItemsScroll/ItemsList
+@onready var inv_targets: VBoxContainer = $MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel/TargetsScroll/TargetsList
 @onready var inv_targets_panel: PanelContainer = $MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel
 
 func _refresh_inventory() -> void:
@@ -512,7 +513,10 @@ func _refresh_inv_targets() -> void:
 	for member in GameState.party.get_members():
 		var btn := Button.new()
 		var status := " [DEAD]" if member.is_dead else ""
-		btn.text = "%s: %d/%d HP%s" % [member.character_name, member.current_hp, member.max_hp, status]
+		var stats := "%d/%d HP" % [member.current_hp, member.max_hp]
+		if inv_selected_item and inv_selected_item.mp_restore > 0 and member.max_mp > 0:
+			stats += "  %d/%d MP" % [member.current_mp, member.max_mp]
+		btn.text = "%s: %s%s" % [member.character_name, stats, status]
 		btn.custom_minimum_size = Vector2(200, 28)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 
@@ -600,8 +604,10 @@ func _update_inv_info() -> void:
 	if item == null:
 		return
 
-	var text := "[b]%s[/b]\n%s\n%s" % [item.item_name, item.get_type_name(), item.get_stats_text()]
-	if item.item_type == Item.ItemType.CONSUMABLE:
+	var text := "[b]%s[/b]\n%s\n%s" % [item.get_display_name(), item.get_type_name(), item.get_stats_text()]
+	if not item.is_identified and GameState.party.has_living_bishop():
+		text += "\n\n[color=cyan][Press I to identify (Bishop)][/color]"
+	elif item.item_type == Item.ItemType.CONSUMABLE:
 		text += "\n\n[Press Enter to use]"
 	elif item.is_equipment():
 		text += "\n\n[Equip from Status tab]"
@@ -609,12 +615,42 @@ func _update_inv_info() -> void:
 
 
 func _handle_inventory_input(event: InputEvent) -> void:
+	if not inv_showing_targets and event is InputEventKey:
+		var key_event := event as InputEventKey
+		if key_event.pressed and not key_event.echo and key_event.keycode == KEY_I:
+			_try_identify_current_item()
+			get_viewport().set_input_as_handled()
+			return
+
 	var active_nav: MenuNavigator = inv_target_nav if inv_showing_targets else inv_nav
 
 	if active_nav == null:
 		return
 
 	active_nav.handle_input(event)
+
+
+func _try_identify_current_item() -> void:
+	if inv_nav == null or inv_buttons.is_empty():
+		return
+	var idx := inv_nav.get_current_index()
+	if idx < 0 or GameState.party.inventory == null or idx >= GameState.party.inventory.size():
+		return
+	var item: Item = GameState.party.inventory.get_item_at(idx)
+	if item == null:
+		return
+	if item.is_identified:
+		info_label.text = "%s is already identified." % item.get_display_name()
+		return
+	if not GameState.party.has_living_bishop():
+		info_label.text = "No living Bishop in party to identify items."
+		return
+	var new_item := item.duplicate() as Item
+	new_item.is_identified = true
+	var slot := GameState.party.inventory.get_slot(idx)
+	slot["item"] = new_item
+	info_label.text = "Identified: [b]%s[/b]\n%s" % [new_item.get_display_name(), new_item.get_stats_text()]
+	_refresh_inventory()
 
 
 # === FORMATION TAB ===

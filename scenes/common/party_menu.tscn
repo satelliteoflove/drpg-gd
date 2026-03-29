@@ -89,18 +89,34 @@ theme_override_constants/separation = 10
 [node name="ItemsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 
-[node name="ItemsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/ItemsPanel"]
+[node name="ItemsScroll" type="ScrollContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/ItemsPanel"]
 layout_mode = 2
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="ItemsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/ItemsPanel/ItemsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
 [node name="TargetsPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox"]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 
-[node name="TargetsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel"]
+[node name="TargetsScroll" type="ScrollContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel"]
 layout_mode = 2
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="TargetsList" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel/TargetsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
 [node name="FormationContent" type="MarginContainer" parent="MainPanel/VBox/ContentPanel"]

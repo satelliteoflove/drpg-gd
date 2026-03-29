@@ -25,12 +25,13 @@ func add_item(item: Item, quantity: int = 1) -> int:
 
 	while quantity > 0 and slots.size() < MAX_SLOTS:
 		var add_qty := mini(quantity, item.max_stack) if item.stackable else 1
+		var slot_item: Item = item if quantity == 1 else item.duplicate() as Item
 		slots.append({
 			"item_id": item.id,
-			"item": item,
+			"item": slot_item,
 			"quantity": add_qty
 		})
-		item_added.emit(item, add_qty)
+		item_added.emit(slot_item, add_qty)
 		quantity -= add_qty
 
 	if quantity > 0:
