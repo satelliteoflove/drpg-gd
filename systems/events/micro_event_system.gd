@@ -272,22 +272,27 @@ static func _situation_base(context_type: String) -> String:
 
 static func _parse_conversation_response(content: String, speaker: Character, responder: Character) -> Dictionary:
 	if content == "":
+		print("[MicroEvent] Parse fail: empty content")
 		return {}
 	var parsed: Variant = JSON.parse_string(content)
 	if not parsed is Array:
+		print("[MicroEvent] Parse fail: expected Array, got %s: %s" % [type_string(typeof(parsed)), content.substr(0, 200)])
 		return {}
 	var arr: Array = parsed as Array
 	if arr.size() < 2:
+		print("[MicroEvent] Parse fail: array size %d < 2" % arr.size())
 		return {}
 
 	var speaker_line := ""
 	var responder_line := ""
 	for entry: Variant in arr:
 		if not entry is Dictionary:
+			print("[MicroEvent] Parse fail: entry not Dictionary")
 			return {}
 		var d: Dictionary = entry as Dictionary
 		var line: String = d.get("line", "")
 		if line.length() < 3 or line.length() > 120:
+			print("[MicroEvent] Parse fail: line length %d out of range: '%s'" % [line.length(), line])
 			return {}
 		if speaker_line == "":
 			speaker_line = line
@@ -295,6 +300,7 @@ static func _parse_conversation_response(content: String, speaker: Character, re
 			responder_line = line
 
 	if speaker_line == "" or responder_line == "":
+		print("[MicroEvent] Parse fail: missing speaker or responder line")
 		return {}
 
 	return {
@@ -306,12 +312,16 @@ static func _parse_conversation_response(content: String, speaker: Character, re
 
 static func _parse_micro_response(content: String) -> String:
 	if content == "":
+		print("[MicroEvent] Parse solo fail: empty content")
 		return ""
 	var parsed: Variant = JSON.parse_string(content)
 	if parsed is Dictionary:
 		var line: String = (parsed as Dictionary).get("line", "")
 		if line.length() >= 3 and line.length() <= 120:
 			return line
+		print("[MicroEvent] Parse solo fail: line length %d: '%s'" % [line.length(), line])
+	else:
+		print("[MicroEvent] Parse solo fail: expected Dict, got %s: %s" % [type_string(typeof(parsed)), content.substr(0, 200)])
 	return ""
 
 
@@ -357,7 +367,7 @@ static func _get_fallback(context_type: String, speaker: Character) -> String:
 	_recent_fallback_lines.append(chosen)
 	while _recent_fallback_lines.size() > MAX_RECENT_FALLBACKS:
 		_recent_fallback_lines.pop_front()
-	return chosen
+	return "[fb] " + chosen
 
 
 static func _get_dominant_trait(character: Character) -> String:

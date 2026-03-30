@@ -16,8 +16,8 @@ signal setup_finished
 const PORT := 8787
 const HEALTH_TIMEOUT := 30.0
 const HEALTH_POLL_INTERVAL := 1.0
-const DEFAULT_N_PREDICT := 150
-const GENERATE_TIMEOUT_SEC := 8.0
+const DEFAULT_N_PREDICT := 128
+const GENERATE_TIMEOUT_SEC := 15.0
 
 const MODEL_NAME := "Qwen3.5-4B-Q8_0"
 const MODEL_FILENAME := "Qwen3.5-4B-Q8_0.gguf"
@@ -140,8 +140,19 @@ func _emit_download_progress(request: HTTPRequest, known_total: int, start_time:
 	sig.emit(percent, speed, downloaded, total)
 
 
+var debug_force_fallback := false
+
+
 func is_available() -> bool:
+	if debug_force_fallback:
+		return false
 	return _enabled and _server_healthy
+
+
+func toggle_debug_fallback() -> void:
+	debug_force_fallback = not debug_force_fallback
+	var state := "ON (forcing fallback)" if debug_force_fallback else "OFF (LLM active)"
+	print("[LLMManager] Debug fallback: %s" % state)
 
 
 func is_downloading() -> bool:
@@ -156,23 +167,25 @@ func is_setup_complete() -> bool:
 	return _setup_complete
 
 
-func generate(prompt: String, grammar: String, callback: Callable) -> void:
+func generate(messages: Dictionary, grammar: String, callback: Callable) -> void:
 	if not is_available():
 		print("[LLMManager] Not available, falling back to static dialogue")
 		callback.call("")
 		return
 
 	if _generating:
-		_request_queue.append({"prompt": prompt, "grammar": grammar, "callback": callback})
+		_request_queue.append({"messages": messages, "grammar": grammar, "callback": callback})
 		return
 
-	_send_completion(prompt, grammar, callback)
+	_send_completion(messages, grammar, callback)
 
 
-func _send_completion(prompt: String, grammar: String, callback: Callable) -> void:
+func _send_completion(messages: Dictionary, grammar: String, callback: Callable) -> void:
 	_generating = true
 	_pending_callbacks = [callback]
 	_generate_start_msec = Time.get_ticks_msec()
+
+	var prompt := "<|im_start|>system\n%s<|im_end|>\n<|im_start|>user\n%s<|im_end|>\n<|im_start|>assistant\n<think>\n</think>\n" % [messages.get("system", ""), messages.get("user", "")]
 
 	var body := {
 		"prompt": prompt,
@@ -181,9 +194,11 @@ func _send_completion(prompt: String, grammar: String, callback: Callable) -> vo
 		"top_p": TOP_P,
 		"top_k": TOP_K,
 		"presence_penalty": PRESENCE_PENALTY,
-		"stop": ["<|im_end|>", "\n\n"],
-		"grammar": grammar,
+		"stop": ["<|im_end|>"],
+		"timings": true,
 	}
+	if grammar != "":
+		body["grammar"] = grammar
 
 	var headers := ["Content-Type: application/json"]
 	var url := "http://127.0.0.1:%d/completion" % PORT
@@ -197,21 +212,30 @@ func _send_completion(prompt: String, grammar: String, callback: Callable) -> vo
 		return
 
 	_generate_timer.start(GENERATE_TIMEOUT_SEC)
-	print("[LLMManager] Generate started (prompt %d chars, body %d chars)" % [prompt.length(), json_body.length()])
+	print("[LLMManager] Generate started (prompt %d chars)" % prompt.length())
 
 
 func _process_queue() -> void:
 	if _request_queue.is_empty():
 		return
 	var next: Dictionary = _request_queue.pop_front()
-	_send_completion(next["prompt"], next["grammar"], next["callback"])
+	_send_completion(next["messages"], next["grammar"], next["callback"])
 
 
 func _on_completion_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	_generate_timer.stop()
+	var elapsed_ms := Time.get_ticks_msec() - _generate_start_msec
+	var timed_out := _timed_out
+	_timed_out = false
+
+	if timed_out:
+		_log_timeout_response(result, response_code, body, elapsed_ms)
+		_generating = false
+		_process_queue()
+		return
+
 	_generating = false
 
-	var elapsed_ms := Time.get_ticks_msec() - _generate_start_msec
 	if result != HTTPRequest.RESULT_SUCCESS:
 		print("[LLMManager] HTTP result error: %d (code %d) after %.1fs" % [result, response_code, elapsed_ms / 1000.0])
 	var callback: Callable = _pending_callbacks[0] if not _pending_callbacks.is_empty() else Callable()
@@ -231,8 +255,16 @@ func _on_completion_completed(result: int, response_code: int, _headers: PackedS
 	var text := body.get_string_from_utf8()
 	var parsed: Variant = JSON.parse_string(text)
 	if parsed is Dictionary:
-		var content: String = (parsed as Dictionary).get("content", "")
-		print("[LLMManager] Generate done in %.1fs - %d chars" % [elapsed_ms / 1000.0, content.length()])
+		var d := parsed as Dictionary
+		var raw_content: String = d.get("content", "")
+		var content := _strip_think_block(raw_content)
+		var think_len := raw_content.length() - content.length()
+		var timings_str := _format_timings(d)
+		print("[LLMManager] Generate done in %.1fs - %d think + %d content chars%s" % [elapsed_ms / 1000.0, think_len, content.length(), timings_str])
+		if content.length() > 0 and content.length() < 80:
+			print("[LLMManager] Content: %s" % content)
+		elif content.length() == 0 and raw_content.length() > 0:
+			print("[LLMManager] Think-only response (no usable content)")
 		callback.call(content)
 	else:
 		push_warning("[LLMManager] Failed to parse completion response")
@@ -242,17 +274,72 @@ func _on_completion_completed(result: int, response_code: int, _headers: PackedS
 	_process_queue()
 
 
+var _timed_out := false
+
+
 func _on_generate_timeout() -> void:
-	print("[LLMManager] Generate timed out after %.1fs" % GENERATE_TIMEOUT_SEC)
-	_completion_request.cancel_request()
-	_generating = false
+	print("[LLMManager] Generate timed out after %.1fs - waiting for response to diagnose" % GENERATE_TIMEOUT_SEC)
+	_timed_out = true
 
 	var callback: Callable = _pending_callbacks[0] if not _pending_callbacks.is_empty() else Callable()
 	_pending_callbacks.clear()
 	if callback.is_valid():
 		callback.call("")
 
-	_process_queue()
+	_request_queue.clear()
+
+
+func _log_timeout_response(result: int, response_code: int, body: PackedByteArray, elapsed_ms: int) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
+		print("[LLMManager] Timed-out request finally returned: result=%d code=%d after %.1fs" % [result, response_code, elapsed_ms / 1000.0])
+		return
+	var text := body.get_string_from_utf8()
+	var parsed: Variant = JSON.parse_string(text)
+	if not parsed is Dictionary:
+		print("[LLMManager] Timed-out request: unparseable after %.1fs" % [elapsed_ms / 1000.0])
+		return
+	var d := parsed as Dictionary
+	var raw_content: String = d.get("content", "")
+	var content := _strip_think_block(raw_content)
+	var think_len := raw_content.length() - content.length()
+	var timings_str := _format_timings(d)
+	print("[LLMManager] TIMEOUT diagnosed in %.1fs - %d think + %d content chars%s" % [elapsed_ms / 1000.0, think_len, content.length(), timings_str])
+	print("[LLMManager] TIMEOUT content: %s" % content.substr(0, 500))
+
+
+func _format_timings(response: Dictionary) -> String:
+	var timings: Variant = response.get("timings", null)
+	if not timings is Dictionary:
+		return ""
+	var t := timings as Dictionary
+	var prompt_n: int = int(t.get("prompt_n", 0))
+	var predicted_n: int = int(t.get("predicted_n", 0))
+	var predicted_per_sec: float = t.get("predicted_per_second", 0.0)
+	var stop_type: String = response.get("stop_type", "unknown")
+	return " | %d prompt tok, %d generated tok @ %.1f tok/s, stop: %s" % [prompt_n, predicted_n, predicted_per_sec, stop_type]
+
+
+
+func _strip_think_block(content: String) -> String:
+	var think_end := content.find("</think>")
+	if think_end >= 0:
+		content = content.substr(think_end + 8).strip_edges()
+	elif content.begins_with("<think>"):
+		return ""
+	return _strip_markdown_fences(content)
+
+
+func _strip_markdown_fences(content: String) -> String:
+	var s := content.strip_edges()
+	if not s.begins_with("```"):
+		return s
+	var first_newline := s.find("\n")
+	if first_newline < 0:
+		return s
+	s = s.substr(first_newline + 1)
+	if s.ends_with("```"):
+		s = s.substr(0, s.length() - 3)
+	return s.strip_edges()
 
 
 func _get_platform_binary_name() -> String:

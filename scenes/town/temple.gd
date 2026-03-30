@@ -292,7 +292,7 @@ func _update_service_info(idx: int) -> void:
 	match service_type:
 		ServiceType.RESURRECT:
 			text += "[color=yellow]Cost:[/color] %d + %d per level\n" % [RESURRECT_BASE_COST, RESURRECT_PER_LEVEL]
-			text += "[color=yellow]Ashed characters:[/color] Double cost, 50%% success\n\n"
+			text += "[color=yellow]Ashed characters:[/color] Double cost, 50% success\n\n"
 			text += "[color=cyan]Warning:[/color] Resurrection may cost 1 Vitality.\n"
 			text += "If Vitality reaches 0, the character is lost forever.\n\n"
 
@@ -376,7 +376,7 @@ func _update_resurrect_info(idx: int) -> void:
 		text += "[color=red]This character is LOST FOREVER and cannot be resurrected.[/color]"
 	elif member.has_status(CharacterEnums.StatusEffect.ASHED):
 		text += "[color=orange]This character has been reduced to ashes.[/color]\n"
-		text += "[color=orange]Success chance: 50%%[/color]\n"
+		text += "[color=orange]Success chance: 50%[/color]\n"
 		text += "[color=orange]Failure turns ashes to dust (LOST).[/color]\n\n"
 		if member.vitality <= 1:
 			text += "[color=red]WARNING: Low vitality - high risk of permanent loss![/color]"

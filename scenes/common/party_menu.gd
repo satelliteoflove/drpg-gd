@@ -87,6 +87,10 @@ func _setup_tabs() -> void:
 func _switch_tab(tab: Tab) -> void:
 	current_tab = tab
 
+	var focused := get_viewport().gui_get_focus_owner()
+	if focused:
+		focused.release_focus()
+
 	for i in range(tab_buttons.size()):
 		tab_buttons[i].button_pressed = (i == tab)
 
@@ -105,6 +109,10 @@ func _switch_tab(tab: Tab) -> void:
 
 	if tab != Tab.KEYBINDINGS:
 		_keybind_listening = false
+	if tab != Tab.SPELLS:
+		spell_panel = SpellPanel.PARTY
+		spell_selected_character = null
+		spell_selected_spell = null
 
 	match tab:
 		Tab.STATUS:
@@ -458,14 +466,14 @@ func _update_equip_info_label() -> void:
 @onready var inv_targets: VBoxContainer = $MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel/TargetsScroll/TargetsList
 @onready var inv_targets_panel: PanelContainer = $MainPanel/VBox/ContentPanel/InventoryContent/InvHBox/TargetsPanel
 
-func _refresh_inventory() -> void:
-	_refresh_inv_items()
+func _refresh_inventory(restore_index: int = 0) -> void:
+	_refresh_inv_items(restore_index)
 	_refresh_inv_targets()
 	_update_inv_info()
 	_update_help()
 
 
-func _refresh_inv_items() -> void:
+func _refresh_inv_items(restore_index: int = 0) -> void:
 	for child in inv_list.get_children():
 		child.queue_free()
 	inv_buttons.clear()
@@ -493,7 +501,7 @@ func _refresh_inv_items() -> void:
 		inv_buttons.append(btn)
 
 	inv_nav = MenuNavigator.new()
-	inv_nav.setup(inv_buttons, 0)
+	inv_nav.setup(inv_buttons, clampi(restore_index, 0, maxi(inv_buttons.size() - 1, 0)))
 	inv_nav.selection_changed.connect(_on_inv_selection_changed)
 
 	if not inv_showing_targets:
@@ -550,11 +558,11 @@ func _can_use_item_on(item: Item, character: Character) -> bool:
 
 func _on_inv_item_selected(_slot_index: int, item: Item) -> void:
 	if item.item_type != Item.ItemType.CONSUMABLE:
-		info_label.text = "%s cannot be used here. Equip from Status tab." % item.item_name
+		info_label.text = "%s cannot be used here. Equip from Status tab." % item.get_display_name()
 		return
 
 	if item.heal_amount <= 0 and item.mp_restore <= 0 and item.cures_status.is_empty():
-		info_label.text = "%s has no usable effect." % item.item_name
+		info_label.text = "%s has no usable effect." % item.get_display_name()
 		return
 
 	inv_selected_item = item
@@ -650,7 +658,7 @@ func _try_identify_current_item() -> void:
 	var slot := GameState.party.inventory.get_slot(idx)
 	slot["item"] = new_item
 	info_label.text = "Identified: [b]%s[/b]\n%s" % [new_item.get_display_name(), new_item.get_stats_text()]
-	_refresh_inventory()
+	_refresh_inventory(idx)
 
 
 # === FORMATION TAB ===
@@ -1191,6 +1199,7 @@ func _refresh_keybindings() -> void:
 		["Shift+S", "Run Simulation"],
 		["Shift+B", "Run Batch Sim"],
 		["Ctrl+L", "Toggle AI Log"],
+		["Ctrl+Shift+L", "Toggle LLM Fallback"],
 		["Ctrl+E", "Force Micro Event"],
 		["Ctrl+V", "Toggle Verbose Debug"],
 	]

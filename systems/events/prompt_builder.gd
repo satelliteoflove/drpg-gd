@@ -1,32 +1,32 @@
 class_name PromptBuilder
 extends RefCounted
 
-const SYSTEM_PREFIX := "<|im_start|>system\nYou write short, punchy in-character dialogue for a dungeon crawler RPG. Stay in character. No narration, no actions, no stage directions. Just the spoken line. Each character has a distinct voice shaped by their personality and history. /no_think<|im_end|>\n"
+const SYSTEM_MESSAGE := "You write casual, natural-sounding dialogue for RPG party members. They talk like real people — not fantasy novels. No thee/thou, no dramatic monologues, no narration or stage directions. Just the spoken line. Short, conversational, sometimes funny. Each character has a distinct voice shaped by their personality."
 
 const MAX_MARKS_IN_PROMPT := 3
 const MAX_RELATIONSHIPS_IN_PROMPT := 2
 
 const VOICE_DIRECTION: Dictionary = {
-	"Brave": "bold, direct, eager for action",
-	"Cautious": "wary, alert, warns others",
-	"Reckless": "impulsive, cocky, laughs at danger",
-	"Calculating": "measured, analytical, thinks aloud",
-	"Friendly": "warm, encouraging, checks on others",
-	"Gruff": "blunt, few words, no nonsense",
-	"Sarcastic": "dry wit, ironic, deadpan",
-	"Earnest": "sincere, open, says what they feel",
-	"Optimistic": "hopeful, finds silver linings",
-	"Pessimistic": "expects the worst, darkly realistic",
-	"Stoic": "quiet, unfazed, matter-of-fact",
-	"Curious": "asks questions, notices details",
-	"Merciful": "compassionate, concerned for others",
-	"Ruthless": "cold, practical about violence",
-	"Principled": "appeals to duty and honor",
-	"Self-Interested": "thinks about personal gain",
+	"Brave": "confident, doesn't overthink it",
+	"Cautious": "nervous, second-guesses things",
+	"Reckless": "cocky, thinks they're invincible",
+	"Calculating": "always has an angle, thinks out loud",
+	"Friendly": "genuinely nice, checks on people",
+	"Gruff": "short sentences, hates small talk",
+	"Sarcastic": "dry, says the opposite of what they mean",
+	"Earnest": "honest to a fault, wears their heart on their sleeve",
+	"Optimistic": "glass half full, annoyingly cheerful",
+	"Pessimistic": "assumes the worst, complains",
+	"Stoic": "unfazed, barely reacts",
+	"Curious": "nosy, always poking at things",
+	"Merciful": "soft-hearted, worries about everyone",
+	"Ruthless": "pragmatic, uncomfortable to be around",
+	"Principled": "has strong opinions about right and wrong",
+	"Self-Interested": "always thinking about what's in it for them",
 }
 
 
-static func build_micro_conversation_prompt(speaker: Character, responder: Character, situation: String, recent_lines: Array[String] = [], purpose: String = "") -> String:
+static func build_micro_conversation_prompt(speaker: Character, responder: Character, situation: String, recent_lines: Array[String] = [], purpose: String = "") -> Dictionary:
 	var speaker_desc := _describe_character_with_voice(speaker)
 	var responder_desc := _describe_character_with_voice(responder)
 	var rel_line := _describe_relationship_between(speaker, responder)
@@ -39,10 +39,11 @@ static func build_micro_conversation_prompt(speaker: Character, responder: Chara
 	var direction := ""
 	if purpose != "":
 		direction = " " + purpose
-	return SYSTEM_PREFIX + "<|im_start|>user\nSpeaker: %s\nResponder: %s%s\nSituation: %s%s\nWrite two lines: first %s speaks (5-20 words), then %s replies to what they said (5-20 words).%s Respond with JSON array: [{\"name\": \"%s\", \"line\": \"...\"}, {\"name\": \"%s\", \"line\": \"...\"}]<|im_end|>\n<|im_start|>assistant\n" % [speaker_desc, responder_desc, rel_ctx, situation, avoid, speaker.character_name, responder.character_name, direction, speaker.character_name, responder.character_name]
+	var user_msg := "Speaker: %s\nResponder: %s%s\nSituation: %s%s\nWrite two lines: first %s speaks (5-20 words), then %s replies to what they said (5-20 words).%s Respond with JSON array: [{\"name\": \"%s\", \"line\": \"...\"}, {\"name\": \"%s\", \"line\": \"...\"}]" % [speaker_desc, responder_desc, rel_ctx, situation, avoid, speaker.character_name, responder.character_name, direction, speaker.character_name, responder.character_name]
+	return {"system": SYSTEM_MESSAGE, "user": user_msg}
 
 
-static func build_micro_solo_prompt(speaker: Character, situation: String, recent_lines: Array[String] = [], purpose: String = "") -> String:
+static func build_micro_solo_prompt(speaker: Character, situation: String, recent_lines: Array[String] = [], purpose: String = "") -> Dictionary:
 	var char_desc := _describe_character_with_voice(speaker)
 	var avoid := ""
 	if not recent_lines.is_empty():
@@ -50,10 +51,11 @@ static func build_micro_solo_prompt(speaker: Character, situation: String, recen
 	var direction := ""
 	if purpose != "":
 		direction = " " + purpose
-	return SYSTEM_PREFIX + "<|im_start|>user\n%s\nSituation: %s%s\nWrite one short spoken line (5-20 words).%s Respond with JSON: {\"line\": \"...\"}<|im_end|>\n<|im_start|>assistant\n" % [char_desc, situation, avoid, direction]
+	var user_msg := "%s\nSituation: %s%s\nWrite one short spoken line (5-20 words).%s Respond with JSON: {\"line\": \"...\"}" % [char_desc, situation, avoid, direction]
+	return {"system": SYSTEM_MESSAGE, "user": user_msg}
 
 
-static func build_event_prompt(template: Dictionary, cast: Dictionary, context: Dictionary) -> String:
+static func build_event_prompt(template: Dictionary, cast: Dictionary, context: Dictionary) -> Dictionary:
 	var llm_ctx: Dictionary = template.get("llm_context", {})
 	var mood: String = llm_ctx.get("scene_mood", "")
 	var slot_guidance: Array = llm_ctx.get("slot_guidance", [])
@@ -72,7 +74,8 @@ static func build_event_prompt(template: Dictionary, cast: Dictionary, context: 
 	var setup: String = template.get("setup_text", "")
 	var num_slots := cast.size()
 
-	return SYSTEM_PREFIX + "<|im_start|>user\nScene mood: %s\n%s\nSetup: %s\nWrite %d-4 short dialogue lines between these characters. Their history and relationships should shape what they say and how they say it. Each line 5-15 words. Respond with a JSON array: [{\"slot\": 0, \"line\": \"...\"}, ...]<|im_end|>\n<|im_start|>assistant\n" % [mood, cast_lines, setup, num_slots]
+	var user_msg := "Scene mood: %s\n%s\nSetup: %s\nWrite %d-4 short dialogue lines between these characters. Their history and relationships should shape what they say and how they say it. Each line 5-15 words. Respond with a JSON array: [{\"slot\": 0, \"line\": \"...\"}, ...]" % [mood, cast_lines, setup, num_slots]
+	return {"system": SYSTEM_MESSAGE, "user": user_msg}
 
 
 static func micro_grammar() -> String:

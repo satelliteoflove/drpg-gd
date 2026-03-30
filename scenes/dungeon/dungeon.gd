@@ -638,7 +638,7 @@ func _handle_debug_keys(event: InputEventKey) -> bool:
 	elif event.keycode == KEY_B and event.shift_pressed:
 		_run_batch_simulation()
 		return true
-	elif event.keycode == KEY_L and event.ctrl_pressed:
+	elif event.keycode == KEY_L and event.ctrl_pressed and not event.shift_pressed:
 		_toggle_ai_logging()
 		return true
 	elif event.is_action_pressed("debug_force_micro_event"):
@@ -650,6 +650,11 @@ func _handle_debug_keys(event: InputEventKey) -> bool:
 		return true
 	elif event.keycode == KEY_TAB and event.shift_pressed:
 		_cycle_debug_material()
+		return true
+	elif event.keycode == KEY_L and event.ctrl_pressed and event.shift_pressed:
+		LLMManager.toggle_debug_fallback()
+		var state := "ON (forcing fallback)" if LLMManager.debug_force_fallback else "OFF (LLM active)"
+		_show_dungeon_message("LLM fallback: %s" % state)
 		return true
 
 	return false
