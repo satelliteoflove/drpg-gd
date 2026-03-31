@@ -133,6 +133,9 @@ func _on_quick_open() -> void:
 	if result.success:
 		await get_tree().create_timer(0.5).timeout
 		_collect_items()
+	else:
+		_update_trap_warning()
+		_populate_options()
 
 
 func _on_inspect() -> void:

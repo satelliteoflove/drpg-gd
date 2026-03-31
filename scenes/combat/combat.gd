@@ -55,7 +55,7 @@ var _grid_target_buttons: Array[Button] = []
 var action_nav: MenuNavigator = null
 var item_nav: MenuNavigator = null
 var target_nav: MenuNavigator = null
-var enemy_target_nav: MenuNavigator = null
+var enemy_target_nav: GridNavigator = null
 var spell_nav: MenuNavigator = null
 var spell_level_nav: MenuNavigator = null
 var spell_ally_nav: MenuNavigator = null
@@ -1183,39 +1183,27 @@ func _on_target_selection_requested(reachable_enemies: Array[Monster]) -> void:
 	_set_actions_enabled(false)
 	_populate_enemy_target_list(reachable_enemies)
 
-	if enemy_target_nav and not enemy_target_buttons.is_empty():
-		enemy_target_nav.setup(enemy_target_buttons, 0)
-
 
 func _populate_enemy_target_list(reachable_enemies: Array[Monster]) -> void:
 	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
+	var buttons_by_pos: Dictionary = {}
 	for enemy in reachable_enemies:
 		if not enemy_panels.has(enemy.combat_id):
 			continue
 		var ui: EnemyUI = enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := Button.new()
-		btn.text = ""
-		btn.flat = true
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		var transparent := StyleBoxFlat.new()
-		transparent.bg_color = Color.TRANSPARENT
-		btn.add_theme_stylebox_override("normal", transparent)
-		btn.add_theme_stylebox_override("hover", transparent)
-		btn.add_theme_stylebox_override("pressed", transparent)
-		btn.add_theme_stylebox_override("focus", transparent)
-		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var btn := _create_grid_overlay_button(cell)
 		btn.pressed.connect(_on_enemy_target_selected.bind(enemy))
 		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
-		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
 		_grid_target_buttons.append(btn)
+		buttons_by_pos[enemy.grid_position] = btn
 
-	enemy_target_nav = MenuNavigator.new()
+	enemy_target_nav = GridNavigator.new()
 	if not enemy_target_buttons.is_empty():
-		enemy_target_nav.setup(enemy_target_buttons, 0)
+		enemy_target_nav.setup(buttons_by_pos, 0)
 
 
 func _clear_grid_target_buttons() -> void:
@@ -1223,6 +1211,22 @@ func _clear_grid_target_buttons() -> void:
 		if is_instance_valid(btn):
 			btn.queue_free()
 	_grid_target_buttons.clear()
+
+
+func _create_grid_overlay_button(cell: PanelContainer) -> Button:
+	var btn := Button.new()
+	btn.text = ""
+	btn.flat = true
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	var transparent := StyleBoxFlat.new()
+	transparent.bg_color = Color.TRANSPARENT
+	btn.add_theme_stylebox_override("normal", transparent)
+	btn.add_theme_stylebox_override("hover", transparent)
+	btn.add_theme_stylebox_override("pressed", transparent)
+	btn.add_theme_stylebox_override("focus", transparent)
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cell.add_child(btn)
+	return btn
 
 
 func _on_enemy_target_selected(enemy: Monster) -> void:
@@ -1325,31 +1329,22 @@ func _on_dispel_pressed() -> void:
 	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
+	var buttons_by_pos: Dictionary = {}
 	for enemy in undead_targets:
 		if not enemy_panels.has(enemy.combat_id):
 			continue
 		var ui: EnemyUI = enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := Button.new()
-		btn.text = ""
-		btn.flat = true
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		var transparent := StyleBoxFlat.new()
-		transparent.bg_color = Color.TRANSPARENT
-		btn.add_theme_stylebox_override("normal", transparent)
-		btn.add_theme_stylebox_override("hover", transparent)
-		btn.add_theme_stylebox_override("pressed", transparent)
-		btn.add_theme_stylebox_override("focus", transparent)
-		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var btn := _create_grid_overlay_button(cell)
 		btn.pressed.connect(_on_dispel_target_selected.bind(enemy))
 		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
-		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
 		_grid_target_buttons.append(btn)
+		buttons_by_pos[enemy.grid_position] = btn
 
-	enemy_target_nav = MenuNavigator.new()
+	enemy_target_nav = GridNavigator.new()
 	if not enemy_target_buttons.is_empty():
-		enemy_target_nav.setup(enemy_target_buttons, 0)
+		enemy_target_nav.setup(buttons_by_pos, 0)
 
 	dispel_target_mode = true
 
@@ -1378,31 +1373,22 @@ func _on_breath_pressed() -> void:
 	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
+	var buttons_by_pos: Dictionary = {}
 	for enemy in living:
 		if not enemy_panels.has(enemy.combat_id):
 			continue
 		var ui: EnemyUI = enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := Button.new()
-		btn.text = ""
-		btn.flat = true
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		var transparent := StyleBoxFlat.new()
-		transparent.bg_color = Color.TRANSPARENT
-		btn.add_theme_stylebox_override("normal", transparent)
-		btn.add_theme_stylebox_override("hover", transparent)
-		btn.add_theme_stylebox_override("pressed", transparent)
-		btn.add_theme_stylebox_override("focus", transparent)
-		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var btn := _create_grid_overlay_button(cell)
 		btn.pressed.connect(_on_breath_target_selected.bind(enemy))
 		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
-		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
 		_grid_target_buttons.append(btn)
+		buttons_by_pos[enemy.grid_position] = btn
 
-	enemy_target_nav = MenuNavigator.new()
+	enemy_target_nav = GridNavigator.new()
 	if not enemy_target_buttons.is_empty():
-		enemy_target_nav.setup(enemy_target_buttons, 0)
+		enemy_target_nav.setup(buttons_by_pos, 0)
 
 	breath_target_mode = true
 
@@ -1546,10 +1532,12 @@ func _on_target_selected(character: Character) -> void:
 	if selected_item.heal_amount > 0:
 		var healed := character.heal(selected_item.heal_amount)
 		message += "Restored %d HP. " % healed
+		_show_floating_text(character.id, "+%d HP" % healed, UIColors.HP_GREEN)
 
 	if selected_item.mp_restore > 0:
 		var restored := character.restore_mp(selected_item.mp_restore)
 		message += "Restored %d MP. " % restored
+		_show_floating_text(character.id, "+%d MP" % restored, UIColors.MP_BLUE)
 
 	for status in selected_item.cures_status:
 		if character.has_status(status):
@@ -1758,31 +1746,22 @@ func _populate_spell_enemy_target_list() -> void:
 	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
+	var buttons_by_pos: Dictionary = {}
 	for enemy in enemies:
 		if not enemy_panels.has(enemy.combat_id):
 			continue
 		var ui: EnemyUI = enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := Button.new()
-		btn.text = ""
-		btn.flat = true
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		var transparent := StyleBoxFlat.new()
-		transparent.bg_color = Color.TRANSPARENT
-		btn.add_theme_stylebox_override("normal", transparent)
-		btn.add_theme_stylebox_override("hover", transparent)
-		btn.add_theme_stylebox_override("pressed", transparent)
-		btn.add_theme_stylebox_override("focus", transparent)
-		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var btn := _create_grid_overlay_button(cell)
 		btn.pressed.connect(_on_spell_enemy_target_selected.bind(enemy))
 		btn.focus_entered.connect(_highlight_enemy_target.bind(enemy))
-		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
 		_grid_target_buttons.append(btn)
+		buttons_by_pos[enemy.grid_position] = btn
 
-	enemy_target_nav = MenuNavigator.new()
+	enemy_target_nav = GridNavigator.new()
 	if not enemy_target_buttons.is_empty():
-		enemy_target_nav.setup(enemy_target_buttons, 0)
+		enemy_target_nav.setup(buttons_by_pos, 0)
 
 
 func _on_spell_ally_target_selected(character: Character) -> void:
@@ -1814,32 +1793,23 @@ func _populate_spell_splash_target_list() -> void:
 	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
+	var buttons_by_pos: Dictionary = {}
 	for enemy in enemies:
 		if not enemy_panels.has(enemy.combat_id):
 			continue
 		var ui: EnemyUI = enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := Button.new()
-		btn.text = ""
-		btn.flat = true
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		var transparent := StyleBoxFlat.new()
-		transparent.bg_color = Color.TRANSPARENT
-		btn.add_theme_stylebox_override("normal", transparent)
-		btn.add_theme_stylebox_override("hover", transparent)
-		btn.add_theme_stylebox_override("pressed", transparent)
-		btn.add_theme_stylebox_override("focus", transparent)
-		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var btn := _create_grid_overlay_button(cell)
 		var splash_targets := combat_system.get_splash_targets(enemy)
 		btn.pressed.connect(_on_spell_enemy_target_selected.bind(enemy))
-		btn.focus_entered.connect(_highlight_enemy_targets.bind(splash_targets))
-		cell.add_child(btn)
+		btn.focus_entered.connect(_highlight_enemy_targets.bind(splash_targets, enemy))
 		enemy_target_buttons.append(btn)
 		_grid_target_buttons.append(btn)
+		buttons_by_pos[enemy.grid_position] = btn
 
-	enemy_target_nav = MenuNavigator.new()
+	enemy_target_nav = GridNavigator.new()
 	if not enemy_target_buttons.is_empty():
-		enemy_target_nav.setup(enemy_target_buttons, 0)
+		enemy_target_nav.setup(buttons_by_pos, 0)
 
 
 func _populate_spell_row_target_list() -> void:
@@ -1856,6 +1826,7 @@ func _populate_spell_row_target_list() -> void:
 	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
+	var buttons_by_pos: Dictionary = {}
 	for row in available_rows:
 		var row_targets := combat_system.get_row_targets(row)
 		if row_targets.is_empty():
@@ -1865,26 +1836,16 @@ func _populate_spell_row_target_list() -> void:
 			continue
 		var ui: EnemyUI = enemy_panels[first_enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := Button.new()
-		btn.text = ""
-		btn.flat = true
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		var transparent := StyleBoxFlat.new()
-		transparent.bg_color = Color.TRANSPARENT
-		btn.add_theme_stylebox_override("normal", transparent)
-		btn.add_theme_stylebox_override("hover", transparent)
-		btn.add_theme_stylebox_override("pressed", transparent)
-		btn.add_theme_stylebox_override("focus", transparent)
-		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var btn := _create_grid_overlay_button(cell)
 		btn.pressed.connect(_on_spell_row_selected.bind(row))
 		btn.focus_entered.connect(_highlight_enemy_targets.bind(row_targets))
-		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
 		_grid_target_buttons.append(btn)
+		buttons_by_pos[first_enemy.grid_position] = btn
 
-	enemy_target_nav = MenuNavigator.new()
+	enemy_target_nav = GridNavigator.new()
 	if not enemy_target_buttons.is_empty():
-		enemy_target_nav.setup(enemy_target_buttons, 0)
+		enemy_target_nav.setup(buttons_by_pos, 0)
 
 
 func _on_spell_row_selected(row: int) -> void:
@@ -1909,8 +1870,7 @@ func _populate_spell_column_target_list() -> void:
 	_clear_grid_target_buttons()
 	enemy_target_buttons.clear()
 
-	var col_names: Array[String] = ["Left Column", "Center Column", "Right Column"]
-
+	var buttons_by_pos: Dictionary = {}
 	for col in available_cols:
 		var col_targets := combat_system.get_column_targets(col)
 		if col_targets.is_empty():
@@ -1920,26 +1880,16 @@ func _populate_spell_column_target_list() -> void:
 			continue
 		var ui: EnemyUI = enemy_panels[first_enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := Button.new()
-		btn.text = ""
-		btn.flat = true
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		var transparent := StyleBoxFlat.new()
-		transparent.bg_color = Color.TRANSPARENT
-		btn.add_theme_stylebox_override("normal", transparent)
-		btn.add_theme_stylebox_override("hover", transparent)
-		btn.add_theme_stylebox_override("pressed", transparent)
-		btn.add_theme_stylebox_override("focus", transparent)
-		btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+		var btn := _create_grid_overlay_button(cell)
 		btn.pressed.connect(_on_spell_column_selected.bind(col))
 		btn.focus_entered.connect(_highlight_enemy_targets.bind(col_targets))
-		cell.add_child(btn)
 		enemy_target_buttons.append(btn)
 		_grid_target_buttons.append(btn)
+		buttons_by_pos[first_enemy.grid_position] = btn
 
-	enemy_target_nav = MenuNavigator.new()
+	enemy_target_nav = GridNavigator.new()
 	if not enemy_target_buttons.is_empty():
-		enemy_target_nav.setup(enemy_target_buttons, 0)
+		enemy_target_nav.setup(buttons_by_pos, 0)
 
 
 func _on_spell_column_selected(col: int) -> void:
@@ -2032,9 +1982,11 @@ func _highlight_enemy_target(enemy: Monster) -> void:
 	_target_highlight_tween.tween_property(_target_highlight_style, "border_color:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
 
 
-func _highlight_enemy_targets(enemies: Array[Monster]) -> void:
+func _highlight_enemy_targets(enemies: Array[Monster], origin: Monster = null) -> void:
 	_clear_target_highlights()
-	if not enemies.is_empty():
+	if origin != null:
+		_update_portrait_for_enemy(origin)
+	elif not enemies.is_empty():
 		_update_portrait_for_enemy(enemies[0])
 	_target_highlight_style = StyleBoxFlat.new()
 	_target_highlight_style.bg_color = Color.TRANSPARENT
@@ -2047,12 +1999,27 @@ func _highlight_enemy_targets(enemies: Array[Monster]) -> void:
 	_target_highlight_style.corner_radius_top_right = 4
 	_target_highlight_style.corner_radius_bottom_left = 4
 	_target_highlight_style.corner_radius_bottom_right = 4
+	var secondary_style: StyleBoxFlat = null
+	if origin != null:
+		secondary_style = StyleBoxFlat.new()
+		secondary_style.bg_color = Color.TRANSPARENT
+		secondary_style.border_color = UIColors.WARNING
+		secondary_style.border_width_left = 1
+		secondary_style.border_width_top = 1
+		secondary_style.border_width_right = 1
+		secondary_style.border_width_bottom = 1
+		secondary_style.corner_radius_top_left = 4
+		secondary_style.corner_radius_top_right = 4
+		secondary_style.corner_radius_bottom_left = 4
+		secondary_style.corner_radius_bottom_right = 4
 	for enemy in enemies:
 		if not enemy_panels.has(enemy.combat_id):
 			continue
 		var ui: EnemyUI = enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		cell.add_theme_stylebox_override("panel", _target_highlight_style)
+		var is_origin := origin != null and enemy.combat_id == origin.combat_id
+		var style := _target_highlight_style if is_origin or secondary_style == null else secondary_style
+		cell.add_theme_stylebox_override("panel", style)
 		_highlighted_panels.append(cell)
 	if _highlighted_panels.is_empty():
 		return
@@ -2099,6 +2066,25 @@ func _clear_target_highlights() -> void:
 	_highlighted_panels.clear()
 	_target_highlight_style = null
 	_update_portrait_for_active_combatant()
+
+
+func _show_floating_text(character_id: String, text: String, color: Color) -> void:
+	if not party_panels.has(character_id):
+		return
+	var ui: PartyMemberUI = party_panels[character_id]
+	var label := Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", UIColors.FONT_SIZE_BODY)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	label.position.y = -4
+	ui.panel.add_child(label)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y - 20, 1.0).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 1.0).set_ease(Tween.EASE_IN).set_delay(0.3)
+	tween.chain().tween_callback(label.queue_free)
 
 
 func _set_actions_enabled(enabled: bool) -> void:
@@ -2205,12 +2191,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("menu_cancel"):
 			_on_cancel_enemy_target()
 		elif enemy_target_nav:
-			if event.is_action_pressed("menu_up"):
-				enemy_target_nav._move(-1)
-			elif event.is_action_pressed("menu_down"):
-				enemy_target_nav._move(1)
-			elif event.is_action_pressed("menu_confirm"):
-				enemy_target_nav._confirm()
+			enemy_target_nav.handle_input(event)
 		return
 
 	if item_modal.visible:

@@ -128,6 +128,8 @@ static func trigger_trap(chest: Chest, opener: Character, party: Party) -> Dicti
 			"party_wiped": false
 		}
 
+	chest.trap_disarmed = true
+
 	var trap: Trap = chest.trap
 	var messages: Array[String] = []
 	var targets: Array[Character] = []
