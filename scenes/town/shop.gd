@@ -1,45 +1,22 @@
 extends Control
 
 enum Mode { BUY, SELL, UPGRADE, SCRAP, IDENTIFY, UNCURSE }
-enum BuyState { BROWSING, QUANTITY_SELECT, EQUIP_SELECT }
-enum SellState { BROWSING, CONFIRM_SELL }
-enum UpgradeState { BROWSING, STAT_SELECT }
-enum ScrapState { BROWSING }
-enum IdentifyState { BROWSING }
-enum UncurseState { BROWSING }
 
 const MODE_NAMES: Array[String] = ["Buy", "Sell", "Upgrade", "Scrap", "Identify", "Uncurse"]
 
 var current_mode: Mode = Mode.BUY
-var buy_state: BuyState = BuyState.BROWSING
-var sell_state: SellState = SellState.BROWSING
-var upgrade_state: UpgradeState = UpgradeState.BROWSING
-var scrap_state: ScrapState = ScrapState.BROWSING
-var identify_state: IdentifyState = IdentifyState.BROWSING
-var uncurse_state: UncurseState = UncurseState.BROWSING
 
 var nav: MenuNavigator = null
-var equip_nav: MenuNavigator = null
 var item_buttons: Array[Button] = []
-var equip_buttons: Array[Button] = []
 var displayed_items: Array[Item] = []
-var selected_members: Array[Character] = []
 
-var selected_item: Item = null
-var selected_quantity: int = 1
-var max_quantity: int = 1
-var selected_inventory_index: int = -1
-
-var sell_selected_indices: Array[int] = []
-var sell_multi_select: bool = false
-var scrap_selected_indices: Array[int] = []
-var scrap_multi_select: bool = false
-
-var upgrade_stat_buttons: Array[Button] = []
-var upgrade_stat_nav: MenuNavigator = null
-var upgradeable_stats: Array[String] = []
-
-var uncurse_items: Array[Dictionary] = []
+var buy_mode: ShopBuyMode
+var sell_mode: ShopSellMode
+var upgrade_mode: ShopUpgradeMode
+var scrap_mode: ShopScrapMode
+var identify_mode: ShopIdentifyMode
+var uncurse_mode: ShopUncurseMode
+var modes: Array[RefCounted] = []
 
 @onready var title_label: Label = $MainHBox/LeftPanel/Header/TitleLabel
 @onready var gold_label: Label = $MainHBox/LeftPanel/Header/GoldLabel
@@ -85,21 +62,40 @@ var uncurse_items: Array[Dictionary] = []
 
 
 func _ready() -> void:
+	buy_mode = ShopBuyMode.new()
+	buy_mode.init(self)
+	buy_mode.connect_buttons()
+
+	sell_mode = ShopSellMode.new()
+	sell_mode.init(self)
+
+	upgrade_mode = ShopUpgradeMode.new()
+	upgrade_mode.init(self)
+	upgrade_mode.connect_buttons()
+
+	scrap_mode = ShopScrapMode.new()
+	scrap_mode.init(self)
+
+	identify_mode = ShopIdentifyMode.new()
+	identify_mode.init(self)
+
+	uncurse_mode = ShopUncurseMode.new()
+	uncurse_mode.init(self)
+
+	modes = [buy_mode, sell_mode, upgrade_mode, scrap_mode, identify_mode, uncurse_mode]
+
 	buy_button.pressed.connect(_on_buy_mode)
 	sell_button.pressed.connect(_on_sell_mode)
 	back_button.pressed.connect(_on_back_pressed)
 
-	minus_button.pressed.connect(_on_quantity_minus)
-	plus_button.pressed.connect(_on_quantity_plus)
-	confirm_quantity.pressed.connect(_on_quantity_confirm)
-	cancel_quantity.pressed.connect(_on_quantity_cancel)
-	cancel_equip.pressed.connect(_on_equip_cancel)
-	cancel_upgrade.pressed.connect(_on_upgrade_cancel)
-
-	_refresh_display()
+	refresh_display()
 
 
-func _refresh_display() -> void:
+func _get_active_mode() -> RefCounted:
+	return modes[current_mode]
+
+
+func refresh_display() -> void:
 	gold_label.text = "Gold: %d" % GameState.party.gold
 	if scrap_label:
 		scrap_label.text = "Scrap: %d" % GameState.party.scrap
@@ -109,7 +105,7 @@ func _refresh_display() -> void:
 	sell_button.button_pressed = (current_mode == Mode.SELL)
 	_refresh_items_list()
 	_update_info()
-	_update_help()
+	update_help()
 
 
 func _update_mode_label() -> void:
@@ -137,269 +133,12 @@ func _refresh_items_list() -> void:
 	item_buttons.clear()
 	displayed_items.clear()
 
-	match current_mode:
-		Mode.BUY:
-			_populate_buy_list()
-		Mode.SELL:
-			_populate_sell_list()
-		Mode.UPGRADE:
-			_populate_upgrade_list()
-		Mode.SCRAP:
-			_populate_scrap_list()
-		Mode.IDENTIFY:
-			_populate_identify_list()
-		Mode.UNCURSE:
-			_populate_uncurse_list()
+	_get_active_mode().populate()
 
 	nav = MenuNavigator.new()
 	if not item_buttons.is_empty():
 		nav.setup(item_buttons, 0)
 		nav.selection_changed.connect(_on_selection_changed)
-
-
-func _populate_buy_list() -> void:
-	var shop_items := ShopItems.get_shop_inventory()
-	shop_items.sort_custom(_sort_by_type_and_price)
-
-	for item in shop_items:
-		displayed_items.append(item)
-		var btn := _create_buy_button(item)
-		items_list.add_child(btn)
-		item_buttons.append(btn)
-
-	if item_buttons.is_empty():
-		var label := Label.new()
-		label.text = "(Shop is empty)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		items_list.add_child(label)
-
-
-func _create_buy_button(item: Item) -> Button:
-	var btn := Button.new()
-	btn.text = "%s - %d gold" % [item.item_name, item.buy_price]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_buy_item.bind(item))
-
-	var can_afford := GameState.party.has_gold(item.buy_price)
-	var has_space := not GameState.party.inventory.is_full()
-
-	if not can_afford:
-		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
-		btn.tooltip_text = "Not enough gold"
-	elif not has_space and not item.is_equipment():
-		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
-		btn.tooltip_text = "Inventory full"
-
-	return btn
-
-
-func _populate_sell_list() -> void:
-	if GameState.party.inventory == null or GameState.party.inventory.is_empty():
-		var label := Label.new()
-		label.text = "(No items to sell)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		items_list.add_child(label)
-		return
-
-	for i in range(GameState.party.inventory.size()):
-		var item: Item = GameState.party.inventory.get_item_at(i)
-		var qty: int = GameState.party.inventory.get_quantity_at(i)
-		if item:
-			displayed_items.append(item)
-			var btn := _create_sell_button(i, item, qty)
-			items_list.add_child(btn)
-			item_buttons.append(btn)
-
-
-func _create_sell_button(index: int, item: Item, qty: int) -> Button:
-	var btn := Button.new()
-	var qty_text := " x%d" % qty if qty > 1 else ""
-	var marker := "[ ] " if sell_multi_select else ""
-	btn.text = "%s%s%s - %d gold" % [marker, item.get_display_name(), qty_text, item.sell_price]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_sell_item.bind(index, item))
-	return btn
-
-
-func _populate_upgrade_list() -> void:
-	if GameState.party.inventory == null or GameState.party.inventory.is_empty():
-		var label := Label.new()
-		label.text = "(No items to upgrade)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		items_list.add_child(label)
-		return
-
-	var found_any := false
-	for i in range(GameState.party.inventory.size()):
-		var item: Item = GameState.party.inventory.get_item_at(i)
-		if item == null:
-			continue
-		if not item.is_equipment():
-			continue
-		if not item.is_identified:
-			continue
-		if item.is_cursed:
-			continue
-
-		var upgradeable := item.get_upgradeable_stats()
-		var can_upgrade_any := false
-		for stat in upgradeable:
-			if item.can_upgrade(stat):
-				can_upgrade_any = true
-				break
-
-		if not can_upgrade_any:
-			continue
-
-		found_any = true
-		displayed_items.append(item)
-		var btn := _create_upgrade_button(i, item)
-		items_list.add_child(btn)
-		item_buttons.append(btn)
-
-	if not found_any:
-		var label := Label.new()
-		label.text = "(No upgradeable items)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		items_list.add_child(label)
-
-
-func _create_upgrade_button(index: int, item: Item) -> Button:
-	var btn := Button.new()
-	btn.text = "%s" % item.get_display_name()
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_upgrade_item.bind(index, item))
-	return btn
-
-
-func _populate_scrap_list() -> void:
-	if GameState.party.inventory == null or GameState.party.inventory.is_empty():
-		var label := Label.new()
-		label.text = "(No items to scrap)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		items_list.add_child(label)
-		return
-
-	for i in range(GameState.party.inventory.size()):
-		var item: Item = GameState.party.inventory.get_item_at(i)
-		var qty: int = GameState.party.inventory.get_quantity_at(i)
-		if item:
-			displayed_items.append(item)
-			var btn := _create_scrap_button(i, item, qty)
-			items_list.add_child(btn)
-			item_buttons.append(btn)
-
-
-func _create_scrap_button(index: int, item: Item, qty: int) -> Button:
-	var btn := Button.new()
-	var qty_text := " x%d" % qty if qty > 1 else ""
-	var marker := "[ ] " if scrap_multi_select else ""
-	btn.text = "%s%s%s -> 1-2 scrap" % [marker, item.get_display_name(), qty_text]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_scrap_item.bind(index, item))
-	return btn
-
-
-func _populate_identify_list() -> void:
-	if GameState.party.inventory == null or GameState.party.inventory.is_empty():
-		var label := Label.new()
-		label.text = "(No items to identify)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		items_list.add_child(label)
-		return
-
-	var found_any := false
-	for i in range(GameState.party.inventory.size()):
-		var item: Item = GameState.party.inventory.get_item_at(i)
-		if item == null:
-			continue
-		if item.is_identified:
-			continue
-
-		found_any = true
-		displayed_items.append(item)
-		var btn := _create_identify_button(i, item)
-		items_list.add_child(btn)
-		item_buttons.append(btn)
-
-	if not found_any:
-		var label := Label.new()
-		label.text = "(No unidentified items)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		items_list.add_child(label)
-
-
-func _create_identify_button(index: int, item: Item) -> Button:
-	var btn := Button.new()
-	var cost := item.buy_price / 2
-	btn.text = "%s - %d gold" % [item.get_display_name(), cost]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_identify_item.bind(index, item))
-
-	if not GameState.party.has_gold(cost):
-		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
-		btn.tooltip_text = "Not enough gold"
-
-	return btn
-
-
-func _populate_uncurse_list() -> void:
-	uncurse_items.clear()
-
-	if GameState.party == null or GameState.party.is_empty():
-		var label := Label.new()
-		label.text = "(No party members)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		items_list.add_child(label)
-		return
-
-	var found_any := false
-	for member in GameState.party.get_members():
-		for slot_type in member.get_cursed_slots():
-			var item: Item = member.get_equipped_item(slot_type)
-			if item:
-				found_any = true
-				uncurse_items.append({"member": member, "slot": slot_type, "item": item})
-				displayed_items.append(item)
-				var btn := _create_uncurse_button(uncurse_items.size() - 1, member, item)
-				items_list.add_child(btn)
-				item_buttons.append(btn)
-
-	if not found_any:
-		var label := Label.new()
-		label.text = "(No cursed equipment)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		items_list.add_child(label)
-
-
-func _create_uncurse_button(index: int, member: Character, item: Item) -> Button:
-	var btn := Button.new()
-	var cost := item.buy_price
-	btn.text = "%s's %s - %d gold" % [member.character_name, item.get_display_name(), cost]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_uncurse_item.bind(index))
-
-	if not GameState.party.has_gold(cost):
-		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
-		btn.tooltip_text = "Not enough gold"
-
-	return btn
-
-
-func _sort_by_type_and_price(a: Item, b: Item) -> bool:
-	if a.item_type != b.item_type:
-		return a.item_type < b.item_type
-	return a.buy_price < b.buy_price
 
 
 func _on_selection_changed(_index: int) -> void:
@@ -458,32 +197,7 @@ func _show_item_info(item: Item) -> void:
 	else:
 		text += "\n[color=gray]Unidentified - stats unknown[/color]\n"
 
-	match current_mode:
-		Mode.BUY:
-			text += "\n\n[color=yellow]Buy: %d gold[/color]" % item.buy_price
-		Mode.SELL:
-			text += "\n\n[color=green]Sell: %d gold[/color]" % item.sell_price
-		Mode.UPGRADE:
-			if item.is_equipment() and item.is_identified:
-				text += "\n\n[color=cyan]Upgradeable Stats:[/color]"
-				for stat in item.get_upgradeable_stats():
-					var current_level: int = item.upgrades.get(stat, 0)
-					var cost := item.get_upgrade_cost(stat)
-					var status := ""
-					if current_level >= Item.UPGRADE_CAP:
-						status = " [MAX]"
-					elif not GameState.party.has_scrap(cost):
-						status = " [Need %d scrap]" % cost
-					text += "\n  %s +%d%s" % [stat.capitalize(), current_level, status]
-		Mode.SCRAP:
-			text += "\n\n[color=orange]Scrap yield: 1-2[/color]"
-		Mode.IDENTIFY:
-			var cost := item.buy_price / 2
-			text += "\n\n[color=yellow]Identify cost: %d gold[/color]" % cost
-		Mode.UNCURSE:
-			text += "\n\n[color=red]Uncurse cost: %d gold[/color]" % item.buy_price
-			text += "\n[color=gray]Item will be destroyed[/color]"
-
+	text += _get_active_mode().get_info_suffix(item)
 	info_label.text = text
 
 
@@ -532,7 +246,7 @@ func _create_comparison_row(member: Character, item: Item) -> HBoxContainer:
 		diff_label.text = "[Cannot equip]"
 		diff_label.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
 	else:
-		var diff_text := _get_stat_diff(current_item, item)
+		var diff_text := get_stat_diff(current_item, item)
 		diff_label.text = diff_text
 		if diff_text.begins_with("+"):
 			diff_label.add_theme_color_override("font_color", UIColors.TEXT_HEALTHY)
@@ -543,7 +257,7 @@ func _create_comparison_row(member: Character, item: Item) -> HBoxContainer:
 	return row
 
 
-func _get_stat_diff(current: Item, new_item: Item) -> String:
+func get_stat_diff(current: Item, new_item: Item) -> String:
 	var parts: Array[String] = []
 
 	var def_diff := new_item.get_effective_defense_bonus() - (current.get_effective_defense_bonus() if current else 0)
@@ -571,488 +285,8 @@ func _get_stat_diff(current: Item, new_item: Item) -> String:
 	return ", ".join(parts)
 
 
-func _update_help() -> void:
-	var h_nav := KeyBindingHelper.get_horizontal_help()
-	var v_nav := KeyBindingHelper.get_nav_help()
-	var confirm := KeyBindingHelper.get_confirm_help()
-	var cancel := KeyBindingHelper.get_cancel_help()
-
-	match current_mode:
-		Mode.BUY:
-			help_label.text = "%s mode | %s | %s: Buy | %s" % [h_nav, v_nav, confirm.split(":")[0], cancel]
-		Mode.SELL:
-			if sell_multi_select:
-				help_label.text = "S: Toggle | A: Select all | %s: Sell | %s" % [confirm.split(":")[0], cancel]
-			else:
-				help_label.text = "%s mode | %s | S: Multi | %s: Sell | %s" % [h_nav, v_nav, confirm.split(":")[0], cancel]
-		Mode.UPGRADE:
-			help_label.text = "%s mode | %s | %s: Upgrade | %s" % [h_nav, v_nav, confirm.split(":")[0], cancel]
-		Mode.SCRAP:
-			if scrap_multi_select:
-				help_label.text = "S: Toggle | A: Select all | %s: Scrap | %s" % [confirm.split(":")[0], cancel]
-			else:
-				help_label.text = "%s mode | %s | S: Multi | %s: Scrap | %s" % [h_nav, v_nav, confirm.split(":")[0], cancel]
-		Mode.IDENTIFY:
-			help_label.text = "%s mode | %s | %s: Identify | %s" % [h_nav, v_nav, confirm.split(":")[0], cancel]
-		Mode.UNCURSE:
-			help_label.text = "%s mode | %s | %s: Uncurse | %s" % [h_nav, v_nav, confirm.split(":")[0], cancel]
-
-
-func _on_buy_item(item: Item) -> void:
-	if not GameState.party.has_gold(item.buy_price):
-		message_label.text = "Not enough gold!"
-		return
-
-	selected_item = item
-
-	if item.item_type == Item.ItemType.CONSUMABLE:
-		_show_quantity_dialog(item)
-	elif item.is_equipment():
-		_show_equip_dialog(item)
-	else:
-		_buy_to_inventory(item, 1)
-
-
-func _show_quantity_dialog(item: Item) -> void:
-	buy_state = BuyState.QUANTITY_SELECT
-	selected_quantity = 1
-
-	var max_afford := GameState.party.gold / item.buy_price
-	var space_left := Inventory.MAX_SLOTS - GameState.party.inventory.size()
-	max_quantity = mini(max_afford, space_left)
-	max_quantity = maxi(1, max_quantity)
-
-	quantity_title.text = "Buy %s" % item.item_name
-	_update_quantity_display()
-	modal_overlay.visible = true
-	quantity_dialog.visible = true
-	confirm_quantity.grab_focus()
-
-
-func _update_quantity_display() -> void:
-	quantity_value.text = str(selected_quantity)
-	total_label.text = "Total: %d gold" % (selected_quantity * selected_item.buy_price)
-
-	minus_button.disabled = (selected_quantity <= 1)
-	plus_button.disabled = (selected_quantity >= max_quantity)
-
-
-func _on_quantity_minus() -> void:
-	if selected_quantity > 1:
-		selected_quantity -= 1
-		_update_quantity_display()
-
-
-func _on_quantity_plus() -> void:
-	if selected_quantity < max_quantity:
-		selected_quantity += 1
-		_update_quantity_display()
-
-
-func _on_quantity_confirm() -> void:
-	modal_overlay.visible = false
-	quantity_dialog.visible = false
-	buy_state = BuyState.BROWSING
-	_buy_to_inventory(selected_item, selected_quantity)
-	selected_item = null
-
-
-func _on_quantity_cancel() -> void:
-	modal_overlay.visible = false
-	quantity_dialog.visible = false
-	buy_state = BuyState.BROWSING
-	selected_item = null
-	if nav and not item_buttons.is_empty():
-		nav.update_focus()
-
-
-func _show_equip_dialog(item: Item) -> void:
-	buy_state = BuyState.EQUIP_SELECT
-	equip_item_name.text = "%s - %d gold" % [item.item_name, item.buy_price]
-
-	for child in equip_options.get_children():
-		child.queue_free()
-	equip_buttons.clear()
-	selected_members.clear()
-
-	var inv_btn := Button.new()
-	inv_btn.text = "Add to Inventory"
-	inv_btn.custom_minimum_size = Vector2(0, 32)
-
-	if GameState.party.inventory.is_full():
-		inv_btn.disabled = true
-		inv_btn.modulate = UIColors.MODULATE_DISABLED
-		inv_btn.tooltip_text = "Inventory full"
-	inv_btn.pressed.connect(_on_equip_to_inventory)
-	equip_options.add_child(inv_btn)
-	equip_buttons.append(inv_btn)
-
-	for member in GameState.party.get_members():
-		var btn := Button.new()
-		var can_equip := member.can_equip_item(item)
-		var old_item: Item = member.get_equipped_item(item.item_type)
-
-		var will_overflow := false
-		if old_item and GameState.party.inventory.is_full():
-			will_overflow = true
-
-		if can_equip and not will_overflow:
-			var diff := _get_stat_diff(old_item, item)
-			btn.text = "Equip on %s (%s)" % [member.character_name, diff]
-		elif will_overflow:
-			btn.text = "%s (inventory full for old item)" % member.character_name
-			btn.disabled = true
-			btn.modulate = UIColors.MODULATE_DISABLED
-		else:
-			btn.text = "%s (cannot equip)" % member.character_name
-			btn.disabled = true
-			btn.modulate = UIColors.MODULATE_DISABLED
-
-		btn.custom_minimum_size = Vector2(0, 32)
-		btn.pressed.connect(_on_equip_to_member.bind(member))
-		equip_options.add_child(btn)
-		equip_buttons.append(btn)
-		selected_members.append(member)
-
-	equip_nav = MenuNavigator.new()
-	equip_nav.setup(equip_buttons, 0)
-
-	modal_overlay.visible = true
-	equip_dialog.visible = true
-
-
-func _on_equip_to_inventory() -> void:
-	modal_overlay.visible = false
-	equip_dialog.visible = false
-	buy_state = BuyState.BROWSING
-	_buy_to_inventory(selected_item, 1)
-	selected_item = null
-
-
-func _on_equip_to_member(member: Character) -> void:
-	if not member.can_equip_item(selected_item):
-		return
-
-	var old_item: Item = member.get_equipped_item(selected_item.item_type)
-	if old_item and GameState.party.inventory.is_full():
-		message_label.text = "Inventory full! Cannot store old equipment."
-		return
-
-	if not GameState.party.spend_gold(selected_item.buy_price):
-		message_label.text = "Not enough gold!"
-		return
-
-	var new_item := selected_item.duplicate() as Item
-	var unequipped: Item = member.equip_item(new_item)
-
-	if unequipped:
-		GameState.party.inventory.add_item(unequipped, 1)
-
-	message_label.text = "Equipped %s on %s for %d gold." % [selected_item.item_name, member.character_name, selected_item.buy_price]
-
-	modal_overlay.visible = false
-	equip_dialog.visible = false
-	buy_state = BuyState.BROWSING
-	selected_item = null
-	_refresh_display()
-
-
-func _on_equip_cancel() -> void:
-	modal_overlay.visible = false
-	equip_dialog.visible = false
-	buy_state = BuyState.BROWSING
-	selected_item = null
-	if nav and not item_buttons.is_empty():
-		nav.update_focus()
-
-
-func _buy_to_inventory(item: Item, quantity: int) -> void:
-	var total_cost := item.buy_price * quantity
-
-	if not GameState.party.has_gold(total_cost):
-		message_label.text = "Not enough gold!"
-		return
-
-	GameState.party.spend_gold(total_cost)
-
-	var added := 0
-	for i in range(quantity):
-		var new_item := item.duplicate() as Item
-		var leftover := GameState.party.inventory.add_item(new_item, 1)
-		if leftover == 0:
-			added += 1
-		else:
-			GameState.party.add_gold(item.buy_price)
-			break
-
-	if added == quantity:
-		message_label.text = "Bought %d %s for %d gold." % [quantity, item.item_name, total_cost]
-	elif added > 0:
-		message_label.text = "Bought %d %s (inventory full)." % [added, item.item_name]
-	else:
-		message_label.text = "Inventory is full!"
-
-	_refresh_display()
-
-
-func _on_sell_item(slot_index: int, item: Item) -> void:
-	if sell_multi_select:
-		_toggle_sell_selection(slot_index)
-		return
-
-	var removed := GameState.party.inventory.remove_item(item.id, 1)
-	if removed > 0:
-		GameState.party.add_gold(item.sell_price)
-		message_label.text = "Sold %s for %d gold." % [item.item_name, item.sell_price]
-	else:
-		message_label.text = "Failed to sell item."
-
-	_refresh_display()
-	if nav and not item_buttons.is_empty():
-		nav.select(0)
-
-
-func _toggle_sell_selection(index: int) -> void:
-	if index in sell_selected_indices:
-		sell_selected_indices.erase(index)
-	else:
-		sell_selected_indices.append(index)
-	_update_sell_button_markers()
-
-
-func _update_sell_button_markers() -> void:
-	for i in range(item_buttons.size()):
-		var btn := item_buttons[i]
-		var item: Item = displayed_items[i] if i < displayed_items.size() else null
-		if item == null:
-			continue
-
-		var qty: int = GameState.party.inventory.get_quantity_at(i)
-		var qty_text := " x%d" % qty if qty > 1 else ""
-		var marker := "[X] " if i in sell_selected_indices else "[ ] "
-		btn.text = "%s%s%s - %d gold" % [marker, item.item_name, qty_text, item.sell_price]
-
-
-func _sell_selected_items() -> void:
-	if sell_selected_indices.is_empty():
-		message_label.text = "No items selected to sell."
-		return
-
-	sell_selected_indices.sort()
-	sell_selected_indices.reverse()
-
-	var total_gold := 0
-	var sold_count := 0
-
-	for idx in sell_selected_indices:
-		if idx >= displayed_items.size():
-			continue
-		var item: Item = displayed_items[idx]
-		var removed := GameState.party.inventory.remove_item(item.id, 1)
-		if removed > 0:
-			total_gold += item.sell_price
-			sold_count += 1
-
-	GameState.party.add_gold(total_gold)
-	message_label.text = "Sold %d items for %d gold." % [sold_count, total_gold]
-
-	sell_multi_select = false
-	sell_selected_indices.clear()
-	_refresh_display()
-	if nav and not item_buttons.is_empty():
-		nav.select(0)
-
-
-func _select_all_for_sell() -> void:
-	sell_selected_indices.clear()
-	for i in range(displayed_items.size()):
-		sell_selected_indices.append(i)
-	_update_sell_button_markers()
-
-
-func _on_upgrade_item(index: int, item: Item) -> void:
-	selected_item = item
-	selected_inventory_index = index
-	upgradeable_stats = item.get_upgradeable_stats()
-	_show_upgrade_dialog(item)
-
-
-func _show_upgrade_dialog(item: Item) -> void:
-	upgrade_state = UpgradeState.STAT_SELECT
-	upgrade_item_name.text = item.get_display_name()
-
-	for child in upgrade_options.get_children():
-		child.queue_free()
-	upgrade_stat_buttons.clear()
-
-	for stat in upgradeable_stats:
-		if not item.can_upgrade(stat):
-			continue
-
-		var btn := Button.new()
-		var current_level: int = item.upgrades.get(stat, 0)
-		var cost := item.get_upgrade_cost(stat)
-		btn.text = "%s +%d -> +%d (%d scrap)" % [stat.capitalize(), current_level, current_level + 1, cost]
-		btn.custom_minimum_size = Vector2(0, 32)
-
-		if not GameState.party.has_scrap(cost):
-			btn.disabled = true
-			btn.modulate = UIColors.MODULATE_DISABLED
-			btn.tooltip_text = "Not enough scrap"
-
-		btn.pressed.connect(_on_upgrade_stat_selected.bind(stat))
-		upgrade_options.add_child(btn)
-		upgrade_stat_buttons.append(btn)
-
-	upgrade_stat_nav = MenuNavigator.new()
-	if not upgrade_stat_buttons.is_empty():
-		upgrade_stat_nav.setup(upgrade_stat_buttons, 0)
-
-	modal_overlay.visible = true
-	upgrade_dialog.visible = true
-
-
-func _on_upgrade_stat_selected(stat: String) -> void:
-	if selected_item == null:
-		return
-
-	var cost := selected_item.get_upgrade_cost(stat)
-	if not GameState.party.spend_scrap(cost):
-		message_label.text = "Not enough scrap!"
-		return
-
-	selected_item.apply_upgrade(stat)
-	message_label.text = "Upgraded %s's %s for %d scrap." % [selected_item.get_display_name(), stat, cost]
-
-	modal_overlay.visible = false
-	upgrade_dialog.visible = false
-	upgrade_state = UpgradeState.BROWSING
-	selected_item = null
-	selected_inventory_index = -1
-	_refresh_display()
-
-
-func _on_upgrade_cancel() -> void:
-	modal_overlay.visible = false
-	upgrade_dialog.visible = false
-	upgrade_state = UpgradeState.BROWSING
-	selected_item = null
-	selected_inventory_index = -1
-	if nav and not item_buttons.is_empty():
-		nav.update_focus()
-
-
-func _on_scrap_item(index: int, item: Item) -> void:
-	if scrap_multi_select:
-		_toggle_scrap_selection(index)
-		return
-
-	var scrap_yield := randi_range(1, 2)
-	var removed := GameState.party.inventory.remove_item(item.id, 1)
-	if removed > 0:
-		GameState.party.add_scrap(scrap_yield)
-		message_label.text = "Scrapped %s for %d scrap." % [item.get_display_name(), scrap_yield]
-	else:
-		message_label.text = "Failed to scrap item."
-
-	_refresh_display()
-	if nav and not item_buttons.is_empty():
-		nav.select(0)
-
-
-func _toggle_scrap_selection(index: int) -> void:
-	if index in scrap_selected_indices:
-		scrap_selected_indices.erase(index)
-	else:
-		scrap_selected_indices.append(index)
-	_update_scrap_button_markers()
-
-
-func _update_scrap_button_markers() -> void:
-	for i in range(item_buttons.size()):
-		var btn := item_buttons[i]
-		var item: Item = displayed_items[i] if i < displayed_items.size() else null
-		if item == null:
-			continue
-
-		var qty: int = GameState.party.inventory.get_quantity_at(i)
-		var qty_text := " x%d" % qty if qty > 1 else ""
-		var marker := "[X] " if i in scrap_selected_indices else "[ ] "
-		btn.text = "%s%s%s -> 1-2 scrap" % [marker, item.get_display_name(), qty_text]
-
-
-func _scrap_selected_items() -> void:
-	if scrap_selected_indices.is_empty():
-		message_label.text = "No items selected to scrap."
-		return
-
-	scrap_selected_indices.sort()
-	scrap_selected_indices.reverse()
-
-	var total_scrap := 0
-	var scrapped_count := 0
-
-	for idx in scrap_selected_indices:
-		if idx >= displayed_items.size():
-			continue
-		var item: Item = displayed_items[idx]
-		var removed := GameState.party.inventory.remove_item(item.id, 1)
-		if removed > 0:
-			var scrap_yield := randi_range(1, 2)
-			total_scrap += scrap_yield
-			scrapped_count += 1
-
-	GameState.party.add_scrap(total_scrap)
-	message_label.text = "Scrapped %d items for %d scrap." % [scrapped_count, total_scrap]
-
-	scrap_multi_select = false
-	scrap_selected_indices.clear()
-	_refresh_display()
-	if nav and not item_buttons.is_empty():
-		nav.select(0)
-
-
-func _select_all_for_scrap() -> void:
-	scrap_selected_indices.clear()
-	for i in range(displayed_items.size()):
-		scrap_selected_indices.append(i)
-	_update_scrap_button_markers()
-
-
-func _on_identify_item(_index: int, item: Item) -> void:
-	var cost := item.buy_price / 2
-	if not GameState.party.spend_gold(cost):
-		message_label.text = "Not enough gold!"
-		return
-
-	item.is_identified = true
-	message_label.text = "Identified %s for %d gold." % [item.get_display_name(), cost]
-
-	_refresh_display()
-	if nav and not item_buttons.is_empty():
-		nav.select(0)
-
-
-func _on_uncurse_item(index: int) -> void:
-	if index < 0 or index >= uncurse_items.size():
-		return
-
-	var data: Dictionary = uncurse_items[index]
-	var member: Character = data["member"]
-	var slot: Item.ItemType = data["slot"]
-	var item: Item = data["item"]
-
-	var cost := item.buy_price
-	if not GameState.party.spend_gold(cost):
-		message_label.text = "Not enough gold!"
-		return
-
-	member.force_unequip_slot(slot)
-	message_label.text = "Uncursed and destroyed %s from %s for %d gold." % [item.get_display_name(), member.character_name, cost]
-
-	_refresh_display()
-	if nav and not item_buttons.is_empty():
-		nav.select(0)
+func update_help() -> void:
+	help_label.text = _get_active_mode().get_help_text()
 
 
 func _on_buy_mode() -> void:
@@ -1066,25 +300,10 @@ func _on_sell_mode() -> void:
 func _set_mode(mode: Mode) -> void:
 	if current_mode == mode:
 		return
+	_get_active_mode().reset()
 	current_mode = mode
-	sell_multi_select = false
-	sell_selected_indices.clear()
-	scrap_multi_select = false
-	scrap_selected_indices.clear()
-	match mode:
-		Mode.BUY:
-			message_label.text = "Select an item to buy."
-		Mode.SELL:
-			message_label.text = "Select an item to sell."
-		Mode.UPGRADE:
-			message_label.text = "Select an item to upgrade."
-		Mode.SCRAP:
-			message_label.text = "Select an item to scrap."
-		Mode.IDENTIFY:
-			message_label.text = "Select an item to identify."
-		Mode.UNCURSE:
-			message_label.text = "Select cursed equipment to remove."
-	_refresh_display()
+	message_label.text = _get_active_mode().get_mode_message()
+	refresh_display()
 
 
 func _cycle_mode(direction: int) -> void:
@@ -1095,28 +314,14 @@ func _cycle_mode(direction: int) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if buy_state == BuyState.QUANTITY_SELECT:
-		_handle_quantity_input(event)
-		return
+	var active := _get_active_mode()
 
-	if buy_state == BuyState.EQUIP_SELECT:
-		_handle_equip_input(event)
-		return
-
-	if upgrade_state == UpgradeState.STAT_SELECT:
-		_handle_upgrade_input(event)
+	if active.is_dialog_active():
+		active.handle_input(event)
 		return
 
 	if event.is_action_pressed("menu_cancel"):
-		if sell_multi_select:
-			sell_multi_select = false
-			sell_selected_indices.clear()
-			_refresh_display()
-			return
-		if scrap_multi_select:
-			scrap_multi_select = false
-			scrap_selected_indices.clear()
-			_refresh_display()
+		if active.handle_cancel():
 			return
 		_on_back_pressed()
 		return
@@ -1128,67 +333,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		_cycle_mode(1)
 		return
 
-	if current_mode == Mode.SELL:
-		if event.is_action_pressed("menu_select"):
-			if not sell_multi_select:
-				sell_multi_select = true
-				_refresh_display()
-				_update_help()
-			elif nav:
-				_toggle_sell_selection(nav.get_current_index())
-			return
-		elif event.is_action_pressed("menu_select_all") and sell_multi_select:
-			_select_all_for_sell()
-			return
-
-	if current_mode == Mode.SCRAP:
-		if event.is_action_pressed("menu_select"):
-			if not scrap_multi_select:
-				scrap_multi_select = true
-				_refresh_display()
-				_update_help()
-			elif nav:
-				_toggle_scrap_selection(nav.get_current_index())
-			return
-		elif event.is_action_pressed("menu_select_all") and scrap_multi_select:
-			_select_all_for_scrap()
-			return
+	if active.handle_special_input(event):
+		return
 
 	if nav:
 		if event.is_action_pressed("menu_confirm"):
-			if sell_multi_select and not sell_selected_indices.is_empty():
-				_sell_selected_items()
-			elif scrap_multi_select and not scrap_selected_indices.is_empty():
-				_scrap_selected_items()
-			else:
-				nav.handle_input(event)
+			if active.handle_confirm():
+				return
+			nav.handle_input(event)
 		else:
 			nav.handle_input(event)
-
-
-func _handle_quantity_input(event: InputEvent) -> void:
-	if event.is_action_pressed("menu_cancel"):
-		_on_quantity_cancel()
-	elif event.is_action_pressed("menu_confirm"):
-		_on_quantity_confirm()
-	elif event.is_action_pressed("menu_left"):
-		_on_quantity_minus()
-	elif event.is_action_pressed("menu_right"):
-		_on_quantity_plus()
-
-
-func _handle_equip_input(event: InputEvent) -> void:
-	if event.is_action_pressed("menu_cancel"):
-		_on_equip_cancel()
-	elif equip_nav:
-		equip_nav.handle_input(event)
-
-
-func _handle_upgrade_input(event: InputEvent) -> void:
-	if event.is_action_pressed("menu_cancel"):
-		_on_upgrade_cancel()
-	elif upgrade_stat_nav:
-		upgrade_stat_nav.handle_input(event)
 
 
 func _on_back_pressed() -> void:
