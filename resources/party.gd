@@ -118,6 +118,12 @@ func get_dead_members() -> Array[Character]:
 	return dead
 
 
+func prepare_for_dungeon() -> void:
+	for member in members:
+		member.calculate_rest_bonus()
+		member.town_days_accumulated = 0
+
+
 func get_front_row() -> Array[Character]:
 	var front: Array[Character] = []
 	for i in range(mini(FRONT_ROW_SIZE, members.size())):
