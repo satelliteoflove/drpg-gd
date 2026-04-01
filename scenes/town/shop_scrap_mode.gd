@@ -130,7 +130,7 @@ func _toggle_scrap_selection(index: int) -> void:
 
 func _update_scrap_button_markers() -> void:
 	for i in range(shop.item_buttons.size()):
-		var btn := shop.item_buttons[i]
+		var btn: Button = shop.item_buttons[i]
 		var item: Item = shop.displayed_items[i] if i < shop.displayed_items.size() else null
 		if item == null:
 			continue

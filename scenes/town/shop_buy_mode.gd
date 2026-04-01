@@ -212,7 +212,7 @@ func _show_equip_dialog(item: Item) -> void:
 			will_overflow = true
 
 		if can_equip and not will_overflow:
-			var diff := shop.get_stat_diff(old_item, item)
+			var diff: String = shop.get_stat_diff(old_item, item)
 			btn.text = "Equip on %s (%s)" % [member.character_name, diff]
 		elif will_overflow:
 			btn.text = "%s (inventory full for old item)" % member.character_name

@@ -148,7 +148,7 @@ func update_portrait_for_character(character: Character) -> void:
 func update_portrait_for_active_combatant() -> void:
 	if combat.combat_system == null:
 		return
-	var combatant_id := combat.combat_system.current_combatant_id
+	var combatant_id: String = combat.combat_system.current_combatant_id
 	if combatant_id.is_empty():
 		return
 	for enemy in combat.combat_system.get_enemies():

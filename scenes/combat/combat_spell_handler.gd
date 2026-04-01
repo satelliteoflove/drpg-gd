@@ -12,7 +12,7 @@ func on_spell_pressed() -> void:
 	if not combat.combat_system or not combat.combat_system.is_player_turn():
 		return
 
-	var caster := combat._get_character_by_id(combat.combat_system.current_combatant_id)
+	var caster: Character = combat._get_character_by_id(combat.combat_system.current_combatant_id)
 	if caster == null:
 		return
 
@@ -91,7 +91,7 @@ func _populate_spell_list_for_level(level: int) -> void:
 		child.queue_free()
 	combat.spell_buttons.clear()
 
-	var caster := combat._get_character_by_id(combat.combat_system.current_combatant_id)
+	var caster: Character = combat._get_character_by_id(combat.combat_system.current_combatant_id)
 	if caster == null:
 		return
 
@@ -126,7 +126,7 @@ func _populate_spell_list_for_level(level: int) -> void:
 
 
 func _on_spell_selected(spell: Spell) -> void:
-	var caster := combat._get_character_by_id(combat.combat_system.current_combatant_id)
+	var caster: Character = combat._get_character_by_id(combat.combat_system.current_combatant_id)
 	if caster == null or caster.current_mp < spell.mp_cost:
 		return
 

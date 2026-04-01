@@ -45,7 +45,7 @@ func show_event_modal(event_data: Dictionary) -> void:
 		"floor": floor_num,
 		"day": GameState.game_day,
 	}
-	var cached := combat._pregenerated_dialogue if combat._dialogue_ready else ""
+	var cached: String = combat._pregenerated_dialogue if combat._dialogue_ready else ""
 	var awaiting := combat._dialogue_prefiring and not combat._dialogue_ready
 	combat._pregenerated_dialogue = ""
 	combat._dialogue_ready = false

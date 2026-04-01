@@ -129,7 +129,7 @@ func on_target_selected(character: Character) -> void:
 
 	combat._close_all_modals()
 
-	var current_char := combat._get_character_by_id(combat.combat_system.current_combatant_id)
+	var current_char: Character = combat._get_character_by_id(combat.combat_system.current_combatant_id)
 	var user_name := current_char.get_display_name() if current_char else "Party"
 
 	var message := "%s uses %s on %s. " % [

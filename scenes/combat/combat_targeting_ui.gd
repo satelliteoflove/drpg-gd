@@ -150,7 +150,7 @@ func highlight_enemy_targets(enemies: Array[Monster], origin: Monster = null) ->
 		var ui = combat.enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
 		var is_origin := origin != null and enemy.combat_id == origin.combat_id
-		var style := combat._target_highlight_style if is_origin or secondary_style == null else secondary_style
+		var style: StyleBoxFlat = combat._target_highlight_style if is_origin or secondary_style == null else secondary_style
 		cell.add_theme_stylebox_override("panel", style)
 		combat._highlighted_panels.append(cell)
 	if combat._highlighted_panels.is_empty():
