@@ -300,12 +300,12 @@ func _load_or_generate_dungeon() -> void:
 	var cached: DungeonData = GameState.get_dungeon_floor(GameState.current_floor)
 	if cached != null:
 		dungeon_data = cached
-		print("Loaded floor ", GameState.current_floor, " from cache")
+		print_debug("Loaded floor ", GameState.current_floor, " from cache")
 	else:
 		var generator := DungeonGenerator.new()
 		dungeon_data = generator.generate(31, 31, GameState.current_floor)
 		GameState.store_dungeon_floor(GameState.current_floor, dungeon_data)
-		print("Generated floor ", GameState.current_floor, ": ", dungeon_data.rooms.size(), " rooms")
+		print_debug("Generated floor ", GameState.current_floor, ": ", dungeon_data.rooms.size(), " rooms")
 
 
 func _render_dungeon() -> void:
@@ -506,7 +506,7 @@ func _on_enemy_defeated(group: EnemyGroup) -> void:
 
 
 func _on_zone_cleared(_zone: EncounterZone) -> void:
-	print("The area grows quiet...")
+	print_debug("The area grows quiet...")
 
 
 func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
@@ -679,23 +679,23 @@ func _get_debug_material_name() -> String:
 func _cycle_debug_material() -> void:
 	_debug_material_index = (_debug_material_index + 1) % 3
 	var mat := _get_debug_material()
-	print("[Debug] Selected: %s (normal=%.2f, roughness=%.2f)" % [_get_debug_material_name(), mat.normal_scale, mat.roughness])
+	print_debug("[Debug] Selected: %s (normal=%.2f, roughness=%.2f)" % [_get_debug_material_name(), mat.normal_scale, mat.roughness])
 
 
 func _adjust_material_normal(delta: float) -> void:
 	var mat := _get_debug_material()
 	mat.normal_scale = clampf(mat.normal_scale + delta, 0.0, 2.0)
-	print("[Debug] %s normal_scale = %.2f" % [_get_debug_material_name(), mat.normal_scale])
+	print_debug("[Debug] %s normal_scale = %.2f" % [_get_debug_material_name(), mat.normal_scale])
 
 
 func _adjust_material_roughness(delta: float) -> void:
 	var mat := _get_debug_material()
 	mat.roughness = clampf(mat.roughness + delta, 0.0, 1.0)
-	print("[Debug] %s roughness = %.2f" % [_get_debug_material_name(), mat.roughness])
+	print_debug("[Debug] %s roughness = %.2f" % [_get_debug_material_name(), mat.roughness])
 
 
 func _debug_teleport_floor(target_floor: int) -> void:
-	print("[Debug] Teleporting to floor %d" % target_floor)
+	print_debug("[Debug] Teleporting to floor %d" % target_floor)
 	SceneManager.go_to_dungeon(target_floor, true)
 
 
@@ -835,7 +835,7 @@ func _descend_stairs() -> void:
 		if not data.is_empty():
 			_show_micro_event(data, next_floor, true)
 		else:
-			print("Descending to floor ", next_floor)
+			print_debug("Descending to floor ", next_floor)
 			SceneManager.go_to_dungeon(next_floor, true)
 	)
 
@@ -877,11 +877,11 @@ func _show_narrative_event(event_result: Dictionary) -> void:
 
 func _ascend_stairs() -> void:
 	if GameState.current_floor <= 1:
-		print("Returning to town...")
+		print_debug("Returning to town...")
 		SceneManager.go_to_town()
 	else:
 		var prev_floor := GameState.current_floor - 1
-		print("Ascending to floor ", prev_floor)
+		print_debug("Ascending to floor ", prev_floor)
 		SceneManager.go_to_dungeon(prev_floor, false)
 
 
@@ -957,10 +957,10 @@ func _show_micro_event(data: Dictionary, next_floor: int, descending: bool) -> v
 	overlay.micro_event_closed.connect(func() -> void:
 		event_open = false
 		if descending:
-			print("Descending to floor ", next_floor)
+			print_debug("Descending to floor ", next_floor)
 			SceneManager.go_to_dungeon(next_floor, true)
 		else:
-			print("Ascending to floor ", next_floor)
+			print_debug("Ascending to floor ", next_floor)
 			SceneManager.go_to_dungeon(next_floor, false)
 	)
 
@@ -969,10 +969,10 @@ func _on_floor_event_resolved(_choice_id: String, root: Control, next_floor: int
 	root.queue_free()
 	event_open = false
 	if descending:
-		print("Descending to floor ", next_floor)
+		print_debug("Descending to floor ", next_floor)
 		SceneManager.go_to_dungeon(next_floor, true)
 	else:
-		print("Ascending to floor ", next_floor)
+		print_debug("Ascending to floor ", next_floor)
 		SceneManager.go_to_dungeon(next_floor, false)
 
 
@@ -1158,7 +1158,7 @@ func _close_combat() -> void:
 func _debug_add_gold() -> void:
 	if GameState.party:
 		GameState.party.gold += 1000
-		print("[DEBUG] Added 1000 gold. Total: %d" % GameState.party.gold)
+		print_debug("[DEBUG] Added 1000 gold. Total: %d" % GameState.party.gold)
 
 
 func _debug_level_party(levels: int) -> void:
@@ -1178,9 +1178,9 @@ func _debug_level_party(levels: int) -> void:
 		member.current_hp = member.max_hp
 		member.current_mp = member.max_mp
 		member.pending_level_up = false
-	print("[DEBUG] Party leveled up by %d. All members now:" % levels)
+	print_debug("[DEBUG] Party leveled up by %d. All members now:" % levels)
 	for member in GameState.party.get_members():
-		print("  %s: Level %d, HP %d/%d, MP %d/%d" % [
+		print_debug("  %s: Level %d, HP %d/%d, MP %d/%d" % [
 			member.get_display_name(), member.level,
 			member.current_hp, member.max_hp,
 			member.current_mp, member.max_mp])
@@ -1192,7 +1192,7 @@ func _debug_add_key() -> void:
 		if key:
 			GameState.party.inventory.add_item(key.duplicate(true) as Item)
 			_show_dungeon_message("DEBUG: Added Dungeon Key")
-			print("[DEBUG] Added Dungeon Key. Count: %d" % GameState.party.inventory.get_item_count("dungeon_key"))
+			print_debug("[DEBUG] Added Dungeon Key. Count: %d" % GameState.party.inventory.get_item_count("dungeon_key"))
 
 
 func _generate_encounter() -> Dictionary:
@@ -1544,7 +1544,7 @@ func _try_unlock_door(direction: String) -> void:
 
 func _run_single_simulation() -> void:
 	if GameState.party == null:
-		print("[Simulation] No party available")
+		print_debug("[Simulation] No party available")
 		return
 
 	var encounter := _generate_encounter()
@@ -1559,17 +1559,17 @@ func _run_single_simulation() -> void:
 
 	var result := simulator.run()
 
-	print("[Simulation] Single combat result:")
-	print(JSON.stringify(result, "\t"))
+	print_debug("[Simulation] Single combat result:")
+	print_debug(JSON.stringify(result, "\t"))
 
 	if _simulation_logging_enabled and simulator.ai_log != null:
-		print("[Simulation] AI Decision Log:")
-		print(simulator.ai_log.to_json())
+		print_debug("[Simulation] AI Decision Log:")
+		print_debug(simulator.ai_log.to_json())
 
 
 func _run_batch_simulation() -> void:
 	if GameState.party == null:
-		print("[Simulation] No party available")
+		print_debug("[Simulation] No party available")
 		return
 
 	var base_encounter := _generate_encounter()
@@ -1578,26 +1578,26 @@ func _run_batch_simulation() -> void:
 	var batch := BatchSimulator.new()
 	batch.batch_progress.connect(_on_batch_progress)
 
-	print("[Simulation] Running 100 combat simulations...")
+	print_debug("[Simulation] Running 100 combat simulations...")
 	var result := batch.run_batch(GameState.party, enemies, 100, Time.get_ticks_msec())
 
-	print("[Simulation] Batch results:")
-	print("  Win rate: %.1f%%" % result.win_rate)
-	print("  Avg turns: %.1f" % result.avg_turns)
-	print("  Avg HP remaining (victories): %.1f%%" % result.avg_hp_remaining_on_victory)
+	print_debug("[Simulation] Batch results:")
+	print_debug("  Win rate: %.1f%%" % result.win_rate)
+	print_debug("  Avg turns: %.1f" % result.avg_turns)
+	print_debug("  Avg HP remaining (victories): %.1f%%" % result.avg_hp_remaining_on_victory)
 	if result.most_common_cause_of_defeat != "":
-		print("  Most common defeat cause: %s" % result.most_common_cause_of_defeat)
+		print_debug("  Most common defeat cause: %s" % result.most_common_cause_of_defeat)
 
 
 func _on_batch_progress(current: int, total: int) -> void:
 	if current % 10 == 0:
-		print("[Simulation] Progress: %d/%d" % [current, total])
+		print_debug("[Simulation] Progress: %d/%d" % [current, total])
 
 
 func _toggle_ai_logging() -> void:
 	_simulation_logging_enabled = not _simulation_logging_enabled
 	var status := "ENABLED - Shift+S will include AI decision log" if _simulation_logging_enabled else "DISABLED"
-	print("[Simulation] AI decision logging: %s" % status)
+	print_debug("[Simulation] AI decision logging: %s" % status)
 
 
 func _debug_force_micro_event() -> void:
@@ -1606,5 +1606,5 @@ func _debug_force_micro_event() -> void:
 		if not data.is_empty():
 			_show_exploration_micro_event(data)
 		else:
-			print("[Debug] No micro event content generated")
+			print_debug("[Debug] No micro event content generated")
 	, context)
