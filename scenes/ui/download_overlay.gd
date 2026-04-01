@@ -37,6 +37,7 @@ var _showing_download := false
 
 
 func _ready() -> void:
+	set_process(false)
 	visible = false
 	flavor_label.text = ""
 
@@ -70,6 +71,7 @@ func _process(delta: float) -> void:
 func _on_download_started(model_name: String) -> void:
 	visible = true
 	_showing_download = true
+	set_process(true)
 	status_label.text = "Downloading AI model %s..." % model_name
 	progress_bar.value = 0.0
 	speed_label.text = ""
@@ -79,6 +81,7 @@ func _on_download_started(model_name: String) -> void:
 func _on_binary_download_started(variant: String) -> void:
 	visible = true
 	_showing_download = true
+	set_process(true)
 	status_label.text = "Downloading AI engine (%s)..." % variant
 	progress_bar.value = 0.0
 	speed_label.text = ""
@@ -96,6 +99,7 @@ func _on_download_completed() -> void:
 	speed_label.text = "Download complete"
 	flavor_label.text = ""
 	_showing_download = false
+	set_process(false)
 	var tween := create_tween()
 	tween.tween_interval(3.0)
 	tween.tween_property(self, "visible", false, 0.0)
@@ -107,6 +111,7 @@ func _on_download_failed(reason: String) -> void:
 	progress_bar.value = 0.0
 	flavor_label.text = ""
 	_showing_download = false
+	set_process(false)
 	var tween := create_tween()
 	tween.tween_interval(5.0)
 	tween.tween_property(self, "visible", false, 0.0)

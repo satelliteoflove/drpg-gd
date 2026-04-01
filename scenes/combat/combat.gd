@@ -135,9 +135,12 @@ class EnemyUI:
 func _process(delta: float) -> void:
 	if _input_cooldown > 0.0:
 		_input_cooldown -= delta
+		if _input_cooldown <= 0.0:
+			set_process(false)
 
 
 func _ready() -> void:
+	set_process(false)
 	attack_button.pressed.connect(_on_attack_pressed)
 	defend_button.pressed.connect(_on_defend_pressed)
 	spell_button.pressed.connect(_on_spell_pressed)
@@ -910,6 +913,7 @@ func _on_turn_started(_combatant_id: String, is_player: bool) -> void:
 	_set_actions_enabled(is_player)
 	if is_player:
 		_input_cooldown = 0.15
+		set_process(true)
 	_schedule_display_update()
 
 

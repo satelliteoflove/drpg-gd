@@ -69,6 +69,7 @@ var _generate_start_msec := 0
 
 
 func _ready() -> void:
+	set_process(false)
 	_health_request = HTTPRequest.new()
 	_health_request.request_completed.connect(_on_health_completed)
 	add_child(_health_request)
@@ -122,6 +123,9 @@ func _process(_delta: float) -> void:
 
 	if _downloading_binary and _binary_download_request != null:
 		_emit_download_progress(_binary_download_request, 0, _binary_download_start_time, binary_download_progress)
+
+	if not _downloading and not _downloading_binary:
+		set_process(false)
 
 
 func _emit_download_progress(request: HTTPRequest, known_total: int, start_time: float, sig: Signal) -> void:
@@ -447,6 +451,7 @@ func _start_binary_download() -> void:
 	binary_download_started.emit(variant)
 
 	_downloading_binary = true
+	set_process(true)
 	_binary_download_start_time = Time.get_ticks_msec() / 1000.0
 
 	var err := _binary_download_request.request(url)
@@ -499,6 +504,7 @@ func _download_cudart(llm_dir: String) -> void:
 
 	print_debug("[LLMManager] Downloading CUDA runtime DLLs...")
 	_downloading_binary = true
+	set_process(true)
 	_binary_download_start_time = Time.get_ticks_msec() / 1000.0
 
 	var err := _binary_download_request.request(url)
@@ -704,6 +710,7 @@ func _start_model_download() -> void:
 	download_started.emit(MODEL_NAME)
 
 	_downloading = true
+	set_process(true)
 	_download_start_time = Time.get_ticks_msec() / 1000.0
 
 	var err := _download_request.request(MODEL_URL)
