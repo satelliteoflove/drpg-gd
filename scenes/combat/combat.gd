@@ -919,6 +919,7 @@ func _on_turn_started(_combatant_id: String, is_player: bool) -> void:
 
 func _on_monster_turn_delay(delay: float) -> void:
 	await get_tree().create_timer(delay).timeout
+	if not is_inside_tree(): return
 	if combat_system and combat_system.is_active:
 		combat_system.execute_delayed_monster_turn()
 
@@ -1001,10 +1002,12 @@ func _on_combat_ended(victory: bool, exp_gained: int, gold_gained: int, loot: Ar
 			if not is_boss_encounter:
 				is_boss_encounter = GameState.current_encounter.get("is_boss", false)
 			await get_tree().create_timer(1.0).timeout
+			if not is_inside_tree(): return
 			_show_chest_modal()
 			return
 
 	await get_tree().create_timer(1.5).timeout
+	if not is_inside_tree(): return
 	_exit_combat(victory)
 
 
@@ -1087,6 +1090,7 @@ func _on_chest_resolved(items: Array[Item], left_behind: bool) -> void:
 			message_log.append_text("  - %s\n" % item.get_display_name())
 
 	await get_tree().create_timer(1.0).timeout
+	if not is_inside_tree(): return
 	_exit_combat(true)
 
 
@@ -1095,6 +1099,7 @@ func _on_chest_combat_triggered() -> void:
 	message_log.append_text("[color=red]An alarm sounds! More enemies approach![/color]\n")
 
 	await get_tree().create_timer(1.0).timeout
+	if not is_inside_tree(): return
 
 	var encounter_data := _generate_alarm_encounter()
 	GameState.current_encounter = encounter_data
@@ -2333,6 +2338,7 @@ func _debug_win_with_alarm_trap() -> void:
 	GameState.party.distribute_experience(10)
 	_show_victory_summary(10, 0, [], [])
 	await get_tree().create_timer(1.0).timeout
+	if not is_inside_tree(): return
 	_show_forced_chest_modal()
 
 
@@ -2361,6 +2367,7 @@ func _debug_win_with_poison_trap() -> void:
 	GameState.party.distribute_experience(10)
 	_show_victory_summary(10, 0, [], [])
 	await get_tree().create_timer(1.0).timeout
+	if not is_inside_tree(): return
 	_show_forced_chest_modal()
 
 

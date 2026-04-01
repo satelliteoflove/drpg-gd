@@ -121,17 +121,20 @@ func _on_quick_open() -> void:
 
 	if result.get("combat_triggered", false):
 		await get_tree().create_timer(1.0).timeout
+		if not is_inside_tree(): return
 		combat_triggered.emit()
 		return
 
 	if result.get("party_wiped", false):
 		await get_tree().create_timer(1.0).timeout
+		if not is_inside_tree(): return
 		var no_items: Array[Item] = []
 		chest_resolved.emit(no_items, false)
 		return
 
 	if result.success:
 		await get_tree().create_timer(0.5).timeout
+		if not is_inside_tree(): return
 		_collect_items()
 	else:
 		_update_trap_warning()
@@ -160,11 +163,13 @@ func _on_disarm() -> void:
 
 		if trap_result.get("combat_triggered", false):
 			await get_tree().create_timer(1.0).timeout
+			if not is_inside_tree(): return
 			combat_triggered.emit()
 			return
 
 		if trap_result.get("party_wiped", false):
 			await get_tree().create_timer(1.0).timeout
+			if not is_inside_tree(): return
 			var no_items: Array[Item] = []
 			chest_resolved.emit(no_items, false)
 			return
@@ -181,17 +186,20 @@ func _on_open() -> void:
 
 	if result.get("combat_triggered", false):
 		await get_tree().create_timer(1.0).timeout
+		if not is_inside_tree(): return
 		combat_triggered.emit()
 		return
 
 	if result.get("party_wiped", false):
 		await get_tree().create_timer(1.0).timeout
+		if not is_inside_tree(): return
 		var no_items: Array[Item] = []
 		chest_resolved.emit(no_items, false)
 		return
 
 	if result.success:
 		await get_tree().create_timer(0.5).timeout
+		if not is_inside_tree(): return
 		_collect_items()
 
 
