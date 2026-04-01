@@ -96,6 +96,8 @@ static func _do_micro_conversation(context_type: String, party: Array[Character]
 		)
 		var grammar := PromptBuilder.micro_conversation_grammar()
 		LLMManager.generate(prompt, grammar, func(content: String) -> void:
+			if not callback.is_valid():
+				return
 			var result := _parse_conversation_response(content, speaker, responder)
 			if not result.is_empty():
 				record_line(result.speaker_line)
@@ -121,6 +123,8 @@ static func _try_solo_event(context_type: String, speaker: Character, callback: 
 		)
 		var grammar := PromptBuilder.micro_grammar()
 		LLMManager.generate(prompt, grammar, func(content: String) -> void:
+			if not callback.is_valid():
+				return
 			var line := _parse_micro_response(content)
 			if line != "":
 				record_line(line)
@@ -174,6 +178,8 @@ static func generate_response(speaker: Character, original_speaker: Character, o
 		var prompt := PromptBuilder.build_micro_solo_prompt(speaker, situation, recent_lines.duplicate())
 		var grammar := PromptBuilder.micro_grammar()
 		LLMManager.generate(prompt, grammar, func(content: String) -> void:
+			if not callback.is_valid():
+				return
 			var line := _parse_micro_response(content)
 			if line != "":
 				callback.call(line)

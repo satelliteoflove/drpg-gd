@@ -49,7 +49,9 @@ var _display_dirty: bool = false
 var _effect_cache: Dictionary = {}
 var _turn_order_entries: Array[PanelContainer] = []
 var _monster_texture_cache: Dictionary = {}
+var _monster_sheet_cache: Dictionary = {}
 var _silhouette_texture: Texture2D = null
+var _sprite_sheet_shader: Shader = preload("res://shaders/sprite_sheet_animation.gdshader")
 var _grid_target_buttons: Array[Button] = []
 
 var action_nav: MenuNavigator = null
@@ -378,6 +380,19 @@ func _get_monster_texture(monster_name: String) -> Texture2D:
 	return _silhouette_texture
 
 
+func _get_monster_sprite_sheet(monster_name: String) -> Texture2D:
+	var key := monster_name.to_lower().replace(" ", "_")
+	if _monster_sheet_cache.has(key):
+		return _monster_sheet_cache[key]
+	var path := "res://textures/monsters/animated/%s_sheet.png" % key
+	if ResourceLoader.exists(path):
+		var tex: Texture2D = load(path)
+		_monster_sheet_cache[key] = tex
+		return tex
+	_monster_sheet_cache[key] = null
+	return null
+
+
 func _create_enemy_panel(enemy: Monster) -> EnemyUI:
 	var ui := EnemyUI.new()
 
@@ -600,10 +615,25 @@ func _update_row_labels() -> void:
 
 func _update_portrait_for_enemy(enemy: Monster) -> void:
 	if enemy == null:
+		portrait_texture.material = null
 		portrait_texture.texture = null
 		portrait_name.text = ""
 		return
-	portrait_texture.texture = _get_monster_texture(enemy.monster_name)
+	var sheet := _get_monster_sprite_sheet(enemy.monster_name)
+	if sheet != null:
+		var mat := ShaderMaterial.new()
+		mat.shader = _sprite_sheet_shader
+		mat.set_shader_parameter("frame_count", 37)
+		mat.set_shader_parameter("columns", 7)
+		mat.set_shader_parameter("rows", 6)
+		mat.set_shader_parameter("fps", 12.0)
+		portrait_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		portrait_texture.texture = sheet
+		portrait_texture.material = mat
+	else:
+		portrait_texture.material = null
+		portrait_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		portrait_texture.texture = _get_monster_texture(enemy.monster_name)
 	portrait_name.text = enemy.monster_name
 	if enemy.is_dead:
 		portrait_texture.modulate = UIColors.DEAD_TINT
@@ -613,9 +643,11 @@ func _update_portrait_for_enemy(enemy: Monster) -> void:
 
 func _update_portrait_for_character(character: Character) -> void:
 	if character == null:
+		portrait_texture.material = null
 		portrait_texture.texture = null
 		portrait_name.text = ""
 		return
+	portrait_texture.material = null
 	portrait_texture.texture = null
 	portrait_name.text = character.character_name
 
