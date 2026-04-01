@@ -4,10 +4,7 @@ const PartyMenuScene = preload("res://scenes/common/party_menu.tscn")
 const DungeonMapScene = preload("res://scenes/dungeon/dungeon_map.tscn")
 const CombatScene = preload("res://scenes/combat/combat.tscn")
 const EnemySpriteScene = preload("res://scenes/dungeon/enemy_sprite_3d.tscn")
-const EventModalScene = preload("res://scenes/events/event_modal.tscn")
-const MicroEventScene = preload("res://scenes/events/micro_event_overlay.tscn")
-const MICRO_EVENT_COOLDOWN_STEPS := 30
-var _steps_since_micro_event := 0
+
 var menu_open: bool = false
 var map_open: bool = false
 var combat_open: bool = false
@@ -27,11 +24,6 @@ const TORCH_BASE_ENERGY: float = 1.0
 const TORCH_FLICKER_INTENSITY: float = 0.08
 const TORCH_FLICKER_SPEED: float = 8.0
 
-const MOVE_DURATION: float = 0.40
-const TURN_DURATION: float = 0.32
-const HEAD_BOB_AMOUNT: float = 0.02
-const HEAD_BOB_SPEED: float = 2.0
-
 enum Facing { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 }
 
 enum FloorMeshItem { FLOOR = 0, STAIRS_UP = 1, STAIRS_DOWN = 2, SHRINE = 3, INSCRIPTION = 4 }
@@ -47,6 +39,10 @@ var move_tween: Tween = null
 var enemy_manager: EnemyManager = null
 var enemy_sprites: Dictionary = {}
 var _enemy_container: Node3D = null
+
+var movement: DungeonMovement = null
+var interaction: DungeonInteraction = null
+var event_handler: DungeonEventHandler = null
 
 @onready var floor_grid: GridMap = $FloorGridMap
 @onready var ceiling_grid: GridMap = $CeilingGridMap
@@ -78,6 +74,13 @@ var _debug_material_index: int = 0
 func _ready() -> void:
 	Engine.max_fps = 30
 
+	movement = DungeonMovement.new()
+	movement.init(self)
+	interaction = DungeonInteraction.new()
+	interaction.init(self)
+	event_handler = DungeonEventHandler.new()
+	event_handler.init(self)
+
 	_setup_grid_maps()
 	_load_or_generate_dungeon()
 	_render_dungeon()
@@ -90,7 +93,7 @@ func _ready() -> void:
 	_setup_chat_log()
 	$UI/BottomBar/TownButton.pressed.connect(_on_town_pressed)
 	$UI/BottomBar/MenuButton.pressed.connect(_on_menu_pressed)
-	GameState.party_member_died.connect(_on_party_member_died_in_dungeon)
+	GameState.party_member_died.connect(event_handler.on_party_member_died_in_dungeon)
 
 
 func _process(delta: float) -> void:
@@ -400,7 +403,7 @@ func _spawn_player() -> void:
 		facing = Facing.NORTH
 
 	previous_grid_position = grid_position
-	_update_camera_transform()
+	movement.update_camera_transform()
 	_mark_current_tile_discovered()
 
 
@@ -514,9 +517,9 @@ func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
 	var is_boss := group.ai_type == EnemyGroup.AIType.BOSS
 	var positions: Array[Vector2i]
 	if is_boss:
-		positions = _get_boss_formation_positions(group.monsters.size())
+		positions = EncounterGenerator.get_boss_formation_positions(group.monsters.size())
 	else:
-		positions = _get_formation_positions(group.monsters.size())
+		positions = EncounterGenerator.get_formation_positions(group.monsters.size())
 
 	for i in range(group.monsters.size()):
 		var monster := group.monsters[i].duplicate_for_combat()
@@ -554,7 +557,6 @@ func _tick_exploration_effects() -> void:
 			_show_dungeon_message(msg)
 
 
-
 func _input(event: InputEvent) -> void:
 	if combat_open:
 		return
@@ -577,19 +579,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.is_action_pressed("strafe_left"):
-		_strafe_left()
+		movement.strafe_left()
 	elif event.is_action_pressed("strafe_right"):
-		_strafe_right()
+		movement.strafe_right()
 	elif event.is_action_pressed("menu_up"):
-		_move_forward()
+		movement.move_forward()
 	elif event.is_action_pressed("menu_down"):
-		_move_backward()
+		movement.move_backward()
 	elif event.is_action_pressed("menu_left"):
-		_turn_left()
+		movement.turn_left()
 	elif event.is_action_pressed("menu_right"):
-		_turn_right()
+		movement.turn_right()
 	elif event.is_action_pressed("menu_confirm"):
-		_interact()
+		interaction.interact()
 	elif event.is_action_pressed("menu_cancel") or event.is_action_pressed("go_to_menu"):
 		_open_menu()
 	elif event.is_action_pressed("toggle_map"):
@@ -642,7 +644,7 @@ func _handle_debug_keys(event: InputEventKey) -> bool:
 		_toggle_ai_logging()
 		return true
 	elif event.is_action_pressed("debug_force_micro_event"):
-		_debug_force_micro_event()
+		event_handler.debug_force_micro_event()
 		return true
 	elif event.keycode == KEY_V and event.ctrl_pressed:
 		GameState.debug_verbose = not GameState.debug_verbose
@@ -699,112 +701,6 @@ func _debug_teleport_floor(target_floor: int) -> void:
 	SceneManager.go_to_dungeon(target_floor, true)
 
 
-
-func _move_forward() -> void:
-	var direction: Vector2i = _get_facing_vector()
-	var new_pos: Vector2i = grid_position + direction
-
-	if _can_move_to(grid_position, new_pos):
-		previous_grid_position = grid_position
-		grid_position = new_pos
-		_animate_move_to(new_pos)
-
-
-func _move_backward() -> void:
-	var direction: Vector2i = _get_facing_vector()
-	var new_pos: Vector2i = grid_position - direction
-
-	if _can_move_to(grid_position, new_pos):
-		previous_grid_position = grid_position
-		grid_position = new_pos
-		_animate_move_to(new_pos)
-
-
-func _strafe_left() -> void:
-	var direction: Vector2i = _get_strafe_vector(-1)
-	var new_pos: Vector2i = grid_position + direction
-
-	if _can_move_to(grid_position, new_pos):
-		previous_grid_position = grid_position
-		grid_position = new_pos
-		_animate_move_to(new_pos)
-
-
-func _strafe_right() -> void:
-	var direction: Vector2i = _get_strafe_vector(1)
-	var new_pos: Vector2i = grid_position + direction
-
-	if _can_move_to(grid_position, new_pos):
-		previous_grid_position = grid_position
-		grid_position = new_pos
-		_animate_move_to(new_pos)
-
-
-func _animate_move_to(target_grid: Vector2i) -> void:
-	is_moving = true
-
-	var target_pos := Vector3(
-		target_grid.x * CELL_SIZE + CELL_SIZE / 2.0,
-		CAMERA_HEIGHT,
-		target_grid.y * CELL_SIZE + CELL_SIZE / 2.0
-	)
-
-	if move_tween:
-		move_tween.kill()
-
-	move_tween = create_tween()
-	move_tween.set_ease(Tween.EASE_OUT)
-	move_tween.set_trans(Tween.TRANS_SINE)
-	move_tween.set_parallel(true)
-	move_tween.tween_property(camera, "position", target_pos, MOVE_DURATION)
-	move_tween.tween_method(_apply_head_bob, 0.0, 1.0, MOVE_DURATION)
-	move_tween.set_parallel(false)
-	move_tween.tween_callback(_on_move_complete)
-
-
-func _apply_head_bob(t: float) -> void:
-	var bob := sin(t * HEAD_BOB_SPEED * PI) * HEAD_BOB_AMOUNT
-	camera.position.y = CAMERA_HEIGHT + bob
-
-
-func _can_move_to(from: Vector2i, to: Vector2i) -> bool:
-	if not dungeon_data.is_walkable(to.x, to.y):
-		return false
-
-	var from_tile: DungeonTile = dungeon_data.get_tile(from.x, from.y)
-	if from_tile == null:
-		return false
-
-	var dx: int = to.x - from.x
-	var dy: int = to.y - from.y
-
-	var dir := ""
-	if dy < 0: dir = "north"
-	elif dy > 0: dir = "south"
-	elif dx < 0: dir = "west"
-	elif dx > 0: dir = "east"
-
-	if dir != "" and _is_wall_blocking(from_tile, dir):
-		return false
-
-	var to_tile: DungeonTile = dungeon_data.get_tile(to.x, to.y)
-	if to_tile != null and dir != "":
-		var opposite: String = DungeonData.OPPOSITE_DIR[dir]
-		if _is_wall_blocking(to_tile, opposite):
-			return false
-
-	return true
-
-
-func _is_wall_blocking(tile: DungeonTile, direction: String) -> bool:
-	var wall_type := tile.get_wall_type(direction)
-	if wall_type == DungeonTile.WallType.SOLID:
-		return true
-	if wall_type == DungeonTile.WallType.DOOR and not tile.is_door_open(direction):
-		return true
-	return false
-
-
 func _check_special_tile() -> void:
 	var tile: DungeonTile = dungeon_data.get_tile(grid_position.x, grid_position.y)
 	if tile == null:
@@ -815,7 +711,7 @@ func _check_special_tile() -> void:
 	elif tile.special == DungeonTile.SpecialType.STAIRS_UP:
 		_ascend_stairs()
 	elif tile.special == DungeonTile.SpecialType.SHRINE or tile.special == DungeonTile.SpecialType.INSCRIPTION:
-		_check_narrative_tile(tile)
+		event_handler.check_narrative_tile(tile)
 
 
 func _descend_stairs() -> void:
@@ -829,49 +725,14 @@ func _descend_stairs() -> void:
 	}
 	var event_result := EventManager.check_for_event("floor_transition", event_context)
 	if not event_result.is_empty():
-		_show_floor_event(event_result, next_floor, true)
+		event_handler.show_floor_event(event_result, next_floor, true)
 		return
 	MicroEventSystem.try_micro_event("floor_descent", GameState.get_party_members(), func(data: Dictionary) -> void:
 		if not data.is_empty():
-			_show_micro_event(data, next_floor, true)
+			event_handler.show_micro_event(data, next_floor, true)
 		else:
 			print_debug("Descending to floor ", next_floor)
 			SceneManager.go_to_dungeon(next_floor, true)
-	)
-
-
-func _check_narrative_tile(tile: DungeonTile) -> void:
-	var context_type := ""
-	match tile.special:
-		DungeonTile.SpecialType.SHRINE:
-			context_type = "discovery_shrine"
-		DungeonTile.SpecialType.INSCRIPTION:
-			context_type = "discovery_inscription"
-
-	var event_context := {
-		"party": GameState.get_party_members(),
-		"floor": GameState.current_floor,
-		"day": GameState.game_day,
-		"is_boss": false,
-		"dead_count": _count_dead(),
-	}
-	var event_result := EventManager.check_for_event(context_type, event_context)
-	if not event_result.is_empty():
-		tile.special = DungeonTile.SpecialType.NONE
-		_render_tile(tile.x, tile.y, tile)
-		_show_narrative_event(event_result)
-
-
-func _show_narrative_event(event_result: Dictionary) -> void:
-	var context := {
-		"floor": GameState.current_floor,
-		"day": GameState.game_day,
-	}
-	var modal: PanelContainer = preload("res://scenes/events/event_modal.tscn").instantiate()
-	add_child(modal)
-	modal.setup(event_result.template, event_result.cast, context)
-	modal.event_resolved.connect(func(_choice_id: String) -> void:
-		modal.queue_free()
 	)
 
 
@@ -893,166 +754,15 @@ func _count_dead() -> int:
 	return count
 
 
-func _show_floor_event(event_data: Dictionary, next_floor: int, descending: bool) -> void:
-	event_open = true
-	var root: Control = EventModalScene.instantiate()
-	$UI.add_child(root)
-	var modal: PanelContainer = root.get_node("EventModal")
-
-	var event_context := {
-		"floor": GameState.current_floor,
-		"day": GameState.game_day,
-	}
-	modal.setup(event_data.template, event_data.cast, event_context)
-	modal.event_resolved.connect(_on_floor_event_resolved.bind(root, next_floor, descending))
-
-
-func _try_exploration_micro_event() -> void:
-	_steps_since_micro_event += 1
-	if _steps_since_micro_event < MICRO_EVENT_COOLDOWN_STEPS:
-		return
-	if combat_open or event_open:
-		return
-	var context := _build_micro_context()
-	MicroEventSystem.try_micro_conversation("exploration", GameState.get_party_members(), func(data: Dictionary) -> void:
-		if not data.is_empty() and not combat_open:
-			_steps_since_micro_event = 0
-			_show_exploration_micro_event(data)
-	, context)
-
-
-func _on_party_member_died_in_dungeon(character: Resource) -> void:
-	if combat_open:
-		return
-	var context := _build_micro_context()
-	context["dead_names"] = [character.character_name]
-	MicroEventSystem.try_micro_conversation("ally_fallen", GameState.get_party_members(), func(data: Dictionary) -> void:
-		if not data.is_empty():
-			_show_exploration_micro_event(data)
-	, context)
-
-
-func _show_exploration_micro_event(data: Dictionary) -> void:
-	if not _chat_log:
-		return
-	var speaker: Character = data.speaker
-	var speaker_line: String = data.speaker_line
-	_chat_log.add_line(speaker.character_name, speaker_line)
-
-	var responder: Character = data.get("responder")
-	var responder_line: String = data.get("responder_line", "")
-	if responder and responder_line != "":
-		RelationshipManager.add_modifier(
-			speaker.id, responder.id,
-			"Shared a moment", 1, GameState.game_day
-		)
-		_chat_log.add_response(responder.character_name, responder_line)
-
-
-func _show_micro_event(data: Dictionary, next_floor: int, descending: bool) -> void:
-	event_open = true
-	var overlay: CanvasLayer = MicroEventScene.instantiate()
-	$UI.add_child(overlay)
-	overlay.setup(data, GameState.get_party_members())
-	overlay.micro_event_closed.connect(func() -> void:
-		event_open = false
-		if descending:
-			print_debug("Descending to floor ", next_floor)
-			SceneManager.go_to_dungeon(next_floor, true)
-		else:
-			print_debug("Ascending to floor ", next_floor)
-			SceneManager.go_to_dungeon(next_floor, false)
-	)
-
-
-func _on_floor_event_resolved(_choice_id: String, root: Control, next_floor: int, descending: bool) -> void:
-	root.queue_free()
-	event_open = false
-	if descending:
-		print_debug("Descending to floor ", next_floor)
-		SceneManager.go_to_dungeon(next_floor, true)
-	else:
-		print_debug("Ascending to floor ", next_floor)
-		SceneManager.go_to_dungeon(next_floor, false)
-
-
-func _turn_left() -> void:
-	var old_facing := facing
-	facing = ((facing - 1 + 4) % 4) as Facing
-	_animate_turn(old_facing, -1)
-
-
-func _turn_right() -> void:
-	var old_facing := facing
-	facing = ((facing + 1) % 4) as Facing
-	_animate_turn(old_facing, 1)
-
-
-func _animate_turn(from_facing: Facing, direction: int) -> void:
-	is_moving = true
-
-	var _from_rotation := -from_facing * 90.0
-	var to_rotation := -facing * 90.0
-
-	if direction > 0 and from_facing == Facing.WEST and facing == Facing.NORTH:
-		to_rotation = -360.0
-	elif direction < 0 and from_facing == Facing.NORTH and facing == Facing.WEST:
-		to_rotation = 90.0
-
-	if move_tween:
-		move_tween.kill()
-
-	move_tween = create_tween()
-	move_tween.set_ease(Tween.EASE_OUT)
-	move_tween.set_trans(Tween.TRANS_SINE)
-	move_tween.tween_property(camera, "rotation_degrees:y", to_rotation, TURN_DURATION)
-	move_tween.tween_callback(_on_turn_complete)
-
-
-func _get_facing_vector() -> Vector2i:
-	match facing:
-		Facing.NORTH:
-			return Vector2i(0, -1)
-		Facing.EAST:
-			return Vector2i(1, 0)
-		Facing.SOUTH:
-			return Vector2i(0, 1)
-		Facing.WEST:
-			return Vector2i(-1, 0)
-	return Vector2i.ZERO
-
-
-func _get_strafe_vector(direction: int) -> Vector2i:
-	match facing:
-		Facing.NORTH:
-			return Vector2i(direction, 0)
-		Facing.EAST:
-			return Vector2i(0, direction)
-		Facing.SOUTH:
-			return Vector2i(-direction, 0)
-		Facing.WEST:
-			return Vector2i(0, -direction)
-	return Vector2i.ZERO
-
-
-func _update_camera_transform() -> void:
-	camera.position = Vector3(
-		grid_position.x * CELL_SIZE + CELL_SIZE / 2.0,
-		CAMERA_HEIGHT,
-		grid_position.y * CELL_SIZE + CELL_SIZE / 2.0
-	)
-	camera.rotation_degrees.y = -facing * 90.0
-
-
 func _on_move_complete() -> void:
 	is_moving = false
 	camera.position.y = CAMERA_HEIGHT
 	_mark_current_tile_discovered()
-	_close_doors_behind()
+	interaction.close_doors_behind()
 	_check_special_tile()
 	_process_enemy_turn()
 	_update_enemy_door_visuals()
-	_try_exploration_micro_event()
+	event_handler.try_exploration_micro_event()
 	_check_held_movement()
 
 
@@ -1067,17 +777,17 @@ func _check_held_movement() -> void:
 		return
 
 	if Input.is_action_pressed("strafe_left"):
-		_strafe_left()
+		movement.strafe_left()
 	elif Input.is_action_pressed("strafe_right"):
-		_strafe_right()
+		movement.strafe_right()
 	elif Input.is_action_pressed("menu_up"):
-		_move_forward()
+		movement.move_forward()
 	elif Input.is_action_pressed("menu_down"):
-		_move_backward()
+		movement.move_backward()
 	elif Input.is_action_pressed("menu_left"):
-		_turn_left()
+		movement.turn_left()
 	elif Input.is_action_pressed("menu_right"):
-		_turn_right()
+		movement.turn_right()
 
 
 func _on_town_pressed() -> void:
@@ -1098,12 +808,12 @@ func _process_enemy_turn() -> void:
 
 func _check_random_encounter() -> void:
 	if randf() < GameState.encounter_chance:
-		var encounter := _generate_encounter()
+		var encounter := EncounterGenerator.generate_encounter()
 		_open_combat(encounter)
 
 
 func _force_combat() -> void:
-	var encounter := _generate_encounter()
+	var encounter := EncounterGenerator.generate_encounter()
 	_open_combat(encounter)
 
 
@@ -1140,7 +850,7 @@ func _on_combat_closed(victory: bool) -> void:
 			SceneManager.go_to_town()
 		else:
 			grid_position = previous_grid_position
-			_update_camera_transform()
+			movement.update_camera_transform()
 			_update_enemy_sprites()
 
 
@@ -1193,119 +903,6 @@ func _debug_add_key() -> void:
 			GameState.party.inventory.add_item(key.duplicate(true) as Item)
 			_show_dungeon_message("DEBUG: Added Dungeon Key")
 			print_debug("[DEBUG] Added Dungeon Key. Count: %d" % GameState.party.inventory.get_item_count("dungeon_key"))
-
-
-func _generate_encounter() -> Dictionary:
-	var enemy_count := _roll_enemy_count()
-	var enemies: Array[Monster] = []
-
-	var available_monsters := MonsterDatabase.get_monsters_for_floor(GameState.current_floor)
-	if available_monsters.is_empty():
-		available_monsters = ["slime"]
-
-	for i in range(enemy_count):
-		var monster_id: String = available_monsters[randi() % available_monsters.size()]
-		var enemy := MonsterDatabase.get_monster(monster_id)
-		if enemy == null:
-			enemy = MonsterDatabase.get_monster("slime")
-		if enemy != null:
-			enemy.init_combat()
-			enemies.append(enemy)
-
-	var positions := _assign_smart_positions(enemies)
-	for i in range(enemies.size()):
-		if i < positions.size():
-			enemies[i].grid_position = positions[i]
-
-	return {"enemies": enemies}
-
-
-func _assign_smart_positions(monsters: Array[Monster]) -> Array[Vector2i]:
-	if monsters.size() <= 1:
-		return [Vector2i(1, 0)]
-
-	var front: Array[int] = []
-	var back: Array[int] = []
-	for i in range(monsters.size()):
-		var m := monsters[i]
-		if m.max_mp > 0 and not m.spells.is_empty():
-			back.append(i)
-		elif m.strength < 10 and m.agility > m.strength:
-			back.append(i)
-		else:
-			front.append(i)
-
-	if front.is_empty():
-		front.append(back.pop_front())
-	while back.size() > 3:
-		front.append(back.pop_front())
-
-	var positions: Array[Vector2i] = []
-	positions.resize(monsters.size())
-	var col := 0
-	for idx in front:
-		positions[idx] = Vector2i(col % 3, 0)
-		col += 1
-	col = 0
-	for idx in back:
-		positions[idx] = Vector2i(col % 3, 1)
-		col += 1
-	return positions
-
-
-func _roll_enemy_count() -> int:
-	var roll := randf()
-	if roll < 0.4:
-		return 1
-	elif roll < 0.7:
-		return 2
-	elif roll < 0.9:
-		return 3
-	elif roll < 0.97:
-		return 4
-	else:
-		return 5
-
-
-func _get_formation_positions(count: int) -> Array[Vector2i]:
-	var positions: Array[Vector2i] = []
-
-	match count:
-		1:
-			positions = [Vector2i(1, 0)]
-		2:
-			positions = [Vector2i(0, 0), Vector2i(2, 0)]
-		3:
-			positions = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)]
-		4:
-			positions = [Vector2i(0, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(2, 1)]
-		5:
-			positions = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(2, 1)]
-		_:
-			for i in range(mini(count, 9)):
-				var col := i % 3
-				var row := i / 3
-				positions.append(Vector2i(col, row))
-
-	return positions
-
-
-func _get_boss_formation_positions(count: int) -> Array[Vector2i]:
-	var positions: Array[Vector2i] = []
-	match count:
-		1:
-			positions = [Vector2i(1, 1)]
-		2:
-			positions = [Vector2i(1, 1), Vector2i(0, 0)]
-		3:
-			positions = [Vector2i(1, 1), Vector2i(0, 0), Vector2i(2, 0)]
-		_:
-			positions = [Vector2i(1, 1), Vector2i(0, 0), Vector2i(2, 0)]
-			for i in range(3, count):
-				var col := (i - 3) % 3
-				var row := (i - 3) / 3 + 2
-				positions.append(Vector2i(col, row))
-	return positions
 
 
 func _on_menu_pressed() -> void:
@@ -1371,36 +968,13 @@ func _mark_current_tile_discovered() -> void:
 		tile.discovered = true
 
 
-func _build_micro_context() -> Dictionary:
-	var dead_names: Array[String] = []
-	for c in GameState.get_party_members():
-		if c.is_dead:
-			dead_names.append(c.character_name)
-	return {
-		"floor": GameState.current_floor,
-		"party_hp_state": _get_party_hp_state(),
-		"dead_names": dead_names,
-		"returning_from_combat": GameState.returning_from_combat,
-	}
-
-
-func _get_party_hp_state() -> String:
-	var total_ratio := 0.0
-	var count := 0
-	for c: Character in GameState.get_party_members():
-		if c.is_dead:
-			continue
-		if c.max_hp > 0:
-			total_ratio += float(c.current_hp) / float(c.max_hp)
-		count += 1
-	if count == 0:
-		return "critical"
-	var avg: float = total_ratio / float(count)
-	if avg < 0.35:
-		return "critical"
-	elif avg < 0.7:
-		return "wounded"
-	return "healthy"
+func _get_facing_direction_string() -> String:
+	match facing:
+		Facing.NORTH: return "north"
+		Facing.EAST: return "east"
+		Facing.SOUTH: return "south"
+		Facing.WEST: return "west"
+	return "north"
 
 
 func _setup_chat_log() -> void:
@@ -1445,109 +1019,12 @@ func _show_dungeon_message(text: String) -> void:
 	_message_tween.tween_property(_message_label, "modulate:a", 0.0, 0.5)
 
 
-func _get_facing_direction_string() -> String:
-	match facing:
-		Facing.NORTH: return "north"
-		Facing.EAST: return "east"
-		Facing.SOUTH: return "south"
-		Facing.WEST: return "west"
-	return "north"
-
-
-func _interact() -> void:
-	var dir := _get_facing_direction_string()
-	var tile := dungeon_data.get_tile(grid_position.x, grid_position.y)
-	if tile == null:
-		return
-
-	if tile.get_wall_type(dir) != DungeonTile.WallType.DOOR:
-		return
-
-	if tile.is_door_open(dir):
-		return
-
-	if tile.is_door_locked(dir):
-		if _informed_locked_pos != grid_position or _informed_locked_dir != dir:
-			_informed_locked_pos = grid_position
-			_informed_locked_dir = dir
-			_show_dungeon_message("The door is locked.")
-			return
-		_try_unlock_door(dir)
-	else:
-		_open_door_and_step(grid_position.x, grid_position.y, dir, "You open the door.")
-
-
-func _open_door_and_step(x: int, y: int, direction: String, message: String) -> void:
-	dungeon_data.sync_door_open(x, y, direction, true)
-	_update_door_visual(x, y, direction)
-	var offset: Vector2i = DungeonData.DIR_OFFSET[direction]
-	_update_door_visual(x + offset.x, y + offset.y, DungeonData.OPPOSITE_DIR[direction])
-	_show_dungeon_message(message)
-	_move_forward()
-
-
-func _close_doors_behind() -> void:
-	if previous_grid_position == grid_position:
-		return
-
-	var dx := grid_position.x - previous_grid_position.x
-	var dy := grid_position.y - previous_grid_position.y
-
-	var move_dir := ""
-	if dy < 0: move_dir = "north"
-	elif dy > 0: move_dir = "south"
-	elif dx > 0: move_dir = "east"
-	elif dx < 0: move_dir = "west"
-
-	if move_dir == "":
-		return
-
-	var prev_tile := dungeon_data.get_tile(previous_grid_position.x, previous_grid_position.y)
-	if prev_tile == null:
-		return
-
-	if prev_tile.get_wall_type(move_dir) == DungeonTile.WallType.DOOR and prev_tile.is_door_open(move_dir):
-		dungeon_data.sync_door_open(previous_grid_position.x, previous_grid_position.y, move_dir, false)
-		_update_door_visual(previous_grid_position.x, previous_grid_position.y, move_dir)
-		_update_door_visual(grid_position.x, grid_position.y, DungeonData.OPPOSITE_DIR[move_dir])
-
-
-func _try_unlock_door(direction: String) -> void:
-	if GameState.party == null:
-		_show_dungeon_message("The door is locked.")
-		return
-
-	# TODO: lockpicking is just a dice roll right now - replace with a mini-game
-	if GameState.party.has_living_thief():
-		var thief := GameState.party.get_living_thief()
-		var pick_chance := 0.25 + (thief.agility * 0.02) + (thief.level * 0.03)
-		pick_chance = clampf(pick_chance, 0.10, 0.95)
-		if randf() < pick_chance:
-			dungeon_data.sync_door_locked(grid_position.x, grid_position.y, direction, false)
-			_informed_locked_pos = Vector2i(-1, -1)
-			_informed_locked_dir = ""
-			_open_door_and_step(grid_position.x, grid_position.y, direction, "%s picks the lock!" % thief.get_display_name())
-		else:
-			_show_dungeon_message("%s fails to pick the lock." % thief.get_display_name())
-		return
-
-	if GameState.party.inventory.has_item("dungeon_key"):
-		GameState.party.inventory.remove_item("dungeon_key", 1)
-		dungeon_data.sync_door_locked(grid_position.x, grid_position.y, direction, false)
-		_informed_locked_pos = Vector2i(-1, -1)
-		_informed_locked_dir = ""
-		_open_door_and_step(grid_position.x, grid_position.y, direction, "You use a Dungeon Key.")
-		return
-
-	_show_dungeon_message("The door is locked.")
-
-
 func _run_single_simulation() -> void:
 	if GameState.party == null:
 		print_debug("[Simulation] No party available")
 		return
 
-	var encounter := _generate_encounter()
+	var encounter := EncounterGenerator.generate_encounter()
 	var enemies: Array[Monster] = encounter.enemies
 	var seed_value := Time.get_ticks_msec()
 
@@ -1572,7 +1049,7 @@ func _run_batch_simulation() -> void:
 		print_debug("[Simulation] No party available")
 		return
 
-	var base_encounter := _generate_encounter()
+	var base_encounter := EncounterGenerator.generate_encounter()
 	var enemies: Array[Monster] = base_encounter.enemies
 
 	var batch := BatchSimulator.new()
@@ -1598,13 +1075,3 @@ func _toggle_ai_logging() -> void:
 	_simulation_logging_enabled = not _simulation_logging_enabled
 	var status := "ENABLED - Shift+S will include AI decision log" if _simulation_logging_enabled else "DISABLED"
 	print_debug("[Simulation] AI decision logging: %s" % status)
-
-
-func _debug_force_micro_event() -> void:
-	var context := _build_micro_context()
-	MicroEventSystem.force_micro_conversation("exploration", GameState.get_party_members(), func(data: Dictionary) -> void:
-		if not data.is_empty():
-			_show_exploration_micro_event(data)
-		else:
-			print_debug("[Debug] No micro event content generated")
-	, context)
