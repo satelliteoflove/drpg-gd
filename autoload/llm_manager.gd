@@ -12,6 +12,7 @@ signal binary_download_progress(percent: float, speed_bps: float, downloaded: in
 signal binary_download_completed
 signal binary_download_failed(reason: String)
 signal setup_finished
+signal completion_finished(result: Dictionary)
 
 const PORT := 8787
 const HEALTH_TIMEOUT := 30.0
@@ -66,6 +67,8 @@ var _pending_callbacks: Array[Callable] = []
 var _request_queue: Array[Dictionary] = []
 var _generate_timer: Timer = null
 var _generate_start_msec := 0
+var _server_boot_msec := 0
+var server_startup_ms: int = -1
 
 
 func _ready() -> void:
@@ -171,9 +174,14 @@ func is_setup_complete() -> bool:
 	return _setup_complete
 
 
+func get_backend_label() -> String:
+	return _get_variant_label()
+
+
 func generate(messages: Dictionary, grammar: String, callback: Callable) -> void:
 	if not is_available():
 		print_debug("[LLMManager] Not available, falling back to static dialogue")
+		completion_finished.emit({"success": false, "latency_ms": 0, "timed_out": false, "error": "fallback", "prompt_n": 0, "predicted_n": 0, "predicted_per_sec": 0.0, "stop_type": ""})
 		callback.call("")
 		return
 
@@ -211,11 +219,13 @@ func _send_completion(messages: Dictionary, grammar: String, callback: Callable)
 	if err != OK:
 		push_warning("[LLMManager] HTTP request failed: %d" % err)
 		_generating = false
+		completion_finished.emit({"success": false, "latency_ms": 0, "timed_out": false, "error": "http_request_failed", "prompt_n": 0, "predicted_n": 0, "predicted_per_sec": 0.0, "stop_type": ""})
 		callback.call("")
 		_process_queue()
 		return
 
 	_generate_timer.start(GENERATE_TIMEOUT_SEC)
+	SessionTelemetry.notify_generate_started()
 	print_debug("[LLMManager] Generate started (prompt %d chars)" % prompt.length())
 
 
@@ -252,6 +262,7 @@ func _on_completion_completed(result: int, response_code: int, _headers: PackedS
 	if response_code != 200:
 		push_warning("[LLMManager] Completion request failed: %d" % response_code)
 		push_warning("[LLMManager] Generate done in %.1fs - failed (HTTP %d)" % [elapsed_ms / 1000.0, response_code])
+		completion_finished.emit({"success": false, "latency_ms": elapsed_ms, "timed_out": false, "error": "http_%d" % response_code, "prompt_n": 0, "predicted_n": 0, "predicted_per_sec": 0.0, "stop_type": ""})
 		callback.call("")
 		_process_queue()
 		return
@@ -269,10 +280,14 @@ func _on_completion_completed(result: int, response_code: int, _headers: PackedS
 			print_debug("[LLMManager] Content: %s" % content)
 		elif content.length() == 0 and raw_content.length() > 0:
 			print_debug("[LLMManager] Think-only response (no usable content)")
+		var t: Variant = d.get("timings", null)
+		var td := t as Dictionary if t is Dictionary else {}
+		completion_finished.emit({"success": content.length() > 0, "latency_ms": elapsed_ms, "timed_out": false, "error": "" if content.length() > 0 else "empty_content", "prompt_n": int(td.get("prompt_n", 0)), "predicted_n": int(td.get("predicted_n", 0)), "predicted_per_sec": td.get("predicted_per_second", 0.0), "stop_type": d.get("stop_type", "unknown")})
 		callback.call(content)
 	else:
 		push_warning("[LLMManager] Failed to parse completion response")
 		push_warning("[LLMManager] Generate done in %.1fs - parse error" % [elapsed_ms / 1000.0])
+		completion_finished.emit({"success": false, "latency_ms": elapsed_ms, "timed_out": false, "error": "parse_error", "prompt_n": 0, "predicted_n": 0, "predicted_per_sec": 0.0, "stop_type": ""})
 		callback.call("")
 
 	_process_queue()
@@ -284,6 +299,8 @@ var _timed_out := false
 func _on_generate_timeout() -> void:
 	push_warning("[LLMManager] Generate timed out after %.1fs - waiting for response to diagnose" % GENERATE_TIMEOUT_SEC)
 	_timed_out = true
+	var elapsed_ms := Time.get_ticks_msec() - _generate_start_msec
+	completion_finished.emit({"success": false, "latency_ms": elapsed_ms, "timed_out": true, "error": "timeout", "prompt_n": 0, "predicted_n": 0, "predicted_per_sec": 0.0, "stop_type": ""})
 
 	var callback: Callable = _pending_callbacks[0] if not _pending_callbacks.is_empty() else Callable()
 	_pending_callbacks.clear()
@@ -765,6 +782,7 @@ func _start_server(model_path: String) -> void:
 		"--log-disable",
 	])
 
+	_server_boot_msec = Time.get_ticks_msec()
 	_pid = OS.create_process(binary_path, args)
 	if _pid <= 0:
 		push_warning("[LLMManager] Failed to launch llama-server")
@@ -840,7 +858,9 @@ func _poll_health() -> void:
 func _on_health_completed(_result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
 	if response_code == 200:
 		_server_healthy = true
-		print_debug("[LLMManager] Server healthy")
+		if _server_boot_msec > 0:
+			server_startup_ms = Time.get_ticks_msec() - _server_boot_msec
+		print_debug("[LLMManager] Server healthy (startup %dms)" % server_startup_ms)
 		if _health_timer:
 			_health_timer.stop()
 			_health_timer.queue_free()

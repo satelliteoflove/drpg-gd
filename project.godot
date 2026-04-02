@@ -15,6 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="drpg-gd"
+config/version="0.7.4"
 run/main_scene="uid://dkb2t2c0fobl1"
 config/features=PackedStringArray("4.6", "Forward Plus")
 run/max_fps=30
@@ -32,6 +33,7 @@ CombatRNG="*res://autoload/combat_rng.gd"
 RelationshipManager="*res://autoload/relationship_manager.gd"
 EventManager="*res://autoload/event_manager.gd"
 LLMManager="*res://autoload/llm_manager.gd"
+SessionTelemetry="*res://autoload/session_telemetry.gd"
 MCPGameBridge="res://addons/godot_mcp/game_bridge/mcp_game_bridge.gd"
 
 [display]
