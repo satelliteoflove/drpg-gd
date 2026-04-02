@@ -37,7 +37,7 @@ func populate_enemy_target_list(reachable_enemies: Array[Monster]) -> void:
 
 
 func clear_grid_target_buttons() -> void:
-	for btn in combat._grid_target_buttons:
+	for btn: Button in combat._grid_target_buttons:
 		if is_instance_valid(btn):
 			btn.queue_free()
 	combat._grid_target_buttons.clear()
@@ -192,7 +192,7 @@ func clear_target_highlights() -> void:
 	if combat._target_highlight_tween:
 		combat._target_highlight_tween.kill()
 		combat._target_highlight_tween = null
-	for panel in combat._highlighted_panels:
+	for panel: PanelContainer in combat._highlighted_panels:
 		if is_instance_valid(panel):
 			panel.remove_theme_stylebox_override("panel")
 	combat._highlighted_panels.clear()
@@ -212,7 +212,7 @@ func show_floating_text(character_id: String, text: String, color: Color) -> voi
 	label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	label.position.y = -4
 	ui.panel.add_child(label)
-	var tween := combat.create_tween()
+	var tween: Tween = combat.create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(label, "position:y", label.position.y - 20, 1.0).set_ease(Tween.EASE_OUT)
 	tween.tween_property(label, "modulate:a", 0.0, 1.0).set_ease(Tween.EASE_IN).set_delay(0.3)

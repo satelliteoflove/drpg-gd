@@ -27,7 +27,7 @@ func on_spell_pressed() -> void:
 	combat.available_spells = SpellValidator.get_spells_by_level(caster, true)
 
 	var has_any_spells := false
-	for level in combat.available_spells:
+	for level: int in combat.available_spells:
 		if not combat.available_spells[level].is_empty():
 			has_any_spells = true
 			break
@@ -58,7 +58,7 @@ func _get_first_available_spell_level() -> int:
 func _update_spell_level_buttons() -> void:
 	for i in range(combat.spell_level_buttons.size()):
 		var level := i + 1
-		var btn := combat.spell_level_buttons[i]
+		var btn: Button = combat.spell_level_buttons[i]
 		btn.button_pressed = (level == combat.current_spell_level)
 
 		var has_spells: bool = combat.available_spells.has(level) and not combat.available_spells[level].is_empty()
@@ -77,7 +77,7 @@ func on_spell_level_changed(level: int) -> void:
 
 
 func navigate_spell_level(direction: int) -> void:
-	var new_level := combat.current_spell_level + direction
+	var new_level: int = combat.current_spell_level + direction
 
 	while new_level >= 1 and new_level <= 7:
 		if combat.available_spells.has(new_level) and not combat.available_spells[new_level].is_empty():
@@ -87,7 +87,7 @@ func navigate_spell_level(direction: int) -> void:
 
 
 func _populate_spell_list_for_level(level: int) -> void:
-	for child in combat.spell_list.get_children():
+	for child: Node in combat.spell_list.get_children():
 		child.queue_free()
 	combat.spell_buttons.clear()
 
@@ -143,13 +143,13 @@ func _on_spell_selected(spell: Spell) -> void:
 			combat.spell_target_mode = "enemy"
 			_populate_spell_enemy_target_list()
 		CharacterEnums.SpellTargetType.ALL_ALLIES:
-			var targets := combat.combat_system.get_valid_ally_targets(false)
+			var targets: Array = combat.combat_system.get_valid_ally_targets(false)
 			var typed_targets: Array = []
 			for t in targets:
 				typed_targets.append(t)
 			_cast_spell_on_targets(typed_targets)
 		CharacterEnums.SpellTargetType.ALL_ENEMIES:
-			var targets := combat.combat_system.get_living_enemies()
+			var targets: Array = combat.combat_system.get_living_enemies()
 			var typed_targets: Array = []
 			for t in targets:
 				typed_targets.append(t)
@@ -171,7 +171,7 @@ func _on_spell_selected(spell: Spell) -> void:
 
 
 func _populate_spell_ally_target_list(dead_only: bool) -> void:
-	for child in combat.spell_ally_list.get_children():
+	for child: Node in combat.spell_ally_list.get_children():
 		child.queue_free()
 	combat.spell_ally_buttons.clear()
 
@@ -218,7 +218,7 @@ func _populate_spell_ally_target_list(dead_only: bool) -> void:
 
 func _populate_spell_enemy_target_list() -> void:
 	combat.modal_overlay.visible = false
-	var enemies := combat.combat_system.get_living_enemies()
+	var enemies: Array = combat.combat_system.get_living_enemies()
 
 	if enemies.is_empty():
 		combat.message_log.append_text("[color=#aaaaaa]>[/color] No enemies to target!\n")
@@ -236,7 +236,7 @@ func _populate_spell_enemy_target_list() -> void:
 			continue
 		var ui = combat.enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := combat.targeting.create_grid_overlay_button(cell)
+		var btn: Button = combat.targeting.create_grid_overlay_button(cell)
 		btn.pressed.connect(_on_spell_enemy_target_selected.bind(enemy))
 		btn.focus_entered.connect(combat.targeting.highlight_enemy_target.bind(enemy))
 		combat.enemy_target_buttons.append(btn)
@@ -254,7 +254,7 @@ func _on_spell_ally_target_selected(character: Character) -> void:
 
 func _on_spell_enemy_target_selected(enemy: Monster) -> void:
 	if combat.spell_target_mode == "splash":
-		var targets := combat.combat_system.get_splash_targets(enemy)
+		var targets: Array = combat.combat_system.get_splash_targets(enemy)
 		var typed_targets: Array = []
 		for t in targets:
 			typed_targets.append(t)
@@ -265,7 +265,7 @@ func _on_spell_enemy_target_selected(enemy: Monster) -> void:
 
 func _populate_spell_splash_target_list() -> void:
 	combat.modal_overlay.visible = false
-	var enemies := combat.combat_system.get_living_enemies()
+	var enemies: Array = combat.combat_system.get_living_enemies()
 
 	if enemies.is_empty():
 		combat.message_log.append_text("[color=#aaaaaa]>[/color] No enemies to target!\n")
@@ -283,8 +283,8 @@ func _populate_spell_splash_target_list() -> void:
 			continue
 		var ui = combat.enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := combat.targeting.create_grid_overlay_button(cell)
-		var splash_targets := combat.combat_system.get_splash_targets(enemy)
+		var btn: Button = combat.targeting.create_grid_overlay_button(cell)
+		var splash_targets: Array = combat.combat_system.get_splash_targets(enemy)
 		btn.pressed.connect(_on_spell_enemy_target_selected.bind(enemy))
 		btn.focus_entered.connect(combat.targeting.highlight_enemy_targets.bind(splash_targets, enemy))
 		combat.enemy_target_buttons.append(btn)
@@ -298,7 +298,7 @@ func _populate_spell_splash_target_list() -> void:
 
 func _populate_spell_row_target_list() -> void:
 	combat.modal_overlay.visible = false
-	var available_rows := combat.combat_system.get_available_rows()
+	var available_rows: Array = combat.combat_system.get_available_rows()
 
 	if available_rows.is_empty():
 		combat.message_log.append_text("[color=#aaaaaa]>[/color] No enemies to target!\n")
@@ -312,7 +312,7 @@ func _populate_spell_row_target_list() -> void:
 
 	var buttons_by_pos: Dictionary = {}
 	for row in available_rows:
-		var row_targets := combat.combat_system.get_row_targets(row)
+		var row_targets: Array = combat.combat_system.get_row_targets(row)
 		if row_targets.is_empty():
 			continue
 		var first_enemy: Monster = row_targets[0]
@@ -320,7 +320,7 @@ func _populate_spell_row_target_list() -> void:
 			continue
 		var ui = combat.enemy_panels[first_enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := combat.targeting.create_grid_overlay_button(cell)
+		var btn: Button = combat.targeting.create_grid_overlay_button(cell)
 		btn.pressed.connect(_on_spell_row_selected.bind(row))
 		btn.focus_entered.connect(combat.targeting.highlight_enemy_targets.bind(row_targets))
 		combat.enemy_target_buttons.append(btn)
@@ -333,7 +333,7 @@ func _populate_spell_row_target_list() -> void:
 
 
 func _on_spell_row_selected(row: int) -> void:
-	var targets := combat.combat_system.get_row_targets(row)
+	var targets: Array = combat.combat_system.get_row_targets(row)
 	var typed_targets: Array = []
 	for t in targets:
 		typed_targets.append(t)
@@ -342,7 +342,7 @@ func _on_spell_row_selected(row: int) -> void:
 
 func _populate_spell_column_target_list() -> void:
 	combat.modal_overlay.visible = false
-	var available_cols := combat.combat_system.get_available_columns()
+	var available_cols: Array = combat.combat_system.get_available_columns()
 
 	if available_cols.is_empty():
 		combat.message_log.append_text("[color=#aaaaaa]>[/color] No enemies to target!\n")
@@ -356,7 +356,7 @@ func _populate_spell_column_target_list() -> void:
 
 	var buttons_by_pos: Dictionary = {}
 	for col in available_cols:
-		var col_targets := combat.combat_system.get_column_targets(col)
+		var col_targets: Array = combat.combat_system.get_column_targets(col)
 		if col_targets.is_empty():
 			continue
 		var first_enemy: Monster = col_targets[0]
@@ -364,7 +364,7 @@ func _populate_spell_column_target_list() -> void:
 			continue
 		var ui = combat.enemy_panels[first_enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := combat.targeting.create_grid_overlay_button(cell)
+		var btn: Button = combat.targeting.create_grid_overlay_button(cell)
 		btn.pressed.connect(_on_spell_column_selected.bind(col))
 		btn.focus_entered.connect(combat.targeting.highlight_enemy_targets.bind(col_targets))
 		combat.enemy_target_buttons.append(btn)
@@ -377,7 +377,7 @@ func _populate_spell_column_target_list() -> void:
 
 
 func _on_spell_column_selected(col: int) -> void:
-	var targets := combat.combat_system.get_column_targets(col)
+	var targets: Array = combat.combat_system.get_column_targets(col)
 	var typed_targets: Array = []
 	for t in targets:
 		typed_targets.append(t)
@@ -417,7 +417,7 @@ func on_dispel_pressed() -> void:
 	if not combat.combat_system or not combat.combat_system.is_player_turn():
 		return
 
-	var character := combat._get_character_by_id(combat.combat_system.current_combatant_id)
+	var character: Character = combat._get_character_by_id(combat.combat_system.current_combatant_id)
 	if character == null or not DispelUndead.can_dispel(character):
 		return
 
@@ -437,7 +437,7 @@ func on_dispel_pressed() -> void:
 			continue
 		var ui = combat.enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := combat.targeting.create_grid_overlay_button(cell)
+		var btn: Button = combat.targeting.create_grid_overlay_button(cell)
 		btn.pressed.connect(on_dispel_target_selected.bind(enemy))
 		btn.focus_entered.connect(combat.targeting.highlight_enemy_target.bind(enemy))
 		combat.enemy_target_buttons.append(btn)
@@ -461,7 +461,7 @@ func on_breath_pressed() -> void:
 	if not combat.combat_system or not combat.combat_system.is_player_turn():
 		return
 
-	var character := combat._get_character_by_id(combat.combat_system.current_combatant_id)
+	var character: Character = combat._get_character_by_id(combat.combat_system.current_combatant_id)
 	if character == null or not character.can_use_breath():
 		return
 
@@ -469,7 +469,7 @@ func on_breath_pressed() -> void:
 		combat.combat_system.player_breath()
 		return
 
-	var living := combat.combat_system.get_living_enemies()
+	var living: Array = combat.combat_system.get_living_enemies()
 	combat._close_all_modals()
 	combat._set_actions_enabled(false)
 	combat.targeting.clear_grid_target_buttons()
@@ -481,7 +481,7 @@ func on_breath_pressed() -> void:
 			continue
 		var ui = combat.enemy_panels[enemy.combat_id]
 		var cell: PanelContainer = ui.panel.get_parent()
-		var btn := combat.targeting.create_grid_overlay_button(cell)
+		var btn: Button = combat.targeting.create_grid_overlay_button(cell)
 		btn.pressed.connect(on_breath_target_selected.bind(enemy))
 		btn.focus_entered.connect(combat.targeting.highlight_enemy_target.bind(enemy))
 		combat.enemy_target_buttons.append(btn)

@@ -104,7 +104,7 @@ func debug_win_with_alarm_trap() -> void:
 	if not combat.combat_system:
 		return
 	combat.message_log.append_text("[color=gray][DEBUG] Forcing alarm trap...[/color]\n")
-	for enemy in combat.combat_system.get_enemies():
+	for enemy: Monster in combat.combat_system.get_enemies():
 		enemy.current_hp = 0
 		enemy.is_dead = true
 
@@ -133,7 +133,7 @@ func debug_win_with_poison_trap() -> void:
 	if not combat.combat_system:
 		return
 	combat.message_log.append_text("[color=gray][DEBUG] Forcing poison needle trap...[/color]\n")
-	for enemy in combat.combat_system.get_enemies():
+	for enemy: Monster in combat.combat_system.get_enemies():
 		enemy.current_hp = 0
 		enemy.is_dead = true
 

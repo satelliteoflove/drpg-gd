@@ -26,7 +26,7 @@ func on_item_pressed() -> void:
 
 
 func populate_item_list() -> void:
-	for child in combat.item_list.get_children():
+	for child: Node in combat.item_list.get_children():
 		child.queue_free()
 	combat.available_items.clear()
 	combat.item_buttons.clear()
@@ -70,14 +70,14 @@ func on_item_selected(item: Item) -> void:
 
 
 func populate_target_list() -> void:
-	for child in combat.target_list.get_children():
+	for child: Node in combat.target_list.get_children():
 		child.queue_free()
 	combat.target_buttons.clear()
 
 	if combat.combat_system == null:
 		return
 
-	for character in combat.combat_system.get_party():
+	for character: Character in combat.combat_system.get_party():
 		var btn := Button.new()
 		var status := ""
 		if character.is_dead:
@@ -148,7 +148,7 @@ func on_target_selected(character: Character) -> void:
 		message += "Restored %d MP. " % restored
 		combat.targeting.show_floating_text(character.id, "+%d MP" % restored, UIColors.MP_BLUE)
 
-	for status in combat.selected_item.cures_status:
+	for status: CharacterEnums.StatusEffect in combat.selected_item.cures_status:
 		if character.has_status(status):
 			character.remove_status(status)
 			message += "Cured %s. " % get_status_name(status)

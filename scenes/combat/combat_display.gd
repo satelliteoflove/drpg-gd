@@ -59,7 +59,7 @@ func on_layout_changed() -> void:
 
 
 func _update_enemy_display() -> void:
-	for enemy in combat.combat_system.get_enemies():
+	for enemy: Monster in combat.combat_system.get_enemies():
 		if not combat.enemy_panels.has(enemy.combat_id):
 			continue
 
@@ -94,7 +94,7 @@ func _update_row_labels() -> void:
 		if not row_labels_list[i].visible:
 			continue
 		var has_living := false
-		for enemy in combat.combat_system.get_enemies():
+		for enemy: Monster in combat.combat_system.get_enemies():
 			if not enemy.is_dead and enemy.grid_position.y == i:
 				has_living = true
 				break
@@ -151,17 +151,17 @@ func update_portrait_for_active_combatant() -> void:
 	var combatant_id: String = combat.combat_system.current_combatant_id
 	if combatant_id.is_empty():
 		return
-	for enemy in combat.combat_system.get_enemies():
+	for enemy: Monster in combat.combat_system.get_enemies():
 		if enemy.combat_id == combatant_id:
 			update_portrait_for_enemy(enemy)
 			return
-	var character := combat._get_character_by_id(combatant_id)
+	var character: Character = combat._get_character_by_id(combatant_id)
 	if character:
 		update_portrait_for_character(character)
 
 
 func _update_party_stats() -> void:
-	for character in combat.combat_system.get_party():
+	for character: Character in combat.combat_system.get_party():
 		if not combat.party_panels.has(character.id):
 			continue
 
@@ -185,7 +185,7 @@ func _update_party_stats() -> void:
 			ui.status_label.text = statuses
 			ui.panel.modulate = Color.WHITE
 
-		var is_active := combat.combat_system.current_combatant_id == character.id and combat.combat_system.is_player_turn()
+		var is_active: bool = combat.combat_system.current_combatant_id == character.id and combat.combat_system.is_player_turn()
 		if is_active:
 			ui.name_label.add_theme_color_override("font_color", UIColors.TEXT_ACTIVE)
 			var active_style := StyleBoxFlat.new()
@@ -298,11 +298,11 @@ func _update_turn_order() -> void:
 		var is_player: bool = entry.is_player
 
 		if is_player:
-			var character := combat._get_character_by_id(entry.id)
+			var character: Character = combat._get_character_by_id(entry.id)
 			if character:
 				name_text = character.get_display_name()
 		else:
-			var enemy := combat._get_enemy_by_combat_id(entry.id)
+			var enemy: Monster = combat._get_enemy_by_combat_id(entry.id)
 			if enemy:
 				name_text = enemy.monster_name
 
@@ -386,7 +386,7 @@ func _get_sorted_turn_order() -> Array:
 
 
 func build_enemy_display() -> void:
-	var children := combat.enemy_grid.get_children()
+	var children: Array[Node] = combat.enemy_grid.get_children()
 	for child in children:
 		combat.enemy_grid.remove_child(child)
 		child.queue_free()
@@ -397,7 +397,7 @@ func build_enemy_display() -> void:
 
 	var enemy_grid_map: Dictionary = {}
 	var occupied_rows: Array[int] = []
-	for enemy in combat.combat_system.get_enemies():
+	for enemy: Monster in combat.combat_system.get_enemies():
 		var pos := enemy.grid_position
 		enemy_grid_map[pos] = enemy
 		if not occupied_rows.has(pos.y):
@@ -481,16 +481,16 @@ func _create_enemy_panel(enemy: Monster) -> RefCounted:
 
 
 func build_party_display() -> void:
-	for child in combat.party_front_row.get_children():
+	for child: Node in combat.party_front_row.get_children():
 		child.queue_free()
-	for child in combat.party_back_row.get_children():
+	for child: Node in combat.party_back_row.get_children():
 		child.queue_free()
 	combat.party_panels.clear()
 
 	if combat.combat_system == null:
 		return
 
-	var party := combat.combat_system.get_party_resource()
+	var party: Party = combat.combat_system.get_party_resource()
 	var front := party.get_front_row()
 	var back := party.get_back_row()
 

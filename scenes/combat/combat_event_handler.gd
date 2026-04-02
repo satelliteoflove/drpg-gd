@@ -46,7 +46,7 @@ func show_event_modal(event_data: Dictionary) -> void:
 		"day": GameState.game_day,
 	}
 	var cached: String = combat._pregenerated_dialogue if combat._dialogue_ready else ""
-	var awaiting := combat._dialogue_prefiring and not combat._dialogue_ready
+	var awaiting: bool = combat._dialogue_prefiring and not combat._dialogue_ready
 	combat._pregenerated_dialogue = ""
 	combat._dialogue_ready = false
 	combat.event_modal.setup(event_data.template, event_data.cast, event_context, cached, awaiting)
@@ -59,7 +59,7 @@ func on_event_resolved(_choice_id: String) -> void:
 
 func cleanup_event_modal() -> void:
 	if combat.event_modal:
-		var root := combat.event_modal.get_parent().get_parent()
+		var root: Node = combat.event_modal.get_parent().get_parent()
 		root.queue_free()
 		combat.event_modal = null
 
