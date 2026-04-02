@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="drpg-gd"
-config/version="0.7.4"
+config/version="0.7.5"
 run/main_scene="uid://dkb2t2c0fobl1"
 config/features=PackedStringArray("4.6", "Forward Plus")
 run/max_fps=30

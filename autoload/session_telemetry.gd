@@ -113,11 +113,13 @@ func generate_report() -> Dictionary:
 		"hardware": {
 			"os": OS.get_name(),
 			"arch": "arm64" if OS.has_feature("arm64") else "x86_64",
+			"cpu": _get_cpu_name(),
 			"gpu": RenderingServer.get_video_adapter_name(),
-			"vram_mb": _get_vram_mb(),
+			"vram_total_mb": _get_vram_total_mb(),
+			"vram_used_mb": _get_vram_used_mb(),
 			"system_ram_mb": _get_system_ram_mb(),
 			"system_ram_used_mb": _get_system_ram_used_mb(),
-			"process_ram_mb": snappedf(OS.get_static_memory_peak_usage() / 1048576.0, 0.1),
+			"process_ram_mb": _get_process_ram_mb(),
 		},
 		"llm": {
 			"model": LLMManager.MODEL_NAME,
@@ -144,10 +146,95 @@ func generate_report() -> Dictionary:
 	}
 
 
-func _get_vram_mb() -> int:
-	var vram_bytes: int = RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED)
-	if vram_bytes > 0:
-		return int(vram_bytes / 1048576.0)
+func _get_cpu_name() -> String:
+	var output := []
+	match OS.get_name():
+		"macOS":
+			OS.execute("sysctl", ["-n", "machdep.cpu.brand_string"], output)
+		"Windows":
+			OS.execute("wmic", ["cpu", "get", "Name", "/value"], output)
+			if not output.is_empty():
+				var text: String = str(output[0])
+				var eq: int = text.find("=")
+				if eq >= 0:
+					return text.substr(eq + 1).strip_edges()
+				return ""
+		_:
+			OS.execute("/bin/sh", ["-c", "cat /proc/cpuinfo | grep 'model name' | head -1"], output)
+			if not output.is_empty():
+				var text: String = str(output[0])
+				var colon: int = text.find(":")
+				if colon >= 0:
+					return text.substr(colon + 1).strip_edges()
+				return ""
+	if not output.is_empty():
+		return str(output[0]).strip_edges()
+	return ""
+
+
+func _get_process_ram_mb() -> float:
+	var peak: int = OS.get_static_memory_peak_usage()
+	if peak > 0:
+		return snappedf(peak / 1048576.0, 0.1)
+	var output := []
+	match OS.get_name():
+		"Windows":
+			var pid: int = OS.get_process_id()
+			OS.execute("wmic", ["process", "where", "ProcessId=%d" % pid, "get", "WorkingSetSize", "/value"], output)
+			if not output.is_empty():
+				var text: String = str(output[0])
+				var eq: int = text.find("=")
+				if eq >= 0:
+					var bytes: int = text.substr(eq + 1).strip_edges().to_int()
+					if bytes > 0:
+						return snappedf(bytes / 1048576.0, 0.1)
+		"Linux":
+			OS.execute("grep", ["VmPeak", "/proc/self/status"], output)
+			if not output.is_empty():
+				var text: String = str(output[0]).strip_edges()
+				var parts: PackedStringArray = text.split(" ", false)
+				if parts.size() >= 2:
+					var kb: int = parts[1].to_int()
+					if kb > 0:
+						return snappedf(kb / 1024.0, 0.1)
+	return -1.0
+
+
+func _get_vram_total_mb() -> int:
+	var output := []
+	match OS.get_name():
+		"Windows", "Linux":
+			OS.execute("nvidia-smi", ["--query-gpu=memory.total", "--format=csv,noheader,nounits"], output)
+			if not output.is_empty():
+				var mb: int = str(output[0]).strip_edges().to_int()
+				if mb > 0:
+					return mb
+			if OS.get_name() == "Linux":
+				return _read_amd_vram_file("mem_info_vram_total")
+	return -1
+
+
+func _get_vram_used_mb() -> int:
+	var output := []
+	match OS.get_name():
+		"Windows", "Linux":
+			OS.execute("nvidia-smi", ["--query-gpu=memory.used", "--format=csv,noheader,nounits"], output)
+			if not output.is_empty():
+				var mb: int = str(output[0]).strip_edges().to_int()
+				if mb > 0:
+					return mb
+			if OS.get_name() == "Linux":
+				return _read_amd_vram_file("mem_info_vram_used")
+	return -1
+
+
+func _read_amd_vram_file(filename: String) -> int:
+	var path := "/sys/class/drm/card0/device/%s" % filename
+	if FileAccess.file_exists(path):
+		var text: String = FileAccess.get_file_as_string(path).strip_edges()
+		var bytes: int = text.to_int()
+		if bytes > 0:
+			return int(bytes / 1048576.0)
 	return -1
 
 
