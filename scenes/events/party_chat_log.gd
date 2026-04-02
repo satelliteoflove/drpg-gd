@@ -9,6 +9,7 @@ var _bbcode_lines: Array[String] = []
 
 
 func _ready() -> void:
+	set_process(false)
 	bbcode_enabled = true
 	scroll_following = true
 	text = ""
@@ -19,6 +20,7 @@ func add_line(speaker_name: String, line: String, color: Color = Color(0.9, 0.8,
 	var bbcode := "[color=#%s]%s:[/color] \"%s\"" % [hex, speaker_name, line]
 	_bbcode_lines.append(bbcode)
 	_line_times.append(LINE_DURATION)
+	set_process(true)
 
 	while _bbcode_lines.size() > MAX_LINES:
 		_remove_oldest_line()
@@ -32,6 +34,7 @@ func add_response(responder_name: String, line: String) -> void:
 
 func _process(delta: float) -> void:
 	if _line_times.is_empty():
+		set_process(false)
 		return
 
 	_line_times[0] -= delta

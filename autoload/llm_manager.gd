@@ -69,6 +69,7 @@ var _generate_start_msec := 0
 
 
 func _ready() -> void:
+	set_process(false)
 	_health_request = HTTPRequest.new()
 	_health_request.request_completed.connect(_on_health_completed)
 	add_child(_health_request)
@@ -100,8 +101,8 @@ func _deferred_boot() -> void:
 func _boot() -> void:
 	var binary_path := _find_binary()
 	var model_path := _find_model()
-	print("[LLMManager] Binary: %s" % binary_path)
-	print("[LLMManager] Model: %s" % model_path)
+	print_debug("[LLMManager] Binary: %s" % binary_path)
+	print_debug("[LLMManager] Model: %s" % model_path)
 
 	if binary_path != "" and _check_binary_version(binary_path):
 		if model_path != "":
@@ -109,10 +110,10 @@ func _boot() -> void:
 		else:
 			_start_model_download()
 	elif binary_path != "":
-		print("[LLMManager] Binary version mismatch, re-downloading")
+		print_debug("[LLMManager] Binary version mismatch, re-downloading")
 		_start_binary_download()
 	else:
-		print("[LLMManager] No llama-server binary found, attempting download")
+		print_debug("[LLMManager] No llama-server binary found, attempting download")
 		_start_binary_download()
 
 
@@ -122,6 +123,9 @@ func _process(_delta: float) -> void:
 
 	if _downloading_binary and _binary_download_request != null:
 		_emit_download_progress(_binary_download_request, 0, _binary_download_start_time, binary_download_progress)
+
+	if not _downloading and not _downloading_binary:
+		set_process(false)
 
 
 func _emit_download_progress(request: HTTPRequest, known_total: int, start_time: float, sig: Signal) -> void:
@@ -152,7 +156,7 @@ func is_available() -> bool:
 func toggle_debug_fallback() -> void:
 	debug_force_fallback = not debug_force_fallback
 	var state := "ON (forcing fallback)" if debug_force_fallback else "OFF (LLM active)"
-	print("[LLMManager] Debug fallback: %s" % state)
+	print_debug("[LLMManager] Debug fallback: %s" % state)
 
 
 func is_downloading() -> bool:
@@ -169,7 +173,7 @@ func is_setup_complete() -> bool:
 
 func generate(messages: Dictionary, grammar: String, callback: Callable) -> void:
 	if not is_available():
-		print("[LLMManager] Not available, falling back to static dialogue")
+		print_debug("[LLMManager] Not available, falling back to static dialogue")
 		callback.call("")
 		return
 
@@ -212,7 +216,7 @@ func _send_completion(messages: Dictionary, grammar: String, callback: Callable)
 		return
 
 	_generate_timer.start(GENERATE_TIMEOUT_SEC)
-	print("[LLMManager] Generate started (prompt %d chars)" % prompt.length())
+	print_debug("[LLMManager] Generate started (prompt %d chars)" % prompt.length())
 
 
 func _process_queue() -> void:
@@ -237,7 +241,7 @@ func _on_completion_completed(result: int, response_code: int, _headers: PackedS
 	_generating = false
 
 	if result != HTTPRequest.RESULT_SUCCESS:
-		print("[LLMManager] HTTP result error: %d (code %d) after %.1fs" % [result, response_code, elapsed_ms / 1000.0])
+		push_warning("[LLMManager] HTTP result error: %d (code %d) after %.1fs" % [result, response_code, elapsed_ms / 1000.0])
 	var callback: Callable = _pending_callbacks[0] if not _pending_callbacks.is_empty() else Callable()
 	_pending_callbacks.clear()
 
@@ -247,7 +251,7 @@ func _on_completion_completed(result: int, response_code: int, _headers: PackedS
 
 	if response_code != 200:
 		push_warning("[LLMManager] Completion request failed: %d" % response_code)
-		print("[LLMManager] Generate done in %.1fs - failed (HTTP %d)" % [elapsed_ms / 1000.0, response_code])
+		push_warning("[LLMManager] Generate done in %.1fs - failed (HTTP %d)" % [elapsed_ms / 1000.0, response_code])
 		callback.call("")
 		_process_queue()
 		return
@@ -260,15 +264,15 @@ func _on_completion_completed(result: int, response_code: int, _headers: PackedS
 		var content := _strip_think_block(raw_content)
 		var think_len := raw_content.length() - content.length()
 		var timings_str := _format_timings(d)
-		print("[LLMManager] Generate done in %.1fs - %d think + %d content chars%s" % [elapsed_ms / 1000.0, think_len, content.length(), timings_str])
+		print_debug("[LLMManager] Generate done in %.1fs - %d think + %d content chars%s" % [elapsed_ms / 1000.0, think_len, content.length(), timings_str])
 		if content.length() > 0 and content.length() < 80:
-			print("[LLMManager] Content: %s" % content)
+			print_debug("[LLMManager] Content: %s" % content)
 		elif content.length() == 0 and raw_content.length() > 0:
-			print("[LLMManager] Think-only response (no usable content)")
+			print_debug("[LLMManager] Think-only response (no usable content)")
 		callback.call(content)
 	else:
 		push_warning("[LLMManager] Failed to parse completion response")
-		print("[LLMManager] Generate done in %.1fs - parse error" % [elapsed_ms / 1000.0])
+		push_warning("[LLMManager] Generate done in %.1fs - parse error" % [elapsed_ms / 1000.0])
 		callback.call("")
 
 	_process_queue()
@@ -278,7 +282,7 @@ var _timed_out := false
 
 
 func _on_generate_timeout() -> void:
-	print("[LLMManager] Generate timed out after %.1fs - waiting for response to diagnose" % GENERATE_TIMEOUT_SEC)
+	push_warning("[LLMManager] Generate timed out after %.1fs - waiting for response to diagnose" % GENERATE_TIMEOUT_SEC)
 	_timed_out = true
 
 	var callback: Callable = _pending_callbacks[0] if not _pending_callbacks.is_empty() else Callable()
@@ -291,20 +295,20 @@ func _on_generate_timeout() -> void:
 
 func _log_timeout_response(result: int, response_code: int, body: PackedByteArray, elapsed_ms: int) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
-		print("[LLMManager] Timed-out request finally returned: result=%d code=%d after %.1fs" % [result, response_code, elapsed_ms / 1000.0])
+		push_warning("[LLMManager] Timed-out request finally returned: result=%d code=%d after %.1fs" % [result, response_code, elapsed_ms / 1000.0])
 		return
 	var text := body.get_string_from_utf8()
 	var parsed: Variant = JSON.parse_string(text)
 	if not parsed is Dictionary:
-		print("[LLMManager] Timed-out request: unparseable after %.1fs" % [elapsed_ms / 1000.0])
+		push_warning("[LLMManager] Timed-out request: unparseable after %.1fs" % [elapsed_ms / 1000.0])
 		return
 	var d := parsed as Dictionary
 	var raw_content: String = d.get("content", "")
 	var content := _strip_think_block(raw_content)
 	var think_len := raw_content.length() - content.length()
 	var timings_str := _format_timings(d)
-	print("[LLMManager] TIMEOUT diagnosed in %.1fs - %d think + %d content chars%s" % [elapsed_ms / 1000.0, think_len, content.length(), timings_str])
-	print("[LLMManager] TIMEOUT content: %s" % content.substr(0, 500))
+	push_warning("[LLMManager] TIMEOUT diagnosed in %.1fs - %d think + %d content chars%s" % [elapsed_ms / 1000.0, think_len, content.length(), timings_str])
+	push_warning("[LLMManager] TIMEOUT content: %s" % content.substr(0, 500))
 
 
 func _format_timings(response: Dictionary) -> String:
@@ -363,7 +367,7 @@ func _detect_gpu_vendor() -> String:
 		vendor = "amd"
 	elif "INTEL" in adapter or "ARC" in adapter:
 		vendor = "intel"
-	print("[LLMManager] GPU adapter: %s (vendor: %s)" % [RenderingServer.get_video_adapter_name(), vendor])
+	print_debug("[LLMManager] GPU adapter: %s (vendor: %s)" % [RenderingServer.get_video_adapter_name(), vendor])
 	return vendor
 
 
@@ -443,10 +447,11 @@ func _start_binary_download() -> void:
 	add_child(_binary_download_request)
 
 	var variant := _get_variant_label()
-	print("[LLMManager] Downloading llama-server %s (%s)..." % [LLAMA_VERSION, variant])
+	print_debug("[LLMManager] Downloading llama-server %s (%s)..." % [LLAMA_VERSION, variant])
 	binary_download_started.emit(variant)
 
 	_downloading_binary = true
+	set_process(true)
 	_binary_download_start_time = Time.get_ticks_msec() / 1000.0
 
 	var err := _binary_download_request.request(url)
@@ -473,7 +478,7 @@ func _on_binary_download_completed(result: int, response_code: int, _headers: Pa
 		_mark_setup_complete()
 		return
 
-	print("[LLMManager] Binary archive downloaded, extracting...")
+	print_debug("[LLMManager] Binary archive downloaded, extracting...")
 	var ok := _extract_binary_archive(archive_path, llm_dir)
 	if not ok:
 		return
@@ -497,8 +502,9 @@ func _download_cudart(llm_dir: String) -> void:
 	_binary_download_request.request_completed.connect(_on_cudart_download_completed.bind(dest_path, llm_dir))
 	add_child(_binary_download_request)
 
-	print("[LLMManager] Downloading CUDA runtime DLLs...")
+	print_debug("[LLMManager] Downloading CUDA runtime DLLs...")
 	_downloading_binary = true
+	set_process(true)
 	_binary_download_start_time = Time.get_ticks_msec() / 1000.0
 
 	var err := _binary_download_request.request(url)
@@ -525,7 +531,7 @@ func _on_cudart_download_completed(result: int, response_code: int, _headers: Pa
 		_mark_setup_complete()
 		return
 
-	print("[LLMManager] CUDA runtime downloaded, extracting...")
+	print_debug("[LLMManager] CUDA runtime downloaded, extracting...")
 	var binary_name := _get_platform_binary_name()
 	_extract_zip(archive_path, llm_dir, binary_name)
 	DirAccess.remove_absolute(archive_path)
@@ -548,7 +554,7 @@ func _finish_binary_setup(llm_dir: String) -> void:
 		if OS.get_name() == "macOS":
 			OS.execute("xattr", ["-cr", binary_path])
 
-	print("[LLMManager] Binary extracted to %s" % llm_dir)
+	print_debug("[LLMManager] Binary extracted to %s" % llm_dir)
 	binary_download_completed.emit()
 
 	var model_path := _find_model()
@@ -700,10 +706,11 @@ func _start_model_download() -> void:
 	_download_request.request_completed.connect(_on_model_download_completed.bind(partial_path, dest_path))
 	add_child(_download_request)
 
-	print("[LLMManager] Downloading %s from Hugging Face..." % MODEL_NAME)
+	print_debug("[LLMManager] Downloading %s from Hugging Face..." % MODEL_NAME)
 	download_started.emit(MODEL_NAME)
 
 	_downloading = true
+	set_process(true)
 	_download_start_time = Time.get_ticks_msec() / 1000.0
 
 	var err := _download_request.request(MODEL_URL)
@@ -733,7 +740,7 @@ func _on_model_download_completed(result: int, response_code: int, _headers: Pac
 	if dir:
 		dir.rename(partial_path.get_file(), dest_path.get_file())
 
-	print("[LLMManager] Download complete: %s" % dest_path)
+	print_debug("[LLMManager] Download complete: %s" % dest_path)
 	download_completed.emit()
 	_start_server(dest_path)
 
@@ -742,7 +749,7 @@ func _start_server(model_path: String) -> void:
 	var binary_path := _find_binary()
 
 	if binary_path == "":
-		print("[LLMManager] No llama-server binary found, LLM disabled")
+		push_warning("[LLMManager] No llama-server binary found, LLM disabled")
 		_enabled = false
 		_mark_setup_complete()
 		return
@@ -766,7 +773,7 @@ func _start_server(model_path: String) -> void:
 		return
 
 	_enabled = true
-	print("[LLMManager] Started llama-server (PID %d)" % _pid)
+	print_debug("[LLMManager] Started llama-server (PID %d)" % _pid)
 
 	_health_elapsed = 0.0
 	_health_timer = Timer.new()
@@ -833,7 +840,7 @@ func _poll_health() -> void:
 func _on_health_completed(_result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
 	if response_code == 200:
 		_server_healthy = true
-		print("[LLMManager] Server healthy")
+		print_debug("[LLMManager] Server healthy")
 		if _health_timer:
 			_health_timer.stop()
 			_health_timer.queue_free()
@@ -847,7 +854,7 @@ func _warmup() -> void:
 	var warmup_request := HTTPRequest.new()
 	add_child(warmup_request)
 	warmup_request.request_completed.connect(func(_r: int, _c: int, _h: PackedStringArray, _b: PackedByteArray) -> void:
-		print("[LLMManager] Warmup complete")
+		print_debug("[LLMManager] Warmup complete")
 		warmup_request.queue_free()
 	)
 	var body := {
@@ -859,7 +866,7 @@ func _warmup() -> void:
 	var headers := ["Content-Type: application/json"]
 	var url := "http://127.0.0.1:%d/completion" % PORT
 	warmup_request.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(body))
-	print("[LLMManager] Warming up model...")
+	print_debug("[LLMManager] Warming up model...")
 
 
 func _mark_setup_complete() -> void:
@@ -877,7 +884,7 @@ func _notification(what: int) -> void:
 func _kill_server() -> void:
 	if _pid > 0:
 		OS.kill(_pid)
-		print("[LLMManager] Killed llama-server (PID %d)" % _pid)
+		print_debug("[LLMManager] Killed llama-server (PID %d)" % _pid)
 		_pid = -1
 	_server_healthy = false
 

@@ -69,11 +69,9 @@ func go_to_town() -> void:
 
 
 func go_to_dungeon(floor_num: int = -1, spawn_at_stairs_up: bool = true) -> void:
-	for member in GameState.party.get_members():
-		member.calculate_rest_bonus()
-		member.town_days_accumulated = 0
+	GameState.party.prepare_for_dungeon()
 	if floor_num > 0:
-		GameState.current_floor = floor_num
+		GameState.set_floor(floor_num)
 	GameState.dungeon_spawn_at_stairs_up = spawn_at_stairs_up
 	GameState.set_mode(GameState.GameMode.DUNGEON)
 	if GameState.has_party():

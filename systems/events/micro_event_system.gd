@@ -278,27 +278,27 @@ static func _situation_base(context_type: String) -> String:
 
 static func _parse_conversation_response(content: String, speaker: Character, responder: Character) -> Dictionary:
 	if content == "":
-		print("[MicroEvent] Parse fail: empty content")
+		push_warning("[MicroEvent] Parse fail: empty content")
 		return {}
 	var parsed: Variant = JSON.parse_string(content)
 	if not parsed is Array:
-		print("[MicroEvent] Parse fail: expected Array, got %s: %s" % [type_string(typeof(parsed)), content.substr(0, 200)])
+		push_warning("[MicroEvent] Parse fail: expected Array, got %s: %s" % [type_string(typeof(parsed)), content.substr(0, 200)])
 		return {}
 	var arr: Array = parsed as Array
 	if arr.size() < 2:
-		print("[MicroEvent] Parse fail: array size %d < 2" % arr.size())
+		push_warning("[MicroEvent] Parse fail: array size %d < 2" % arr.size())
 		return {}
 
 	var speaker_line := ""
 	var responder_line := ""
 	for entry: Variant in arr:
 		if not entry is Dictionary:
-			print("[MicroEvent] Parse fail: entry not Dictionary")
+			push_warning("[MicroEvent] Parse fail: entry not Dictionary")
 			return {}
 		var d: Dictionary = entry as Dictionary
 		var line: String = d.get("line", "")
 		if line.length() < 3 or line.length() > 120:
-			print("[MicroEvent] Parse fail: line length %d out of range: '%s'" % [line.length(), line])
+			push_warning("[MicroEvent] Parse fail: line length %d out of range: '%s'" % [line.length(), line])
 			return {}
 		if speaker_line == "":
 			speaker_line = line
@@ -306,7 +306,7 @@ static func _parse_conversation_response(content: String, speaker: Character, re
 			responder_line = line
 
 	if speaker_line == "" or responder_line == "":
-		print("[MicroEvent] Parse fail: missing speaker or responder line")
+		push_warning("[MicroEvent] Parse fail: missing speaker or responder line")
 		return {}
 
 	return {
@@ -318,16 +318,16 @@ static func _parse_conversation_response(content: String, speaker: Character, re
 
 static func _parse_micro_response(content: String) -> String:
 	if content == "":
-		print("[MicroEvent] Parse solo fail: empty content")
+		push_warning("[MicroEvent] Parse solo fail: empty content")
 		return ""
 	var parsed: Variant = JSON.parse_string(content)
 	if parsed is Dictionary:
 		var line: String = (parsed as Dictionary).get("line", "")
 		if line.length() >= 3 and line.length() <= 120:
 			return line
-		print("[MicroEvent] Parse solo fail: line length %d: '%s'" % [line.length(), line])
+		push_warning("[MicroEvent] Parse solo fail: line length %d: '%s'" % [line.length(), line])
 	else:
-		print("[MicroEvent] Parse solo fail: expected Dict, got %s: %s" % [type_string(typeof(parsed)), content.substr(0, 200)])
+		push_warning("[MicroEvent] Parse solo fail: expected Dict, got %s: %s" % [type_string(typeof(parsed)), content.substr(0, 200)])
 	return ""
 
 

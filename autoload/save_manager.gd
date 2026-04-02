@@ -93,7 +93,7 @@ func save_game(slot: String) -> bool:
 
 	var success: bool = error == OK
 	if success:
-		print("[SaveManager] Game saved to: ", save_path)
+		print_debug("[SaveManager] Game saved to: ", save_path)
 		GameState.game_saved.emit()
 	else:
 		push_error("[SaveManager] Failed to save game to: " + save_path + " Error: " + str(error))
@@ -130,7 +130,7 @@ func load_game(slot: String) -> bool:
 	play_start_time = int(Time.get_unix_time_from_system())
 	accumulated_play_time = save_data.play_time_seconds
 
-	print("[SaveManager] Game loaded from: ", save_path)
+	print_debug("[SaveManager] Game loaded from: ", save_path)
 	GameState.game_loaded.emit()
 	load_completed.emit(true)
 	return true

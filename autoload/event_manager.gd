@@ -34,7 +34,7 @@ func _ensure_loaded() -> void:
 					push_warning("[EventManager] Failed to parse: " + path)
 		file_name = dir.get_next()
 
-	print("[EventManager] Loaded %d event templates" % _templates.size())
+	print_debug("[EventManager] Loaded %d event templates" % _templates.size())
 
 
 func check_for_event(context_type: String, context: Dictionary) -> Dictionary:

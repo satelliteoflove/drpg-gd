@@ -875,7 +875,7 @@ func _create_character() -> void:
 
 func _finalize_character(new_char: Character) -> void:
 	if GameState.roster.add_character(new_char):
-		print("Created character: ", new_char.character_name)
+		print_debug("Created character: ", new_char.character_name)
 		SceneManager.go_to_guild_hall()
 	else:
 		push_error("Failed to add character to roster (roster full?)")

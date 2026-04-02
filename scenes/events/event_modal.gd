@@ -21,6 +21,7 @@ var _dot_count := 1
 
 
 func _ready() -> void:
+	set_process(false)
 	_continue_button.pressed.connect(_on_continue)
 	_continue_button.visible = false
 
@@ -54,6 +55,7 @@ func deliver_dialogue(content: String) -> void:
 
 func _start_loading() -> void:
 	_loading = true
+	set_process(true)
 	_loading_timer = 0.0
 	_dot_count = 1
 	_dialogue_box.text = "[color=#666666].[/color]"
@@ -83,6 +85,7 @@ func _render_static_dialogue() -> void:
 
 func _on_llm_dialogue_received(content: String) -> void:
 	_loading = false
+	set_process(false)
 	if content == "":
 		_render_static_dialogue()
 		return
