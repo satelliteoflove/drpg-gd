@@ -382,12 +382,26 @@ func _exit_combat(victory: bool) -> void:
 			if c.is_dead:
 				dead_count += 1
 		var context_type := "combat_close_call" if dead_count > 0 else "combat_victory"
+		if LLMManager.is_available():
+			message_log.append_text("[color=#666666]Generating dialogue...[/color]\n")
+		var state := {"resolved": false}
 		MicroEventSystem.try_micro_event(context_type, GameState.get_party_members(), func(data: Dictionary) -> void:
+			if state.resolved:
+				return
+			state.resolved = true
 			if not data.is_empty():
 				event_handler.show_micro_event(data)
 			else:
 				_finish_exit_combat(victory)
 		)
+		if LLMManager.is_available():
+			await get_tree().create_timer(LLMManager.GENERATE_TIMEOUT_SEC).timeout
+			if not is_inside_tree():
+				return
+			if not state.resolved:
+				state.resolved = true
+				message_log.append_text("[color=#666666]Skipping dialogue.[/color]\n")
+				_finish_exit_combat(victory)
 		return
 	_finish_exit_combat(victory)
 
