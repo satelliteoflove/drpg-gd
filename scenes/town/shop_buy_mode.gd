@@ -3,7 +3,7 @@ extends RefCounted
 
 enum BuyState { BROWSING, QUANTITY_SELECT, EQUIP_SELECT }
 
-var shop: Control
+var shop = null
 var buy_state: BuyState = BuyState.BROWSING
 
 var selected_item: Item = null

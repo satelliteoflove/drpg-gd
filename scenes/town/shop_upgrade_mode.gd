@@ -3,7 +3,7 @@ extends RefCounted
 
 enum UpgradeState { BROWSING, STAT_SELECT }
 
-var shop: Control
+var shop = null
 var upgrade_state: UpgradeState = UpgradeState.BROWSING
 
 var selected_item: Item = null

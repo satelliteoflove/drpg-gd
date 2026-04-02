@@ -1,7 +1,7 @@
 class_name ShopScrapMode
 extends RefCounted
 
-var shop: Control
+var shop = null
 
 var scrap_selected_indices: Array[int] = []
 var scrap_multi_select: bool = false

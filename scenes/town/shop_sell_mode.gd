@@ -1,7 +1,7 @@
 class_name ShopSellMode
 extends RefCounted
 
-var shop: Control
+var shop = null
 
 var sell_selected_indices: Array[int] = []
 var sell_multi_select: bool = false

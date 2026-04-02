@@ -1,7 +1,7 @@
 class_name CombatSpellHandler
 extends RefCounted
 
-var combat: Control
+var combat = null
 
 
 func init(p_combat: Control) -> void:

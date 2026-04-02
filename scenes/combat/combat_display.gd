@@ -16,7 +16,7 @@ const STATUS_ICON_PATHS: Dictionary = {
 	CharacterEnums.StatusEffect.BLESSED: "res://textures/ui/status_icons/buff.png",
 }
 
-var combat: Control
+var combat = null
 var _status_icon_cache: Dictionary = {}
 var _effect_cache: Dictionary = {}
 var _turn_order_entries: Array[PanelContainer] = []

@@ -1,7 +1,7 @@
 class_name ShopIdentifyMode
 extends RefCounted
 
-var shop: Control
+var shop = null
 
 
 func init(p_shop: Control) -> void:

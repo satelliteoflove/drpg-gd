@@ -1,7 +1,7 @@
 class_name ShopUncurseMode
 extends RefCounted
 
-var shop: Control
+var shop = null
 
 var uncurse_items: Array[Dictionary] = []
 
