@@ -20,10 +20,10 @@ const HEALTH_POLL_INTERVAL := 1.0
 const DEFAULT_N_PREDICT := 128
 const GENERATE_TIMEOUT_SEC := 15.0
 
-const MODEL_NAME := "Qwen3.5-4B-Q8_0"
-const MODEL_FILENAME := "Qwen3.5-4B-Q8_0.gguf"
-const MODEL_URL := "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q8_0.gguf"
-const MODEL_EXPECTED_BYTES := 4482403488
+const MODEL_NAME := "Qwen3.5-4B-UD-Q4_K_XL"
+const MODEL_FILENAME := "Qwen3.5-4B-UD-Q4_K_XL.gguf"
+const MODEL_URL := "https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-UD-Q4_K_XL.gguf"
+const MODEL_EXPECTED_BYTES := 2912109728
 
 const LLAMA_VERSION := "b8575"
 const LLAMA_RELEASE_BASE := "https://github.com/ggml-org/llama.cpp/releases/download"
