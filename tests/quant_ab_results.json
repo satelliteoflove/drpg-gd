@@ -1,0 +1,878 @@
+{
+  "Q8_0": [
+    [
+      {
+        "content": "[{\"name\": \"Theron\", \"line\": \"We made it! That was the best fight ever!\"}, {\"name\": \"Kess\", \"line\": \"Oh, sure. Because we definitely didn't just get shot at by three goblins.\"}]",
+        "latency_ms": 6889,
+        "prompt_n": 205,
+        "predicted_n": 55,
+        "tok_per_sec": 9.6,
+        "label": "Brave fighter + sarcastic rogue, post-combat",
+        "run": 1
+      },
+      {
+        "content": "```json\n[{\"name\": \"Theron\", \"line\": \"I told you to stay behind, but I'll take the lead if it means we live.\"}, {\"name\": \"Kess\", \"line\": \"Oh right, because your 'lead' is usually a very loud and unnecessary distraction.\"}]\n```",
+        "latency_ms": 7165,
+        "prompt_n": 4,
+        "predicted_n": 67,
+        "tok_per_sec": 9.5,
+        "label": "Brave fighter + sarcastic rogue, post-combat",
+        "run": 2
+      },
+      {
+        "content": "[{\"name\": \"Theron\", \"line\": \"We're good. I think we just need to breathe.\"}, {\"name\": \"Kess\", \"line\": \"Sure, because breathing doesn't usually get you stabbed in the back.\"}]",
+        "latency_ms": 5466,
+        "prompt_n": 4,
+        "predicted_n": 52,
+        "tok_per_sec": 9.8,
+        "label": "Brave fighter + sarcastic rogue, post-combat",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\n  \"line\": \"Wait, don't touch those symbols... they're glowing and it's just so creepy.\"\n}",
+        "latency_ms": 3873,
+        "prompt_n": 154,
+        "predicted_n": 28,
+        "tok_per_sec": 9.3,
+        "label": "Cautious cleric, exploring dungeon",
+        "run": 1
+      },
+      {
+        "content": "{\"line\": \"Is... is that supposed to be friendly? I don't think so.\"}",
+        "latency_ms": 2415,
+        "prompt_n": 4,
+        "predicted_n": 21,
+        "tok_per_sec": 9.4,
+        "label": "Cautious cleric, exploring dungeon",
+        "run": 2
+      },
+      {
+        "content": "\"Wait... are those runes? I think we should go back to where we started.\"",
+        "latency_ms": 2199,
+        "prompt_n": 4,
+        "predicted_n": 19,
+        "tok_per_sec": 9.2,
+        "label": "Cautious cleric, exploring dungeon",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"Hey, look at that sunbeam! It's perfect for a nap.\"}, {\"name\": \"Dorek\", \"line\": \"Don't touch it. Sunlight burns. We'll get burned.\"}]",
+        "latency_ms": 7395,
+        "prompt_n": 233,
+        "predicted_n": 56,
+        "tok_per_sec": 9.2,
+        "label": "Friendly healer + pessimistic mage, resting",
+        "run": 1
+      },
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"You're safe now! Let's eat some stew and rest.\"}, {\"name\": \"Dorek\", \"line\": \"Safe? Only because the goblin didn't notice us yet.\"}]",
+        "latency_ms": 5846,
+        "prompt_n": 4,
+        "predicted_n": 53,
+        "tok_per_sec": 9.4,
+        "label": "Friendly healer + pessimistic mage, resting",
+        "run": 2
+      },
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"Hey, does anyone else feel that warm glow of safety? It's a sign!\"}, {\"name\": \"Dorek\", \"line\": \"I don't think it's safety. I think it's the end of the world.\"}]",
+        "latency_ms": 6719,
+        "prompt_n": 4,
+        "predicted_n": 62,
+        "tok_per_sec": 9.5,
+        "label": "Friendly healer + pessimistic mage, resting",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\"line\": \"Wait, did you just open that? I'm not paying for the dust on those coins.\"}",
+        "latency_ms": 3516,
+        "prompt_n": 156,
+        "predicted_n": 25,
+        "tok_per_sec": 9.7,
+        "label": "Self-interested rogue, found treasure",
+        "run": 1
+      },
+      {
+        "content": "{\n  \"line\": \"Ooh, shiny stuff! Now you're paying for the trouble I caused, right?\"\n}",
+        "latency_ms": 3085,
+        "prompt_n": 4,
+        "predicted_n": 28,
+        "tok_per_sec": 9.5,
+        "label": "Self-interested rogue, found treasure",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"line\": \"Gold's gold, but if I steal it first, that's just me being smart.\"\n}",
+        "latency_ms": 3029,
+        "prompt_n": 4,
+        "predicted_n": 28,
+        "tok_per_sec": 9.6,
+        "label": "Self-interested rogue, found treasure",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "```json\n[\n  {\n    \"name\": \"Aldric\",\n    \"line\": \"He looks terrified. We should take him to the nearest village and ask for help.\"\n  },\n  {\n    \"name\": \"Syl\",\n    \"line\": \"Help won't come. He's already dead. Just leave him in the mud.\"\n  }\n]\n```",
+        "latency_ms": 10264,
+        "prompt_n": 235,
+        "predicted_n": 86,
+        "tok_per_sec": 9.6,
+        "label": "Principled paladin + ruthless ranger, moral disagreement",
+        "run": 1
+      },
+      {
+        "content": "```json\n[\n  {\n    \"name\": \"Aldric\",\n    \"line\": \"He's innocent enough to be spared. We can take him back to the village.\"\n  },\n  {\n    \"name\": \"Syl\",\n    \"line\": \"He's a spy. He'll lie if we let him go. Kill him before he talks.\"\n  }\n]\n```",
+        "latency_ms": 9611,
+        "prompt_n": 4,
+        "predicted_n": 89,
+        "tok_per_sec": 9.4,
+        "label": "Principled paladin + ruthless ranger, moral disagreement",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"name\": \"Aldric\",\n  \"line\": \"We should spare him, he might help us find the rest of his unit.\"\n}",
+        "latency_ms": 4150,
+        "prompt_n": 4,
+        "predicted_n": 36,
+        "tok_per_sec": 9.1,
+        "label": "Principled paladin + ruthless ranger, moral disagreement",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "```json\n[\n  {\"slot\": 0, \"line\": \"Don't worry, this staircase has held up for centuries.\"},\n  {\"slot\": 1, \"line\": \"It looks like it's about to collapse on us right now!\"},\n  {\"slot\": 2, \"line\": \"Or maybe that's just the sound of my boots squeaking.\"},\n  {\"slot\": 0, \"line\": \"Let's keep moving; we're not going back up.\"}\n]\n```",
+        "latency_ms": 13293,
+        "prompt_n": 245,
+        "predicted_n": 111,
+        "tok_per_sec": 9.3,
+        "label": "3-character event: descending to new floor",
+        "run": 1
+      },
+      {
+        "content": "```json\n[\n  {\"slot\": 0, \"line\": \"Just follow my lead; I won't let anything happen to you.\"},\n  {\"slot\": 1, \"line\": \"I hope it's not a trap... oh god, what if we die?\"},\n  {\"slot\": 2, \"line\": \"Sure, let's run straight into the wall. Very smart plan.\"}\n]\n```",
+        "latency_ms": 10356,
+        "prompt_n": 4,
+        "predicted_n": 92,
+        "tok_per_sec": 9.0,
+        "label": "3-character event: descending to new floor",
+        "run": 2
+      },
+      {
+        "content": "```json\n[\n  {\"slot\": 0, \"line\": \"We got this, just keep moving forward.\"},\n  {\"slot\": 1, \"line\": \"Wait, is that stone actually still holding up?\"},\n  {\"slot\": 2, \"line\": \"Surely you're not suggesting we stop for a safety inspection.\"}\n]\n```",
+        "latency_ms": 8799,
+        "prompt_n": 4,
+        "predicted_n": 80,
+        "tok_per_sec": 9.3,
+        "label": "3-character event: descending to new floor",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\"line\": \"I'm still standing! Let's go smash those guys again!\"}",
+        "latency_ms": 2860,
+        "prompt_n": 154,
+        "predicted_n": 19,
+        "tok_per_sec": 9.7,
+        "label": "Reckless barbarian, close call",
+        "run": 1
+      },
+      {
+        "content": "{\"line\": \"Hah! Only got one life left? That's nothing to worry about!\"}",
+        "latency_ms": 2360,
+        "prompt_n": 4,
+        "predicted_n": 22,
+        "tok_per_sec": 9.9,
+        "label": "Reckless barbarian, close call",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"line\": \"Heh! Still standing, you weaklings. My armor's holding up!\"\n}",
+        "latency_ms": 2778,
+        "prompt_n": 4,
+        "predicted_n": 26,
+        "tok_per_sec": 9.8,
+        "label": "Reckless barbarian, close call",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "[{\"name\": \"Pip\", \"line\": \"Did you see that? It's practically singing! Let's pet it like a cat!\"}, {\"name\": \"Zen\", \"line\": \"That is not a cat. It is a dangerous rune.\"}]",
+        "latency_ms": 6873,
+        "prompt_n": 221,
+        "predicted_n": 55,
+        "tok_per_sec": 9.7,
+        "label": "Curious wizard + stoic monk, exploring",
+        "run": 1
+      },
+      {
+        "content": "[{\"name\": \"Pip\", \"line\": \"Whoa! A glowing rune? It's like a neon sign for 'Free Magic'!\"}, {\"name\": \"Zen\", \"line\": \"It glows because it is. Do not touch it until we know why.\"}]",
+        "latency_ms": 6490,
+        "prompt_n": 4,
+        "predicted_n": 60,
+        "tok_per_sec": 9.5,
+        "label": "Curious wizard + stoic monk, exploring",
+        "run": 2
+      },
+      {
+        "content": "[{\"name\": \"Pip\", \"line\": \"Whoa, does that shiny thing tickle my toes?\"}, {\"name\": \"Zen\", \"line\": \"It glows. That is all the proof you will get.\"}]",
+        "latency_ms": 5314,
+        "prompt_n": 4,
+        "predicted_n": 50,
+        "tok_per_sec": 9.7,
+        "label": "Curious wizard + stoic monk, exploring",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\n  \"line\": \"I told you those plates were cursed. Now we're bleeding ink.\"\n}",
+        "latency_ms": 3301,
+        "prompt_n": 153,
+        "predicted_n": 24,
+        "tok_per_sec": 9.9,
+        "label": "Pessimistic dwarf, triggered a trap",
+        "run": 1
+      },
+      {
+        "content": "{\n  \"line\": \"Great. Just great. Now we're all stuck in here.\"\n}",
+        "latency_ms": 2533,
+        "prompt_n": 4,
+        "predicted_n": 23,
+        "tok_per_sec": 9.7,
+        "label": "Pessimistic dwarf, triggered a trap",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"line\": \"Great. Now my boots are wet and full of lead.\"\n}",
+        "latency_ms": 2481,
+        "prompt_n": 4,
+        "predicted_n": 22,
+        "tok_per_sec": 9.4,
+        "label": "Pessimistic dwarf, triggered a trap",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\n  \"name\": \"Mira\",\n  \"line\": \"I think I saw a stray cat near the campfire. Want to check on it?\"\n}",
+        "latency_ms": 5103,
+        "prompt_n": 231,
+        "predicted_n": 37,
+        "tok_per_sec": 9.8,
+        "label": "Two friends, quiet moment",
+        "run": 1
+      },
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"Do you want some tea? The last pot is warm.\"}, {\"name\": \"Theron\", \"line\": \"Sure, sounds perfect. Just let me get a few minutes of rest first.\"}]",
+        "latency_ms": 5723,
+        "prompt_n": 4,
+        "predicted_n": 54,
+        "tok_per_sec": 9.7,
+        "label": "Two friends, quiet moment",
+        "run": 2
+      },
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"Did anyone eat? I think my stomach is making a noise.\"}, {\"name\": \"Theron\", \"line\": \"Grab some rations, then. We can't fight on an empty belly.\"}]",
+        "latency_ms": 5990,
+        "prompt_n": 4,
+        "predicted_n": 55,
+        "tok_per_sec": 9.4,
+        "label": "Two friends, quiet moment",
+        "run": 3
+      }
+    ]
+  ],
+  "Q5_K_M": [
+    [
+      {
+        "content": "[{\"name\": \"Theron\", \"line\": \"We're alive, and that's what matters right now.\"}, {\"name\": \"Kess\", \"line\": \"Yeah, mostly because the goblin decided to stop breathing.\"}]",
+        "latency_ms": 5653,
+        "prompt_n": 205,
+        "predicted_n": 50,
+        "tok_per_sec": 11.9,
+        "label": "Brave fighter + sarcastic rogue, post-combat",
+        "run": 1
+      },
+      {
+        "content": "```json\n[\n  {\n    \"name\": \"Theron\",\n    \"line\": \"That was the closest call I've had since we were kids.\"\n  },\n  {\n    \"name\": \"Kess\",\n    \"line\": \"Oh, it wasn't close at all. It was a massacre.\"\n  }\n]\n```",
+        "latency_ms": 6535,
+        "prompt_n": 4,
+        "predicted_n": 78,
+        "tok_per_sec": 12.2,
+        "label": "Brave fighter + sarcastic rogue, post-combat",
+        "run": 2
+      },
+      {
+        "content": "[{\"name\": \"Theron\", \"line\": \"We did it! No one's dead and I'm still breathing.\"}, {\"name\": \"Kess\", \"line\": \"Oh, fantastic. Just like that? How original.\"}]",
+        "latency_ms": 4360,
+        "prompt_n": 4,
+        "predicted_n": 51,
+        "tok_per_sec": 12.1,
+        "label": "Brave fighter + sarcastic rogue, post-combat",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "\"Whoa, wait! Don't touch those symbols, I'm sure they're not what they look like.\"",
+        "latency_ms": 2920,
+        "prompt_n": 154,
+        "predicted_n": 24,
+        "tok_per_sec": 12.4,
+        "label": "Cautious cleric, exploring dungeon",
+        "run": 1
+      },
+      {
+        "content": "{\n  \"line\": \"Oh no... I hope those aren't traps, they look so ominous.\"\n}",
+        "latency_ms": 2116,
+        "prompt_n": 4,
+        "predicted_n": 25,
+        "tok_per_sec": 12.6,
+        "label": "Cautious cleric, exploring dungeon",
+        "run": 2
+      },
+      {
+        "content": "{\"line\": \"Did you see those marks? They look... like they're watching us.\"}",
+        "latency_ms": 1784,
+        "prompt_n": 4,
+        "predicted_n": 21,
+        "tok_per_sec": 12.7,
+        "label": "Cautious cleric, exploring dungeon",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"Hey, did anyone else get the full healing buff back-to-back?\"}, {\"name\": \"Dorek\", \"line\": \"It was luck. Not a buff. Don't ask for more.\"}]",
+        "latency_ms": 6002,
+        "prompt_n": 233,
+        "predicted_n": 55,
+        "tok_per_sec": 12.2,
+        "label": "Friendly healer + pessimistic mage, resting",
+        "run": 1
+      },
+      {
+        "content": "```json\n[\n  {\n    \"name\": \"Mira\",\n    \"line\": \"At least the dungeon floor is clear, right? We can finally eat something warm.\"\n  },\n  {\n    \"name\": \"Dorek\",\n    \"line\": \"Eating won't stop another one from breaking through. Just don't get killed in your sleep.\"\n  }\n]\n```",
+        "latency_ms": 7547,
+        "prompt_n": 4,
+        "predicted_n": 89,
+        "tok_per_sec": 12.0,
+        "label": "Friendly healer + pessimistic mage, resting",
+        "run": 2
+      },
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"Hey, you look pretty tired. Want some tea? I made it.\"}, {\"name\": \"Dorek\", \"line\": \"Tea won't fix my aching bones. Just get away from me.\"}]",
+        "latency_ms": 4864,
+        "prompt_n": 4,
+        "predicted_n": 58,
+        "tok_per_sec": 12.3,
+        "label": "Friendly healer + pessimistic mage, resting",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\n  \"line\": \"Wait, hold up. That's enough gold for three years of my life savings.\"\n}",
+        "latency_ms": 3146,
+        "prompt_n": 156,
+        "predicted_n": 27,
+        "tok_per_sec": 12.6,
+        "label": "Self-interested rogue, found treasure",
+        "run": 1
+      },
+      {
+        "content": "{\"line\": \"Wait, is this actually worth the risk? I could retire in two months.\"}",
+        "latency_ms": 1883,
+        "prompt_n": 4,
+        "predicted_n": 22,
+        "tok_per_sec": 12.6,
+        "label": "Self-interested rogue, found treasure",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"line\": \"Hold on! A chest of gold? Does that mean I get to keep the better share?\"\n}",
+        "latency_ms": 2448,
+        "prompt_n": 4,
+        "predicted_n": 29,
+        "tok_per_sec": 12.5,
+        "label": "Self-interested rogue, found treasure",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "```json\n[\n  {\n    \"name\": \"Aldric\",\n    \"line\": \"He needs to know mercy isn't a weakness. He's our brother in arms.\"\n  },\n  {\n    \"name\": \"Syl\",\n    \"line\": \"Brothers don't get killed by traps, Aldric. Just leave him there.\"\n  }\n]\n```",
+        "latency_ms": 8727,
+        "prompt_n": 235,
+        "predicted_n": 86,
+        "tok_per_sec": 11.9,
+        "label": "Principled paladin + ruthless ranger, moral disagreement",
+        "run": 1
+      },
+      {
+        "content": "```json\n[{\"name\": \"Aldric\", \"line\": \"We should show him mercy. He didn't deserve this.\"}, {\"name\": \"Syl\", \"line\": \"Mercy doesn't pay the bills, Paladin. Let's leave him to the wolves.\"}]\n```",
+        "latency_ms": 5294,
+        "prompt_n": 4,
+        "predicted_n": 62,
+        "tok_per_sec": 12.0,
+        "label": "Principled paladin + ruthless ranger, moral disagreement",
+        "run": 2
+      },
+      {
+        "content": "[{\"name\": \"Aldric\", \"line\": \"We can't just leave him there, he's innocent and needs help.\"}, {\"name\": \"Syl\", \"line\": \"Helping people is a luxury we don't have right now.\"}]",
+        "latency_ms": 4634,
+        "prompt_n": 4,
+        "predicted_n": 55,
+        "tok_per_sec": 12.2,
+        "label": "Principled paladin + ruthless ranger, moral disagreement",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "[{\"slot\": 0, \"line\": \"Come on, it's just a few more steps!\"}, {\"slot\": 1, \"line\": \"Wait, does that floorboard really hold my weight?\"}, {\"slot\": 2, \"line\": \"Oh, I'm sure we won't die here. Probably.\"}]",
+        "latency_ms": 7269,
+        "prompt_n": 245,
+        "predicted_n": 70,
+        "tok_per_sec": 12.1,
+        "label": "3-character event: descending to new floor",
+        "run": 1
+      },
+      {
+        "content": "[{\"slot\": 0, \"line\": \"Just follow me, it's not that deep.\"}, {\"slot\": 1, \"line\": \"What if it breaks right now?\"}, {\"slot\": 2, \"line\": \"You'd be dead before the stairs even creak.\"}]",
+        "latency_ms": 5293,
+        "prompt_n": 4,
+        "predicted_n": 63,
+        "tok_per_sec": 12.2,
+        "label": "3-character event: descending to new floor",
+        "run": 2
+      },
+      {
+        "content": "```json\n[\n  {\"slot\": 0, \"line\": \"Keep your eyes up there, we've got this.\"},\n  {\"slot\": 1, \"line\": \"Is it safe to trust my boots on the stone?\"},\n  {\"slot\": 2, \"line\": \"Oh, absolutely not. Why would you ask?\"},\n  {\"slot\": 0, \"line\": \"Just take a step forward.\"}\n]\n```",
+        "latency_ms": 8313,
+        "prompt_n": 4,
+        "predicted_n": 99,
+        "tok_per_sec": 12.1,
+        "label": "3-character event: descending to new floor",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\n  \"line\": \"I'm not done yet! I'll take you all down!\"\n}",
+        "latency_ms": 2852,
+        "prompt_n": 154,
+        "predicted_n": 23,
+        "tok_per_sec": 12.5,
+        "label": "Reckless barbarian, close call",
+        "run": 1
+      },
+      {
+        "content": "{\n  \"line\": \"Hah! I've got the last life left, but that's enough to take you down!\"\n}",
+        "latency_ms": 2588,
+        "prompt_n": 4,
+        "predicted_n": 30,
+        "tok_per_sec": 12.2,
+        "label": "Reckless barbarian, close call",
+        "run": 2
+      },
+      {
+        "content": "{\"line\": \"Hah! One more hit and I'll turn the tide!\"}",
+        "latency_ms": 1647,
+        "prompt_n": 4,
+        "predicted_n": 19,
+        "tok_per_sec": 12.6,
+        "label": "Reckless barbarian, close call",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "[{\"name\": \"Pip\", \"line\": \"Woo-hoo! It's a beacon of pure cosmic good vibes!\"}, {\"name\": \"Zen\", \"line\": \"It glows. That is all that matters.\"}]",
+        "latency_ms": 5468,
+        "prompt_n": 221,
+        "predicted_n": 50,
+        "tok_per_sec": 12.2,
+        "label": "Curious wizard + stoic monk, exploring",
+        "run": 1
+      },
+      {
+        "content": "[{\"name\": \"Pip\", \"line\": \"Woo-hoo! It's glowing like a neon sign for 'Free Magic Here'!\"}, {\"name\": \"Zen\", \"line\": \"It doesn't glow, Pip. It just wants to be left alone.\"}]",
+        "latency_ms": 4974,
+        "prompt_n": 4,
+        "predicted_n": 59,
+        "tok_per_sec": 12.2,
+        "label": "Curious wizard + stoic monk, exploring",
+        "run": 2
+      },
+      {
+        "content": "```json\n[{\"name\": \"Pip\", \"line\": \"Whoa, it's humming! Does it tickle? I'm gonna touch it now.\"}, {\"name\": \"Zen\", \"line\": \"Leave it be. Touching magic without cause is a bad idea.\"}]\n```",
+        "latency_ms": 5322,
+        "prompt_n": 4,
+        "predicted_n": 63,
+        "tok_per_sec": 12.2,
+        "label": "Curious wizard + stoic monk, exploring",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\n  \"line\": \"Great. Now I'm bleeding and the floor hates me.\"\n}",
+        "latency_ms": 2764,
+        "prompt_n": 153,
+        "predicted_n": 22,
+        "tok_per_sec": 12.5,
+        "label": "Pessimistic dwarf, triggered a trap",
+        "run": 1
+      },
+      {
+        "content": "{\n  \"line\": \"Oh great. Now the whole place is full of poison arrows.\"\n}",
+        "latency_ms": 1967,
+        "prompt_n": 4,
+        "predicted_n": 23,
+        "tok_per_sec": 12.6,
+        "label": "Pessimistic dwarf, triggered a trap",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"line\": \"Stupid trap. I could have sworn it wasn't there.\"\n}",
+        "latency_ms": 2001,
+        "prompt_n": 4,
+        "predicted_n": 23,
+        "tok_per_sec": 12.4,
+        "label": "Pessimistic dwarf, triggered a trap",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\n  \"name\": \"Mira\",\n  \"line\": \"I think I left my boots by the campfire again.\"\n}",
+        "latency_ms": 4073,
+        "prompt_n": 231,
+        "predicted_n": 31,
+        "tok_per_sec": 12.3,
+        "label": "Two friends, quiet moment",
+        "run": 1
+      },
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"Hey, you look wiped out. Want some warm broth?\"}, {\"name\": \"Theron\", \"line\": \"Yeah, thanks. Just need a minute to catch my breath.\"}]",
+        "latency_ms": 4317,
+        "prompt_n": 4,
+        "predicted_n": 51,
+        "tok_per_sec": 12.2,
+        "label": "Two friends, quiet moment",
+        "run": 2
+      },
+      {
+        "content": "```json\n[\n  {\n    \"name\": \"Mira\",\n    \"line\": \"My feet are killing me, but I'm so glad we made it.\"\n  },\n  {\n    \"name\": \"Theron\",\n    \"line\": \"Totally agree. Let's find a warm fire before we collapse.\"\n  }\n]\n```",
+        "latency_ms": 6720,
+        "prompt_n": 4,
+        "predicted_n": 80,
+        "tok_per_sec": 12.2,
+        "label": "Two friends, quiet moment",
+        "run": 3
+      }
+    ]
+  ],
+  "UD-Q4_K_XL": [
+    [
+      {
+        "content": "[{\"name\": \"Theron\", \"line\": \"That was close, but we made it out alive.\"}, {\"name\": \"Kess\", \"line\": \"You could say that, or you could just be lucky.\"}]",
+        "latency_ms": 5035,
+        "prompt_n": 205,
+        "predicted_n": 49,
+        "tok_per_sec": 13.2,
+        "label": "Brave fighter + sarcastic rogue, post-combat",
+        "run": 1
+      },
+      {
+        "content": "```json\n[\n  {\n    \"name\": \"Theron\",\n    \"line\": \"We made it, didn't we? That was a pretty close call.\"\n  },\n  {\n    \"name\": \"Kess\",\n    \"line\": \"Oh sure, absolutely miraculous. We probably walked into the fire.\"\n  }\n]\n```",
+        "latency_ms": 6168,
+        "prompt_n": 4,
+        "predicted_n": 79,
+        "tok_per_sec": 13.1,
+        "label": "Brave fighter + sarcastic rogue, post-combat",
+        "run": 2
+      },
+      {
+        "content": "```json\n[{\"name\": \"Theron\", \"line\": \"I told you we'd make it out of here alive.\"}, {\"name\": \"Kess\", \"line\": \"Right, because I'm usually the one who lives.\"}]\n```",
+        "latency_ms": 4302,
+        "prompt_n": 4,
+        "predicted_n": 54,
+        "tok_per_sec": 13.0,
+        "label": "Brave fighter + sarcastic rogue, post-combat",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\n  \"line\": \"Did we really need to do that? I think we should just turn back now.\"\n}",
+        "latency_ms": 2934,
+        "prompt_n": 154,
+        "predicted_n": 27,
+        "tok_per_sec": 13.6,
+        "label": "Cautious cleric, exploring dungeon",
+        "run": 1
+      },
+      {
+        "content": "{\n  \"line\": \"I... I think those symbols hurt my eyes. Should we go back?\"\n}",
+        "latency_ms": 1976,
+        "prompt_n": 4,
+        "predicted_n": 25,
+        "tok_per_sec": 13.6,
+        "label": "Cautious cleric, exploring dungeon",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"line\": \"Oh no, I hope we didn't trigger something. Those marks look... ominous.\"\n}",
+        "latency_ms": 2119,
+        "prompt_n": 4,
+        "predicted_n": 27,
+        "tok_per_sec": 13.6,
+        "label": "Cautious cleric, exploring dungeon",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"Did anyone else just find a fresh apple in the supply crate?\"}, {\"name\": \"Dorek\", \"line\": \"It was probably poisoned. I'd hate to get my hands dirty.\"}]",
+        "latency_ms": 5634,
+        "prompt_n": 233,
+        "predicted_n": 54,
+        "tok_per_sec": 12.8,
+        "label": "Friendly healer + pessimistic mage, resting",
+        "run": 1
+      },
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"Hey there, everyone! Ready for some rest and a hot cup of tea?\"}, {\"name\": \"Dorek\", \"line\": \"Rest is fine. Tea is poison. Let's just get the hell out.\"}]",
+        "latency_ms": 4753,
+        "prompt_n": 4,
+        "predicted_n": 59,
+        "tok_per_sec": 12.8,
+        "label": "Friendly healer + pessimistic mage, resting",
+        "run": 2
+      },
+      {
+        "content": "```json\n[{\"name\": \"Mira\", \"line\": \"At least we didn't fall into the lava pit, right?\"}, {\"name\": \"Dorek\", \"line\": \"We walked straight into it. Again.\"}]\n```",
+        "latency_ms": 4371,
+        "prompt_n": 4,
+        "predicted_n": 53,
+        "tok_per_sec": 12.5,
+        "label": "Friendly healer + pessimistic mage, resting",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\n  \"line\": \"Wait, does this chest have a trap or is it just... free money?\"\n}",
+        "latency_ms": 2984,
+        "prompt_n": 156,
+        "predicted_n": 26,
+        "tok_per_sec": 12.9,
+        "label": "Self-interested rogue, found treasure",
+        "run": 1
+      },
+      {
+        "content": "{\n  \"line\": \"Wait, if we split this evenly, I still get more than my usual share.\"\n}",
+        "latency_ms": 2220,
+        "prompt_n": 4,
+        "predicted_n": 27,
+        "tok_per_sec": 13.0,
+        "label": "Self-interested rogue, found treasure",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"line\": \"Hmph, look at this. Ten thousand gold pieces right here in my sight.\"\n}",
+        "latency_ms": 2542,
+        "prompt_n": 4,
+        "predicted_n": 27,
+        "tok_per_sec": 11.5,
+        "label": "Self-interested rogue, found treasure",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "[{\"name\": \"Aldric\", \"line\": \"We should take him to the village. He needs help and we need answers.\"}, {\"name\": \"Syl\", \"line\": \"Help? Or just a way to keep us from getting killed?\"}]",
+        "latency_ms": 5821,
+        "prompt_n": 235,
+        "predicted_n": 56,
+        "tok_per_sec": 12.8,
+        "label": "Principled paladin + ruthless ranger, moral disagreement",
+        "run": 1
+      },
+      {
+        "content": "```json\n[{\"name\": \"Aldric\", \"line\": \"We can't just leave him to die, he's a soul in pain.\"}, {\"name\": \"Syl\", \"line\": \"He'll be useful. If we don't use him, he dies anyway.\"}]\n```",
+        "latency_ms": 5041,
+        "prompt_n": 4,
+        "predicted_n": 64,
+        "tok_per_sec": 13.0,
+        "label": "Principled paladin + ruthless ranger, moral disagreement",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"name\": \"Aldric\",\n  \"line\": \"We must ask him what he knows before we leave him to die.\"\n},\n{\n  \"name\": \"Syl\",\n  \"line\": \"He's not asking. We cut his tongue out and walk away.\"\n}",
+        "latency_ms": 5377,
+        "prompt_n": 4,
+        "predicted_n": 67,
+        "tok_per_sec": 12.8,
+        "label": "Principled paladin + ruthless ranger, moral disagreement",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "```json\n[\n  {\"slot\": 0, \"line\": \"Just follow me, it's going to be fine.\"},\n  {\"slot\": 1, \"line\": \"What if we fall all the way down?\"},\n  {\"slot\": 2, \"line\": \"Oh, you're worried? That's cute, really.\"}\n]\n```",
+        "latency_ms": 7515,
+        "prompt_n": 245,
+        "predicted_n": 80,
+        "tok_per_sec": 13.2,
+        "label": "3-character event: descending to new floor",
+        "run": 1
+      },
+      {
+        "content": "[{\"slot\": 0, \"line\": \"Don't worry, we've got this covered.\"}, {\"slot\": 1, \"line\": \"I hope the stairs hold up before something falls.\"}, {\"slot\": 2, \"line\": \"Unless you're counting on gravity to save us.\"}]",
+        "latency_ms": 5090,
+        "prompt_n": 4,
+        "predicted_n": 65,
+        "tok_per_sec": 13.1,
+        "label": "3-character event: descending to new floor",
+        "run": 2
+      },
+      {
+        "content": "[{\"slot\": 0, \"line\": \"Just keep moving forward, it's getting dark.\"}, {\"slot\": 1, \"line\": \"I hope we don't trip and fall down the hole.\"}, {\"slot\": 2, \"line\": \"Careful where you step, or we'll end up in a ditch.\"}]",
+        "latency_ms": 5633,
+        "prompt_n": 4,
+        "predicted_n": 72,
+        "tok_per_sec": 13.1,
+        "label": "3-character event: descending to new floor",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "\"Ha! I'm still alive? Yeah, that's right!\"",
+        "latency_ms": 2067,
+        "prompt_n": 154,
+        "predicted_n": 15,
+        "tok_per_sec": 14.1,
+        "label": "Reckless barbarian, close call",
+        "run": 1
+      },
+      {
+        "content": "{\"line\": \"Ha! Barely scraped by? I'll crush your bones before you finish breathing!\"}",
+        "latency_ms": 1832,
+        "prompt_n": 4,
+        "predicted_n": 23,
+        "tok_per_sec": 13.6,
+        "label": "Reckless barbarian, close call",
+        "run": 2
+      },
+      {
+        "content": "{\"line\": \"Heh, that was nothing! My skin's tougher than the ground itself!\"}",
+        "latency_ms": 1746,
+        "prompt_n": 4,
+        "predicted_n": 22,
+        "tok_per_sec": 13.7,
+        "label": "Reckless barbarian, close call",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "[{\"name\": \"Pip\", \"line\": \"Look at that! It's practically glowing like a disco ball!\"}, {\"name\": \"Zen\", \"line\": \"Magic is dangerous. Do not touch the wall.\"}]",
+        "latency_ms": 4909,
+        "prompt_n": 221,
+        "predicted_n": 48,
+        "tok_per_sec": 13.2,
+        "label": "Curious wizard + stoic monk, exploring",
+        "run": 1
+      },
+      {
+        "content": "```json\n[{\"name\": \"Pip\", \"line\": \"Hey, look at this! It's glowing like a neon sign!\"}, {\"name\": \"Zen\", \"line\": \"It's magic. And magic is dangerous.\"}]\n```",
+        "latency_ms": 4151,
+        "prompt_n": 4,
+        "predicted_n": 53,
+        "tok_per_sec": 13.2,
+        "label": "Curious wizard + stoic monk, exploring",
+        "run": 2
+      },
+      {
+        "content": "```json\n[{\"name\": \"Pip\", \"line\": \"Whoa, look at this sparkly thing! It's probably a portal to candy land!\"}, {\"name\": \"Zen\", \"line\": \"It glows with the color of malice. Do not touch it.\"}]\n```",
+        "latency_ms": 5263,
+        "prompt_n": 4,
+        "predicted_n": 64,
+        "tok_per_sec": 12.5,
+        "label": "Curious wizard + stoic monk, exploring",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "{\"line\": \"That's it? Just a couple of stinging arrows for stepping on a floorboard?\"}",
+        "latency_ms": 2832,
+        "prompt_n": 153,
+        "predicted_n": 24,
+        "tok_per_sec": 13.3,
+        "label": "Pessimistic dwarf, triggered a trap",
+        "run": 1
+      },
+      {
+        "content": "\"Great. Another trap. My toes are bleeding and I'm still here.\"",
+        "latency_ms": 1386,
+        "prompt_n": 4,
+        "predicted_n": 17,
+        "tok_per_sec": 13.5,
+        "label": "Pessimistic dwarf, triggered a trap",
+        "run": 2
+      },
+      {
+        "content": "{\n  \"line\": \"Great. Just great. Now I have to dodge the arrows.\"\n}",
+        "latency_ms": 1866,
+        "prompt_n": 4,
+        "predicted_n": 23,
+        "tok_per_sec": 13.3,
+        "label": "Pessimistic dwarf, triggered a trap",
+        "run": 3
+      }
+    ],
+    [
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"I can't believe we're all still breathing after that last fight.\"}, {\"name\": \"Theron\", \"line\": \"Just take a breath, it's gonna be fine tomorrow.\"}]",
+        "latency_ms": 5468,
+        "prompt_n": 231,
+        "predicted_n": 52,
+        "tok_per_sec": 12.9,
+        "label": "Two friends, quiet moment",
+        "run": 1
+      },
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"I'm just glad we're all still here, even if my feet hurt.\"}, {\"name\": \"Theron\", \"line\": \"Then you take it easy; I'll make sure no one else gets hurt.\"}]",
+        "latency_ms": 4567,
+        "prompt_n": 4,
+        "predicted_n": 58,
+        "tok_per_sec": 13.1,
+        "label": "Two friends, quiet moment",
+        "run": 2
+      },
+      {
+        "content": "[{\"name\": \"Mira\", \"line\": \"I'm so glad we made it through that last fight without anyone getting hurt.\"}, {\"name\": \"Theron\", \"line\": \"Yeah, we're a team. We got each other's backs every time.\"}]",
+        "latency_ms": 4520,
+        "prompt_n": 4,
+        "predicted_n": 58,
+        "tok_per_sec": 13.2,
+        "label": "Two friends, quiet moment",
+        "run": 3
+      }
+    ]
+  ]
+}

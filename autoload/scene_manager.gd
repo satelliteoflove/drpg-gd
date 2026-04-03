@@ -76,7 +76,84 @@ func go_to_dungeon(floor_num: int = -1, spawn_at_stairs_up: bool = true) -> void
 	GameState.set_mode(GameState.GameMode.DUNGEON)
 	if GameState.has_party():
 		SaveManager.autosave()
+	await _prewarm_dungeon_shaders()
 	change_scene("dungeon")
+
+
+func _prewarm_dungeon_shaders() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(2, 2)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	viewport.transparent_bg = true
+	add_child(viewport)
+
+	var scene := Node3D.new()
+	viewport.add_child(scene)
+
+	var cam := Camera3D.new()
+	cam.position = Vector3(0, 0, 2)
+	scene.add_child(cam)
+
+	var light := DirectionalLight3D.new()
+	scene.add_child(light)
+
+	var materials: Array[StandardMaterial3D] = []
+
+	# Wall/floor/ceiling: triplanar + normal map
+	var env_mat := StandardMaterial3D.new()
+	env_mat.albedo_texture = load("res://textures/stone_brick_wall/diffuse.jpg")
+	env_mat.normal_enabled = true
+	env_mat.normal_texture = load("res://textures/stone_brick_wall/normal.jpg")
+	env_mat.uv1_triplanar = true
+	env_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	materials.append(env_mat)
+
+	# Tinted variant (stairs up/down, ceiling)
+	var tinted_mat := StandardMaterial3D.new()
+	tinted_mat.albedo_texture = load("res://textures/stone_brick_wall/diffuse.jpg")
+	tinted_mat.albedo_color = Color(0.7, 0.9, 0.7)
+	tinted_mat.normal_enabled = true
+	tinted_mat.normal_texture = load("res://textures/stone_brick_wall/normal.jpg")
+	tinted_mat.uv1_triplanar = true
+	tinted_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	materials.append(tinted_mat)
+
+	# Door material
+	var door_mat := StandardMaterial3D.new()
+	door_mat.albedo_texture = load("res://textures/door/diffuse.png")
+	door_mat.normal_enabled = true
+	door_mat.normal_texture = load("res://textures/door/normal.png")
+	door_mat.uv1_triplanar = true
+	door_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	materials.append(door_mat)
+
+	# Simple color material (shrine/inscription tiles)
+	var color_mat := StandardMaterial3D.new()
+	color_mat.albedo_color = Color(0.6, 0.5, 0.2)
+	materials.append(color_mat)
+
+	for i in materials.size():
+		var mesh_instance := MeshInstance3D.new()
+		mesh_instance.mesh = BoxMesh.new()
+		mesh_instance.mesh.material = materials[i]
+		mesh_instance.position = Vector3(float(i) * 0.5, 0, 0)
+		scene.add_child(mesh_instance)
+
+	# Enemy sprite: billboard Sprite3D
+	var sprite := Sprite3D.new()
+	sprite.texture = load("res://textures/monsters/goblin.png")
+	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sprite.transparent = true
+	sprite.double_sided = true
+	sprite.shaded = false
+	sprite.position = Vector3(0, 1, 0)
+	scene.add_child(sprite)
+
+	# Render two frames to ensure all pipelines compile
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	viewport.queue_free()
 
 
 func go_to_combat() -> void:

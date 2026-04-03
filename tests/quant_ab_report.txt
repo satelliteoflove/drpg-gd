@@ -1,0 +1,459 @@
+
+================================================================================
+A/B TEST RESULTS
+================================================================================
+
+--- Prompt 1: Brave fighter + sarcastic rogue, post-combat ---
+
+  [Q8_0]
+    Run 1: [{"name": "Theron", "line": "We made it! That was the best fight ever!"}, {"name": "Kess", "line": "Oh, sure. Because we definitely didn't just get shot at by three goblins."}]
+      (6889ms, 55 tok, 9.6 tok/s)
+    Run 2: ```json
+[{"name": "Theron", "line": "I told you to stay behind, but I'll take the lead if it means we live."}, {"name": "Kess", "line": "Oh right, because your 'lead' is usually a very loud and unnecessary distraction."}]
+```
+      (7165ms, 67 tok, 9.5 tok/s)
+    Run 3: [{"name": "Theron", "line": "We're good. I think we just need to breathe."}, {"name": "Kess", "line": "Sure, because breathing doesn't usually get you stabbed in the back."}]
+      (5466ms, 52 tok, 9.8 tok/s)
+
+  [Q5_K_M]
+    Run 1: [{"name": "Theron", "line": "We're alive, and that's what matters right now."}, {"name": "Kess", "line": "Yeah, mostly because the goblin decided to stop breathing."}]
+      (5653ms, 50 tok, 11.9 tok/s)
+    Run 2: ```json
+[
+  {
+    "name": "Theron",
+    "line": "That was the closest call I've had since we were kids."
+  },
+  {
+    "name": "Kess",
+    "line": "Oh, it wasn't close at all. It was a massacre."
+  }
+]
+```
+      (6535ms, 78 tok, 12.2 tok/s)
+    Run 3: [{"name": "Theron", "line": "We did it! No one's dead and I'm still breathing."}, {"name": "Kess", "line": "Oh, fantastic. Just like that? How original."}]
+      (4360ms, 51 tok, 12.1 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: [{"name": "Theron", "line": "That was close, but we made it out alive."}, {"name": "Kess", "line": "You could say that, or you could just be lucky."}]
+      (5035ms, 49 tok, 13.2 tok/s)
+    Run 2: ```json
+[
+  {
+    "name": "Theron",
+    "line": "We made it, didn't we? That was a pretty close call."
+  },
+  {
+    "name": "Kess",
+    "line": "Oh sure, absolutely miraculous. We probably walked into the fire."
+  }
+]
+```
+      (6168ms, 79 tok, 13.1 tok/s)
+    Run 3: ```json
+[{"name": "Theron", "line": "I told you we'd make it out of here alive."}, {"name": "Kess", "line": "Right, because I'm usually the one who lives."}]
+```
+      (4302ms, 54 tok, 13.0 tok/s)
+
+--- Prompt 2: Cautious cleric, exploring dungeon ---
+
+  [Q8_0]
+    Run 1: {
+  "line": "Wait, don't touch those symbols... they're glowing and it's just so creepy."
+}
+      (3873ms, 28 tok, 9.3 tok/s)
+    Run 2: {"line": "Is... is that supposed to be friendly? I don't think so."}
+      (2415ms, 21 tok, 9.4 tok/s)
+    Run 3: "Wait... are those runes? I think we should go back to where we started."
+      (2199ms, 19 tok, 9.2 tok/s)
+
+  [Q5_K_M]
+    Run 1: "Whoa, wait! Don't touch those symbols, I'm sure they're not what they look like."
+      (2920ms, 24 tok, 12.4 tok/s)
+    Run 2: {
+  "line": "Oh no... I hope those aren't traps, they look so ominous."
+}
+      (2116ms, 25 tok, 12.6 tok/s)
+    Run 3: {"line": "Did you see those marks? They look... like they're watching us."}
+      (1784ms, 21 tok, 12.7 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: {
+  "line": "Did we really need to do that? I think we should just turn back now."
+}
+      (2934ms, 27 tok, 13.6 tok/s)
+    Run 2: {
+  "line": "I... I think those symbols hurt my eyes. Should we go back?"
+}
+      (1976ms, 25 tok, 13.6 tok/s)
+    Run 3: {
+  "line": "Oh no, I hope we didn't trigger something. Those marks look... ominous."
+}
+      (2119ms, 27 tok, 13.6 tok/s)
+
+--- Prompt 3: Friendly healer + pessimistic mage, resting ---
+
+  [Q8_0]
+    Run 1: [{"name": "Mira", "line": "Hey, look at that sunbeam! It's perfect for a nap."}, {"name": "Dorek", "line": "Don't touch it. Sunlight burns. We'll get burned."}]
+      (7395ms, 56 tok, 9.2 tok/s)
+    Run 2: [{"name": "Mira", "line": "You're safe now! Let's eat some stew and rest."}, {"name": "Dorek", "line": "Safe? Only because the goblin didn't notice us yet."}]
+      (5846ms, 53 tok, 9.4 tok/s)
+    Run 3: [{"name": "Mira", "line": "Hey, does anyone else feel that warm glow of safety? It's a sign!"}, {"name": "Dorek", "line": "I don't think it's safety. I think it's the end of the world."}]
+      (6719ms, 62 tok, 9.5 tok/s)
+
+  [Q5_K_M]
+    Run 1: [{"name": "Mira", "line": "Hey, did anyone else get the full healing buff back-to-back?"}, {"name": "Dorek", "line": "It was luck. Not a buff. Don't ask for more."}]
+      (6002ms, 55 tok, 12.2 tok/s)
+    Run 2: ```json
+[
+  {
+    "name": "Mira",
+    "line": "At least the dungeon floor is clear, right? We can finally eat something warm."
+  },
+  {
+    "name": "Dorek",
+    "line": "Eating won't stop another one from breaking through. Just don't get killed in your sleep."
+  }
+]
+```
+      (7547ms, 89 tok, 12.0 tok/s)
+    Run 3: [{"name": "Mira", "line": "Hey, you look pretty tired. Want some tea? I made it."}, {"name": "Dorek", "line": "Tea won't fix my aching bones. Just get away from me."}]
+      (4864ms, 58 tok, 12.3 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: [{"name": "Mira", "line": "Did anyone else just find a fresh apple in the supply crate?"}, {"name": "Dorek", "line": "It was probably poisoned. I'd hate to get my hands dirty."}]
+      (5634ms, 54 tok, 12.8 tok/s)
+    Run 2: [{"name": "Mira", "line": "Hey there, everyone! Ready for some rest and a hot cup of tea?"}, {"name": "Dorek", "line": "Rest is fine. Tea is poison. Let's just get the hell out."}]
+      (4753ms, 59 tok, 12.8 tok/s)
+    Run 3: ```json
+[{"name": "Mira", "line": "At least we didn't fall into the lava pit, right?"}, {"name": "Dorek", "line": "We walked straight into it. Again."}]
+```
+      (4371ms, 53 tok, 12.5 tok/s)
+
+--- Prompt 4: Self-interested rogue, found treasure ---
+
+  [Q8_0]
+    Run 1: {"line": "Wait, did you just open that? I'm not paying for the dust on those coins."}
+      (3516ms, 25 tok, 9.7 tok/s)
+    Run 2: {
+  "line": "Ooh, shiny stuff! Now you're paying for the trouble I caused, right?"
+}
+      (3085ms, 28 tok, 9.5 tok/s)
+    Run 3: {
+  "line": "Gold's gold, but if I steal it first, that's just me being smart."
+}
+      (3029ms, 28 tok, 9.6 tok/s)
+
+  [Q5_K_M]
+    Run 1: {
+  "line": "Wait, hold up. That's enough gold for three years of my life savings."
+}
+      (3146ms, 27 tok, 12.6 tok/s)
+    Run 2: {"line": "Wait, is this actually worth the risk? I could retire in two months."}
+      (1883ms, 22 tok, 12.6 tok/s)
+    Run 3: {
+  "line": "Hold on! A chest of gold? Does that mean I get to keep the better share?"
+}
+      (2448ms, 29 tok, 12.5 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: {
+  "line": "Wait, does this chest have a trap or is it just... free money?"
+}
+      (2984ms, 26 tok, 12.9 tok/s)
+    Run 2: {
+  "line": "Wait, if we split this evenly, I still get more than my usual share."
+}
+      (2220ms, 27 tok, 13.0 tok/s)
+    Run 3: {
+  "line": "Hmph, look at this. Ten thousand gold pieces right here in my sight."
+}
+      (2542ms, 27 tok, 11.5 tok/s)
+
+--- Prompt 5: Principled paladin + ruthless ranger, moral disagreement ---
+
+  [Q8_0]
+    Run 1: ```json
+[
+  {
+    "name": "Aldric",
+    "line": "He looks terrified. We should take him to the nearest village and ask for help."
+  },
+  {
+    "name": "Syl",
+    "line": "Help won't come. He's already dead. Just leave him in the mud."
+  }
+]
+```
+      (10264ms, 86 tok, 9.6 tok/s)
+    Run 2: ```json
+[
+  {
+    "name": "Aldric",
+    "line": "He's innocent enough to be spared. We can take him back to the village."
+  },
+  {
+    "name": "Syl",
+    "line": "He's a spy. He'll lie if we let him go. Kill him before he talks."
+  }
+]
+```
+      (9611ms, 89 tok, 9.4 tok/s)
+    Run 3: {
+  "name": "Aldric",
+  "line": "We should spare him, he might help us find the rest of his unit."
+}
+      (4150ms, 36 tok, 9.1 tok/s)
+
+  [Q5_K_M]
+    Run 1: ```json
+[
+  {
+    "name": "Aldric",
+    "line": "He needs to know mercy isn't a weakness. He's our brother in arms."
+  },
+  {
+    "name": "Syl",
+    "line": "Brothers don't get killed by traps, Aldric. Just leave him there."
+  }
+]
+```
+      (8727ms, 86 tok, 11.9 tok/s)
+    Run 2: ```json
+[{"name": "Aldric", "line": "We should show him mercy. He didn't deserve this."}, {"name": "Syl", "line": "Mercy doesn't pay the bills, Paladin. Let's leave him to the wolves."}]
+```
+      (5294ms, 62 tok, 12.0 tok/s)
+    Run 3: [{"name": "Aldric", "line": "We can't just leave him there, he's innocent and needs help."}, {"name": "Syl", "line": "Helping people is a luxury we don't have right now."}]
+      (4634ms, 55 tok, 12.2 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: [{"name": "Aldric", "line": "We should take him to the village. He needs help and we need answers."}, {"name": "Syl", "line": "Help? Or just a way to keep us from getting killed?"}]
+      (5821ms, 56 tok, 12.8 tok/s)
+    Run 2: ```json
+[{"name": "Aldric", "line": "We can't just leave him to die, he's a soul in pain."}, {"name": "Syl", "line": "He'll be useful. If we don't use him, he dies anyway."}]
+```
+      (5041ms, 64 tok, 13.0 tok/s)
+    Run 3: {
+  "name": "Aldric",
+  "line": "We must ask him what he knows before we leave him to die."
+},
+{
+  "name": "Syl",
+  "line": "He's not asking. We cut his tongue out and walk away."
+}
+      (5377ms, 67 tok, 12.8 tok/s)
+
+--- Prompt 6: 3-character event: descending to new floor ---
+
+  [Q8_0]
+    Run 1: ```json
+[
+  {"slot": 0, "line": "Don't worry, this staircase has held up for centuries."},
+  {"slot": 1, "line": "It looks like it's about to collapse on us right now!"},
+  {"slot": 2, "line": "Or maybe that's just the sound of my boots squeaking."},
+  {"slot": 0, "line": "Let's keep moving; we're not going back up."}
+]
+```
+      (13293ms, 111 tok, 9.3 tok/s)
+    Run 2: ```json
+[
+  {"slot": 0, "line": "Just follow my lead; I won't let anything happen to you."},
+  {"slot": 1, "line": "I hope it's not a trap... oh god, what if we die?"},
+  {"slot": 2, "line": "Sure, let's run straight into the wall. Very smart plan."}
+]
+```
+      (10356ms, 92 tok, 9.0 tok/s)
+    Run 3: ```json
+[
+  {"slot": 0, "line": "We got this, just keep moving forward."},
+  {"slot": 1, "line": "Wait, is that stone actually still holding up?"},
+  {"slot": 2, "line": "Surely you're not suggesting we stop for a safety inspection."}
+]
+```
+      (8799ms, 80 tok, 9.3 tok/s)
+
+  [Q5_K_M]
+    Run 1: [{"slot": 0, "line": "Come on, it's just a few more steps!"}, {"slot": 1, "line": "Wait, does that floorboard really hold my weight?"}, {"slot": 2, "line": "Oh, I'm sure we won't die here. Probably."}]
+      (7269ms, 70 tok, 12.1 tok/s)
+    Run 2: [{"slot": 0, "line": "Just follow me, it's not that deep."}, {"slot": 1, "line": "What if it breaks right now?"}, {"slot": 2, "line": "You'd be dead before the stairs even creak."}]
+      (5293ms, 63 tok, 12.2 tok/s)
+    Run 3: ```json
+[
+  {"slot": 0, "line": "Keep your eyes up there, we've got this."},
+  {"slot": 1, "line": "Is it safe to trust my boots on the stone?"},
+  {"slot": 2, "line": "Oh, absolutely not. Why would you ask?"},
+  {"slot": 0, "line": "Just take a step forward."}
+]
+```
+      (8313ms, 99 tok, 12.1 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: ```json
+[
+  {"slot": 0, "line": "Just follow me, it's going to be fine."},
+  {"slot": 1, "line": "What if we fall all the way down?"},
+  {"slot": 2, "line": "Oh, you're worried? That's cute, really."}
+]
+```
+      (7515ms, 80 tok, 13.2 tok/s)
+    Run 2: [{"slot": 0, "line": "Don't worry, we've got this covered."}, {"slot": 1, "line": "I hope the stairs hold up before something falls."}, {"slot": 2, "line": "Unless you're counting on gravity to save us."}]
+      (5090ms, 65 tok, 13.1 tok/s)
+    Run 3: [{"slot": 0, "line": "Just keep moving forward, it's getting dark."}, {"slot": 1, "line": "I hope we don't trip and fall down the hole."}, {"slot": 2, "line": "Careful where you step, or we'll end up in a ditch."}]
+      (5633ms, 72 tok, 13.1 tok/s)
+
+--- Prompt 7: Reckless barbarian, close call ---
+
+  [Q8_0]
+    Run 1: {"line": "I'm still standing! Let's go smash those guys again!"}
+      (2860ms, 19 tok, 9.7 tok/s)
+    Run 2: {"line": "Hah! Only got one life left? That's nothing to worry about!"}
+      (2360ms, 22 tok, 9.9 tok/s)
+    Run 3: {
+  "line": "Heh! Still standing, you weaklings. My armor's holding up!"
+}
+      (2778ms, 26 tok, 9.8 tok/s)
+
+  [Q5_K_M]
+    Run 1: {
+  "line": "I'm not done yet! I'll take you all down!"
+}
+      (2852ms, 23 tok, 12.5 tok/s)
+    Run 2: {
+  "line": "Hah! I've got the last life left, but that's enough to take you down!"
+}
+      (2588ms, 30 tok, 12.2 tok/s)
+    Run 3: {"line": "Hah! One more hit and I'll turn the tide!"}
+      (1647ms, 19 tok, 12.6 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: "Ha! I'm still alive? Yeah, that's right!"
+      (2067ms, 15 tok, 14.1 tok/s)
+    Run 2: {"line": "Ha! Barely scraped by? I'll crush your bones before you finish breathing!"}
+      (1832ms, 23 tok, 13.6 tok/s)
+    Run 3: {"line": "Heh, that was nothing! My skin's tougher than the ground itself!"}
+      (1746ms, 22 tok, 13.7 tok/s)
+
+--- Prompt 8: Curious wizard + stoic monk, exploring ---
+
+  [Q8_0]
+    Run 1: [{"name": "Pip", "line": "Did you see that? It's practically singing! Let's pet it like a cat!"}, {"name": "Zen", "line": "That is not a cat. It is a dangerous rune."}]
+      (6873ms, 55 tok, 9.7 tok/s)
+    Run 2: [{"name": "Pip", "line": "Whoa! A glowing rune? It's like a neon sign for 'Free Magic'!"}, {"name": "Zen", "line": "It glows because it is. Do not touch it until we know why."}]
+      (6490ms, 60 tok, 9.5 tok/s)
+    Run 3: [{"name": "Pip", "line": "Whoa, does that shiny thing tickle my toes?"}, {"name": "Zen", "line": "It glows. That is all the proof you will get."}]
+      (5314ms, 50 tok, 9.7 tok/s)
+
+  [Q5_K_M]
+    Run 1: [{"name": "Pip", "line": "Woo-hoo! It's a beacon of pure cosmic good vibes!"}, {"name": "Zen", "line": "It glows. That is all that matters."}]
+      (5468ms, 50 tok, 12.2 tok/s)
+    Run 2: [{"name": "Pip", "line": "Woo-hoo! It's glowing like a neon sign for 'Free Magic Here'!"}, {"name": "Zen", "line": "It doesn't glow, Pip. It just wants to be left alone."}]
+      (4974ms, 59 tok, 12.2 tok/s)
+    Run 3: ```json
+[{"name": "Pip", "line": "Whoa, it's humming! Does it tickle? I'm gonna touch it now."}, {"name": "Zen", "line": "Leave it be. Touching magic without cause is a bad idea."}]
+```
+      (5322ms, 63 tok, 12.2 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: [{"name": "Pip", "line": "Look at that! It's practically glowing like a disco ball!"}, {"name": "Zen", "line": "Magic is dangerous. Do not touch the wall."}]
+      (4909ms, 48 tok, 13.2 tok/s)
+    Run 2: ```json
+[{"name": "Pip", "line": "Hey, look at this! It's glowing like a neon sign!"}, {"name": "Zen", "line": "It's magic. And magic is dangerous."}]
+```
+      (4151ms, 53 tok, 13.2 tok/s)
+    Run 3: ```json
+[{"name": "Pip", "line": "Whoa, look at this sparkly thing! It's probably a portal to candy land!"}, {"name": "Zen", "line": "It glows with the color of malice. Do not touch it."}]
+```
+      (5263ms, 64 tok, 12.5 tok/s)
+
+--- Prompt 9: Pessimistic dwarf, triggered a trap ---
+
+  [Q8_0]
+    Run 1: {
+  "line": "I told you those plates were cursed. Now we're bleeding ink."
+}
+      (3301ms, 24 tok, 9.9 tok/s)
+    Run 2: {
+  "line": "Great. Just great. Now we're all stuck in here."
+}
+      (2533ms, 23 tok, 9.7 tok/s)
+    Run 3: {
+  "line": "Great. Now my boots are wet and full of lead."
+}
+      (2481ms, 22 tok, 9.4 tok/s)
+
+  [Q5_K_M]
+    Run 1: {
+  "line": "Great. Now I'm bleeding and the floor hates me."
+}
+      (2764ms, 22 tok, 12.5 tok/s)
+    Run 2: {
+  "line": "Oh great. Now the whole place is full of poison arrows."
+}
+      (1967ms, 23 tok, 12.6 tok/s)
+    Run 3: {
+  "line": "Stupid trap. I could have sworn it wasn't there."
+}
+      (2001ms, 23 tok, 12.4 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: {"line": "That's it? Just a couple of stinging arrows for stepping on a floorboard?"}
+      (2832ms, 24 tok, 13.3 tok/s)
+    Run 2: "Great. Another trap. My toes are bleeding and I'm still here."
+      (1386ms, 17 tok, 13.5 tok/s)
+    Run 3: {
+  "line": "Great. Just great. Now I have to dodge the arrows."
+}
+      (1866ms, 23 tok, 13.3 tok/s)
+
+--- Prompt 10: Two friends, quiet moment ---
+
+  [Q8_0]
+    Run 1: {
+  "name": "Mira",
+  "line": "I think I saw a stray cat near the campfire. Want to check on it?"
+}
+      (5103ms, 37 tok, 9.8 tok/s)
+    Run 2: [{"name": "Mira", "line": "Do you want some tea? The last pot is warm."}, {"name": "Theron", "line": "Sure, sounds perfect. Just let me get a few minutes of rest first."}]
+      (5723ms, 54 tok, 9.7 tok/s)
+    Run 3: [{"name": "Mira", "line": "Did anyone eat? I think my stomach is making a noise."}, {"name": "Theron", "line": "Grab some rations, then. We can't fight on an empty belly."}]
+      (5990ms, 55 tok, 9.4 tok/s)
+
+  [Q5_K_M]
+    Run 1: {
+  "name": "Mira",
+  "line": "I think I left my boots by the campfire again."
+}
+      (4073ms, 31 tok, 12.3 tok/s)
+    Run 2: [{"name": "Mira", "line": "Hey, you look wiped out. Want some warm broth?"}, {"name": "Theron", "line": "Yeah, thanks. Just need a minute to catch my breath."}]
+      (4317ms, 51 tok, 12.2 tok/s)
+    Run 3: ```json
+[
+  {
+    "name": "Mira",
+    "line": "My feet are killing me, but I'm so glad we made it."
+  },
+  {
+    "name": "Theron",
+    "line": "Totally agree. Let's find a warm fire before we collapse."
+  }
+]
+```
+      (6720ms, 80 tok, 12.2 tok/s)
+
+  [UD-Q4_K_XL]
+    Run 1: [{"name": "Mira", "line": "I can't believe we're all still breathing after that last fight."}, {"name": "Theron", "line": "Just take a breath, it's gonna be fine tomorrow."}]
+      (5468ms, 52 tok, 12.9 tok/s)
+    Run 2: [{"name": "Mira", "line": "I'm just glad we're all still here, even if my feet hurt."}, {"name": "Theron", "line": "Then you take it easy; I'll make sure no one else gets hurt."}]
+      (4567ms, 58 tok, 13.1 tok/s)
+    Run 3: [{"name": "Mira", "line": "I'm so glad we made it through that last fight without anyone getting hurt."}, {"name": "Theron", "line": "Yeah, we're a team. We got each other's backs every time."}]
+      (4520ms, 58 tok, 13.2 tok/s)
+
+================================================================================
+AGGREGATE STATS
+================================================================================
+
+Model              Avg ms   Min ms   P95 ms  Avg tok/s  Avg tok  Errors
+---------------------------------------------------------------------------
+Q8_0                 5529     2199    10264        9.5     47.8       0
+Q5_K_M               4449     1647     7547       12.3     47.9       0
+UD-Q4_K_XL           4004     1386     5821       13.1     45.6       0
