@@ -22,9 +22,12 @@ const SCENES: Dictionary = {
 var current_scene_name: String = ""
 var is_transitioning: bool = false
 
+var _transition: SceneTransition = null
+
 
 func _ready() -> void:
-	pass
+	_transition = SceneTransition.new()
+	add_child(_transition)
 
 
 func change_scene(scene_name: String) -> void:
@@ -38,15 +41,29 @@ func change_scene(scene_name: String) -> void:
 	is_transitioning = true
 	transition_started.emit()
 
+	# Cover the screen with the arcane veil before swapping scenes.
+	if _transition:
+		await _transition.play_cover()
+
 	var scene_path: String = SCENES[scene_name]
 	var error: Error = get_tree().change_scene_to_file(scene_path)
 
 	if error != OK:
 		push_error("Failed to load scene: " + scene_path)
+		if _transition:
+			await _transition.play_reveal()
 		is_transitioning = false
 		return
 
 	current_scene_name = scene_name
+
+	# Let the new scene initialise (and start its entrance) under the veil.
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	if _transition:
+		await _transition.play_reveal()
+
 	is_transitioning = false
 	transition_finished.emit()
 	scene_changed.emit(scene_name)

@@ -25,6 +25,22 @@ const EQUIPMENT_SLOTS: Array[Item.ItemType] = [
 	Item.ItemType.HELMET, Item.ItemType.GLOVES, Item.ItemType.BOOTS,
 	Item.ItemType.ACCESSORY
 ]
+const SLOT_NAMES: Array[String] = [
+	"Weapon", "Armor", "Shield", "Helmet", "Gloves", "Boots", "Accessory"
+]
+
+# Dossier layout metrics
+const PAD := 16.0
+const COL_GAP := 14.0
+const CARD_PAD := 13.0
+const HERO_H := 88.0
+const METER_H := 20.0
+const ATTR_METER_H := 14.0
+const ATTR_ROW_H := 23.0
+const ROW_H := 22.0
+const ROW_H_SM := 19.0
+const CHIP_H := 20.0
+const CHIP_FS := 12
 
 enum EquipMode { VIEW, SLOT_SELECT, ITEM_SELECT }
 enum StoryFocus { NONE, PERSONALITY, BONDS, MARKS }
@@ -42,6 +58,10 @@ var _can_equip_flags: Array[bool] = []
 var _preview_deltas: Dictionary = {}
 var _cursed_message: bool = false
 var _story_focus: StoryFocus = StoryFocus.NONE
+
+var _font_display: Font
+var _font_semibold: Font
+var _equip_visible_rows: int = 10
 
 
 func set_character(character: Character, party_index: int) -> void:
@@ -210,7 +230,7 @@ func _handle_item_input(event: InputEvent) -> bool:
 
 
 func _update_scroll() -> void:
-	var max_visible := maxi(int((size.y - PADDING * 4) / LINE_HEIGHT), 2)
+	var max_visible := maxi(_equip_visible_rows, 2)
 	if _selected_item < _item_scroll_offset:
 		_item_scroll_offset = _selected_item
 	elif _selected_item >= _item_scroll_offset + max_visible:
@@ -319,6 +339,24 @@ func _update_preview_deltas() -> void:
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
+	var inter := load(UITheme.INTER_PATH)
+	var cinzel := load(UITheme.CINZEL_PATH)
+	if inter is Font:
+		_font = _make_variation(inter, 400)
+		_font_semibold = _make_variation(inter, 600)
+	if cinzel is Font:
+		_font_display = _make_variation(cinzel, 700)
+	if _font_semibold == null:
+		_font_semibold = _font
+	if _font_display == null:
+		_font_display = _font
+
+
+func _make_variation(base: Font, weight: int) -> FontVariation:
+	var fv := FontVariation.new()
+	fv.base_font = base
+	fv.variation_opentype = {"wght": weight}
+	return fv
 
 
 func _draw() -> void:
@@ -327,190 +365,328 @@ func _draw() -> void:
 
 	draw_rect(Rect2(Vector2.ZERO, size), UIColors.SURFACE_PANEL)
 
-	var y := PADDING
-	y = _draw_identity_header(y)
-	y += 4.0
-	draw_line(Vector2(PADDING, y), Vector2(size.x - PADDING, y), UIColors.BORDER_SUBTLE, 1.0)
-	y += 8.0
+	# Hero band: class crest + identity + chips.
+	var hero := Rect2(PAD, PAD, size.x - PAD * 2.0, HERO_H)
+	_draw_hero_band(hero)
 
-	var available_w := size.x - PADDING * 2.0 - ZONE_GAP * 2.0
-	var zone_a_w := floorf(available_w * 0.27)
-	var zone_c_w := floorf(available_w * 0.27)
-	var zone_b_w := available_w - zone_a_w - zone_c_w
+	# Three full-height wells beneath it.
+	var body_top := hero.position.y + hero.size.y + 12.0
+	var body_h := size.y - PAD - body_top
+	var avail_w := size.x - PAD * 2.0 - COL_GAP * 2.0
+	var c1_w := floorf(avail_w * 0.30)
+	var c3_w := floorf(avail_w * 0.37)
+	var c2_w := avail_w - c1_w - c3_w
 
-	var zone_a_x := PADDING
-	var zone_b_x := zone_a_x + zone_a_w + ZONE_GAP
-	var zone_c_x := zone_b_x + zone_b_w + ZONE_GAP
+	var c1_x := PAD
+	var c2_x := c1_x + c1_w + COL_GAP
+	var c3_x := c2_x + c2_w + COL_GAP
 
-	var body_y := y
+	_draw_well(Rect2(c1_x, body_top, c1_w, body_h))
+	_draw_well(Rect2(c2_x, body_top, c2_w, body_h))
+	_draw_well(Rect2(c3_x, body_top, c3_w, body_h))
 
-	var a_y := body_y
-	a_y = _draw_resources(zone_a_x, a_y, zone_a_w)
-	a_y += SECTION_GAP
-	_draw_combat(zone_a_x, a_y, zone_a_w)
+	# Column 1: vitals + combat.
+	var ix1 := c1_x + CARD_PAD
+	var iw1 := c1_w - CARD_PAD * 2.0
+	var y1 := body_top + CARD_PAD
+	y1 = _draw_vitals(ix1, y1, iw1)
+	y1 += 10.0
+	y1 = _draw_divider(ix1, y1, iw1) + 8.0
+	_draw_combat(ix1, y1, iw1)
 
-	var b_y := body_y
-	b_y = _draw_attributes(zone_b_x, b_y, zone_b_w)
-	b_y += SECTION_GAP
-	_draw_story_summary(zone_b_x, b_y, zone_b_w)
+	# Column 2: attributes + story.
+	var ix2 := c2_x + CARD_PAD
+	var iw2 := c2_w - CARD_PAD * 2.0
+	var y2 := body_top + CARD_PAD
+	y2 = _draw_attributes(ix2, y2, iw2)
+	y2 += 10.0
+	y2 = _draw_divider(ix2, y2, iw2) + 8.0
+	_draw_story_summary(ix2, y2, iw2)
 
-	var c_y := body_y
+	# Column 3: equipment, or the live equip interaction.
+	var ix3 := c3_x + CARD_PAD
+	var iw3 := c3_w - CARD_PAD * 2.0
+	var y3 := body_top + CARD_PAD
 	if _equip_mode == EquipMode.ITEM_SELECT:
-		c_y = _draw_equip_slot_header(zone_c_x, c_y, zone_c_w)
-		c_y += 4.0
-		draw_line(Vector2(zone_c_x, c_y), Vector2(zone_c_x + zone_c_w, c_y), UIColors.BORDER_SUBTLE, 1.0)
-		c_y += 4.0
-		_draw_equip_items(zone_c_x, c_y, zone_c_w)
+		y3 = _draw_equip_slot_header(ix3, y3, iw3)
+		y3 += 6.0
+		_draw_equip_items(ix3, y3, iw3, body_top + body_h - CARD_PAD)
 	else:
-		_draw_equipment(zone_c_x, c_y, zone_c_w)
-
-	var div_top := body_y - 4.0
-	var div_bot := size.y - PADDING
-	draw_line(Vector2(zone_b_x - ZONE_GAP / 2.0, div_top), Vector2(zone_b_x - ZONE_GAP / 2.0, div_bot), UIColors.BORDER_SUBTLE, 1.0)
-	draw_line(Vector2(zone_c_x - ZONE_GAP / 2.0, div_top), Vector2(zone_c_x - ZONE_GAP / 2.0, div_bot), UIColors.BORDER_SUBTLE, 1.0)
+		_draw_equipment(ix3, y3, iw3)
 
 
-func _draw_identity_header(y: float) -> float:
-	var name_text := _character.character_name
-	if _character.pending_level_up:
-		name_text += "  *"
-	var name_color := UIColors.GOLD if _character.pending_level_up else UIColors.TEXT_TITLE
+func _draw_hero_band(r: Rect2) -> void:
+	# Raised card with a warm gold underline.
+	var card := StyleBoxFlat.new()
+	card.bg_color = UIColors.SURFACE_CARD
+	card.set_corner_radius_all(UITheme.RADIUS_PANEL)
+	card.border_width_bottom = 2
+	card.border_color = UIColors.TITLE_GOLD_DIM
+	card.shadow_color = UIColors.SHADOW
+	card.shadow_size = 4
+	card.shadow_offset = Vector2(0, 2)
+	draw_style_box(card, r)
+
+	var inset := 14.0
+	var emblem_size := r.size.y - inset * 2.0
+	_draw_emblem(Rect2(r.position.x + inset, r.position.y + inset, emblem_size, emblem_size))
+
+	var tx := r.position.x + inset + emblem_size + 16.0
+	var ty := r.position.y + 11.0
+
+	# Name in carved gold.
+	var name_color := UIColors.TITLE_GOLD
 	if _character.is_dead:
 		name_color = UIColors.TEXT_DANGER
-	draw_string(_font, Vector2(PADDING, y + UIColors.FONT_SIZE_HEADER), name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, UIColors.FONT_SIZE_HEADER, name_color)
+	elif _character.pending_level_up:
+		name_color = UIColors.GOLD
+	draw_string(_font_display, Vector2(tx, ty + 25.0), _character.character_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, name_color)
+	if _character.pending_level_up:
+		var nw := _font_display.get_string_size(_character.character_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
+		draw_string(_font_semibold, Vector2(tx + nw + 12.0, ty + 20.0), "LEVEL UP", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UIColors.GOLD)
 
-	var info_right := "Lv %d %s %s" % [_character.level, CharacterEnums.get_race_name(_character.race), CharacterEnums.get_class_name(_character.character_class)]
-	var info_width := _font.get_string_size(info_right, HORIZONTAL_ALIGNMENT_RIGHT, -1, FONT_SIZE).x
-	draw_string(_font, Vector2(size.x - PADDING - info_width, y + UIColors.FONT_SIZE_HEADER), info_right, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_PRIMARY)
-	y += UIColors.FONT_SIZE_HEADER + 4.0
+	# Class / race / level subtitle.
+	var sub := "Level %d   ·   %s %s" % [_character.level, CharacterEnums.get_race_name(_character.race), CharacterEnums.get_class_name(_character.character_class)]
+	draw_string(_font_semibold, Vector2(tx, ty + 45.0), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UIColors.TEXT_SECONDARY)
 
+	# Identity chips.
+	var cy := ty + 53.0
+	var cx := tx
 	var gender_str := "Male" if _character.gender == CharacterEnums.Gender.MALE else "Female"
-	var line2 := "%s  %s  Age: %d (%s)" % [CharacterEnums.get_alignment_name(_character.alignment), gender_str, _character.get_age_years(), _character.get_life_phase_name()]
+	cx += _draw_chip(cx, cy, CharacterEnums.get_alignment_name(_character.alignment)) + 6.0
+	cx += _draw_chip(cx, cy, gender_str) + 6.0
+	cx += _draw_chip(cx, cy, "%d · %s" % [_character.get_age_years(), _character.get_life_phase_name()]) + 6.0
 	var row_text := "Front Row" if _party_index < 3 else "Back Row"
 	var row_color := UIColors.FRONT_ROW if _party_index < 3 else UIColors.BACK_ROW
+	cx += _draw_chip(cx, cy, row_text, row_color) + 6.0
 
-	draw_string(_font, Vector2(PADDING, y + FONT_SIZE_SM), line2, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.TEXT_SECONDARY)
-
-	var line2_w := _font.get_string_size(line2, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM).x
-	var sep_x := PADDING + line2_w + 12.0
-	draw_string(_font, Vector2(sep_x, y + FONT_SIZE_SM), row_text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, row_color)
-
-	var status_x := sep_x + _font.get_string_size(row_text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM).x + 12.0
+	# Status chip pinned to the right edge.
+	var status_text := "DEAD" if _character.is_dead else _get_status_text()
+	var status_color := UIColors.SUCCESS
 	if _character.is_dead:
-		draw_string(_font, Vector2(status_x, y + FONT_SIZE_SM), "[DEAD]", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.TEXT_DANGER)
-	else:
-		var status_text := _get_status_text()
-		var status_color := UIColors.TEXT_WARNING if status_text != "OK" else UIColors.SUCCESS
-		draw_string(_font, Vector2(status_x, y + FONT_SIZE_SM), status_text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, status_color)
-	y += FONT_SIZE_SM + 2.0
-
-	return y
+		status_color = UIColors.TEXT_DANGER
+	elif status_text != "OK":
+		status_color = UIColors.TEXT_WARNING
+	_draw_chip(r.position.x + r.size.x - inset - _chip_width(status_text), ty + 4.0, status_text, status_color)
 
 
-func _draw_section_header(text: String, x: float, y: float, color: Color = UIColors.TEXT_MUTED) -> float:
-	draw_string(_font, Vector2(x, y + FONT_SIZE_SM), text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, color)
-	return y + FONT_SIZE_SM + 4.0
+func _draw_emblem(r: Rect2) -> void:
+	var tint := _class_tint(_character.character_class)
+	var plate := StyleBoxFlat.new()
+	plate.bg_color = tint.darkened(0.55)
+	plate.set_corner_radius_all(10)
+	plate.set_border_width_all(2)
+	plate.border_color = tint
+	if _character.is_dead:
+		plate.bg_color = UIColors.SURFACE_PRESSED
+		plate.border_color = UIColors.BORDER_DEFAULT
+	draw_style_box(plate, r)
+
+	var initial := CharacterEnums.get_class_name(_character.character_class).substr(0, 1).to_upper()
+	var fs := int(r.size.y * 0.62)
+	var glyph_color := tint.lightened(0.4) if not _character.is_dead else UIColors.TEXT_MUTED
+	var gw := _font_display.get_string_size(initial, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	draw_string(_font_display, Vector2(r.position.x + (r.size.x - gw) / 2.0, r.position.y + r.size.y * 0.5 + fs * 0.36), initial, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, glyph_color)
+
+
+func _class_tint(cls: int) -> Color:
+	match cls:
+		CharacterEnums.CharacterClass.FIGHTER, CharacterEnums.CharacterClass.SAMURAI, \
+		CharacterEnums.CharacterClass.LORD, CharacterEnums.CharacterClass.VALKYRIE:
+			return Color(0.82, 0.36, 0.32)
+		CharacterEnums.CharacterClass.THIEF, CharacterEnums.CharacterClass.NINJA, \
+		CharacterEnums.CharacterClass.MONK:
+			return Color(0.42, 0.72, 0.48)
+		CharacterEnums.CharacterClass.MAGE, CharacterEnums.CharacterClass.ALCHEMIST, \
+		CharacterEnums.CharacterClass.PSIONIC, CharacterEnums.CharacterClass.BISHOP:
+			return Color(0.50, 0.60, 0.97)
+		CharacterEnums.CharacterClass.PRIEST:
+			return Color(0.85, 0.72, 0.42)
+		CharacterEnums.CharacterClass.BARD, CharacterEnums.CharacterClass.RANGER:
+			return Color(0.80, 0.62, 0.34)
+	return UIColors.ACCENT
+
+
+# --- Shared drawing primitives ---
+
+
+func _draw_well(r: Rect2) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.105, 0.10, 0.13)
+	sb.set_corner_radius_all(UITheme.RADIUS_PANEL)
+	sb.set_border_width_all(1)
+	sb.border_color = UIColors.BORDER_SUBTLE
+	draw_style_box(sb, r)
+
+
+func _draw_divider(x: float, y: float, w: float) -> float:
+	draw_line(Vector2(x, y), Vector2(x + w, y), UIColors.BORDER_SUBTLE, 1.0)
+	return y + 1.0
+
+
+func _section(text: String, x: float, y: float, _w: float, accent: Color = UIColors.TITLE_GOLD_DIM) -> float:
+	draw_rect(Rect2(x, y + 2.0, 3.0, 12.0), accent)
+	draw_string(_font_semibold, Vector2(x + 9.0, y + 13.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UIColors.TEXT_SECONDARY)
+	return y + 22.0
+
+
+func _chip_width(text: String) -> float:
+	return _font_semibold.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_FS).x + 16.0
+
+
+func _draw_chip(x: float, y: float, text: String, fg: Color = UIColors.TEXT_PRIMARY, bg: Color = UIColors.SURFACE_SELECTED) -> float:
+	var w := _chip_width(text)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.set_corner_radius_all(int(CHIP_H / 2.0))
+	sb.set_border_width_all(1)
+	sb.border_color = UIColors.BORDER_SUBTLE
+	draw_style_box(sb, Rect2(x, y, w, CHIP_H))
+	var tw := _font_semibold.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_FS).x
+	draw_string(_font_semibold, Vector2(x + (w - tw) / 2.0, y + CHIP_H - 6.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_FS, fg)
+	return w
+
+
+func _draw_meter(r: Rect2, pct: float, fill: Color) -> void:
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = UIColors.SURFACE_BAR_BG
+	bg.set_corner_radius_all(4)
+	bg.set_border_width_all(1)
+	bg.border_color = UIColors.BORDER_SUBTLE
+	draw_style_box(bg, r)
+	pct = clampf(pct, 0.0, 1.0)
+	if pct > 0.0:
+		var fb := StyleBoxFlat.new()
+		fb.bg_color = fill
+		fb.set_corner_radius_all(4)
+		draw_style_box(fb, Rect2(r.position.x, r.position.y, maxf(r.size.x * pct, 3.0), r.size.y))
+
+
+func _format_int(n: int) -> String:
+	var s := str(absi(n))
+	var out := ""
+	var c := 0
+	for i in range(s.length() - 1, -1, -1):
+		out = s[i] + out
+		c += 1
+		if c % 3 == 0 and i > 0:
+			out = "," + out
+	return ("-" if n < 0 else "") + out
 
 
 # === ZONE A: RESOURCES + COMBAT ===
 
 
-func _draw_resources(x: float, y: float, width: float) -> float:
-	y = _draw_section_header("RESOURCES", x, y)
+func _draw_vitals(x: float, y: float, w: float) -> float:
+	y = _section("VITALS", x, y, w)
 
-	y = _draw_resource_bar(x, y, width, "HP", _character.current_hp, _character.max_hp, UIColors.HP_GREEN, _preview_deltas.get("hp", 0))
-	y += 4.0
+	y = _draw_labeled_meter(x, y, w, "HP", _character.current_hp, _character.max_hp, UIColors.HP_GREEN, _preview_deltas.get("hp", 0))
 	if _character.max_mp > 0:
-		y = _draw_resource_bar(x, y, width, "MP", _character.current_mp, _character.max_mp, UIColors.MP_BLUE, _preview_deltas.get("mp", 0))
-		y += 4.0
+		y += 6.0
+		y = _draw_labeled_meter(x, y, w, "MP", _character.current_mp, _character.max_mp, UIColors.MP_BLUE, _preview_deltas.get("mp", 0))
 
-	var xp_text := "XP: %d" % _character.experience
-	draw_string(_font, Vector2(x, y + FONT_SIZE), xp_text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_PRIMARY)
-	y += LINE_HEIGHT
+	# XP toward the next level (a real progress bar, not raw points).
+	y += 9.0
+	if _character.level >= ExperienceTable.MAX_LEVEL:
+		draw_string(_font_semibold, Vector2(x, y + 12.0), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIColors.TEXT_SECONDARY)
+		draw_string(_font, Vector2(x, y + 12.0), "MAX LEVEL", HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.GOLD)
+		y += 18.0
+	else:
+		draw_string(_font_semibold, Vector2(x, y + 12.0), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIColors.TEXT_SECONDARY)
+		var nxt := "%s to Lv %d" % [_format_int(_character.get_xp_to_next_level()), _character.level + 1]
+		draw_string(_font, Vector2(x, y + 12.0), nxt, HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.TEXT_MUTED)
+		y += 16.0
+		_draw_meter(Rect2(x, y, w, 8.0), _character.get_xp_progress_percent() / 100.0, UIColors.GOLD)
+		y += 12.0
 
+	# Bonus XP modifiers, if any.
 	if not _character.is_dead:
 		var avg_level := GameState.party.get_average_level()
 		if _character.level < avg_level:
 			var catchup_pct := mini(50, 5 * (avg_level - _character.level))
-			draw_string(_font, Vector2(x, y + FONT_SIZE_SM), "Catch-up: +%d%% XP" % catchup_pct, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.SUCCESS)
-			y += LINE_HEIGHT_SM
+			draw_string(_font, Vector2(x, y + 13.0), "Catch-up  +%d%% XP" % catchup_pct, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.SUCCESS)
+			y += ROW_H_SM
 		if _character.rest_bonus_xp_multiplier > 1.0:
 			var rest_pct := (_character.rest_bonus_xp_multiplier - 1.0) * 100.0
-			draw_string(_font, Vector2(x, y + FONT_SIZE_SM), "Rested: +%.0f%% XP" % rest_pct, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.SUCCESS)
-			y += LINE_HEIGHT_SM
+			draw_string(_font, Vector2(x, y + 13.0), "Rested  +%.0f%% XP" % rest_pct, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.SUCCESS)
+			y += ROW_H_SM
 
 	return y
 
 
-func _draw_resource_bar(x: float, y: float, width: float, label: String, current: int, maximum: int, bar_color: Color, delta: int = 0) -> float:
-	draw_string(_font, Vector2(x, y + FONT_SIZE), label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_SECONDARY)
-
-	var base_text := "%d/%d" % [current, maximum]
-	var base_width := _font.get_string_size(base_text, HORIZONTAL_ALIGNMENT_RIGHT, -1, FONT_SIZE).x
-	var total_text_w := base_width
+func _draw_labeled_meter(x: float, y: float, w: float, label: String, cur: int, maxv: int, color: Color, delta: int) -> float:
+	draw_string(_font_semibold, Vector2(x, y + 13.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UIColors.TEXT_SECONDARY)
+	var val := "%d / %d" % [cur, maxv]
+	var vw := _font.get_string_size(val, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var dstr := ""
+	var dw := 0.0
 	if delta != 0:
-		total_text_w += _font.get_string_size(" (%+d)" % delta, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
-
-	draw_string(_font, Vector2(x + width - total_text_w, y + FONT_SIZE), base_text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_PRIMARY)
+		dstr = "  %+d" % delta
+		dw = _font.get_string_size(dstr, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	draw_string(_font, Vector2(x + w - vw - dw, y + 13.0), val, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UIColors.TEXT_PRIMARY)
 	if delta != 0:
-		var delta_color := UIColors.SUCCESS if delta > 0 else UIColors.DANGER
-		draw_string(_font, Vector2(x + width - total_text_w + base_width, y + FONT_SIZE), " (%+d)" % delta, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, delta_color)
-
-	y += FONT_SIZE + 2.0
-	draw_rect(Rect2(x, y, width, BAR_HEIGHT - 4), UIColors.SURFACE_BAR_BG)
-	if maximum > 0:
-		var percent := float(current) / float(maximum)
-		var color := bar_color
-		if percent < 0.25:
-			color = UIColors.DANGER
-		elif percent < 0.5:
-			color = UIColors.WARNING
-		draw_rect(Rect2(x, y, width * percent, BAR_HEIGHT - 4), color)
-	y += BAR_HEIGHT - 2
-	return y
+		draw_string(_font, Vector2(x + w - dw, y + 13.0), dstr, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UIColors.SUCCESS if delta > 0 else UIColors.DANGER)
+	y += 17.0
+	var pct := float(cur) / float(maxv) if maxv > 0 else 0.0
+	var fill := color
+	if pct < 0.25:
+		fill = UIColors.DANGER
+	elif pct < 0.5:
+		fill = UIColors.WARNING
+	_draw_meter(Rect2(x, y, w, METER_H), pct, fill)
+	return y + METER_H
 
 
-func _draw_combat(x: float, y: float, width: float) -> float:
-	y = _draw_section_header("COMBAT", x, y)
+func _draw_combat(x: float, y: float, w: float) -> float:
+	y = _section("COMBAT", x, y, w)
 
-	var weapon_text := "Weapon: %s" % _character.weapon_dice
+	var wpn := _character.weapon_dice
 	if _preview_deltas.has("weapon_dice"):
-		weapon_text += " > %s" % _preview_deltas["weapon_dice"]
-	draw_string(_font, Vector2(x, y + FONT_SIZE), weapon_text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_PRIMARY)
-	y += LINE_HEIGHT
+		wpn += "  →  %s" % _preview_deltas["weapon_dice"]
+	_draw_kv(x, y, w, "Weapon", wpn, UIColors.TEXT_PRIMARY)
+	y += ROW_H
 
-	_draw_stat_with_delta(x, y, "Dmg: %+d" % _character.damage_bonus, _preview_deltas.get("damage", 0))
-	_draw_stat_with_delta(x + width / 2.0, y, "Def: %d" % _character.defense, _preview_deltas.get("defense", 0))
-	y += LINE_HEIGHT
-
-	_draw_stat_with_delta(x, y, "Acc: %+d" % _character.accuracy, _preview_deltas.get("accuracy", 0))
-	_draw_stat_with_delta(x + width / 2.0, y, "Eva: %d" % _character.evasion, _preview_deltas.get("evasion", 0))
-	y += LINE_HEIGHT
+	var half := w / 2.0
+	_draw_kv_delta(x, y, half - 6.0, "Damage", "%+d" % _character.damage_bonus, _preview_deltas.get("damage", 0))
+	_draw_kv_delta(x + half, y, half, "Defense", str(_character.defense), _preview_deltas.get("defense", 0))
+	y += ROW_H
+	_draw_kv_delta(x, y, half - 6.0, "Accuracy", "%+d" % _character.accuracy, _preview_deltas.get("accuracy", 0))
+	_draw_kv_delta(x + half, y, half, "Evasion", str(_character.evasion), _preview_deltas.get("evasion", 0))
+	y += ROW_H
 
 	if _character.death_count > 0:
-		draw_string(_font, Vector2(x, y + FONT_SIZE), "Deaths: %d" % _character.death_count, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_DANGER)
-		y += LINE_HEIGHT
+		_draw_kv(x, y, w, "Deaths", str(_character.death_count), UIColors.TEXT_DANGER)
+		y += ROW_H
 
 	return y
 
 
-func _draw_stat_with_delta(x: float, y: float, text: String, delta: int) -> void:
-	draw_string(_font, Vector2(x, y + FONT_SIZE), text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_PRIMARY)
+func _draw_kv(x: float, y: float, w: float, key: String, val: String, val_color: Color) -> void:
+	draw_string(_font, Vector2(x, y + 14.0), key, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.TEXT_SECONDARY)
+	draw_string(_font_semibold, Vector2(x, y + 14.0), val, HORIZONTAL_ALIGNMENT_RIGHT, int(w), FONT_SIZE_SM, val_color)
+
+
+func _draw_kv_delta(x: float, y: float, w: float, key: String, val: String, delta: int) -> void:
+	draw_string(_font, Vector2(x, y + 14.0), key, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.TEXT_SECONDARY)
+	var vw := _font_semibold.get_string_size(val, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM).x
+	var dstr := ""
+	var dw := 0.0
 	if delta != 0:
-		var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
-		var delta_str := " %+d" % delta
-		var color := UIColors.SUCCESS if delta > 0 else UIColors.DANGER
-		draw_string(_font, Vector2(x + w, y + FONT_SIZE), delta_str, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, color)
+		dstr = " %+d" % delta
+		dw = _font.get_string_size(dstr, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM).x
+	draw_string(_font_semibold, Vector2(x + w - vw - dw, y + 14.0), val, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.TEXT_PRIMARY)
+	if delta != 0:
+		draw_string(_font, Vector2(x + w - dw, y + 14.0), dstr, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.SUCCESS if delta > 0 else UIColors.DANGER)
 
 
 # === ZONE B: ATTRIBUTES + STORY ===
 
 
-func _draw_attributes(x: float, y: float, width: float) -> float:
-	y = _draw_section_header("ATTRIBUTES", x, y)
+func _draw_attributes(x: float, y: float, w: float) -> float:
+	y = _section("ATTRIBUTES", x, y, w)
 
-	var attr_delta_keys: Array[String] = ["strength", "intelligence", "piety", "vitality", "agility", "luck"]
-	var attrs: Array[Array] = [
+	var keys: Array[String] = ["strength", "intelligence", "piety", "vitality", "agility", "luck"]
+	var rows: Array[Array] = [
 		["STR", _character.strength, _character.peak_strength],
 		["INT", _character.intelligence, _character.peak_intelligence],
 		["PIE", _character.piety, _character.peak_piety],
@@ -519,68 +695,76 @@ func _draw_attributes(x: float, y: float, width: float) -> float:
 		["LCK", _character.luck, _character.peak_luck],
 	]
 
-	for i in range(attrs.size()):
-		var attr: Array = attrs[i]
-		var label: String = attr[0]
-		var value: int = attr[1]
-		var peak: int = attr[2]
+	var label_w := 34.0
+	var value_w := 30.0
+	var bar_x := x + label_w
+	var bar_w := w - label_w - value_w - 12.0
 
-		draw_string(_font, Vector2(x, y + FONT_SIZE), label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_SECONDARY)
+	for i in range(rows.size()):
+		var label: String = rows[i][0]
+		var value: int = rows[i][1]
+		var peak: int = rows[i][2]
 
-		var bar_x := x + ATTR_LABEL_WIDTH
-		var bar_w := width - ATTR_LABEL_WIDTH - ATTR_VALUE_WIDTH - 8.0
-		draw_rect(Rect2(bar_x, y + 2, bar_w, BAR_HEIGHT - 6), UIColors.SURFACE_BAR_BG)
+		draw_string(_font_semibold, Vector2(x, y + 14.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.TEXT_SECONDARY)
 
+		var meter := Rect2(bar_x, y + 2.0, bar_w, ATTR_METER_H)
 		var fill := clampf((float(value) - ATTR_MIN) / (ATTR_MAX - ATTR_MIN), 0.0, 1.0)
-		var bar_color := UIColors.INFO
+		var color := UIColors.INFO
 		if value > peak:
-			bar_color = UIColors.SUCCESS
+			color = UIColors.SUCCESS
 		elif value < peak:
-			bar_color = UIColors.DANGER
-		draw_rect(Rect2(bar_x, y + 2, bar_w * fill, BAR_HEIGHT - 6), bar_color)
+			color = UIColors.DANGER
+		_draw_meter(meter, fill, color)
 
-		var val_x := x + width - ATTR_VALUE_WIDTH
-		draw_string(_font, Vector2(val_x, y + FONT_SIZE), str(value), HORIZONTAL_ALIGNMENT_RIGHT, ATTR_VALUE_WIDTH, FONT_SIZE, UIColors.TEXT_PRIMARY)
+		# Peak marker tick (where this stat caps out at full health/age).
+		var peak_fill := clampf((float(peak) - ATTR_MIN) / (ATTR_MAX - ATTR_MIN), 0.0, 1.0)
+		var tick_x := bar_x + bar_w * peak_fill
+		draw_line(Vector2(tick_x, meter.position.y - 1.0), Vector2(tick_x, meter.position.y + ATTR_METER_H + 1.0), UIColors.TEXT_TITLE, 1.0)
 
-		var delta: int = _preview_deltas.get(attr_delta_keys[i], 0)
+		var vstr := str(value)
+		var vw := _font_semibold.get_string_size(vstr, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM).x
+		var delta: int = _preview_deltas.get(keys[i], 0)
 		if delta != 0:
-			var delta_str := " %+d" % delta
-			var delta_color := UIColors.SUCCESS if delta > 0 else UIColors.DANGER
-			draw_string(_font, Vector2(val_x + ATTR_VALUE_WIDTH + 2, y + FONT_SIZE), delta_str, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, delta_color)
+			var dstr := " %+d" % delta
+			var dw := _font.get_string_size(dstr, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM).x
+			var start := x + w - vw - dw
+			draw_string(_font_semibold, Vector2(start, y + 14.0), vstr, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.TEXT_PRIMARY)
+			draw_string(_font, Vector2(start + vw, y + 14.0), dstr, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.SUCCESS if delta > 0 else UIColors.DANGER)
+		else:
+			draw_string(_font_semibold, Vector2(x + w - vw, y + 14.0), vstr, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, UIColors.TEXT_PRIMARY)
 
-		y += BAR_HEIGHT + BAR_SPACING
+		y += ATTR_ROW_H
 
 	return y
 
 
-func _draw_story_summary(x: float, y: float, _width: float) -> float:
-	y = _draw_section_header("STORY", x, y)
+func _draw_story_summary(x: float, y: float, w: float) -> float:
+	y = _section("STORY", x, y, w)
 
 	var personality := _get_personality_summary()
 	if not personality.is_empty():
-		var is_focused := _story_focus == StoryFocus.PERSONALITY
-		var color := UIColors.TEXT_PRIMARY if is_focused else UIColors.TEXT_SECONDARY
-		var prefix := "> " if is_focused else "  "
-		draw_string(_font, Vector2(x, y + FONT_SIZE_SM), prefix + personality, HORIZONTAL_ALIGNMENT_LEFT, int(_width), FONT_SIZE_SM, color)
-		y += LINE_HEIGHT_SM
-
+		y = _draw_story_line(x, y, w, "", personality, _story_focus == StoryFocus.PERSONALITY)
 	var bonds := _get_bond_summary()
 	if not bonds.is_empty():
-		var is_focused := _story_focus == StoryFocus.BONDS
-		var color := UIColors.TEXT_PRIMARY if is_focused else UIColors.TEXT_SECONDARY
-		var prefix := "> " if is_focused else "  "
-		draw_string(_font, Vector2(x, y + FONT_SIZE_SM), prefix + "Bonds: " + bonds, HORIZONTAL_ALIGNMENT_LEFT, int(_width), FONT_SIZE_SM, color)
-		y += LINE_HEIGHT_SM
-
+		y = _draw_story_line(x, y, w, "Bonds:  ", bonds, _story_focus == StoryFocus.BONDS)
 	var marks := _get_mark_summary()
 	if not marks.is_empty():
-		var is_focused := _story_focus == StoryFocus.MARKS
-		var color := UIColors.TEXT_PRIMARY if is_focused else UIColors.TEXT_SECONDARY
-		var prefix := "> " if is_focused else "  "
-		draw_string(_font, Vector2(x, y + FONT_SIZE_SM), prefix + "Marks: " + marks, HORIZONTAL_ALIGNMENT_LEFT, int(_width), FONT_SIZE_SM, color)
-		y += LINE_HEIGHT_SM
+		y = _draw_story_line(x, y, w, "Marks:  ", marks, _story_focus == StoryFocus.MARKS)
 
 	return y
+
+
+func _draw_story_line(x: float, y: float, w: float, prefix: String, body: String, focused: bool) -> float:
+	var color := UIColors.TEXT_SECONDARY
+	if focused:
+		var hl := StyleBoxFlat.new()
+		hl.bg_color = UIColors.SURFACE_SELECTED
+		hl.set_corner_radius_all(4)
+		draw_style_box(hl, Rect2(x - 5.0, y - 1.0, w + 8.0, ROW_H_SM))
+		draw_rect(Rect2(x - 5.0, y - 1.0, 2.0, ROW_H_SM), UIColors.ACCENT)
+		color = UIColors.TEXT_PRIMARY
+	draw_string(_font, Vector2(x, y + 13.0), prefix + body, HORIZONTAL_ALIGNMENT_LEFT, int(w), FONT_SIZE_SM, color)
+	return y + ROW_H_SM
 
 
 func _get_personality_summary() -> String:
@@ -684,100 +868,93 @@ func _get_marks_detail() -> String:
 	return text
 
 
-# === ZONE C: EQUIPMENT ===
+# === COLUMN 3: EQUIPMENT ===
 
 
-func _draw_equipment(x: float, y: float, _width: float) -> float:
-	var header_text := "EQUIPMENT"
-	var header_color := UIColors.TEXT_MUTED
+func _draw_equipment(x: float, y: float, w: float) -> float:
+	var header := "EQUIPMENT"
+	var accent := UIColors.TITLE_GOLD_DIM
 	if _equip_mode == EquipMode.SLOT_SELECT:
-		header_text = "EQUIP (select slot)"
-		header_color = UIColors.INFO
-	y = _draw_section_header(header_text, x, y, header_color)
+		header = "EQUIP — SELECT SLOT"
+		accent = UIColors.ACCENT
+	y = _section(header, x, y, w, accent)
 
-	for i in range(SLOT_LABELS.size()):
-		var is_selected := (_equip_mode == EquipMode.SLOT_SELECT and i == _selected_slot)
-		if is_selected:
-			draw_rect(Rect2(x - 2, y - 1, _width + 4, LINE_HEIGHT), UIColors.SURFACE_SELECTED)
-
-		var label: String = SLOT_LABELS[i]
+	for i in range(SLOT_NAMES.size()):
+		var selected := (_equip_mode == EquipMode.SLOT_SELECT and i == _selected_slot)
 		var item: Item = _character.get(SLOT_FIELDS[i])
-		var item_name := item.get_display_name() if item else "(none)"
-		var color := UIColors.TEXT_PRIMARY if item else UIColors.TEXT_MUTED
-
-		var in_equip := _equip_mode == EquipMode.SLOT_SELECT
-		var prefix := "> " if is_selected else "  "
-		var prefix_color := UIColors.INFO if is_selected else UIColors.TEXT_MUTED
-		if in_equip:
-			draw_string(_font, Vector2(x, y + FONT_SIZE), prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, prefix_color)
-
-		var label_x := x + (16.0 if in_equip else 0.0)
-		draw_string(_font, Vector2(label_x, y + FONT_SIZE), label + ":", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_SECONDARY)
-		draw_string(_font, Vector2(label_x + EQUIP_LABEL_WIDTH + 4, y + FONT_SIZE), item_name, HORIZONTAL_ALIGNMENT_LEFT, int(_width - EQUIP_LABEL_WIDTH - 20), FONT_SIZE, color)
-		y += LINE_HEIGHT
+		y = _draw_equip_row(x, y, w, SLOT_NAMES[i], item, selected)
 
 	return y
 
 
-func _draw_equip_slot_header(x: float, y: float, _width: float) -> float:
-	y = _draw_section_header("EQUIP (select item)", x, y, UIColors.INFO)
+func _draw_equip_row(x: float, y: float, w: float, label: String, item: Item, selected: bool) -> float:
+	if selected:
+		var hl := StyleBoxFlat.new()
+		hl.bg_color = UIColors.SURFACE_SELECTED
+		hl.set_corner_radius_all(4)
+		draw_style_box(hl, Rect2(x - 5.0, y - 1.0, w + 10.0, ROW_H + 1.0))
+		draw_rect(Rect2(x - 5.0, y - 1.0, 2.0, ROW_H + 1.0), UIColors.ACCENT)
 
-	var label: String = SLOT_LABELS[_selected_slot]
+	var label_color := UIColors.ACCENT if selected else UIColors.TEXT_MUTED
+	draw_string(_font, Vector2(x, y + 15.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE_SM, label_color)
+
+	var name_x := x + 80.0
+	var item_name := item.get_display_name() if item else "—"
+	var name_color := UIColors.TEXT_MUTED
+	if item:
+		name_color = UIColors.TEXT_DANGER if item.is_cursed else UIColors.TEXT_PRIMARY
+	draw_string(_font_semibold if item else _font, Vector2(name_x, y + 15.0), item_name, HORIZONTAL_ALIGNMENT_LEFT, int(w - 80.0), FONT_SIZE_SM, name_color)
+	return y + ROW_H
+
+
+func _draw_equip_slot_header(x: float, y: float, w: float) -> float:
+	y = _section("EQUIP — SELECT ITEM", x, y, w, UIColors.ACCENT)
 	var item: Item = _character.get(SLOT_FIELDS[_selected_slot])
-	var item_name := item.get_display_name() if item else "(none)"
-	var color := UIColors.TEXT_PRIMARY if item else UIColors.TEXT_MUTED
-
-	draw_rect(Rect2(x - 2, y - 1, _width + 4, LINE_HEIGHT), UIColors.SURFACE_SELECTED)
-	draw_string(_font, Vector2(x, y + FONT_SIZE), "> ", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.INFO)
-	draw_string(_font, Vector2(x + 16, y + FONT_SIZE), label + ":", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_SECONDARY)
-	draw_string(_font, Vector2(x + 16 + EQUIP_LABEL_WIDTH + 4, y + FONT_SIZE), item_name, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, color)
-	y += LINE_HEIGHT
-
+	y = _draw_equip_row(x, y, w, SLOT_NAMES[_selected_slot], item, true)
 	return y
 
 
-func _draw_equip_items(x: float, y: float, width: float) -> void:
-	var total_count := 1 + _available_items.size()
-	var max_visible := maxi(int((size.y - y - PADDING) / LINE_HEIGHT), 2)
+func _draw_equip_items(x: float, y: float, w: float, bottom: float) -> void:
+	var total := 1 + _available_items.size()
+	_equip_visible_rows = maxi(int((bottom - y) / ROW_H), 2)
 
 	if _available_items.is_empty():
-		var is_unequip_selected := (_selected_item == 0)
-		if is_unequip_selected:
-			draw_rect(Rect2(x - 2, y - 1, width + 4, LINE_HEIGHT), UIColors.SURFACE_SELECTED)
-		draw_string(_font, Vector2(x, y + FONT_SIZE), "> (Unequip)", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.INFO if is_unequip_selected else UIColors.TEXT_PRIMARY)
-		y += LINE_HEIGHT
-		draw_string(_font, Vector2(x, y + FONT_SIZE), "  (No items available)", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_MUTED)
+		y = _draw_equip_item_row(x, y, w, "Unequip", _selected_item == 0, true)
+		draw_string(_font, Vector2(x + 4.0, y + 15.0), "(no items for this slot)", HORIZONTAL_ALIGNMENT_LEFT, int(w), FONT_SIZE_SM, UIColors.TEXT_MUTED)
 		return
 
-	var visible_end := mini(_item_scroll_offset + max_visible, total_count)
-
+	var visible_end := mini(_item_scroll_offset + _equip_visible_rows, total)
 	if _item_scroll_offset > 0:
-		draw_string(_font, Vector2(x + width - 20, y - LINE_HEIGHT + FONT_SIZE + 4), "^", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_MUTED)
+		draw_string(_font, Vector2(x + w - 14.0, y - 3.0), "▲", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UIColors.TEXT_MUTED)
 
 	for idx in range(_item_scroll_offset, visible_end):
-		var is_selected := (idx == _selected_item)
-		if is_selected:
-			draw_rect(Rect2(x - 2, y - 1, width + 4, LINE_HEIGHT), UIColors.SURFACE_SELECTED)
-
-		var prefix := "> " if is_selected else "  "
-		var prefix_color := UIColors.INFO if is_selected else UIColors.TEXT_MUTED
-
+		var selected := (idx == _selected_item)
 		if idx == 0:
-			draw_string(_font, Vector2(x, y + FONT_SIZE), prefix + "(Unequip)", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.INFO if is_selected else UIColors.TEXT_PRIMARY)
+			y = _draw_equip_item_row(x, y, w, "Unequip", selected, true)
 		else:
-			var item_idx := idx - 1
-			var item: Item = _available_items[item_idx]
-			var can_equip: bool = _can_equip_flags[item_idx] if item_idx < _can_equip_flags.size() else true
-			var text_color := UIColors.TEXT_PRIMARY if can_equip else UIColors.TEXT_DISABLED
-			draw_string(_font, Vector2(x, y + FONT_SIZE), prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, prefix_color)
-			var item_text := item.get_display_name()
+			var item: Item = _available_items[idx - 1]
+			var can_equip: bool = _can_equip_flags[idx - 1] if (idx - 1) < _can_equip_flags.size() else true
+			var nm := item.get_display_name()
 			if not can_equip:
-				item_text += " [x]"
-			draw_string(_font, Vector2(x + 16, y + FONT_SIZE), item_text, HORIZONTAL_ALIGNMENT_LEFT, int(width - 16), FONT_SIZE, text_color)
-		y += LINE_HEIGHT
+				nm += "   ✕"
+			y = _draw_equip_item_row(x, y, w, nm, selected, can_equip)
 
-	if visible_end < total_count:
-		draw_string(_font, Vector2(x + width - 20, y + FONT_SIZE - 4), "v", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, UIColors.TEXT_MUTED)
+	if visible_end < total:
+		draw_string(_font, Vector2(x + w - 14.0, y - ROW_H + 3.0), "▼", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UIColors.TEXT_MUTED)
+
+
+func _draw_equip_item_row(x: float, y: float, w: float, text: String, selected: bool, enabled: bool) -> float:
+	if selected:
+		var hl := StyleBoxFlat.new()
+		hl.bg_color = UIColors.SURFACE_SELECTED
+		hl.set_corner_radius_all(4)
+		draw_style_box(hl, Rect2(x - 5.0, y - 1.0, w + 10.0, ROW_H + 1.0))
+		draw_rect(Rect2(x - 5.0, y - 1.0, 2.0, ROW_H + 1.0), UIColors.ACCENT)
+	var color := UIColors.TEXT_PRIMARY if enabled else UIColors.TEXT_DISABLED
+	if selected and enabled:
+		color = UIColors.TEXT_TITLE
+	draw_string(_font, Vector2(x + 4.0, y + 15.0), text, HORIZONTAL_ALIGNMENT_LEFT, int(w - 8.0), FONT_SIZE_SM, color)
+	return y + ROW_H
 
 
 # === HELPERS ===

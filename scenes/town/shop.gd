@@ -141,6 +141,31 @@ func _refresh_items_list() -> void:
 		nav.selection_changed.connect(_on_selection_changed)
 
 
+## Shared item-row factory used by every shop mode. Pass mode-specific chips
+## (price, yield, selection marker) and a dim flag for unavailable rows.
+func make_item_row(item: Item, chips: Array, dim: bool = false) -> MenuListRow:
+	var b := ItemView.badge(item)
+	return MenuListRow.create({
+		"badge": b["text"],
+		"badge_color": b["color"],
+		"title": item.get_display_name(),
+		"title_color": ItemView.name_color(item),
+		"subtitle": ItemView.subtitle(item),
+		"chips": chips,
+		"dim": dim,
+	})
+
+
+## Rebuild the item list (e.g. after a multi-select toggle) without losing the
+## player's place in it.
+func rebuild_items_keep_focus(focus_index: int) -> void:
+	_refresh_items_list()
+	if nav and not item_buttons.is_empty():
+		nav.select(clampi(focus_index, 0, item_buttons.size() - 1))
+	_update_info()
+	update_help()
+
+
 func _on_selection_changed(_index: int) -> void:
 	_update_info()
 	_update_comparison()
@@ -171,31 +196,33 @@ func _update_info() -> void:
 
 
 func _show_item_info(item: Item) -> void:
-	var text := "[b]%s[/b]\n" % item.get_display_name()
-	text += "Type: %s\n" % item.get_type_name()
+	var nc := ItemView.name_color(item)
+	var text := "[b][color=#%s]%s[/color][/b]   [color=#%s]%s[/color]\n" % [
+		nc.to_html(false), item.get_display_name(),
+		UIColors.TEXT_MUTED.to_html(false), item.get_type_name()]
 
 	if item.is_identified:
 		if item.description != "":
-			text += "%s\n" % item.description
+			text += "[color=#%s]%s[/color]\n" % [UIColors.TEXT_MUTED.to_html(false), item.description]
+		text += "[color=#%s]%s[/color]" % [UIColors.TEXT_SECONDARY.to_html(false), item.get_stats_text()]
 
-		text += "\n%s\n" % item.get_stats_text()
-
+		var reqs: Array[String] = []
 		if item.required_level > 1:
-			text += "\nRequires Level %d" % item.required_level
-
+			reqs.append("Lv %d" % item.required_level)
 		if not item.required_classes.is_empty():
 			var class_names: Array[String] = []
 			for c in item.required_classes:
 				class_names.append(CharacterEnums.get_class_name(c))
-			text += "\nClasses: %s" % ", ".join(class_names)
-
+			reqs.append(", ".join(class_names))
 		if not item.required_races.is_empty():
 			var race_names: Array[String] = []
 			for r in item.required_races:
 				race_names.append(CharacterEnums.get_race_name(r))
-			text += "\nRaces: %s" % ", ".join(race_names)
+			reqs.append(", ".join(race_names))
+		if not reqs.is_empty():
+			text += "\n[color=#%s]Requires: %s[/color]" % [UIColors.TEXT_MUTED.to_html(false), "  ·  ".join(reqs)]
 	else:
-		text += "\n[color=gray]Unidentified - stats unknown[/color]\n"
+		text += "[color=#%s]Unidentified — stats unknown[/color]" % UIColors.TEXT_MUTED.to_html(false)
 
 	text += _get_active_mode().get_info_suffix(item)
 	info_label.text = text
@@ -230,10 +257,29 @@ func _update_comparison() -> void:
 func _create_comparison_row(member: Character, item: Item) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.custom_minimum_size = Vector2(0, 28)
+	row.add_theme_constant_override("separation", 8)
+
+	# Class crest, matching the dossier/roster crests.
+	var tint := UIColors.class_color(member.character_class)
+	var badge := Label.new()
+	badge.text = CharacterEnums.get_class_name(member.character_class).substr(0, 1).to_upper()
+	badge.custom_minimum_size = Vector2(22, 22)
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.add_theme_font_size_override("font_size", 11)
+	badge.add_theme_color_override("font_color", tint.lightened(0.4))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = tint.darkened(0.55)
+	sb.set_corner_radius_all(6)
+	sb.set_border_width_all(1)
+	sb.border_color = tint
+	badge.add_theme_stylebox_override("normal", sb)
+	row.add_child(badge)
 
 	var name_label := Label.new()
 	name_label.text = member.character_name
-	name_label.custom_minimum_size = Vector2(100, 0)
+	name_label.custom_minimum_size = Vector2(90, 0)
 	row.add_child(name_label)
 
 	var can_equip := member.can_equip_item(item)
@@ -241,10 +287,11 @@ func _create_comparison_row(member: Character, item: Item) -> HBoxContainer:
 
 	var diff_label := Label.new()
 	diff_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	diff_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 	if not can_equip:
-		diff_label.text = "[Cannot equip]"
-		diff_label.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+		diff_label.text = "Can't equip"
+		diff_label.add_theme_color_override("font_color", UIColors.TEXT_MUTED)
 	else:
 		var diff_text := get_stat_diff(current_item, item)
 		diff_label.text = diff_text
@@ -252,6 +299,8 @@ func _create_comparison_row(member: Character, item: Item) -> HBoxContainer:
 			diff_label.add_theme_color_override("font_color", UIColors.TEXT_HEALTHY)
 		elif diff_text.begins_with("-"):
 			diff_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
+		else:
+			diff_label.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
 
 	row.add_child(diff_label)
 	return row

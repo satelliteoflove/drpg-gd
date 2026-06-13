@@ -13,6 +13,15 @@ var sfx_volume: float = DEFAULT_SFX_VOLUME
 var music_enabled: bool = true
 var sfx_enabled: bool = true
 
+const UI_SOUND_PATHS: Dictionary = {
+	"nav": "res://audio/ui/nav.wav",
+	"hover": "res://audio/ui/hover.wav",
+	"confirm": "res://audio/ui/confirm.wav",
+	"back": "res://audio/ui/back.wav",
+	"denied": "res://audio/ui/denied.wav",
+}
+var _ui_cache: Dictionary = {}
+
 
 func _ready() -> void:
 	_setup_music_player()
@@ -44,6 +53,18 @@ func play_music(stream: AudioStream, _fade_in: bool = false) -> void:
 
 func stop_music(_fade_out: bool = false) -> void:
 	music_player.stop()
+
+
+## Play a named UI sound (lazy-loaded and cached). Safe no-op if missing.
+func play_ui(sound_name: String) -> void:
+	if not sfx_enabled:
+		return
+	if not _ui_cache.has(sound_name):
+		var path: String = UI_SOUND_PATHS.get(sound_name, "")
+		if path.is_empty() or not ResourceLoader.exists(path):
+			return
+		_ui_cache[sound_name] = load(path)
+	play_sfx(_ui_cache[sound_name])
 
 
 func play_sfx(stream: AudioStream) -> void:

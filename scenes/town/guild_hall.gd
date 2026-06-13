@@ -173,16 +173,36 @@ func _update_roster_overview() -> void:
 
 func _create_roster_row(c: Character) -> HBoxContainer:
 	var row := HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0, 24)
+	row.custom_minimum_size = Vector2(0, 28)
+	row.add_theme_constant_override("separation", 8)
+
+	# Class crest, matching the dossier/list crests.
+	var tint := UIColors.class_color(c.character_class)
+	var badge := Label.new()
+	badge.text = CharacterEnums.get_class_name(c.character_class).substr(0, 1).to_upper()
+	badge.custom_minimum_size = Vector2(22, 22)
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.add_theme_font_size_override("font_size", 11)
+	badge.add_theme_color_override("font_color", tint.lightened(0.4))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = tint.darkened(0.55)
+	sb.set_corner_radius_all(6)
+	sb.set_border_width_all(1)
+	sb.border_color = tint
+	badge.add_theme_stylebox_override("normal", sb)
+	row.add_child(badge)
 
 	var name_label := Label.new()
 	name_label.text = c.character_name
-	name_label.custom_minimum_size = Vector2(100, 0)
+	name_label.custom_minimum_size = Vector2(96, 0)
 	row.add_child(name_label)
 
 	var class_label := Label.new()
 	class_label.text = "L%d %s" % [c.level, CharacterEnums.get_class_name(c.character_class)]
 	class_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	class_label.theme_type_variation = &"MutedLabel"
 	row.add_child(class_label)
 
 	var status_label := Label.new()

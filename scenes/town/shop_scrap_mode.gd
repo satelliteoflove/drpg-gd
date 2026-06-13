@@ -92,12 +92,17 @@ func handle_confirm() -> bool:
 
 
 func _create_scrap_button(index: int, item: Item, qty: int) -> Button:
-	var btn := Button.new()
-	var qty_text := " x%d" % qty if qty > 1 else ""
-	var marker := "[ ] " if scrap_multi_select else ""
-	btn.text = "%s%s%s -> 1-2 scrap" % [marker, item.get_display_name(), qty_text]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var chips: Array = []
+	if scrap_multi_select:
+		var selected := index in scrap_selected_indices
+		chips.append({
+			"text": "✓" if selected else "○",
+			"fg": UIColors.SUCCESS if selected else UIColors.TEXT_MUTED,
+			"bg": Color(0.12, 0.22, 0.14) if selected else UIColors.SURFACE_SELECTED})
+	if qty > 1:
+		chips.append({"text": "×%d" % qty, "fg": UIColors.TEXT_SECONDARY, "bg": UIColors.SURFACE_SELECTED})
+	chips.append({"text": "1–2 scrap", "fg": UIColors.WARNING, "bg": UIColors.SURFACE_SELECTED})
+	var btn: Button = shop.make_item_row(item, chips, false)
 	btn.pressed.connect(_on_scrap_item.bind(index, item))
 	return btn
 
@@ -125,20 +130,7 @@ func _toggle_scrap_selection(index: int) -> void:
 		scrap_selected_indices.erase(index)
 	else:
 		scrap_selected_indices.append(index)
-	_update_scrap_button_markers()
-
-
-func _update_scrap_button_markers() -> void:
-	for i in range(shop.item_buttons.size()):
-		var btn: Button = shop.item_buttons[i]
-		var item: Item = shop.displayed_items[i] if i < shop.displayed_items.size() else null
-		if item == null:
-			continue
-
-		var qty: int = GameState.party.inventory.get_quantity_at(i)
-		var qty_text := " x%d" % qty if qty > 1 else ""
-		var marker := "[X] " if i in scrap_selected_indices else "[ ] "
-		btn.text = "%s%s%s -> 1-2 scrap" % [marker, item.get_display_name(), qty_text]
+	shop.rebuild_items_keep_focus(index)
 
 
 func _scrap_selected_items() -> void:
@@ -176,4 +168,4 @@ func _select_all_for_scrap() -> void:
 	scrap_selected_indices.clear()
 	for i in range(shop.displayed_items.size()):
 		scrap_selected_indices.append(i)
-	_update_scrap_button_markers()
+	shop.rebuild_items_keep_focus(shop.nav.get_current_index() if shop.nav else 0)

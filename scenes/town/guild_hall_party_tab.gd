@@ -68,13 +68,8 @@ func populate() -> void:
 
 	for i in range(GameState.party.size()):
 		var member: Character = GameState.party.get_member_at(i)
-		var btn := _create_party_button(member, i < 3)
-
-		if party_mode == PartyMode.REORDER_MOVE:
-			if i == reorder_index:
-				btn.add_theme_color_override("font_color", UIColors.WARNING)
-				btn.text = "> " + btn.text + " <"
-
+		var moving := party_mode == PartyMode.REORDER_MOVE and i == reorder_index
+		var btn := _create_party_button(member, i < 3, moving)
 		options_list.add_child(btn)
 		party_buttons.append(btn)
 
@@ -269,25 +264,34 @@ func _setup_nav() -> void:
 	nav.setup(buttons, 0)
 
 
-func _create_party_button(character: Character, front_row: bool) -> Button:
-	var btn := Button.new()
-	var row_marker := "[F]" if front_row else "[B]"
-	btn.text = "%s %s - L%d %s" % [
-		row_marker if GameState.party.get_member(character.id) else "",
-		character.character_name,
-		character.level,
-		CharacterEnums.get_class_name(character.character_class)
-	]
-	btn.text = btn.text.strip_edges()
-	btn.custom_minimum_size = Vector2(350, 30)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+func _create_party_button(character: Character, front_row: bool, moving: bool = false) -> Button:
+	var in_party := GameState.party.get_member(character.id) != null
+	var chips: Array = []
+	if moving:
+		chips.append({"text": "◄ MOVING ►", "fg": UIColors.WARNING, "bg": UIColors.SURFACE_SELECTED})
+	if in_party:
+		chips.append({"text": "FRONT" if front_row else "BACK",
+			"fg": UIColors.FRONT_ROW if front_row else UIColors.BACK_ROW, "bg": UIColors.SURFACE_SELECTED})
+	var dim := false
 	if character.is_dead:
-		btn.modulate = UIColors.MODULATE_DEAD
+		chips.append({"text": "DEAD", "fg": UIColors.TEXT_DANGER, "bg": Color(0.28, 0.10, 0.12)})
+		dim = true
 	elif not character.is_available():
-		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
 		var t_elapsed := character.get_training_days_elapsed(GameState.game_day)
-		btn.text += " [Training %d/%d]" % [t_elapsed, character.get_training_total()]
+		chips.append({"text": "TRAINING %d/%d" % [t_elapsed, character.get_training_total()],
+			"fg": UIColors.TEXT_WARNING, "bg": UIColors.SURFACE_SELECTED})
+		dim = true
+	var btn := MenuListRow.create({
+		"badge": CharacterEnums.get_class_name(character.character_class).substr(0, 1).to_upper(),
+		"badge_color": UIColors.class_color(character.character_class),
+		"title": character.character_name,
+		"title_color": UIColors.WARNING if moving else (UIColors.TEXT_DANGER if character.is_dead else UIColors.TEXT_PRIMARY),
+		"subtitle": "L%d %s" % [character.level, CharacterEnums.get_class_name(character.character_class)],
+		"chips": chips,
+		"dim": dim and not moving,
+	})
+	if not character.is_dead and not character.is_available():
+		btn.disabled = true
 	return btn
 
 

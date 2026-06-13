@@ -118,10 +118,12 @@ func handle_confirm() -> bool:
 
 
 func _create_upgrade_button(index: int, item: Item) -> Button:
-	var btn := Button.new()
-	btn.text = "%s" % item.get_display_name()
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var chips: Array = []
+	var pts := item.get_total_upgrade_points()
+	if pts > 0:
+		chips.append({"text": "+%d" % pts, "fg": UIColors.SUCCESS, "bg": UIColors.SURFACE_SELECTED})
+	chips.append({"text": "UPGRADE", "fg": UIColors.INFO, "bg": UIColors.SURFACE_SELECTED})
+	var btn: Button = shop.make_item_row(item, chips, false)
 	btn.pressed.connect(_on_upgrade_item.bind(index, item))
 	return btn
 

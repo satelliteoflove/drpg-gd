@@ -92,12 +92,17 @@ func handle_confirm() -> bool:
 
 
 func _create_sell_button(index: int, item: Item, qty: int) -> Button:
-	var btn := Button.new()
-	var qty_text := " x%d" % qty if qty > 1 else ""
-	var marker := "[ ] " if sell_multi_select else ""
-	btn.text = "%s%s%s - %d gold" % [marker, item.get_display_name(), qty_text, item.sell_price]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var chips: Array = []
+	if sell_multi_select:
+		var selected := index in sell_selected_indices
+		chips.append({
+			"text": "✓" if selected else "○",
+			"fg": UIColors.SUCCESS if selected else UIColors.TEXT_MUTED,
+			"bg": Color(0.12, 0.22, 0.14) if selected else UIColors.SURFACE_SELECTED})
+	if qty > 1:
+		chips.append({"text": "×%d" % qty, "fg": UIColors.TEXT_SECONDARY, "bg": UIColors.SURFACE_SELECTED})
+	chips.append({"text": "%d g" % item.sell_price, "fg": UIColors.SUCCESS, "bg": UIColors.SURFACE_SELECTED})
+	var btn: Button = shop.make_item_row(item, chips, false)
 	btn.pressed.connect(_on_sell_item.bind(index, item))
 	return btn
 
@@ -124,20 +129,7 @@ func _toggle_sell_selection(index: int) -> void:
 		sell_selected_indices.erase(index)
 	else:
 		sell_selected_indices.append(index)
-	_update_sell_button_markers()
-
-
-func _update_sell_button_markers() -> void:
-	for i in range(shop.item_buttons.size()):
-		var btn: Button = shop.item_buttons[i]
-		var item: Item = shop.displayed_items[i] if i < shop.displayed_items.size() else null
-		if item == null:
-			continue
-
-		var qty: int = GameState.party.inventory.get_quantity_at(i)
-		var qty_text := " x%d" % qty if qty > 1 else ""
-		var marker := "[X] " if i in sell_selected_indices else "[ ] "
-		btn.text = "%s%s%s - %d gold" % [marker, item.item_name, qty_text, item.sell_price]
+	shop.rebuild_items_keep_focus(index)
 
 
 func _sell_selected_items() -> void:
@@ -174,4 +166,4 @@ func _select_all_for_sell() -> void:
 	sell_selected_indices.clear()
 	for i in range(shop.displayed_items.size()):
 		sell_selected_indices.append(i)
-	_update_sell_button_markers()
+	shop.rebuild_items_keep_focus(shop.nav.get_current_index() if shop.nav else 0)

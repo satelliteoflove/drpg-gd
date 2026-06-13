@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://c7inn00001"]
 
 [ext_resource type="Script" uid="uid://d37r4ejj0t8mv" path="res://scenes/town/inn.gd" id="1_script"]
+[ext_resource type="Script" path="res://systems/ui/arcane_backdrop.gd" id="9_backdrop"]
 
 [node name="Inn" type="Control" unique_id=382479005]
 layout_mode = 3
@@ -11,14 +12,16 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="Background" type="ColorRect" parent="." unique_id=1608569841]
+[node name="Background" type="Control" parent="." unique_id=1608569841]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.12, 0.1, 0.14, 1)
+mouse_filter = 2
+script = ExtResource("9_backdrop")
+subdued = true
 
 [node name="MainHBox" type="HBoxContainer" parent="." unique_id=1881111075]
 layout_mode = 1
@@ -45,7 +48,7 @@ layout_mode = 2
 [node name="TitleLabel" type="Label" parent="MainHBox/LeftPanel/Header" unique_id=717833532]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"HeaderLabel"
 text = "INN"
 
 [node name="GoldLabel" type="Label" parent="MainHBox/LeftPanel/Header" unique_id=2083852173]

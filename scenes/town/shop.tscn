@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://dashop00001"]
+[gd_scene load_steps=3 format=3 uid="uid://dashop00001"]
 
 [ext_resource type="Script" path="res://scenes/town/shop.gd" id="1_script"]
+[ext_resource type="Script" path="res://systems/ui/arcane_backdrop.gd" id="9_backdrop"]
 
 [node name="Shop" type="Control"]
 layout_mode = 3
@@ -11,12 +12,16 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.12, 0.1, 0.14, 1)
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("9_backdrop")
+subdued = true
 
 [node name="MainHBox" type="HBoxContainer" parent="."]
 layout_mode = 1
@@ -42,7 +47,7 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 text = "SHOP"
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"HeaderLabel"
 
 [node name="GoldLabel" type="Label" parent="MainHBox/LeftPanel/Header"]
 layout_mode = 2
@@ -163,10 +168,6 @@ offset_bottom = 80.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="DialogBg" type="ColorRect" parent="QuantityDialog"]
-layout_mode = 2
-color = Color(0.15, 0.12, 0.18, 1)
-
 [node name="VBox" type="VBoxContainer" parent="QuantityDialog"]
 layout_mode = 2
 theme_override_constants/separation = 12
@@ -233,10 +234,6 @@ offset_bottom = 120.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="DialogBg" type="ColorRect" parent="EquipDialog"]
-layout_mode = 2
-color = Color(0.15, 0.12, 0.18, 1)
-
 [node name="VBox" type="VBoxContainer" parent="EquipDialog"]
 layout_mode = 2
 theme_override_constants/separation = 12
@@ -273,10 +270,6 @@ offset_right = 180.0
 offset_bottom = 120.0
 grow_horizontal = 2
 grow_vertical = 2
-
-[node name="DialogBg" type="ColorRect" parent="UpgradeDialog"]
-layout_mode = 2
-color = Color(0.15, 0.12, 0.18, 1)
 
 [node name="VBox" type="VBoxContainer" parent="UpgradeDialog"]
 layout_mode = 2

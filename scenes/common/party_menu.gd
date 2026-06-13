@@ -286,18 +286,55 @@ func _refresh_status() -> void:
 		var member: Character = GameState.party.get_member_at(i)
 		var btn := Button.new()
 		btn.text = member.character_name
-		btn.custom_minimum_size = Vector2(0, 28)
+		btn.custom_minimum_size = Vector2(86, 46)
+		btn.clip_text = true
 		btn.toggle_mode = true
 		if member.is_dead:
 			btn.modulate = UIColors.MODULATE_DEAD
 		elif _has_negative_status(member):
 			btn.modulate = UIColors.TEXT_WARNING
+		_add_member_hp_bar(btn, member)
 		btn.pressed.connect(_on_status_member_selected.bind(i))
 		character_tabs.add_child(btn)
 		status_buttons.append(btn)
 
 	_status_selected_index = 0
 	_update_status_info(0)
+
+
+## Adds a slim, color-coded HP bar along the bottom edge of a roster button so
+## the whole party's health is readable at a glance.
+func _add_member_hp_bar(btn: Button, member: Character) -> void:
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.min_value = 0
+	bar.max_value = maxi(1, member.max_hp)
+	bar.value = member.current_hp
+	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.offset_left = 8
+	bar.offset_right = -8
+	bar.offset_top = -9
+	bar.offset_bottom = -5
+
+	var pct := float(member.current_hp) / float(maxi(1, member.max_hp))
+	var fill_color := UIColors.HP_GREEN
+	if member.is_dead or pct < 0.25:
+		fill_color = UIColors.DANGER
+	elif pct < 0.5:
+		fill_color = UIColors.WARNING
+
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = fill_color
+	fill.set_corner_radius_all(2)
+	bar.add_theme_stylebox_override("fill", fill)
+
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = UIColors.SURFACE_BAR_BG
+	bg.set_corner_radius_all(2)
+	bar.add_theme_stylebox_override("background", bg)
+
+	btn.add_child(bar)
 
 
 func _on_status_member_selected(index: int) -> void:

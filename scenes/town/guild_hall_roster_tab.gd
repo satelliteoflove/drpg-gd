@@ -143,23 +143,7 @@ func _populate_roster_view() -> void:
 
 	_displayed_roster_chars = _sort_characters(GameState.roster.get_all())
 	for character in _displayed_roster_chars:
-		var btn := Button.new()
-		btn.text = "%s - L%d %s %s" % [
-			character.character_name,
-			character.level,
-			CharacterEnums.get_race_name(character.race),
-			CharacterEnums.get_class_name(character.character_class)
-		]
-		btn.custom_minimum_size = Vector2(350, 36)
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-
-		if character.is_dead:
-			btn.modulate = UIColors.MODULATE_DEAD
-		elif character.is_training():
-			btn.modulate = UIColors.TEXT_WARNING
-		elif GameState.party.has_member(character):
-			btn.modulate = UIColors.TEXT_IN_PARTY
-
+		var btn := _char_row(character)
 		options_list.add_child(btn)
 		buttons.append(btn)
 
@@ -167,9 +151,41 @@ func _populate_roster_view() -> void:
 		var empty_label := Label.new()
 		empty_label.text = "(No characters in roster)"
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.theme_type_variation = &"MutedLabel"
 		options_list.add_child(empty_label)
 
 	_setup_nav()
+
+
+func _char_row(character: Character) -> MenuListRow:
+	var chips: Array = []
+	var status := _status_chip(character)
+	if not status.is_empty():
+		chips.append(status)
+	return MenuListRow.create({
+		"badge": CharacterEnums.get_class_name(character.character_class).substr(0, 1).to_upper(),
+		"badge_color": UIColors.class_color(character.character_class),
+		"title": character.character_name,
+		"title_color": UIColors.TEXT_DANGER if character.is_dead else UIColors.TEXT_PRIMARY,
+		"subtitle": "L%d %s %s" % [character.level, CharacterEnums.get_race_name(character.race), CharacterEnums.get_class_name(character.character_class)],
+		"chips": chips,
+		"dim": character.is_dead,
+	})
+
+
+func _status_chip(c: Character) -> Dictionary:
+	if c.has_status(CharacterEnums.StatusEffect.LOST):
+		return {"text": "LOST", "fg": UIColors.TEXT_LOST, "bg": Color(0.20, 0.08, 0.08)}
+	if c.is_dead:
+		return {"text": "DEAD", "fg": UIColors.TEXT_DANGER, "bg": Color(0.28, 0.10, 0.12)}
+	if c.is_training():
+		var e := c.get_training_days_elapsed(GameState.game_day)
+		return {"text": "TRAINING %d/%d" % [e, c.get_training_total()], "fg": UIColors.TEXT_WARNING, "bg": UIColors.SURFACE_SELECTED}
+	if GameState.party.has_member(c):
+		return {"text": "IN PARTY", "fg": UIColors.TEXT_IN_PARTY, "bg": UIColors.SURFACE_SELECTED}
+	if c.town_job >= 0:
+		return {"text": TownJobs.get_job_name(c.town_job).to_upper(), "fg": UIColors.INFO, "bg": UIColors.SURFACE_SELECTED}
+	return {}
 
 
 func _populate_manage_actions() -> void:
