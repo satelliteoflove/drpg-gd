@@ -18,6 +18,9 @@ var identify_mode: ShopIdentifyMode
 var uncurse_mode: ShopUncurseMode
 var modes: Array[RefCounted] = []
 
+var _scaffold: ScreenScaffold = null
+var _mode_buttons: Array[Button] = []
+
 @onready var title_label: Label = $MainHBox/LeftPanel/Header/TitleLabel
 @onready var gold_label: Label = $MainHBox/LeftPanel/Header/GoldLabel
 @onready var scrap_label: Label = $MainHBox/LeftPanel/Header/ScrapLabel
@@ -84,11 +87,91 @@ func _ready() -> void:
 
 	modes = [buy_mode, sell_mode, upgrade_mode, scrap_mode, identify_mode, uncurse_mode]
 
-	buy_button.pressed.connect(_on_buy_mode)
-	sell_button.pressed.connect(_on_sell_mode)
-	back_button.pressed.connect(_on_back_pressed)
-
+	_install_chrome()
 	refresh_display()
+
+
+## Wrap the shop in the shared scaffold (title + live gold/scrap pill + frame),
+## hide the legacy in-panel header / help / back, and replace the two competing
+## mode controls (Buy/Sell toggles + "< Mode >" stepper) with one clean rail of
+## all six modes.
+func _install_chrome() -> void:
+	var bg := get_node_or_null("Background")
+	if bg != null:
+		bg.queue_free()
+
+	$MainHBox/LeftPanel/Header.visible = false
+	help_label.visible = false
+	back_button.visible = false
+	buy_button.visible = false
+	sell_button.visible = false
+	mode_label.visible = false
+
+	var main: Control = $MainHBox
+	var left: VBoxContainer = $MainHBox/LeftPanel
+	remove_child(main)
+	_scaffold = ScreenScaffold.create({"title": "SHOP", "hint": "", "show_scrap": true})
+	add_child(_scaffold)
+	move_child(_scaffold, 0)
+	_scaffold.body.add_child(main)
+	_scaffold.back_pressed.connect(_on_back_pressed)
+
+	_build_mode_rail(left)
+
+
+func _build_mode_rail(left: VBoxContainer) -> void:
+	var rail := HBoxContainer.new()
+	rail.add_theme_constant_override("separation", 6)
+	left.add_child(rail)
+	left.move_child(rail, 0)
+
+	var group := ButtonGroup.new()
+	_mode_buttons.clear()
+	for m in range(Mode.size()):
+		var btn := Button.new()
+		btn.text = MODE_NAMES[m]
+		btn.toggle_mode = true
+		btn.button_group = group
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, 34)
+		_style_mode_button(btn)
+		btn.pressed.connect(_set_mode.bind(m as Mode))
+		rail.add_child(btn)
+		_mode_buttons.append(btn)
+
+
+func _style_mode_button(btn: Button) -> void:
+	var flat := StyleBoxFlat.new()
+	flat.bg_color = UIColors.SURFACE_BACKGROUND
+	flat.corner_radius_top_left = 6
+	flat.corner_radius_top_right = 6
+	flat.content_margin_top = 7
+	flat.content_margin_bottom = 7
+
+	var hover := flat.duplicate() as StyleBoxFlat
+	hover.bg_color = UIColors.SURFACE_HOVER
+
+	var active := flat.duplicate() as StyleBoxFlat
+	active.bg_color = UIColors.SURFACE_CARD
+	active.border_width_bottom = 3
+	active.border_color = UIColors.ACCENT
+
+	var focus := active.duplicate() as StyleBoxFlat
+	focus.border_color = UIColors.BORDER_FOCUS
+
+	btn.add_theme_stylebox_override("normal", flat)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", active)
+	btn.add_theme_stylebox_override("focus", focus)
+	btn.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+	btn.add_theme_color_override("font_pressed_color", Color.WHITE)
+	btn.add_theme_color_override("font_hover_color", UIColors.TEXT_PRIMARY)
+
+
+func _update_mode_rail() -> void:
+	for i in range(_mode_buttons.size()):
+		_mode_buttons[i].button_pressed = (i == current_mode)
 
 
 func _get_active_mode() -> RefCounted:
@@ -96,21 +179,11 @@ func _get_active_mode() -> RefCounted:
 
 
 func refresh_display() -> void:
-	gold_label.text = "Gold: %d" % GameState.party.gold
-	if scrap_label:
-		scrap_label.text = "Scrap: %d" % GameState.party.scrap
 	_update_capacity_label()
-	_update_mode_label()
-	buy_button.button_pressed = (current_mode == Mode.BUY)
-	sell_button.button_pressed = (current_mode == Mode.SELL)
+	_update_mode_rail()
 	_refresh_items_list()
 	_update_info()
 	update_help()
-
-
-func _update_mode_label() -> void:
-	if mode_label:
-		mode_label.text = "< %s >" % MODE_NAMES[current_mode]
 
 
 func _update_capacity_label() -> void:
@@ -335,15 +408,8 @@ func get_stat_diff(current: Item, new_item: Item) -> String:
 
 
 func update_help() -> void:
-	help_label.text = _get_active_mode().get_help_text()
-
-
-func _on_buy_mode() -> void:
-	_set_mode(Mode.BUY)
-
-
-func _on_sell_mode() -> void:
-	_set_mode(Mode.SELL)
+	if _scaffold != null:
+		_scaffold.set_hint(_get_active_mode().get_help_text())
 
 
 func _set_mode(mode: Mode) -> void:

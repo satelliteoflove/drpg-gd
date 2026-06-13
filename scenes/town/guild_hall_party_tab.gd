@@ -26,12 +26,12 @@ var party_buttons: Array[Button] = []
 var roster_buttons: Array[Button] = []
 
 var options_list: VBoxContainer
-var info_label: RichTextLabel
+var detail: CharacterDetailView
 
 
-func init(p_options_list: VBoxContainer, p_info_label: RichTextLabel) -> void:
+func init(p_options_list: VBoxContainer, p_detail: CharacterDetailView) -> void:
 	options_list = p_options_list
-	info_label = p_info_label
+	detail = p_detail
 
 
 func reset() -> void:
@@ -461,7 +461,7 @@ func _on_party_selection_changed(_index: int) -> void:
 
 func _update_party_info() -> void:
 	if party_nav == null:
-		info_label.text = "Select a character to view details."
+		detail.show_text("Select a character to view details.")
 		return
 
 	var idx := party_nav.get_current_index()
@@ -485,24 +485,26 @@ func _update_party_info() -> void:
 				text += "  Positions 4-6: Back Row (ranged/protected)\n\n"
 				text += "[color=yellow]Up/Down: Move. Enter: Place.[/color]\n"
 				text += "[color=yellow]Esc: Undo this move.[/color]"
-			info_label.text = text
+			detail.show_text(text)
 		return
 
 	var character: Character = _get_character_at_party_index(idx)
 	if character:
-		info_label.text = GuildHallRosterTab.format_character_info(character)
+		# Active party members carry a real row; benched/available do not.
+		var is_member := idx < party_buttons.size()
+		detail.show_character(character, idx if is_member else 0, is_member)
 	else:
 		var all_count: int = party_buttons.size() + roster_buttons.size()
 		if idx == all_count:
-			info_label.text = "[b]Equipment & Spells[/b]\n\nOpen the party management screen\nto manage equipment, spells, and inventory."
+			detail.show_text("[b]Equipment & Spells[/b]\n\nOpen the party management screen\nto manage equipment, spells, and inventory.")
 		elif idx == all_count + 1:
-			info_label.text = "[b]Quick Pick Party[/b]\n\nRandomly fill empty party slots\nfrom available roster members."
+			detail.show_text("[b]Quick Pick Party[/b]\n\nRandomly fill empty party slots\nfrom available roster members.")
 		elif idx == all_count + 2:
 			var text := "[b]Formations[/b]\n\nSave and load named party compositions.\n\n"
 			text += "Saved: %d/%d" % [GameState.party_formations.size(), MAX_FORMATIONS]
-			info_label.text = text
+			detail.show_text(text)
 		else:
-			info_label.text = "Select a character to view details."
+			detail.show_text("Select a character to view details.")
 
 
 func _get_character_at_party_index(idx: int) -> Character:
@@ -569,7 +571,7 @@ func _on_formation_list_selection_changed(_index: int) -> void:
 
 func _update_formation_list_info() -> void:
 	if nav == null:
-		info_label.text = "Select a formation to manage."
+		detail.show_text("Select a formation to manage.")
 		return
 
 	var idx := nav.get_current_index()
@@ -586,7 +588,7 @@ func _update_formation_list_info() -> void:
 				var member := GameState.party.get_member_at(i)
 				var row_tag := "[F]" if i < 3 else "[B]"
 				text += "  %s %s - L%d %s\n" % [row_tag, member.character_name, member.level, CharacterEnums.get_class_name(member.character_class)]
-		info_label.text = text
+		detail.show_text(text)
 		return
 
 	var formation_idx := idx - 1
@@ -594,7 +596,7 @@ func _update_formation_list_info() -> void:
 		var formation := GameState.party_formations[formation_idx]
 		_show_formation_info(formation)
 	else:
-		info_label.text = "Return to party management."
+		detail.show_text("Return to party management.")
 
 
 func _show_formation_info(formation: PartyFormation) -> void:
@@ -610,7 +612,7 @@ func _show_formation_info(formation: PartyFormation) -> void:
 			text += "  %s %s - L%d %s\n" % [row_tag, character.character_name, character.level, CharacterEnums.get_class_name(character.character_class)]
 		else:
 			text += "  %s [color=red]%s (not in roster)[/color]\n" % [row_tag, char_name]
-	info_label.text = text
+	detail.show_text(text)
 
 
 func _on_formation_save_pressed() -> void:
@@ -655,7 +657,7 @@ func _populate_formation_save() -> void:
 		var member := GameState.party.get_member_at(i)
 		var row_tag := "[F]" if i < 3 else "[B]"
 		text += "  %s %s - L%d %s\n" % [row_tag, member.character_name, member.level, CharacterEnums.get_class_name(member.character_class)]
-	info_label.text = text
+	detail.show_text(text)
 
 
 func _on_formation_name_submitted(text: String) -> void:
@@ -757,12 +759,12 @@ func _on_formation_manage_selection_changed(_index: int) -> void:
 					missing += 1
 			if missing > 0:
 				text += "[color=orange]Warning: %d member(s) no longer in roster.[/color]" % missing
-			info_label.text = text
+			detail.show_text(text)
 		1:
 			var text := "[b]Delete Formation[/b]\n\n"
 			text += "[color=red]Remove '%s' from saved formations.[/color]\n" % _selected_formation.formation_name
 			text += "This cannot be undone."
-			info_label.text = text
+			detail.show_text(text)
 		_:
 			_show_formation_info(_selected_formation)
 

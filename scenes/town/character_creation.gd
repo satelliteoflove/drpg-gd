@@ -43,16 +43,198 @@ var stat_focus_index: int = 0
 var stat_row_labels: Array = []
 var stat_focus_buttons: Array = []
 
+# Personality step (master/detail: axis column | trait column).
+var _pers_axis_buttons: Array[Button] = []
+var _pers_trait_buttons: Array[Button] = []
+var _pers_focus_col: int = 0  # 0 = axis column, 1 = trait column
+var _pers_axis_index: int = 0
+var _pers_trait_index: int = -1
+var _pers_trait_box: VBoxContainer = null
+var _pers_trait_header: Label = null
+var _pers_leaning_label: Label = null
+var _pers_result_label: Label = null
+
+var _scaffold: ScreenScaffold = null
+var _preview_label: RichTextLabel = null
+var _quick_btn: Button = null
+
+const QUICK_NAMES: Array[String] = [
+	"Aldric", "Brenna", "Caspian", "Dahlia", "Eamon", "Fenwick", "Gwendolyn",
+	"Halvard", "Isolde", "Joran", "Kestrel", "Lyra", "Magnus", "Nadia",
+	"Orin", "Perrin", "Quill", "Rowan", "Sable", "Thorne", "Ulric", "Vesper",
+]
+
 
 func _ready() -> void:
+	_install_scaffold()
 	back_button.pressed.connect(_on_back_pressed)
 	next_button.pressed.connect(_on_next_pressed)
 	cancel_button.pressed.connect(_on_cancel_pressed)
+	next_button.theme_type_variation = &"PrimaryButton"
 	_show_step()
+
+
+## Wrap the wizard in the shared scaffold and add a live character-preview panel
+## on the right that updates as choices are made — turning the most-broken screen
+## into the showpiece. The center column keeps the existing step content.
+func _install_scaffold() -> void:
+	var bg := get_node_or_null("Background")
+	if bg != null:
+		bg.queue_free()
+
+	$VBoxContainer/Title.visible = false
+
+	_scaffold = ScreenScaffold.create({
+		"title": "CREATE CHARACTER", "show_gold": false,
+		"hint": "↑/↓ ←/→  Choose      ·      Enter  Next      ·      Esc  Back",
+	})
+	add_child(_scaffold)
+	move_child(_scaffold, 0)
+	_scaffold.back_pressed.connect(_on_scaffold_back)
+
+	# Lay out as: step label (full width) / [ race box | preview ] (tops aligned)
+	# / footer (full width). Pulling the step label and footer out of the column
+	# makes the preview panel start level with the choice box.
+	var old_vbox: Control = $VBoxContainer
+	old_vbox.remove_child(step_label)
+	old_vbox.remove_child(content_panel)
+	old_vbox.remove_child(nav_container)
+	old_vbox.queue_free()
+
+	var outer := VBoxContainer.new()
+	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	outer.add_theme_constant_override("separation", 12)
+	_scaffold.body.add_child(outer)
+
+	step_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	outer.add_child(step_label)
+
+	var split := HBoxContainer.new()
+	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_theme_constant_override("separation", 18)
+	outer.add_child(split)
+
+	content_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_child(content_panel)
+	split.add_child(_build_preview_panel())
+
+	outer.add_child(nav_container)
+
+	_quick_btn = Button.new()
+	_quick_btn.theme_type_variation = &"PrimaryButton"
+	_quick_btn.text = "⚡  Quick Create"
+	_quick_btn.custom_minimum_size = Vector2(160, 42)
+	_quick_btn.pressed.connect(_quick_create)
+	nav_container.add_child(_quick_btn)
+
+	# Proper wizard footer: Back / Cancel on the left, Quick / Next on the right,
+	# split by a flexible spacer — not a cluster in the middle.
+	nav_container.alignment = BoxContainer.ALIGNMENT_BEGIN
+	nav_container.add_theme_constant_override("separation", 10)
+	var footer_spacer := Control.new()
+	footer_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	nav_container.add_child(footer_spacer)
+	nav_container.move_child(back_button, 0)
+	nav_container.move_child(cancel_button, 1)
+	nav_container.move_child(footer_spacer, 2)
+	nav_container.move_child(_quick_btn, 3)
+	nav_container.move_child(next_button, 4)
+	for b in [back_button, cancel_button, next_button]:
+		b.custom_minimum_size = Vector2(120, 42)
+
+
+## Card-styled, width-filling choice button used for race/class/alignment/etc.
+## The toggled (selected) state shows the arcane accent; focus adds the glow.
+func _style_choice_button(btn: Button) -> void:
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.custom_minimum_size = Vector2(0, 48)
+	btn.clip_text = true
+
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = UIColors.SURFACE_CARD
+	normal.set_corner_radius_all(6)
+	normal.set_border_width_all(1)
+	normal.border_color = UIColors.BORDER_DEFAULT
+	normal.content_margin_left = 10
+	normal.content_margin_right = 10
+	normal.content_margin_top = 8
+	normal.content_margin_bottom = 8
+
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = UIColors.SURFACE_HOVER
+	hover.border_color = UIColors.BORDER_HOVER
+
+	var active := normal.duplicate() as StyleBoxFlat
+	active.bg_color = UIColors.SURFACE_SELECTED
+	active.set_border_width_all(2)
+	active.border_color = UIColors.ACCENT
+
+	var focus := active.duplicate() as StyleBoxFlat
+	focus.shadow_color = UIColors.ACCENT_GLOW
+	focus.shadow_size = 5
+
+	var disabled := normal.duplicate() as StyleBoxFlat
+	disabled.bg_color = UIColors.SURFACE_DISABLED
+	disabled.border_color = UIColors.BORDER_SUBTLE
+
+	btn.add_theme_stylebox_override("normal", normal)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", active)
+	btn.add_theme_stylebox_override("focus", focus)
+	btn.add_theme_stylebox_override("disabled", disabled)
+	btn.add_theme_color_override("font_color", UIColors.TEXT_PRIMARY)
+	btn.add_theme_color_override("font_pressed_color", Color.WHITE)
+	btn.add_theme_color_override("font_focus_color", Color.WHITE)
+	btn.add_theme_color_override("font_hover_color", Color.WHITE)
+	btn.add_theme_color_override("font_disabled_color", UIColors.TEXT_DISABLED)
+
+
+func _build_preview_panel() -> Control:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(310, 0)
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	panel.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	margin.add_child(col)
+
+	var header := Label.new()
+	header.theme_type_variation = &"SubheaderLabel"
+	header.text = "PREVIEW"
+	col.add_child(header)
+
+	_preview_label = RichTextLabel.new()
+	_preview_label.bbcode_enabled = true
+	_preview_label.fit_content = true
+	_preview_label.scroll_active = false
+	_preview_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(_preview_label)
+
+	return panel
+
+
+func _on_scaffold_back() -> void:
+	if current_step == Step.RACE:
+		_on_cancel_pressed()
+	else:
+		_on_back_pressed()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if current_step == Step.NAME:
+		return
+
+	if current_step == Step.PERSONALITY:
+		_handle_personality_input(event)
 		return
 
 	if event.is_action_pressed("menu_cancel"):
@@ -173,6 +355,8 @@ func _show_step() -> void:
 		Step.CONFIRM:
 			_show_confirm_step()
 
+	_update_preview()
+
 
 func _clear_content() -> void:
 	for child in content_container.get_children():
@@ -188,16 +372,134 @@ func _clear_content() -> void:
 	grid_buttons.clear()
 	stat_row_labels.clear()
 	stat_focus_buttons.clear()
+	_pers_axis_buttons.clear()
+	_pers_trait_buttons.clear()
+	_pers_trait_box = null
+	_pers_trait_header = null
+	_pers_leaning_label = null
+	_pers_result_label = null
 
 
 func _update_nav_buttons() -> void:
 	nav_container.visible = current_step != Step.STATS
 	back_button.visible = current_step != Step.RACE
 	cancel_button.visible = true
+	if _quick_btn != null:
+		_quick_btn.visible = (current_step == Step.RACE)
 	if current_step == Step.CONFIRM:
 		next_button.text = "Create"
 	else:
 		next_button.text = "Next"
+
+	# Next is gated only on the personality step (until a trait is chosen);
+	# every other step keeps it enabled and restores the default hint.
+	if current_step != Step.PERSONALITY:
+		next_button.disabled = false
+		next_button.modulate = Color.WHITE
+		if _scaffold != null:
+			_scaffold.set_hint("↑/↓ ←/→  Choose        ·        Enter  Next        ·        Esc  Back")
+
+
+## The right-hand live dossier: reflects every choice as it is made so the player
+## sees the character take shape. Shows what's known so far and whether the
+## current class is actually qualified by the rolled attributes.
+func _update_preview() -> void:
+	if _preview_label == null:
+		return
+
+	var nm := character_name if character_name != "" else "New Adventurer"
+	var gender_name := "Male" if selected_gender == CharacterEnums.Gender.MALE else "Female"
+	var t := "[b][color=#debc78]%s[/color][/b]\n" % nm
+	t += "[color=#8da0c8]%s %s  ·  %s[/color]\n" % [
+		gender_name,
+		CharacterEnums.get_race_name(selected_race),
+		CharacterEnums.get_class_name(selected_class)]
+	t += "[color=#9a96a0]%s[/color]\n" % CharacterEnums.get_alignment_name(selected_alignment)
+
+	var base_age: int = CharacterEnums.get_base_age(selected_race) + aging_years_spent
+	t += "[color=#9a96a0]Age %d[/color]\n\n" % base_age
+
+	if not rolled_stats.is_empty():
+		t += "[b]Attributes[/b]\n"
+		for i in range(STAT_NAMES.size()):
+			t += "[color=#9a96a0]%s[/color]  [color=#e0ddd6]%d[/color]    " % [
+				STAT_LABELS[i], rolled_stats.get(STAT_NAMES[i], 0)]
+			if i % 2 == 1:
+				t += "\n"
+		t += "\n"
+		var data: Dictionary = ClassData.get_class_data(selected_class)
+		t += "[color=#9a96a0]HP base %d  ·  MP base %d[/color]\n\n" % [
+			data.get("hp_base", 0), data.get("mp_base", 0)]
+		if ClassData.meets_requirements(selected_class, rolled_stats):
+			t += "[color=#5cc46a]✓ Qualifies as %s[/color]" % CharacterEnums.get_class_name(selected_class)
+		else:
+			t += "[color=#d65656]✗ Does not yet meet %s requirements[/color]" % CharacterEnums.get_class_name(selected_class)
+	else:
+		t += "[color=#9a96a0]Pick a race to roll attributes.[/color]"
+
+	if selected_personality_option >= 0:
+		t += "\n\n[color=#c39ae8]%s: %s[/color]" % [
+			Personality.get_axis_name(selected_personality_axis),
+			Personality.get_option_name(selected_personality_axis, selected_personality_option)]
+
+	_preview_label.text = t
+
+
+## One-click "give me a solid character": random race, a class its rolled stats
+## can actually support (bonus points auto-spent to meet requirements, remainder
+## scattered), random alignment / gender / personality, random name.
+func _quick_create() -> void:
+	selected_race = CharacterEnums.Race.values().pick_random() as CharacterEnums.Race
+	_init_stats_for_race()
+	bonus_points = BASE_BONUS_POINTS
+	bonus_remaining = bonus_points
+
+	var ranges: Dictionary = CharacterEnums.RACE_STAT_RANGES.get(selected_race, {})
+
+	var achievable: Array = []
+	for class_id: int in CharacterEnums.CharacterClass.values():
+		if _class_achievable(class_id as CharacterEnums.CharacterClass, ranges):
+			achievable.append(class_id)
+	selected_class = (achievable.pick_random() if not achievable.is_empty()
+		else CharacterEnums.CharacterClass.FIGHTER) as CharacterEnums.CharacterClass
+
+	# Spend bonus points to satisfy the chosen class's requirements first.
+	var reqs: Dictionary = ClassData.get_requirements(selected_class)
+	for stat_name: String in reqs:
+		while rolled_stats[stat_name] < reqs[stat_name] and bonus_remaining > 0:
+			rolled_stats[stat_name] += 1
+			bonus_remaining -= 1
+	# Scatter whatever is left, respecting per-stat maxima.
+	var guard := 0
+	while bonus_remaining > 0 and guard < 300:
+		guard += 1
+		var stat_name: String = STAT_NAMES.pick_random()
+		var range_vec: Vector2i = ranges.get(stat_name, Vector2i(8, 18))
+		if rolled_stats[stat_name] < range_vec.y:
+			rolled_stats[stat_name] += 1
+			bonus_remaining -= 1
+
+	selected_alignment = CharacterEnums.Alignment.values().pick_random() as CharacterEnums.Alignment
+	selected_gender = CharacterEnums.Gender.values().pick_random() as CharacterEnums.Gender
+	selected_personality_axis = Personality.Axis.values().pick_random() as Personality.Axis
+	var options: Array = Personality.get_options_for_axis(selected_personality_axis)
+	selected_personality_option = options.pick_random() if not options.is_empty() else -1
+	character_name = QUICK_NAMES.pick_random()
+
+	_create_character()
+
+
+func _class_achievable(char_class: CharacterEnums.CharacterClass, ranges: Dictionary) -> bool:
+	var reqs: Dictionary = ClassData.get_requirements(char_class)
+	if reqs.is_empty():
+		return true
+	var bp_needed := 0
+	for stat_name: String in reqs:
+		var range_vec: Vector2i = ranges.get(stat_name, Vector2i(8, 18))
+		if reqs[stat_name] > range_vec.y:
+			return false
+		bp_needed += maxi(0, reqs[stat_name] - range_vec.x)
+	return bp_needed <= BASE_BONUS_POINTS
 
 
 func _show_race_step() -> void:
@@ -206,6 +508,9 @@ func _show_race_step() -> void:
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid_columns = 3
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
 	content_container.add_child(grid)
 
 	var initial_index := 0
@@ -214,9 +519,9 @@ func _show_race_step() -> void:
 		var race: CharacterEnums.Race = race_id as CharacterEnums.Race
 		var btn := Button.new()
 		btn.text = CharacterEnums.get_race_name(race)
-		btn.custom_minimum_size = Vector2(120, 40)
 		btn.toggle_mode = true
 		btn.button_pressed = (race == selected_race)
+		_style_choice_button(btn)
 		btn.pressed.connect(_on_race_selected.bind(race))
 		if race == selected_race:
 			initial_index = grid_buttons.size()
@@ -452,7 +757,8 @@ func _show_stats_step() -> void:
 
 	var stat_next_btn := Button.new()
 	stat_next_btn.text = "Next"
-	stat_next_btn.custom_minimum_size = Vector2(80, 40)
+	stat_next_btn.theme_type_variation = &"PrimaryButton"
+	stat_next_btn.custom_minimum_size = Vector2(90, 40)
 	stat_next_btn.pressed.connect(_on_next_pressed)
 	btn_row.add_child(stat_next_btn)
 	stat_row_labels.append(null)
@@ -548,6 +854,9 @@ func _show_class_step() -> void:
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid_columns = 3
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
 	content_container.add_child(grid)
 
 	var initial_index := 0
@@ -556,12 +865,12 @@ func _show_class_step() -> void:
 		var char_class: CharacterEnums.CharacterClass = class_id as CharacterEnums.CharacterClass
 		var btn := Button.new()
 		btn.text = CharacterEnums.get_class_name(char_class)
-		btn.custom_minimum_size = Vector2(120, 40)
 
 		var meets_reqs := ClassData.meets_requirements(char_class, rolled_stats)
 		btn.disabled = not meets_reqs
 		btn.toggle_mode = true
 		btn.button_pressed = (char_class == selected_class and meets_reqs)
+		_style_choice_button(btn)
 
 		if meets_reqs:
 			btn.pressed.connect(_on_class_selected.bind(char_class))
@@ -609,6 +918,8 @@ func _show_alignment_step() -> void:
 	step_label.text = "Step 4: Choose Alignment"
 
 	var vbox := VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 8)
 	content_container.add_child(vbox)
 
 	var initial_index := 0
@@ -618,9 +929,9 @@ func _show_alignment_step() -> void:
 		var alignment: CharacterEnums.Alignment = align_id as CharacterEnums.Alignment
 		var btn := Button.new()
 		btn.text = CharacterEnums.get_alignment_name(alignment)
-		btn.custom_minimum_size = Vector2(150, 40)
 		btn.toggle_mode = true
 		btn.button_pressed = (alignment == selected_alignment)
+		_style_choice_button(btn)
 		btn.pressed.connect(_on_alignment_selected.bind(alignment))
 		if alignment == selected_alignment:
 			initial_index = grid_buttons.size()
@@ -640,7 +951,8 @@ func _show_gender_step() -> void:
 	step_label.text = "Step 5: Choose Gender"
 
 	var hbox := HBoxContainer.new()
-	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_theme_constant_override("separation", 8)
 	content_container.add_child(hbox)
 
 	var initial_index := 0
@@ -650,9 +962,9 @@ func _show_gender_step() -> void:
 		var gender: CharacterEnums.Gender = gender_id as CharacterEnums.Gender
 		var btn := Button.new()
 		btn.text = "Male" if gender == CharacterEnums.Gender.MALE else "Female"
-		btn.custom_minimum_size = Vector2(120, 40)
 		btn.toggle_mode = true
 		btn.button_pressed = (gender == selected_gender)
+		_style_choice_button(btn)
 		btn.pressed.connect(_on_gender_selected.bind(gender))
 		if gender == selected_gender:
 			initial_index = grid_buttons.size()
@@ -668,101 +980,290 @@ func _on_gender_selected(gender: CharacterEnums.Gender) -> void:
 	_show_step()
 
 
+## Master/detail: an AXIS column (which facet to crystallize) beside a TRAIT
+## column (that axis's four traits, rebuilt live). Up/Down navigates the active
+## column and live-selects; →/Enter drills axes→traits; ← returns; Enter on a
+## trait advances. Keeps the two groups independent so both axis AND trait are
+## selectable — the single-list version made that impossible.
 func _show_personality_step() -> void:
-	step_label.text = "Step 6: Choose Personality Trait"
+	step_label.text = "Step 6: Choose a Defining Trait"
 
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	content_container.add_child(vbox)
+	# Restore from the current selection (e.g. when returning via Back).
+	var axes := Personality.Axis.values()
+	_pers_axis_index = maxi(axes.find(selected_personality_axis), 0)
+	selected_personality_axis = axes[_pers_axis_index] as Personality.Axis
+	_pers_focus_col = 0
+	_pers_trait_index = Personality.get_options_for_axis(selected_personality_axis).find(selected_personality_option)
 
-	var axis_label := Label.new()
-	axis_label.text = "Choose an axis to crystallize:"
-	vbox.add_child(axis_label)
+	var root := VBoxContainer.new()
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root.add_theme_constant_override("separation", 12)
+	content_container.add_child(root)
 
-	var axis_box := VBoxContainer.new()
-	vbox.add_child(axis_box)
+	var headline := Label.new()
+	headline.theme_type_variation = &"SubheaderLabel"
+	headline.text = "What is your adventurer known for?"
+	root.add_child(headline)
 
-	var axis_buttons: Array[Button] = []
-	for axis_id: int in Personality.Axis.values():
-		var axis: Personality.Axis = axis_id as Personality.Axis
+	var subline := Label.new()
+	subline.theme_type_variation = &"MutedLabel"
+	subline.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subline.text = "Crystallize a single defining trait now. The other three facets stay fluid — they emerge through the choices your adventurer makes in play."
+	root.add_child(subline)
+
+	var cols := HBoxContainer.new()
+	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cols.add_theme_constant_override("separation", 18)
+	root.add_child(cols)
+
+	# Axis column (master).
+	var axis_col := VBoxContainer.new()
+	axis_col.custom_minimum_size = Vector2(210, 0)
+	axis_col.add_theme_constant_override("separation", 8)
+	cols.add_child(axis_col)
+
+	var axis_head := Label.new()
+	axis_head.theme_type_variation = &"SubheaderLabel"
+	axis_head.text = "DEFINING FACET"
+	axis_col.add_child(axis_head)
+
+	_pers_axis_buttons.clear()
+	for i in range(axes.size()):
+		var axis: Personality.Axis = axes[i] as Personality.Axis
 		var btn := Button.new()
 		btn.text = Personality.get_axis_name(axis)
-		btn.custom_minimum_size = Vector2(200, 36)
-		btn.toggle_mode = true
-		btn.button_pressed = (axis == selected_personality_axis)
-		btn.pressed.connect(_on_personality_axis_selected.bind(axis))
-		axis_box.add_child(btn)
-		axis_buttons.append(btn)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.custom_minimum_size = Vector2(0, 46)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.pressed.connect(_on_pers_axis_pressed.bind(i))
+		axis_col.add_child(btn)
+		_pers_axis_buttons.append(btn)
 
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 8)
-	vbox.add_child(spacer)
+	# Trait column (detail) — rebuilt per axis.
+	var trait_col := VBoxContainer.new()
+	trait_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	trait_col.add_theme_constant_override("separation", 8)
+	cols.add_child(trait_col)
 
-	var option_label := Label.new()
-	option_label.text = "Choose a trait on this axis:"
-	vbox.add_child(option_label)
+	_pers_trait_header = Label.new()
+	_pers_trait_header.theme_type_variation = &"SubheaderLabel"
+	trait_col.add_child(_pers_trait_header)
 
-	var option_box := VBoxContainer.new()
-	vbox.add_child(option_box)
+	_pers_trait_box = VBoxContainer.new()
+	_pers_trait_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pers_trait_box.add_theme_constant_override("separation", 8)
+	trait_col.add_child(_pers_trait_box)
 
-	var option_buttons: Array[Button] = []
-	var options: Array = Personality.get_options_for_axis(selected_personality_axis)
-	for option: int in options:
+	# The one-line "this is what we're committing to" readout — keeps the single
+	# defining choice front-and-center.
+	_pers_result_label = Label.new()
+	_pers_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(_pers_result_label)
+
+	_pers_leaning_label = Label.new()
+	_pers_leaning_label.theme_type_variation = &"MutedLabel"
+	_pers_leaning_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(_pers_leaning_label)
+
+	_rebuild_pers_traits()
+	_refresh_pers_styles()
+	_update_personality_next()
+
+
+## Rebuild just the trait column for the selected axis — no full step rebuild,
+## so the master/detail selection never thrashes.
+func _rebuild_pers_traits() -> void:
+	if _pers_trait_box == null:
+		return
+	for c in _pers_trait_box.get_children():
+		c.queue_free()
+	_pers_trait_buttons.clear()
+
+	_pers_trait_header.text = "KNOWN FOR  ·  %s" % Personality.get_axis_name(selected_personality_axis)
+
+	var opts := Personality.get_options_for_axis(selected_personality_axis)
+	for i in range(opts.size()):
+		var option: int = opts[i]
 		var btn := Button.new()
 		btn.text = Personality.get_option_name(selected_personality_axis, option)
-		btn.custom_minimum_size = Vector2(200, 36)
-		btn.toggle_mode = true
-		btn.button_pressed = (option == selected_personality_option)
-		btn.pressed.connect(_on_personality_option_selected.bind(option))
-		option_box.add_child(btn)
-		option_buttons.append(btn)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.custom_minimum_size = Vector2(0, 46)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.pressed.connect(_on_pers_trait_pressed.bind(i))
+		_pers_trait_box.add_child(btn)
+		_pers_trait_buttons.append(btn)
 
-	var tendency_spacer := Control.new()
-	tendency_spacer.custom_minimum_size = Vector2(0, 8)
-	vbox.add_child(tendency_spacer)
+	_update_pers_leaning()
 
+
+## The race's weighting across this axis's traits — context for the choice.
+func _update_pers_leaning() -> void:
+	if _pers_leaning_label == null:
+		return
 	var weights: Dictionary = Personality.RACE_TENDENCY_WEIGHTS.get(selected_race, {})
-	var info := Label.new()
-	info.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
-	var info_parts: Array[String] = []
-	for axis_id: int in Personality.Axis.values():
-		var axis_weights: Array = weights.get(axis_id, [])
-		if axis_weights.is_empty():
-			continue
-		var best_option: int = axis_weights[0][0]
-		var best_weight: int = axis_weights[0][1]
-		for pair in axis_weights:
-			if pair[1] > best_weight:
-				best_option = pair[0]
-				best_weight = pair[1]
-		info_parts.append("%s: %s" % [
-			Personality.get_axis_name(axis_id as Personality.Axis),
-			Personality.get_option_name(axis_id as Personality.Axis, best_option)])
-	info.text = "Racial leanings: " + ", ".join(info_parts)
-	vbox.add_child(info)
-
-	grid_buttons.clear()
-	grid_buttons.append_array(axis_buttons)
-	grid_buttons.append_array(option_buttons)
-	grid_columns = 1
-
-	var initial_index := 0
-	for i in range(grid_buttons.size()):
-		if grid_buttons[i].button_pressed:
-			initial_index = i
-	grid_nav = MenuNavigator.new()
-	grid_nav.setup(grid_buttons, initial_index)
+	var axis_weights: Array = weights.get(selected_personality_axis, [])
+	if axis_weights.is_empty():
+		_pers_leaning_label.text = ""
+		return
+	var parts: Array[String] = []
+	for pair in axis_weights:
+		parts.append("%s %d%%" % [Personality.get_option_name(selected_personality_axis, pair[0]), pair[1]])
+	_pers_leaning_label.text = "%s leanings on this axis —  %s" % [
+		CharacterEnums.get_race_name(selected_race), "    ".join(parts)]
 
 
-func _on_personality_axis_selected(axis: Personality.Axis) -> void:
-	selected_personality_axis = axis
+func _refresh_pers_styles() -> void:
+	for i in range(_pers_axis_buttons.size()):
+		var sel := i == _pers_axis_index
+		_style_pers_button(_pers_axis_buttons[i], sel, sel and _pers_focus_col == 0)
+	for i in range(_pers_trait_buttons.size()):
+		var sel := i == _pers_trait_index
+		_style_pers_button(_pers_trait_buttons[i], sel, sel and _pers_focus_col == 1)
+	_update_pers_summary()
+
+
+## The single-line readout that keeps the ONE-trait commitment explicit: it names
+## the chosen trait once picked, and otherwise prompts for the single choice.
+func _update_pers_summary() -> void:
+	if _pers_result_label == null:
+		return
+	if selected_personality_option >= 0:
+		_pers_result_label.add_theme_color_override("font_color", UIColors.ACCENT)
+		_pers_result_label.text = "✦  Known for being %s  —  their one defining %s trait." % [
+			Personality.get_option_name(selected_personality_axis, selected_personality_option),
+			Personality.get_axis_name(selected_personality_axis)]
+	else:
+		_pers_result_label.add_theme_color_override("font_color", UIColors.TEXT_MUTED)
+		_pers_result_label.text = "Pick the one trait your adventurer will be known for."
+
+
+## Selected = filled accent. Focused = accent border + glow (the cursor),
+## marking which column is currently live.
+func _style_pers_button(btn: Button, selected: bool, focused: bool) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	sb.set_border_width_all(1)
+	sb.border_color = UIColors.BORDER_DEFAULT
+	sb.bg_color = UIColors.SURFACE_CARD
+	if selected:
+		sb.bg_color = UIColors.SURFACE_SELECTED
+		sb.set_border_width_all(2)
+		sb.border_color = UIColors.ACCENT
+	if focused:
+		sb.set_border_width_all(2)
+		sb.border_color = UIColors.ACCENT
+		sb.shadow_color = UIColors.ACCENT_GLOW
+		sb.shadow_size = 5
+	var hover := sb.duplicate() as StyleBoxFlat
+	if not selected and not focused:
+		hover.bg_color = UIColors.SURFACE_HOVER
+		hover.border_color = UIColors.BORDER_HOVER
+	btn.add_theme_stylebox_override("normal", sb)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", sb)
+	btn.add_theme_color_override("font_color", Color.WHITE if (selected or focused) else UIColors.TEXT_PRIMARY)
+	btn.add_theme_color_override("font_hover_color", Color.WHITE)
+
+
+func _handle_personality_input(event: InputEvent) -> void:
+	if event.is_action_pressed("menu_cancel"):
+		_on_back_pressed()
+	elif event.is_action_pressed("menu_confirm"):
+		if _pers_focus_col == 0:
+			_pers_enter_traits()
+		elif _pers_trait_index >= 0:
+			_on_next_pressed()
+	elif event.is_action_pressed("menu_right"):
+		if _pers_focus_col == 0:
+			_pers_enter_traits()
+	elif event.is_action_pressed("menu_left"):
+		if _pers_focus_col == 1:
+			_pers_focus_col = 0
+			_refresh_pers_styles()
+			_update_personality_next()
+	elif event.is_action_pressed("menu_up"):
+		_pers_move(-1)
+	elif event.is_action_pressed("menu_down"):
+		_pers_move(1)
+
+
+## Move focus from the axis column into the trait column, auto-picking the first
+## trait if none is chosen yet, so a trait is always selected once you arrive.
+func _pers_enter_traits() -> void:
+	if _pers_trait_buttons.is_empty():
+		return
+	_pers_focus_col = 1
+	if _pers_trait_index < 0:
+		_pers_select_trait(0)
+	else:
+		_refresh_pers_styles()
+		_update_personality_next()
+
+
+func _pers_move(dir: int) -> void:
+	if _pers_focus_col == 0:
+		var n := _pers_axis_buttons.size()
+		if n > 0:
+			_pers_select_axis(wrapi(_pers_axis_index + dir, 0, n))
+	else:
+		var n := _pers_trait_buttons.size()
+		if n > 0:
+			var start := _pers_trait_index if _pers_trait_index >= 0 else 0
+			_pers_select_trait(wrapi(start + dir, 0, n))
+
+
+func _pers_select_axis(i: int) -> void:
+	_pers_axis_index = i
+	selected_personality_axis = Personality.Axis.values()[i] as Personality.Axis
+	# Changing axis clears the trait — the player picks one deliberately.
 	selected_personality_option = -1
-	_show_step()
+	_pers_trait_index = -1
+	_rebuild_pers_traits()
+	_refresh_pers_styles()
+	_update_personality_next()
+	_update_preview()
+	AudioManager.play_ui("nav")
 
 
-func _on_personality_option_selected(option: int) -> void:
-	selected_personality_option = option
-	_show_step()
+func _pers_select_trait(i: int) -> void:
+	var opts := Personality.get_options_for_axis(selected_personality_axis)
+	if i < 0 or i >= opts.size():
+		return
+	_pers_trait_index = i
+	selected_personality_option = opts[i]
+	_refresh_pers_styles()
+	_update_personality_next()
+	_update_preview()
+	AudioManager.play_ui("nav")
+
+
+func _update_personality_next() -> void:
+	var ok := selected_personality_option >= 0
+	next_button.disabled = not ok
+	next_button.modulate = Color.WHITE if ok else UIColors.MODULATE_DISABLED
+	if _scaffold != null:
+		if _pers_focus_col == 0:
+			_scaffold.set_hint("↑/↓  Axis        ·        →  Pick its trait        ·        Esc  Back")
+		else:
+			_scaffold.set_hint("↑/↓  Trait        ·        ←  Axes        ·        Enter  Confirm        ·        Esc  Back")
+
+
+func _on_pers_axis_pressed(i: int) -> void:
+	_pers_focus_col = 0
+	_pers_select_axis(i)
+
+
+func _on_pers_trait_pressed(i: int) -> void:
+	_pers_focus_col = 1
+	_pers_select_trait(i)
 
 
 func _show_name_step() -> void:

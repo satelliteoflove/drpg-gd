@@ -8,6 +8,8 @@ var current_tab: Tab = Tab.STATUS
 var tab_buttons: Array[Button] = []
 var tab_nav: MenuNavigator = null
 
+var _scaffold: ScreenScaffold = null
+
 var status_buttons: Array[Button] = []
 var _status_on_character_tabs: bool = false
 var _status_in_equip_mode: bool = false
@@ -47,6 +49,7 @@ var _keybindings_tab: PartyMenuKeybindingsTab = null
 
 
 func _ready() -> void:
+	_install_scaffold()
 	_inventory_tab = PartyMenuInventoryTab.new()
 	_inventory_tab.init(inv_list, inv_targets, inv_targets_panel, info_label)
 	_formation_tab = PartyMenuFormationTab.new()
@@ -59,6 +62,28 @@ func _ready() -> void:
 	_switch_tab(Tab.STATUS)
 
 
+## Wrap the existing panel in the shared ScreenScaffold so the Party Menu gets
+## the same top-bar (PARTY title + live date/gold), Back affordance, corner
+## frame and backdrop as every other screen.
+func _install_scaffold() -> void:
+	var main: Control = $MainPanel
+	remove_child(main)
+
+	var bg := get_node_or_null("Background")
+	if bg != null:
+		bg.queue_free()
+
+	_scaffold = ScreenScaffold.create({"title": "PARTY", "hint": ""})
+	add_child(_scaffold)
+	_scaffold.back_pressed.connect(func() -> void: _handle_back())
+
+	main.add_theme_constant_override("margin_left", 6)
+	main.add_theme_constant_override("margin_right", 6)
+	main.add_theme_constant_override("margin_top", 0)
+	main.add_theme_constant_override("margin_bottom", 0)
+	_scaffold.body.add_child(main)
+
+
 func _setup_tabs() -> void:
 	for child in tab_container.get_children():
 		child.queue_free()
@@ -68,14 +93,50 @@ func _setup_tabs() -> void:
 	for i in range(tab_names.size()):
 		var btn := Button.new()
 		btn.text = tab_names[i]
-		btn.custom_minimum_size = Vector2(120, 30)
+		btn.custom_minimum_size = Vector2(120, 34)
 		btn.toggle_mode = true
+		_style_tab(btn)
 		btn.pressed.connect(_on_tab_pressed.bind(i))
 		tab_container.add_child(btn)
 		tab_buttons.append(btn)
 
 	tab_nav = MenuNavigator.new()
 	tab_nav.setup(tab_buttons, 0)
+
+
+## Make the flat tab buttons read as real tabs: the active (toggled / focused)
+## tab gets the arcane-accent underline; inactive tabs stay quiet.
+func _style_tab(btn: Button) -> void:
+	btn.focus_mode = Control.FOCUS_ALL
+
+	var flat := StyleBoxFlat.new()
+	flat.bg_color = UIColors.SURFACE_BACKGROUND
+	flat.corner_radius_top_left = 6
+	flat.corner_radius_top_right = 6
+	flat.content_margin_left = 14
+	flat.content_margin_right = 14
+	flat.content_margin_top = 8
+	flat.content_margin_bottom = 8
+
+	var hover := flat.duplicate() as StyleBoxFlat
+	hover.bg_color = UIColors.SURFACE_HOVER
+
+	var active := flat.duplicate() as StyleBoxFlat
+	active.bg_color = UIColors.SURFACE_CARD
+	active.border_width_bottom = 3
+	active.border_color = UIColors.ACCENT
+
+	var focus := active.duplicate() as StyleBoxFlat
+	focus.border_color = UIColors.BORDER_FOCUS
+
+	btn.add_theme_stylebox_override("normal", flat)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", active)
+	btn.add_theme_stylebox_override("focus", focus)
+	btn.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+	btn.add_theme_color_override("font_pressed_color", Color.WHITE)
+	btn.add_theme_color_override("font_hover_color", UIColors.TEXT_PRIMARY)
+	btn.add_theme_color_override("font_focus_color", Color.WHITE)
 
 
 func _switch_tab(tab: Tab) -> void:

@@ -20,12 +20,12 @@ var _sim_day: int = 0
 
 var floor_buttons: Array[Button] = []
 var strategy_buttons: Array[Button] = []
-var encounters_spin: SpinBox = null
-var boss_check: CheckBox = null
-var return_spin: SpinBox = null
-var dives_spin: SpinBox = null
-var death_threshold_spin: SpinBox = null
+var boss_toggle: Button = null
 var run_button: Button = null
+
+var _scaffold: ScreenScaffold = null
+var _steppers: Array[Button] = []
+var _party_subtitle: Label = null
 
 @onready var title_label: Label = $MainHBox/LeftPanel/Header/TitleLabel
 @onready var party_info_label: Label = $MainHBox/LeftPanel/Header/PartyInfoLabel
@@ -39,20 +39,41 @@ var run_button: Button = null
 
 
 func _ready() -> void:
-	back_button.pressed.connect(_on_back_pressed)
+	_install_scaffold()
 	tab_bar.tab_changed.connect(_on_tab_changed)
 	_populate_config()
 	_update_party_info()
 	_update_help()
 
 
+## Wrap in the shared scaffold and hide the legacy in-panel header / help / back.
+func _install_scaffold() -> void:
+	var bg := get_node_or_null("Background")
+	if bg != null:
+		bg.queue_free()
+
+	$MainHBox/LeftPanel/Header.visible = false
+	help_label.visible = false
+	back_button.visible = false
+
+	var main: Control = $MainHBox
+	remove_child(main)
+	_scaffold = ScreenScaffold.create({"title": "AUTOEXPLORE", "hint": ""})
+	add_child(_scaffold)
+	move_child(_scaffold, 0)
+	_scaffold.body.add_child(main)
+	_scaffold.back_pressed.connect(_on_back_pressed)
+
+
 func _update_party_info() -> void:
+	if _party_subtitle == null:
+		return
 	if not GameState.has_party():
-		party_info_label.text = "No party"
+		_party_subtitle.text = "No party assembled"
 		return
 	var members := GameState.party.get_members()
 	var avg_level := GameState.party.get_average_level()
-	party_info_label.text = "%d members, Avg Lv%d" % [members.size(), avg_level]
+	_party_subtitle.text = "Simulating with %d members · Avg Level %d" % [members.size(), avg_level]
 
 
 func _populate_config() -> void:
@@ -61,109 +82,87 @@ func _populate_config() -> void:
 	nav_buttons.clear()
 	floor_buttons.clear()
 	strategy_buttons.clear()
+	_steppers.clear()
+
+	_party_subtitle = Label.new()
+	_party_subtitle.theme_type_variation = &"SubtitleLabel"
+	_party_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	config_list.add_child(_party_subtitle)
 
 	if not GameState.has_party():
 		var label := Label.new()
+		label.theme_type_variation = &"MutedLabel"
 		label.text = "Assemble a party at the Guild Hall first."
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		config_list.add_child(label)
 		message_label.text = "No party available."
 		nav = MenuNavigator.new()
-		nav.setup([back_button], 0)
 		return
 
-	var default_floor := clampi(GameState.current_floor, 1, 6)
-	selected_floor = default_floor
+	selected_floor = clampi(GameState.current_floor, 1, 6)
 
-	_add_section_label("Floor Level")
+	_add_section("Floor Level")
 	var floor_row := HBoxContainer.new()
 	floor_row.add_theme_constant_override("separation", 4)
 	for i in range(1, 7):
 		var btn := Button.new()
 		btn.text = str(i)
-		btn.custom_minimum_size = Vector2(40, 32)
 		btn.toggle_mode = true
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, 34)
 		btn.button_pressed = (i == selected_floor)
-		var floor_num := i
-		btn.pressed.connect(_on_floor_selected.bind(floor_num))
+		_style_segment(btn)
+		btn.pressed.connect(_on_floor_selected.bind(i))
 		floor_row.add_child(btn)
 		floor_buttons.append(btn)
 		nav_buttons.append(btn)
 	config_list.add_child(floor_row)
 
-	_add_section_label("Encounters")
-	encounters_spin = SpinBox.new()
-	encounters_spin.min_value = 1
-	encounters_spin.max_value = 8
-	encounters_spin.value = num_encounters
-	encounters_spin.custom_minimum_size = Vector2(200, 32)
-	encounters_spin.value_changed.connect(func(val: float) -> void: num_encounters = int(val))
-	config_list.add_child(encounters_spin)
-
-	_add_section_label("Include Boss")
-	boss_check = CheckBox.new()
-	boss_check.text = "Yes"
-	boss_check.button_pressed = include_boss
-	boss_check.toggled.connect(func(val: bool) -> void: include_boss = val)
-	config_list.add_child(boss_check)
-	nav_buttons.append(boss_check)
-
-	_add_section_label("Return Encounters")
-	return_spin = SpinBox.new()
-	return_spin.min_value = 0
-	return_spin.max_value = 4
-	return_spin.value = return_encounters
-	return_spin.custom_minimum_size = Vector2(200, 32)
-	return_spin.value_changed.connect(func(val: float) -> void: return_encounters = int(val))
-	config_list.add_child(return_spin)
-
-	_add_section_label("Number of Runs")
-	dives_spin = SpinBox.new()
-	dives_spin.min_value = 1
-	dives_spin.max_value = 10
-	dives_spin.value = num_dives
-	dives_spin.custom_minimum_size = Vector2(200, 32)
-	dives_spin.value_changed.connect(func(val: float) -> void: num_dives = int(val))
-	config_list.add_child(dives_spin)
-
-	_add_section_label("Stop on N+ Deaths")
-	death_threshold_spin = SpinBox.new()
-	death_threshold_spin.min_value = 0
-	death_threshold_spin.max_value = 6
-	death_threshold_spin.value = death_threshold
-	death_threshold_spin.custom_minimum_size = Vector2(200, 32)
-	death_threshold_spin.suffix = " (0 = never)"
-	death_threshold_spin.value_changed.connect(func(val: float) -> void: death_threshold = int(val))
-	config_list.add_child(death_threshold_spin)
-
-	_add_section_label("Strategy")
+	_add_section("Strategy")
 	var strat_row := HBoxContainer.new()
 	strat_row.add_theme_constant_override("separation", 4)
-	var strat_configs := [
+	for cfg in [
 		{"name": "Aggressive", "value": PartyAI.Strategy.AGGRESSIVE},
 		{"name": "Balanced", "value": PartyAI.Strategy.BALANCED},
 		{"name": "Defensive", "value": PartyAI.Strategy.DEFENSIVE},
-	]
-	for cfg in strat_configs:
+	]:
 		var btn := Button.new()
 		btn.text = cfg["name"]
-		btn.custom_minimum_size = Vector2(100, 32)
 		btn.toggle_mode = true
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, 34)
 		var strat_val: PartyAI.Strategy = cfg["value"] as PartyAI.Strategy
 		btn.button_pressed = (strat_val == strategy)
+		_style_segment(btn)
 		btn.pressed.connect(_on_strategy_selected.bind(strat_val))
 		strat_row.add_child(btn)
 		strategy_buttons.append(btn)
 		nav_buttons.append(btn)
 	config_list.add_child(strat_row)
 
+	_add_section("Run Parameters")
+	nav_buttons.append(_make_stepper("Encounters", 1, 8, num_encounters,
+		func(v: int) -> void: num_encounters = v))
+	nav_buttons.append(_make_stepper("Return Encounters", 0, 4, return_encounters,
+		func(v: int) -> void: return_encounters = v))
+	nav_buttons.append(_make_stepper("Number of Runs", 1, 10, num_dives,
+		func(v: int) -> void: num_dives = v))
+	nav_buttons.append(_make_stepper("Stop on Deaths", 0, 6, death_threshold,
+		func(v: int) -> void: death_threshold = v, "Never"))
+
+	boss_toggle = _make_toggle("Include Boss", include_boss,
+		func(v: bool) -> void: include_boss = v)
+	nav_buttons.append(boss_toggle)
+
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 8)
+	spacer.custom_minimum_size = Vector2(0, 10)
 	config_list.add_child(spacer)
 
 	run_button = Button.new()
-	run_button.text = "Run AutoExplore"
-	run_button.custom_minimum_size = Vector2(350, 40)
+	run_button.theme_type_variation = &"PrimaryButton"
+	run_button.text = "▶  Run AutoExplore"
+	run_button.custom_minimum_size = Vector2(0, 46)
+	run_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	run_button.pressed.connect(_on_run_pressed)
 	config_list.add_child(run_button)
 	nav_buttons.append(run_button)
@@ -172,11 +171,124 @@ func _populate_config() -> void:
 	nav.setup(nav_buttons, 0)
 
 
-func _add_section_label(text: String) -> void:
+func _add_section(text: String) -> void:
 	var label := Label.new()
+	label.theme_type_variation = &"SubheaderLabel"
 	label.text = text
-	label.add_theme_color_override("font_color", UIColors.INFO)
 	config_list.add_child(label)
+
+
+# --- Themed config controls -------------------------------------------------
+
+func _style_segment(btn: Button) -> void:
+	var flat := StyleBoxFlat.new()
+	flat.bg_color = UIColors.SURFACE_BACKGROUND
+	flat.set_corner_radius_all(6)
+	flat.content_margin_top = 7
+	flat.content_margin_bottom = 7
+	var hover := flat.duplicate() as StyleBoxFlat
+	hover.bg_color = UIColors.SURFACE_HOVER
+	var active := flat.duplicate() as StyleBoxFlat
+	active.bg_color = UIColors.SURFACE_CARD
+	active.border_width_bottom = 3
+	active.border_color = UIColors.ACCENT
+	var focus := active.duplicate() as StyleBoxFlat
+	focus.set_border_width_all(2)
+	focus.border_color = UIColors.BORDER_FOCUS
+	focus.shadow_color = UIColors.ACCENT_GLOW
+	focus.shadow_size = 4
+	btn.add_theme_stylebox_override("normal", flat)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", active)
+	btn.add_theme_stylebox_override("focus", focus)
+	btn.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+	btn.add_theme_color_override("font_pressed_color", Color.WHITE)
+	btn.add_theme_color_override("font_hover_color", UIColors.TEXT_PRIMARY)
+
+
+## A keyboard-navigable numeric stepper: a focusable row showing "Label  ‹ N ›".
+## Left/Right adjusts it when focused (handled in _unhandled_input).
+func _make_stepper(label_text: String, min_v: int, max_v: int, initial: int,
+		cb: Callable, zero_label: String = "") -> Button:
+	var btn := Button.new()
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.custom_minimum_size = Vector2(0, 38)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.set_meta("min", min_v)
+	btn.set_meta("max", max_v)
+	btn.set_meta("val", initial)
+	btn.set_meta("label", label_text)
+	btn.set_meta("cb", cb)
+	btn.set_meta("zero", zero_label)
+	_style_row(btn)
+	_refresh_stepper_text(btn)
+	config_list.add_child(btn)
+	_steppers.append(btn)
+	return btn
+
+
+func _refresh_stepper_text(btn: Button) -> void:
+	var v: int = btn.get_meta("val")
+	var zero: String = btn.get_meta("zero")
+	var val_str := zero if (v == 0 and zero != "") else str(v)
+	btn.text = "%s          ‹   %s   ›" % [btn.get_meta("label"), val_str]
+
+
+func _adjust_stepper(btn: Button, dir: int) -> void:
+	var v: int = clampi(btn.get_meta("val") + dir, btn.get_meta("min"), btn.get_meta("max"))
+	if v == btn.get_meta("val"):
+		return
+	btn.set_meta("val", v)
+	_refresh_stepper_text(btn)
+	(btn.get_meta("cb") as Callable).call(v)
+
+
+func _make_toggle(label_text: String, initial: bool, cb: Callable) -> Button:
+	var btn := Button.new()
+	btn.toggle_mode = true
+	btn.button_pressed = initial
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.custom_minimum_size = Vector2(0, 38)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.set_meta("label", label_text)
+	_style_row(btn)
+	_refresh_toggle_text(btn)
+	btn.toggled.connect(func(v: bool) -> void:
+		_refresh_toggle_text(btn)
+		cb.call(v))
+	config_list.add_child(btn)
+	return btn
+
+
+func _refresh_toggle_text(btn: Button) -> void:
+	var on := btn.button_pressed
+	btn.text = "%s          %s" % [btn.get_meta("label"), "●  On" if on else "○  Off"]
+	btn.add_theme_color_override("font_color",
+		UIColors.TEXT_HEALTHY if on else UIColors.TEXT_MUTED)
+
+
+func _style_row(btn: Button) -> void:
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = UIColors.SURFACE_CARD
+	normal.set_corner_radius_all(6)
+	normal.set_border_width_all(1)
+	normal.border_color = UIColors.BORDER_SUBTLE
+	normal.content_margin_left = 12
+	normal.content_margin_right = 12
+	normal.content_margin_top = 7
+	normal.content_margin_bottom = 7
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = UIColors.SURFACE_HOVER
+	var focus := normal.duplicate() as StyleBoxFlat
+	focus.bg_color = UIColors.SURFACE_SELECTED
+	focus.set_border_width_all(2)
+	focus.border_color = UIColors.ACCENT
+	focus.shadow_color = UIColors.ACCENT_GLOW
+	focus.shadow_size = 5
+	btn.add_theme_stylebox_override("normal", normal)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", focus)
+	btn.add_theme_stylebox_override("focus", focus)
 
 
 func _on_floor_selected(floor_num: int) -> void:
@@ -803,11 +915,13 @@ func _on_tab_changed(tab_index: int) -> void:
 
 
 func _update_help() -> void:
+	if _scaffold == null:
+		return
 	var v_nav := KeyBindingHelper.get_nav_help()
 	var confirm := KeyBindingHelper.get_confirm_help()
 	var cancel := KeyBindingHelper.get_cancel_help()
-	var h_nav := KeyBindingHelper.get_horizontal_help()
-	help_label.text = "%s | %s | %s: Tabs | %s" % [v_nav, confirm, h_nav.split(":")[0], cancel]
+	_scaffold.set_hint("%s   ·   ‹ / › Adjust / Tabs   ·   %s Run   ·   %s" % [
+		v_nav, confirm.split(":")[0], cancel])
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -816,11 +930,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.is_action_pressed("menu_left"):
-		if tab_bar.current_tab > 0:
+		var f := get_viewport().gui_get_focus_owner()
+		if f is Button and _steppers.has(f):
+			_adjust_stepper(f, -1)
+		elif tab_bar.current_tab > 0:
 			tab_bar.current_tab -= 1
 		return
 	if event.is_action_pressed("menu_right"):
-		if tab_bar.current_tab < tab_bar.tab_count - 1:
+		var f := get_viewport().gui_get_focus_owner()
+		if f is Button and _steppers.has(f):
+			_adjust_stepper(f, 1)
+		elif tab_bar.current_tab < tab_bar.tab_count - 1:
 			tab_bar.current_tab += 1
 		return
 

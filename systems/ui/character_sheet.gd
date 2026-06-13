@@ -47,6 +47,7 @@ enum StoryFocus { NONE, PERSONALITY, BONDS, MARKS }
 
 var _character: Character = null
 var _party_index: int = 0
+var _show_row_chip: bool = true
 var _font: Font
 
 var _equip_mode: EquipMode = EquipMode.VIEW
@@ -64,9 +65,10 @@ var _font_semibold: Font
 var _equip_visible_rows: int = 10
 
 
-func set_character(character: Character, party_index: int) -> void:
+func set_character(character: Character, party_index: int, show_row: bool = true) -> void:
 	_character = character
 	_party_index = party_index
+	_show_row_chip = show_row
 	_story_focus = StoryFocus.NONE
 	if _equip_mode == EquipMode.ITEM_SELECT:
 		_populate_available_items()
@@ -456,9 +458,10 @@ func _draw_hero_band(r: Rect2) -> void:
 	cx += _draw_chip(cx, cy, CharacterEnums.get_alignment_name(_character.alignment)) + 6.0
 	cx += _draw_chip(cx, cy, gender_str) + 6.0
 	cx += _draw_chip(cx, cy, "%d · %s" % [_character.get_age_years(), _character.get_life_phase_name()]) + 6.0
-	var row_text := "Front Row" if _party_index < 3 else "Back Row"
-	var row_color := UIColors.FRONT_ROW if _party_index < 3 else UIColors.BACK_ROW
-	cx += _draw_chip(cx, cy, row_text, row_color) + 6.0
+	if _show_row_chip:
+		var row_text := "Front Row" if _party_index < 3 else "Back Row"
+		var row_color := UIColors.FRONT_ROW if _party_index < 3 else UIColors.BACK_ROW
+		cx += _draw_chip(cx, cy, row_text, row_color) + 6.0
 
 	# Status chip pinned to the right edge.
 	var status_text := "DEAD" if _character.is_dead else _get_status_text()
@@ -594,7 +597,7 @@ func _draw_vitals(x: float, y: float, w: float) -> float:
 	else:
 		draw_string(_font_semibold, Vector2(x, y + 12.0), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIColors.TEXT_SECONDARY)
 		var nxt := "%s to Lv %d" % [_format_int(_character.get_xp_to_next_level()), _character.level + 1]
-		draw_string(_font, Vector2(x, y + 12.0), nxt, HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.TEXT_MUTED)
+		draw_string(_font, Vector2(x, y + 12.0), nxt, HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.TEXT_SECONDARY)
 		y += 16.0
 		_draw_meter(Rect2(x, y, w, 8.0), _character.get_xp_progress_percent() / 100.0, UIColors.GOLD)
 		y += 12.0
