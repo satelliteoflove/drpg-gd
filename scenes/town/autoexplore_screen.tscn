@@ -100,10 +100,10 @@ size_flags_vertical = 3
 [node name="ScrollContainer" type="ScrollContainer" parent="MainHBox/RightPanel/ResultsPanel"]
 layout_mode = 2
 follow_focus = true
+horizontal_scroll_mode = 0
 
-[node name="ResultsLabel" type="RichTextLabel" parent="MainHBox/RightPanel/ResultsPanel/ScrollContainer"]
+[node name="ResultsHost" type="VBoxContainer" parent="MainHBox/RightPanel/ResultsPanel/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-bbcode_enabled = true
-text = "Press Run to begin exploration."
+theme_override_constants/separation = 12
