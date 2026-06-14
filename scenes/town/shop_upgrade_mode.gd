@@ -68,7 +68,7 @@ func populate() -> void:
 
 func get_info_suffix(item: Item) -> String:
 	if item.is_equipment() and item.is_identified:
-		var text := "\n\n[color=cyan]Upgradeable Stats:[/color]"
+		var text := "\n\n[color=#%s]Upgradeable Stats:[/color]" % UIColors.ACCENT.to_html(false)
 		for stat in item.get_upgradeable_stats():
 			var current_level: int = item.upgrades.get(stat, 0)
 			var cost := item.get_upgrade_cost(stat)

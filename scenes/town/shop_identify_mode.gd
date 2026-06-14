@@ -43,7 +43,7 @@ func populate() -> void:
 
 func get_info_suffix(item: Item) -> String:
 	var cost := item.buy_price / 2
-	return "\n\n[color=yellow]Identify cost: %d gold[/color]" % cost
+	return "\n\n[color=#%s]Identify cost: %d gold[/color]" % [UIColors.GOLD.to_html(false), cost]
 
 
 func get_help_text() -> String:

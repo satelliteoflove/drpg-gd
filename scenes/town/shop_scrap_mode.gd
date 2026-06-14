@@ -35,7 +35,7 @@ func populate() -> void:
 
 
 func get_info_suffix(_item: Item) -> String:
-	return "\n\n[color=orange]Scrap yield: 1-2[/color]"
+	return "\n\n[color=#%s]Scrap yield: 1-2[/color]" % UIColors.TEXT_STATUS.to_html(false)
 
 
 func get_help_text() -> String:

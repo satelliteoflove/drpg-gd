@@ -35,7 +35,7 @@ func populate() -> void:
 
 
 func get_info_suffix(item: Item) -> String:
-	return "\n\n[color=green]Sell: %d gold[/color]" % item.sell_price
+	return "\n\n[color=#%s]Sell: %d gold[/color]" % [UIColors.TEXT_HEALTHY.to_html(false), item.sell_price]
 
 
 func get_help_text() -> String:

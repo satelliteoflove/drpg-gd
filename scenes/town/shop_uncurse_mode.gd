@@ -44,8 +44,8 @@ func populate() -> void:
 
 
 func get_info_suffix(item: Item) -> String:
-	var text := "\n\n[color=red]Uncurse cost: %d gold[/color]" % item.buy_price
-	text += "\n[color=gray]Item will be destroyed[/color]"
+	var text := "\n\n[color=#%s]Uncurse cost: %d gold[/color]" % [UIColors.TEXT_DANGER.to_html(false), item.buy_price]
+	text += "\n[color=#%s]Item will be destroyed[/color]" % UIColors.TEXT_MUTED.to_html(false)
 	return text
 
 

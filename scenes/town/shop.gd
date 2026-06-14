@@ -20,6 +20,7 @@ var modes: Array[RefCounted] = []
 
 var _scaffold: ScreenScaffold = null
 var _mode_buttons: Array[Button] = []
+var _detail: ItemDetailView = null
 
 @onready var title_label: Label = $MainHBox/LeftPanel/Header/TitleLabel
 @onready var gold_label: Label = $MainHBox/LeftPanel/Header/GoldLabel
@@ -34,11 +35,7 @@ var _mode_buttons: Array[Button] = []
 @onready var help_label: Label = $MainHBox/LeftPanel/HelpLabel
 @onready var back_button: Button = $MainHBox/LeftPanel/BackButton
 
-@onready var info_panel: PanelContainer = $MainHBox/RightPanel/InfoPanel
-@onready var info_label: RichTextLabel = $MainHBox/RightPanel/InfoPanel/InfoLabel
-@onready var comparison_label: Label = $MainHBox/RightPanel/ComparisonLabel
-@onready var comparison_panel: PanelContainer = $MainHBox/RightPanel/ComparisonPanel
-@onready var comparison_list: VBoxContainer = $MainHBox/RightPanel/ComparisonPanel/ScrollContainer/ComparisonList
+@onready var right_panel: Control = $MainHBox/RightPanel
 
 @onready var quantity_dialog: PanelContainer = $QuantityDialog
 @onready var quantity_title: Label = $QuantityDialog/VBox/QuantityTitle
@@ -116,6 +113,7 @@ func _install_chrome() -> void:
 	_scaffold.body.add_child(main)
 	_scaffold.back_pressed.connect(_on_back_pressed)
 
+	_detail = ItemDetailView.new(right_panel)
 	_build_mode_rail(left)
 
 
@@ -241,43 +239,38 @@ func rebuild_items_keep_focus(focus_index: int) -> void:
 
 func _on_selection_changed(_index: int) -> void:
 	_update_info()
-	_update_comparison()
 
 
 func _update_info() -> void:
-	if nav == null or displayed_items.is_empty():
-		info_label.text = "Select an item to view details."
-		comparison_label.visible = false
-		comparison_panel.visible = false
+	if _detail == null:
 		return
 
-	var idx := nav.get_current_index()
+	var idx := nav.get_current_index() if nav != null else -1
 	if idx < 0 or idx >= displayed_items.size():
-		info_label.text = "Select an item to view details."
+		_detail.show_text(_empty_detail_text())
 		return
 
 	var item: Item = displayed_items[idx]
-	_show_item_info(item)
-
-	if item.is_equipment():
-		comparison_label.visible = true
-		comparison_panel.visible = true
-		_update_comparison()
-	else:
-		comparison_label.visible = false
-		comparison_panel.visible = false
+	var fit_rows: Array = _build_fit_rows(item) if item.is_equipment() else []
+	_detail.show_item(item, _item_body_bbcode(item), fit_rows)
 
 
-func _show_item_info(item: Item) -> void:
-	var nc := ItemView.name_color(item)
-	var text := "[b][color=#%s]%s[/color][/b]   [color=#%s]%s[/color]\n" % [
-		nc.to_html(false), item.get_display_name(),
-		UIColors.TEXT_MUTED.to_html(false), item.get_type_name()]
+## A centered guidance card for the current mode when no item is in focus.
+func _empty_detail_text() -> String:
+	return "[b]%s[/b]\n\n[color=#%s]%s[/color]" % [
+		MODE_NAMES[current_mode],
+		UIColors.TEXT_SECONDARY.to_html(false),
+		_get_active_mode().get_mode_message()]
 
+
+## Description / stats / requirements + the mode's transaction line. The name and
+## type live in the dossier's header band, so they are omitted here.
+func _item_body_bbcode(item: Item) -> String:
+	var text := ""
 	if item.is_identified:
 		if item.description != "":
-			text += "[color=#%s]%s[/color]\n" % [UIColors.TEXT_MUTED.to_html(false), item.description]
-		text += "[color=#%s]%s[/color]" % [UIColors.TEXT_SECONDARY.to_html(false), item.get_stats_text()]
+			text += "[color=#%s]%s[/color]\n\n" % [UIColors.TEXT_SECONDARY.to_html(false), item.description]
+		text += "[color=#%s]%s[/color]" % [UIColors.TEXT_PRIMARY.to_html(false), item.get_stats_text()]
 
 		var reqs: Array[String] = []
 		if item.required_level > 1:
@@ -298,33 +291,21 @@ func _show_item_info(item: Item) -> void:
 		text += "[color=#%s]Unidentified — stats unknown[/color]" % UIColors.TEXT_MUTED.to_html(false)
 
 	text += _get_active_mode().get_info_suffix(item)
-	info_label.text = text
+	return text
 
 
-func _update_comparison() -> void:
-	for child in comparison_list.get_children():
-		child.queue_free()
-
-	if nav == null or displayed_items.is_empty():
-		return
-
-	var idx := nav.get_current_index()
-	if idx < 0 or idx >= displayed_items.size():
-		return
-
-	var item: Item = displayed_items[idx]
-	if not item.is_equipment():
-		return
-
+## Pre-build the per-member party-fit rows the dossier folds into its card.
+func _build_fit_rows(item: Item) -> Array:
+	var rows: Array = []
 	if GameState.party == null or GameState.party.is_empty():
 		var label := Label.new()
-		label.text = "(No party members)"
-		comparison_list.add_child(label)
-		return
-
+		label.theme_type_variation = &"MutedLabel"
+		label.text = "No party members."
+		rows.append(label)
+		return rows
 	for member in GameState.party.get_members():
-		var row := _create_comparison_row(member, item)
-		comparison_list.add_child(row)
+		rows.append(_create_comparison_row(member, item))
+	return rows
 
 
 func _create_comparison_row(member: Character, item: Item) -> HBoxContainer:

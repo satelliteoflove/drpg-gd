@@ -59,19 +59,33 @@ theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 10
 
-[node name="StatusVBox" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent"]
+[node name="StatusHBox" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 
-[node name="CharacterTabs" type="HBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusVBox"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="DetailPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusVBox"]
+[node name="MemberRail" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox"]
+custom_minimum_size = Vector2(238, 0)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="CharacterSheet" type="Control" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusVBox/DetailPanel"]
+[node name="RailMargin" type="MarginContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/MemberRail"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="CharacterTabs" type="VBoxContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/MemberRail/RailMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="DetailPanel" type="PanelContainer" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CharacterSheet" type="Control" parent="MainPanel/VBox/ContentPanel/StatusContent/StatusHBox/DetailPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3

@@ -44,7 +44,7 @@ func populate() -> void:
 
 
 func get_info_suffix(item: Item) -> String:
-	return "\n\n[color=yellow]Buy: %d gold[/color]" % item.buy_price
+	return "\n\n[color=#%s]Buy: %d gold[/color]" % [UIColors.GOLD.to_html(false), item.buy_price]
 
 
 func get_help_text() -> String:

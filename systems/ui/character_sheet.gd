@@ -871,6 +871,22 @@ func _get_marks_detail() -> String:
 	return text
 
 
+## The character's full story — personality, bonds and marks in detail — as one
+## bbcode block, with each section header tinted gold. Used by the Status tab's
+## story overlay.
+func get_story_detail() -> String:
+	if _character == null:
+		return ""
+	var gold := UIColors.TITLE_GOLD.to_html(false)
+	var sections := [_get_personality_detail(), _get_bonds_detail(), _get_marks_detail()]
+	var out := ""
+	for s in sections:
+		# Each helper opens with a single "[b]Header[/b]" line; tint it gold.
+		out += s.strip_edges().replace("[b]", "[color=#%s][b]" % gold).replace("[/b]", "[/b][/color]")
+		out += "\n\n"
+	return out.strip_edges()
+
+
 # === COLUMN 3: EQUIPMENT ===
 
 
