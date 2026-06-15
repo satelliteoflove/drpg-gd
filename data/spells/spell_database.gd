@@ -134,8 +134,9 @@ static func _create_priest_spells() -> void:
 	spell.add_status_effect(CharacterEnums.StatusEffect.BLESSED, "5+1d6", CharacterEnums.SaveType.MAGICAL, 0)
 	_spells["p2_divine_favor"] = spell
 
-	spell = Spell.create("p2_light", "Light", "", CharacterEnums.SpellSchool.PRIEST, 2, CharacterEnums.SpellTargetType.SELF, "Creates light to see in darkness.")
+	spell = Spell.create("p2_light", "Light", "", CharacterEnums.SpellSchool.PRIEST, 2, CharacterEnums.SpellTargetType.SELF, "Conjures a radiant light that lets the party see far into the darkness for a time, and spares your torches while it burns.")
 	spell.set_in_combat(false).set_out_of_combat(true)
+	spell.add_status_effect(CharacterEnums.StatusEffect.LIGHT, "80", CharacterEnums.SaveType.MAGICAL, 0)
 	_spells["p2_light"] = spell
 
 	spell = Spell.create("p3_purify", "Purify", "", CharacterEnums.SpellSchool.PRIEST, 3, CharacterEnums.SpellTargetType.SINGLE_ALLY, "Cures paralysis and sleep.")

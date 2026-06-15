@@ -82,7 +82,8 @@ enum StatusEffect {
 	MIND_WARDED,
 	DEAD,
 	ASHED,
-	LOST
+	LOST,
+	LIGHT
 }
 
 enum SaveType {
@@ -196,7 +197,8 @@ const STATUS_NAMES: Dictionary = {
 	StatusEffect.MIND_WARDED: "Mind Warded",
 	StatusEffect.DEAD: "Dead",
 	StatusEffect.ASHED: "Ashed",
-	StatusEffect.LOST: "Lost"
+	StatusEffect.LOST: "Lost",
+	StatusEffect.LIGHT: "Light"
 }
 
 const STATUS_NOUN_NAMES: Dictionary = {
@@ -216,7 +218,8 @@ const STATUS_NOUN_NAMES: Dictionary = {
 	StatusEffect.MIND_WARDED: "a mind ward",
 	StatusEffect.DEAD: "death",
 	StatusEffect.ASHED: "incineration",
-	StatusEffect.LOST: "banishment"
+	StatusEffect.LOST: "banishment",
+	StatusEffect.LIGHT: "light"
 }
 
 const STATUS_ABBREVIATIONS: Dictionary = {
@@ -236,7 +239,8 @@ const STATUS_ABBREVIATIONS: Dictionary = {
 	StatusEffect.MIND_WARDED: "MWD",
 	StatusEffect.DEAD: "DEAD",
 	StatusEffect.ASHED: "ASH",
-	StatusEffect.LOST: "LOST"
+	StatusEffect.LOST: "LOST",
+	StatusEffect.LIGHT: "LGT"
 }
 
 const DISABLING_STATUSES: Array[StatusEffect] = [
@@ -261,6 +265,7 @@ const BENEFICIAL_STATUSES: Array[StatusEffect] = [
 	StatusEffect.BLESSED,
 	StatusEffect.BERSERK,
 	StatusEffect.MIND_WARDED,
+	StatusEffect.LIGHT,
 ]
 
 const RACIAL_RESISTANCES: Dictionary = {

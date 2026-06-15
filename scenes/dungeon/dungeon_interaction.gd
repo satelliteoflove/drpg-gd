@@ -62,6 +62,7 @@ func close_doors_behind() -> void:
 
 
 func _open_door_and_step(x: int, y: int, direction: String, message: String) -> void:
+	AudioManager.play_sfx_path("res://audio/sfx/door.wav")
 	dungeon.dungeon_data.sync_door_open(x, y, direction, true)
 	dungeon._update_door_visual(x, y, direction)
 	var offset: Vector2i = DungeonData.DIR_OFFSET[direction]

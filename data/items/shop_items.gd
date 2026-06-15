@@ -168,6 +168,10 @@ static func _create_items() -> void:
 	_items["scroll_revelation"].reveal_duration = 40
 	_items["scroll_revelation"].description = "Reveals all enemies on the floor for 40 steps."
 
+	_items["torch"] = Item.create_consumable("torch", "Torch", 0, 0, 8)
+	_items["torch"].burn_duration = 150
+	_items["torch"].description = "A pitch-soaked brand. Lights the way for about 150 steps before it gutters out. The dungeon is lightless without one."
+
 	var dungeon_key := Item.new()
 	dungeon_key.id = "dungeon_key"
 	dungeon_key.item_name = "Dungeon Key"

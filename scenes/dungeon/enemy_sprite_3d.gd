@@ -9,6 +9,7 @@ const BOSS_TARGET_HEIGHT: float = 1.8
 var enemy_group: EnemyGroup = null
 var _last_grid_position: Vector2i = Vector2i(-999, -999)
 var _sprite_y: float = 1.75
+var _audio: AudioStreamPlayer3D = null
 
 
 func _ready() -> void:
@@ -22,7 +23,35 @@ func _ready() -> void:
 func setup(group: EnemyGroup) -> void:
 	enemy_group = group
 	_load_texture()
+	_setup_audio()
 	update_world_position()
+
+
+# A faint, looping positional growl so a nearby roamer is heard in the dark
+# before it is seen. Attenuates with distance from the camera (the audio
+# listener); plays regardless of visual LOS, and frees with the sprite on death.
+func _setup_audio() -> void:
+	var path := "res://audio/sfx/roamer.wav"
+	if not ResourceLoader.exists(path):
+		return
+	_audio = AudioStreamPlayer3D.new()
+	_audio.bus = "SFX"
+	var s := load(path)
+	if s is AudioStreamWAV:
+		var w := s as AudioStreamWAV
+		w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		w.loop_begin = 0
+		w.loop_end = w.data.size() / 2
+	_audio.stream = s
+	_audio.unit_size = 2.5
+	_audio.max_distance = 14.0
+	_audio.volume_db = linear_to_db(0.4)
+	_audio.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+	# autoplay (not play()) so the loop starts when the sprite is actually in the
+	# tree — setup() runs before the sprite is added to the dungeon, and a play()
+	# call outside the tree is silently dropped by the audio server.
+	_audio.autoplay = true
+	add_child(_audio)
 
 
 func _load_texture() -> void:
@@ -57,8 +86,19 @@ func _use_placeholder_texture() -> void:
 	texture = ImageTexture.create_from_image(img)
 
 
-func update_visibility(_distance: int, _is_revealed: bool) -> void:
-	visible = true
+const DARK_SILHOUETTE := Color(0.16, 0.16, 0.2)
+
+## Darken the billboard toward a dim silhouette as it sits beyond the player's
+## current light reach (passed in tiles), so a foe at the edge of the torchlight
+## is a creeping shape and only fully visible when the light actually touches it.
+## Revealed (map/scry) enemies always show at full brightness.
+func update_visibility(dist_tiles: int, light_range_tiles: float, is_revealed: bool) -> void:
+	if is_revealed:
+		modulate = Color.WHITE
+		return
+	var lr := maxf(1.0, light_range_tiles)
+	var t := clampf((float(dist_tiles) - lr * 0.4) / (lr * 0.6), 0.0, 1.0)
+	modulate = Color.WHITE.lerp(DARK_SILHOUETTE, t)
 
 
 func update_world_position() -> void:
