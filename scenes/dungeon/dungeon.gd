@@ -52,8 +52,13 @@ var event_handler: DungeonEventHandler = null
 @onready var west_wall_grid: GridMap = $WestWallGridMap
 @onready var camera: Camera3D = $Camera3D
 @onready var player_light: OmniLight3D = $Camera3D/PlayerLight
-@onready var floor_label: Label = $UI/TopBar/FloorLabel
-@onready var time_label: Label = $UI/TopBar/TimeLabel
+
+# Dungeon HUD (built in code in _build_hud so it shares the Arcane-Tome theme).
+var _hud_root: Control = null
+var floor_label: Label = null
+var time_label: Label = null
+var _compass: CompassRose = null
+var _vitals_strip: PartyVitalsStrip = null
 
 var _flicker_time: float = 0.0
 var _message_label: Label = null
@@ -86,13 +91,12 @@ func _ready() -> void:
 	_render_dungeon()
 	_spawn_player()
 	_initialize_enemy_system()
+	_build_hud()
 	_update_ui()
 	GameState.floor_tracker.step_taken.connect(_on_step_taken)
 
 	_setup_message_label()
 	_setup_chat_log()
-	$UI/BottomBar/TownButton.pressed.connect(_on_town_pressed)
-	$UI/BottomBar/MenuButton.pressed.connect(_on_menu_pressed)
 	GameState.party_member_died.connect(event_handler.on_party_member_died_in_dungeon)
 
 
@@ -100,6 +104,110 @@ func _process(delta: float) -> void:
 	_flicker_time += delta * TORCH_FLICKER_SPEED
 	var flicker := sin(_flicker_time) * 0.5 + sin(_flicker_time * 2.3) * 0.3 + sin(_flicker_time * 4.1) * 0.2
 	player_light.light_energy = TORCH_BASE_ENERGY + flicker * TORCH_FLICKER_INTENSITY
+
+
+# --- Dungeon HUD ------------------------------------------------------------
+# Built in code so the exploration overlay shares the Arcane-Tome theme. A
+# top-left almanac (floor + day/time), a top-centre compass, top-right nav
+# buttons, and a bottom party-vitals band.
+
+func _build_hud() -> void:
+	_hud_root = Control.new()
+	_hud_root.name = "HUDRoot"
+	_hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$UI.add_child(_hud_root)
+
+	_build_almanac()
+	_build_compass()
+	_build_nav_buttons()
+	_build_vitals_strip()
+
+
+func _build_almanac() -> void:
+	var panel := PanelContainer.new()
+	panel.anchor_left = 0.0
+	panel.anchor_top = 0.0
+	panel.offset_left = 10
+	panel.offset_top = 10
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hud_root.add_child(panel)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 0)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(col)
+
+	floor_label = Label.new()
+	floor_label.theme_type_variation = &"SubheaderLabel"
+	floor_label.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
+	floor_label.text = "Floor 1"
+	col.add_child(floor_label)
+
+	time_label = Label.new()
+	time_label.theme_type_variation = &"MutedLabel"
+	time_label.text = "Day 1"
+	col.add_child(time_label)
+
+
+func _build_compass() -> void:
+	_compass = CompassRose.new()
+	_compass.custom_minimum_size = Vector2(78, 78)
+	_compass.anchor_left = 0.5
+	_compass.anchor_right = 0.5
+	_compass.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_compass.offset_left = -39
+	_compass.offset_right = 39
+	_compass.offset_top = 8
+	_compass.offset_bottom = 86
+	_compass.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hud_root.add_child(_compass)
+	_compass.set_facing(int(facing))
+
+
+func _build_nav_buttons() -> void:
+	var panel := PanelContainer.new()
+	panel.anchor_left = 1.0
+	panel.anchor_right = 1.0
+	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel.offset_top = 10
+	panel.offset_right = -10
+	_hud_root.add_child(panel)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	panel.add_child(row)
+
+	var menu_btn := Button.new()
+	menu_btn.text = "Menu (M)"
+	menu_btn.focus_mode = Control.FOCUS_NONE
+	menu_btn.pressed.connect(_on_menu_pressed)
+	row.add_child(menu_btn)
+
+	var town_btn := Button.new()
+	town_btn.text = "Town (T)"
+	town_btn.focus_mode = Control.FOCUS_NONE
+	town_btn.pressed.connect(_on_town_pressed)
+	row.add_child(town_btn)
+
+
+func _build_vitals_strip() -> void:
+	_vitals_strip = PartyVitalsStrip.new()
+	_vitals_strip.anchor_left = 0.0
+	_vitals_strip.anchor_right = 1.0
+	_vitals_strip.anchor_top = 1.0
+	_vitals_strip.anchor_bottom = 1.0
+	_vitals_strip.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_vitals_strip.offset_left = 8
+	_vitals_strip.offset_right = -8
+	_vitals_strip.offset_top = -72
+	_vitals_strip.offset_bottom = -6
+	_hud_root.add_child(_vitals_strip)
+
+
+func _refresh_compass() -> void:
+	if _compass:
+		_compass.set_facing(int(facing))
 
 
 func _create_material_from_texture(diffuse_path: String, normal_path: String, uv_scale: Vector3, tint: Color = Color.WHITE, normal_strength: float = 1.0, roughness_path: String = "", roughness_value: float = 0.8) -> StandardMaterial3D:
@@ -539,6 +647,8 @@ func _update_ui() -> void:
 	var current_day: int = GameState.game_day + pending_days
 	var hours: int = (GameState.floor_tracker.accumulated_steps % FloorTracker.STEPS_PER_DAY) * 24 / FloorTracker.STEPS_PER_DAY
 	time_label.text = "%s  %dh" % [GameCalendar.format_short(current_day), hours]
+	if _vitals_strip:
+		_vitals_strip.refresh()
 
 
 func _on_step_taken(_total_steps: int) -> void:
@@ -769,6 +879,7 @@ func _on_move_complete() -> void:
 func _on_turn_complete() -> void:
 	is_moving = false
 	camera.rotation_degrees.y = -facing * 90.0
+	_refresh_compass()
 	_check_held_movement()
 
 
@@ -822,7 +933,8 @@ func _open_combat(encounter: Dictionary) -> void:
 		return
 	combat_open = true
 	combat_overlay.visible = true
-	$UI/BottomBar.visible = false
+	if _hud_root:
+		_hud_root.visible = false
 
 	GameState.start_combat(encounter)
 	combat_ui = CombatScene.instantiate()
@@ -859,7 +971,10 @@ func _close_combat() -> void:
 		return
 	combat_open = false
 	combat_overlay.visible = false
-	$UI/BottomBar.visible = true
+	if _hud_root:
+		_hud_root.visible = true
+	if _vitals_strip:
+		_vitals_strip.refresh()
 	if combat_ui:
 		combat_ui.queue_free()
 		combat_ui = null
@@ -983,8 +1098,8 @@ func _setup_chat_log() -> void:
 	_chat_log.anchor_right = 0.85
 	_chat_log.anchor_top = 1.0
 	_chat_log.anchor_bottom = 1.0
-	_chat_log.offset_top = -120
-	_chat_log.offset_bottom = -8
+	_chat_log.offset_top = -198
+	_chat_log.offset_bottom = -82
 	_chat_log.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_chat_log.add_theme_font_size_override("normal_font_size", 13)
 	_chat_log.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1002,8 +1117,8 @@ func _setup_message_label() -> void:
 	_message_label.anchor_bottom = 1.0
 	_message_label.offset_left = -200
 	_message_label.offset_right = 200
-	_message_label.offset_top = -80
-	_message_label.offset_bottom = -50
+	_message_label.offset_top = -150
+	_message_label.offset_bottom = -120
 	_message_label.add_theme_font_size_override("font_size", 18)
 	_message_label.modulate.a = 0.0
 	$UI.add_child(_message_label)
