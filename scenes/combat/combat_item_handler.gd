@@ -19,6 +19,7 @@ func on_item_pressed() -> void:
 
 	combat._close_all_modals()
 	combat._set_actions_enabled(false)
+	combat.modal_overlay.visible = true
 	combat.item_modal.visible = true
 
 	if combat.item_nav and not combat.item_buttons.is_empty():
@@ -61,12 +62,24 @@ func populate_item_list() -> void:
 
 func on_item_selected(item: Item) -> void:
 	combat.selected_item = item
-	combat.item_modal.visible = false
-	populate_target_list()
-	combat.target_modal.visible = true
+	combat._close_all_modals()
 
-	if combat.target_nav and not combat.target_buttons.is_empty():
-		combat.target_nav.setup(combat.target_buttons, 0)
+	# Pick the recipient on the battlefield: overlay buttons land on the cards of
+	# party members who'd actually benefit (mirrors enemy targeting).
+	var valid: Array = []
+	for character: Character in combat.combat_system.get_party():
+		if can_use_item_on(item, character):
+			valid.append(character)
+
+	if valid.is_empty():
+		combat.message_log.append_text(
+			"[color=#aaaaaa]>[/color] No one can benefit from %s.\n" % item.item_name)
+		combat.selected_item = null
+		combat._set_actions_enabled(true)
+		return
+
+	combat.ally_target_mode = "item"
+	combat.targeting.populate_ally_targets(valid, on_target_selected)
 
 
 func populate_target_list() -> void:
@@ -127,6 +140,7 @@ func on_target_selected(character: Character) -> void:
 	if combat.selected_item == null:
 		return
 
+	combat.ally_target_mode = ""
 	combat._close_all_modals()
 
 	var current_char: Character = combat._get_character_by_id(combat.combat_system.current_combatant_id)
@@ -141,12 +155,10 @@ func on_target_selected(character: Character) -> void:
 	if combat.selected_item.heal_amount > 0:
 		var healed := character.heal(combat.selected_item.heal_amount)
 		message += "Restored %d HP. " % healed
-		combat.targeting.show_floating_text(character.id, "+%d HP" % healed, UIColors.HP_GREEN)
 
 	if combat.selected_item.mp_restore > 0:
 		var restored := character.restore_mp(combat.selected_item.mp_restore)
 		message += "Restored %d MP. " % restored
-		combat.targeting.show_floating_text(character.id, "+%d MP" % restored, UIColors.MP_BLUE)
 
 	for status: CharacterEnums.StatusEffect in combat.selected_item.cures_status:
 		if character.has_status(status):

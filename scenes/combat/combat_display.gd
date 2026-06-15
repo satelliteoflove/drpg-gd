@@ -26,6 +26,16 @@ var _silhouette_texture: Texture2D = null
 var _sprite_sheet_shader: Shader = preload("res://shaders/sprite_sheet_animation.gdshader")
 var _display_dirty: bool = false
 
+# --- Feedback / juice: HP/MP changes are derived by diffing against the last
+# rendered values, so floating numbers, bar drains and hit flashes need no
+# changes to the combat engine. FX render in a dedicated top overlay so they are
+# never dimmed by dead-tint or clipped by a card. ---
+var _last_hp: Dictionary = {}
+var _last_mp: Dictionary = {}
+var _bar_tweens: Dictionary = {}
+var _fx_layer: Control = null
+var _dead_seen: Dictionary = {}
+
 
 func init(p_combat: Control) -> void:
 	combat = p_combat
@@ -66,15 +76,20 @@ func _update_enemy_display() -> void:
 		var ui = combat.enemy_panels[enemy.combat_id]
 
 		ui.hp_bar.max_value = enemy.max_hp
-		ui.hp_bar.value = enemy.current_hp
+		_diff_and_juice(enemy.combat_id, ui.panel.get_parent(), ui.hp_bar, enemy.current_hp, false)
 		ui.hp_text.text = "%d" % enemy.current_hp
 
 		_update_status_icons(ui.status_icons_hbox, enemy.status_effects)
 
 		if enemy.is_dead:
 			ui.status_label.text = "DEAD"
-			ui.panel.modulate = UIColors.DEAD_TINT
+			if not _dead_seen.has(enemy.combat_id):
+				_dead_seen[enemy.combat_id] = true
+				_fade_to_dead(ui.panel)
+			else:
+				ui.panel.modulate = UIColors.DEAD_TINT
 		else:
+			_dead_seen.erase(enemy.combat_id)
 			var hp_percent := float(enemy.current_hp) / float(enemy.max_hp)
 			if hp_percent <= 0.25:
 				ui.status_label.text = "Critical"
@@ -149,15 +164,21 @@ func update_portrait_for_active_combatant() -> void:
 	if combat.combat_system == null:
 		return
 	var combatant_id: String = combat.combat_system.current_combatant_id
-	if combatant_id.is_empty():
-		return
 	for enemy: Monster in combat.combat_system.get_enemies():
 		if enemy.combat_id == combatant_id:
 			update_portrait_for_enemy(enemy)
 			return
-	var character: Character = combat._get_character_by_id(combatant_id)
-	if character:
-		update_portrait_for_character(character)
+	# On a party member's turn (or between turns) keep the featured foe on screen so
+	# the portrait panel always carries the enemy art the fight is about.
+	update_portrait_for_enemy(_featured_enemy())
+
+
+func _featured_enemy() -> Monster:
+	var enemies: Array[Monster] = combat.combat_system.get_enemies()
+	for enemy: Monster in enemies:
+		if not enemy.is_dead:
+			return enemy
+	return enemies[0] if not enemies.is_empty() else null
 
 
 func _update_party_stats() -> void:
@@ -168,11 +189,11 @@ func _update_party_stats() -> void:
 		var ui = combat.party_panels[character.id]
 
 		ui.hp_bar.max_value = character.max_hp
-		ui.hp_bar.value = character.current_hp
+		_diff_and_juice(character.id, ui.panel, ui.hp_bar, character.current_hp, false)
 		ui.hp_text.text = "%d" % character.current_hp
 
 		ui.mp_bar.max_value = max(character.max_mp, 1)
-		ui.mp_bar.value = character.current_mp
+		_diff_and_juice(character.id, ui.panel, ui.mp_bar, character.current_mp, true)
 		ui.mp_text.text = "%d" % character.current_mp
 
 		_update_status_icons(ui.status_icons_hbox, character.status_effects)
@@ -188,26 +209,16 @@ func _update_party_stats() -> void:
 		var is_active: bool = combat.combat_system.current_combatant_id == character.id and combat.combat_system.is_player_turn()
 		if is_active:
 			ui.name_label.add_theme_color_override("font_color", UIColors.TEXT_ACTIVE)
-			var active_style := StyleBoxFlat.new()
-			active_style.bg_color = Color.TRANSPARENT
-			active_style.border_color = UIColors.TEXT_ACTIVE
-			active_style.border_width_left = 2
-			active_style.border_width_top = 2
-			active_style.border_width_right = 2
-			active_style.border_width_bottom = 2
-			active_style.corner_radius_top_left = 4
-			active_style.corner_radius_top_right = 4
-			active_style.corner_radius_bottom_left = 4
-			active_style.corner_radius_bottom_right = 4
+			var active_style := _card_box(true)
 			ui.panel.add_theme_stylebox_override("panel", active_style)
 			if combat._active_panel_tween:
 				combat._active_panel_tween.kill()
 			combat._active_panel_tween = combat.create_tween().set_loops()
-			combat._active_panel_tween.tween_property(active_style, "border_color:a", 0.4, 0.6).set_trans(Tween.TRANS_SINE)
+			combat._active_panel_tween.tween_property(active_style, "border_color:a", 0.35, 0.6).set_trans(Tween.TRANS_SINE)
 			combat._active_panel_tween.tween_property(active_style, "border_color:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
 		else:
 			ui.name_label.remove_theme_color_override("font_color")
-			ui.panel.remove_theme_stylebox_override("panel")
+			ui.panel.add_theme_stylebox_override("panel", _card_box(false))
 
 
 func _get_character_status_text(character: Character) -> String:
@@ -415,17 +426,24 @@ func build_enemy_display() -> void:
 			var enemy: Monster = enemy_grid_map.get(pos)
 
 			var cell := PanelContainer.new()
-			cell.custom_minimum_size = Vector2(100, 50)
+			cell.custom_minimum_size = Vector2(124, 44)
 
 			if enemy != null:
+				cell.add_theme_stylebox_override("panel", _card_box(false))
 				var ui := _create_enemy_panel(enemy)
 				combat.enemy_panels[enemy.combat_id] = ui
 				cell.add_child(ui.panel)
 				if enemy.is_dead:
 					ui.panel.modulate = UIColors.DEAD_TINT
 			else:
+				var empty_box := StyleBoxFlat.new()
+				empty_box.bg_color = UIColors.SURFACE_PANEL.darkened(0.25)
+				empty_box.set_corner_radius_all(8)
+				empty_box.set_border_width_all(1)
+				empty_box.border_color = UIColors.BORDER_SUBTLE.darkened(0.4)
+				cell.add_theme_stylebox_override("panel", empty_box)
 				var empty := Label.new()
-				empty.text = "-"
+				empty.text = "·"
 				empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 				empty.add_theme_color_override("font_color", UIColors.TEXT_DISABLED)
@@ -441,19 +459,22 @@ func _create_enemy_panel(enemy: Monster) -> RefCounted:
 	ui.panel = VBoxContainer.new()
 	ui.panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui.panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ui.panel.add_theme_constant_override("separation", 1)
+	ui.panel.add_theme_constant_override("separation", 2)
 
 	ui.name_label = Label.new()
 	ui.name_label.text = enemy.monster_name
 	ui.name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ui.name_label.add_theme_font_size_override("font_size", 13)
 	ui.panel.add_child(ui.name_label)
 
 	var hp_hbox := HBoxContainer.new()
+	hp_hbox.add_theme_constant_override("separation", 5)
 	ui.panel.add_child(hp_hbox)
 
 	ui.hp_bar = ProgressBar.new()
-	ui.hp_bar.custom_minimum_size = Vector2(70, 12)
+	ui.hp_bar.custom_minimum_size = Vector2(60, 11)
 	ui.hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.hp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ui.hp_bar.max_value = enemy.max_hp
 	ui.hp_bar.value = enemy.current_hp
 	ui.hp_bar.show_percentage = false
@@ -462,20 +483,26 @@ func _create_enemy_panel(enemy: Monster) -> RefCounted:
 
 	ui.hp_text = Label.new()
 	ui.hp_text.text = "%d" % enemy.current_hp
-	ui.hp_text.custom_minimum_size = Vector2(28, 0)
+	ui.hp_text.custom_minimum_size = Vector2(24, 0)
 	ui.hp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ui.hp_text.add_theme_font_size_override("font_size", 11)
 	hp_hbox.add_child(ui.hp_text)
 
+	# Status row: effect icons + a tiny Wounded/Critical label, inline.
+	var status_row := HBoxContainer.new()
+	status_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	status_row.add_theme_constant_override("separation", 3)
+	ui.panel.add_child(status_row)
+
 	ui.status_icons_hbox = HBoxContainer.new()
-	ui.status_icons_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	ui.status_icons_hbox.add_theme_constant_override("separation", 2)
-	ui.panel.add_child(ui.status_icons_hbox)
+	status_row.add_child(ui.status_icons_hbox)
 
 	ui.status_label = Label.new()
 	ui.status_label.text = ""
-	ui.status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ui.status_label.add_theme_font_size_override("font_size", 10)
 	ui.status_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
-	ui.panel.add_child(ui.status_label)
+	status_row.add_child(ui.status_label)
 
 	return ui
 
@@ -519,84 +546,186 @@ func _create_party_member_panel(character: Character, _is_front: bool) -> RefCou
 	var ui = combat.PartyMemberUI.new()
 
 	ui.panel = PanelContainer.new()
-	ui.panel.custom_minimum_size = Vector2(100, 50)
+	ui.panel.custom_minimum_size = Vector2(150, 40)
+	ui.panel.add_theme_stylebox_override("panel", _card_box(false))
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 1)
+	vbox.add_theme_constant_override("separation", 3)
 	ui.panel.add_child(vbox)
+
+	# Row 1: name (left) + inline status icons / abbreviations (right).
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 4)
+	vbox.add_child(top)
 
 	ui.name_label = Label.new()
 	ui.name_label.text = character.get_display_name()
-	ui.name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(ui.name_label)
+	ui.name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.name_label.add_theme_font_size_override("font_size", 13)
+	top.add_child(ui.name_label)
 
-	var hp_hbox := HBoxContainer.new()
-	vbox.add_child(hp_hbox)
+	ui.status_icons_hbox = HBoxContainer.new()
+	ui.status_icons_hbox.add_theme_constant_override("separation", 2)
+	top.add_child(ui.status_icons_hbox)
+
+	ui.status_label = Label.new()
+	ui.status_label.text = ""
+	ui.status_label.add_theme_font_size_override("font_size", 10)
+	ui.status_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
+	top.add_child(ui.status_label)
+
+	# Row 2: HP and MP bars side by side.
+	var bars := HBoxContainer.new()
+	bars.add_theme_constant_override("separation", 7)
+	vbox.add_child(bars)
 
 	ui.hp_bar = ProgressBar.new()
-	ui.hp_bar.custom_minimum_size = Vector2(60, 12)
+	ui.hp_bar.custom_minimum_size = Vector2(44, 11)
 	ui.hp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.hp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ui.hp_bar.max_value = character.max_hp
 	ui.hp_bar.value = character.current_hp
 	ui.hp_bar.show_percentage = false
 	_style_bar(ui.hp_bar, UIColors.DANGER)
-	hp_hbox.add_child(ui.hp_bar)
+	bars.add_child(ui.hp_bar)
 
 	ui.hp_text = Label.new()
 	ui.hp_text.text = "%d" % character.current_hp
-	ui.hp_text.custom_minimum_size = Vector2(28, 0)
+	ui.hp_text.custom_minimum_size = Vector2(24, 0)
 	ui.hp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	hp_hbox.add_child(ui.hp_text)
-
-	var mp_hbox := HBoxContainer.new()
-	vbox.add_child(mp_hbox)
+	ui.hp_text.add_theme_font_size_override("font_size", 11)
+	bars.add_child(ui.hp_text)
 
 	ui.mp_bar = ProgressBar.new()
-	ui.mp_bar.custom_minimum_size = Vector2(60, 12)
+	ui.mp_bar.custom_minimum_size = Vector2(44, 11)
 	ui.mp_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.mp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ui.mp_bar.max_value = max(character.max_mp, 1)
 	ui.mp_bar.value = character.current_mp
 	ui.mp_bar.show_percentage = false
 	_style_bar(ui.mp_bar, UIColors.MP_BLUE)
-	mp_hbox.add_child(ui.mp_bar)
+	bars.add_child(ui.mp_bar)
 
 	ui.mp_text = Label.new()
 	ui.mp_text.text = "%d" % character.current_mp
-	ui.mp_text.custom_minimum_size = Vector2(28, 0)
+	ui.mp_text.custom_minimum_size = Vector2(24, 0)
 	ui.mp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	mp_hbox.add_child(ui.mp_text)
-
-	ui.status_icons_hbox = HBoxContainer.new()
-	ui.status_icons_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	ui.status_icons_hbox.add_theme_constant_override("separation", 2)
-	vbox.add_child(ui.status_icons_hbox)
-
-	ui.status_label = Label.new()
-	ui.status_label.text = ""
-	ui.status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ui.status_label.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
-	vbox.add_child(ui.status_label)
+	ui.mp_text.add_theme_font_size_override("font_size", 11)
+	bars.add_child(ui.mp_text)
 
 	return ui
 
 
 func style_modal(modal: PanelContainer) -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.10, 0.09, 0.13, 1.0)
-	style.border_color = Color(0.55, 0.50, 0.65, 1.0)
-	style.border_width_left = 3
-	style.border_width_top = 3
-	style.border_width_right = 3
-	style.border_width_bottom = 3
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 6
-	style.corner_radius_bottom_right = 6
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	style.bg_color = UIColors.SURFACE_PANEL
+	style.border_color = UIColors.ACCENT
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(10)
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 14
+	style.content_margin_bottom = 14
+	style.shadow_color = UIColors.SHADOW
+	style.shadow_size = 10
+	style.anti_aliasing = true
 	modal.add_theme_stylebox_override("panel", style)
+
+
+func _card_box(active := false) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UIColors.SURFACE_CARD
+	sb.set_corner_radius_all(8)
+	sb.set_border_width_all(2 if active else 1)
+	sb.border_color = UIColors.ACCENT if active else UIColors.BORDER_SUBTLE
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	sb.anti_aliasing = true
+	return sb
+
+
+## Compare a combatant's HP/MP to its last rendered value; on a change, float a
+## number over the target, flash the panel on damage, and drain the bar smoothly.
+## The first sample per combatant just seeds the baseline (no spurious number).
+func _diff_and_juice(key: String, host: Control, bar: ProgressBar, new_val: int, is_mp: bool) -> void:
+	var store: Dictionary = _last_mp if is_mp else _last_hp
+	var had := store.has(key)
+	var old: int = store.get(key, new_val)
+	store[key] = new_val
+	if not had or new_val == old:
+		bar.value = new_val
+		return
+	var delta := new_val - old
+	if is_mp:
+		_spawn_float(host, "%+d MP" % delta, UIColors.MP_BLUE)
+	elif delta < 0:
+		_spawn_float(host, str(delta), UIColors.TEXT_DANGER)
+		_flash_panel(host, UIColors.DANGER)
+	else:
+		_spawn_float(host, "+%d" % delta, UIColors.TEXT_HEALTHY)
+	_animate_bar(bar, new_val)
+
+
+func _animate_bar(bar: ProgressBar, target: int) -> void:
+	if _bar_tweens.has(bar) and is_instance_valid(_bar_tweens[bar]):
+		_bar_tweens[bar].kill()
+	var tw: Tween = combat.create_tween()
+	tw.tween_property(bar, "value", float(target), 0.3).set_trans(Tween.TRANS_SINE)
+	_bar_tweens[bar] = tw
+
+
+func _spawn_float(host: Control, text: String, color: Color) -> void:
+	if host == null or not is_instance_valid(host):
+		return
+	var layer := _get_fx_layer()
+	var label := Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", 19)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(label)
+	var hr := host.get_global_rect()
+	label.global_position = Vector2(hr.position.x + hr.size.x * 0.5 - 18.0, hr.position.y - 2.0)
+	var tween: Tween = combat.create_tween().set_parallel(true)
+	tween.tween_property(label, "global_position:y", label.global_position.y - 30.0, 0.9).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 0.9).set_ease(Tween.EASE_IN).set_delay(0.3)
+	tween.chain().tween_callback(label.queue_free)
+
+
+func _flash_panel(host: Control, color: Color) -> void:
+	if host == null or not is_instance_valid(host):
+		return
+	var layer := _get_fx_layer()
+	var rect := ColorRect.new()
+	rect.color = Color(color.r, color.g, color.b, 0.0)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hr := host.get_global_rect()
+	rect.global_position = hr.position
+	rect.size = hr.size
+	layer.add_child(rect)
+	var tw: Tween = combat.create_tween()
+	tw.tween_property(rect, "color:a", 0.32, 0.05)
+	tw.tween_property(rect, "color:a", 0.0, 0.22)
+	tw.tween_callback(rect.queue_free)
+
+
+func _fade_to_dead(node: Control) -> void:
+	var tw: Tween = combat.create_tween()
+	tw.tween_property(node, "modulate", UIColors.DEAD_TINT, 0.45).set_trans(Tween.TRANS_SINE)
+
+
+func _get_fx_layer() -> Control:
+	if _fx_layer and is_instance_valid(_fx_layer):
+		return _fx_layer
+	_fx_layer = Control.new()
+	_fx_layer.name = "CombatFX"
+	_fx_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fx_layer.z_index = 100
+	combat.add_child(_fx_layer)
+	return _fx_layer
 
 
 func _style_bar(bar: ProgressBar, fill_color: Color) -> void:

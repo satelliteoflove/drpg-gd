@@ -42,6 +42,7 @@ func on_spell_pressed() -> void:
 
 	combat._close_all_modals()
 	combat._set_actions_enabled(false)
+	combat.modal_overlay.visible = true
 	combat.spell_modal.visible = true
 
 	if combat.spell_nav and not combat.spell_buttons.is_empty():
@@ -171,10 +172,6 @@ func _on_spell_selected(spell: Spell) -> void:
 
 
 func _populate_spell_ally_target_list(dead_only: bool) -> void:
-	for child: Node in combat.spell_ally_list.get_children():
-		child.queue_free()
-	combat.spell_ally_buttons.clear()
-
 	var targets: Array[Character]
 	if dead_only:
 		targets = combat.combat_system.get_dead_allies()
@@ -191,29 +188,9 @@ func _populate_spell_ally_target_list(dead_only: bool) -> void:
 		combat.selected_spell = null
 		return
 
-	for character in targets:
-		var btn := Button.new()
-		var status := ""
-		if character.is_dead:
-			status = " [DEAD]"
-		btn.text = "%s: %d/%d HP%s" % [
-			character.get_display_name(),
-			character.current_hp,
-			character.max_hp,
-			status
-		]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.custom_minimum_size = Vector2(0, 32)
-		btn.pressed.connect(_on_spell_ally_target_selected.bind(character))
-		btn.focus_entered.connect(combat.targeting.highlight_party_target.bind(character))
-		combat.spell_ally_list.add_child(btn)
-		combat.spell_ally_buttons.append(btn)
-
-	combat.spell_ally_nav = MenuNavigator.new()
-	if not combat.spell_ally_buttons.is_empty():
-		combat.spell_ally_nav.setup(combat.spell_ally_buttons, 0)
-
-	combat.spell_ally_modal.visible = true
+	# Pick the ally on the battlefield (same overlay flow as enemy targeting).
+	combat.ally_target_mode = "spell"
+	combat.targeting.populate_ally_targets(targets, _on_spell_ally_target_selected)
 
 
 func _populate_spell_enemy_target_list() -> void:
@@ -249,6 +226,7 @@ func _populate_spell_enemy_target_list() -> void:
 
 
 func _on_spell_ally_target_selected(character: Character) -> void:
+	combat.ally_target_mode = ""
 	_cast_spell_on_targets([character])
 
 
