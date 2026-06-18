@@ -102,6 +102,15 @@ func _prewarm_dungeon_shaders() -> void:
 	viewport.size = Vector2i(2, 2)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	viewport.transparent_bg = true
+	# Render into an isolated, empty World3D. By default a SubViewport shares its
+	# parent viewport's world, which would drag in the *active scene's*
+	# WorldEnvironment — and when prewarming between two dungeon floors that env
+	# carries the post-FX stack (SSR/SSAO/glow/volumetric fog). Those effects try
+	# to allocate mipmap pyramids that are impossible at 2x2, producing a null
+	# render-buffer texture. On Vulkan that's a non-fatal warning; on macOS Metal
+	# the null uniform set is a hard crash on the next compute dispatch. We only
+	# need to compile the material/mesh shaders here, so a bare world is correct.
+	viewport.own_world_3d = true
 	add_child(viewport)
 
 	var scene := Node3D.new()
