@@ -15,6 +15,7 @@ const FRONT_ROW_SIZE: int = 3
 @export var gold: int = 0
 @export var scrap: int = 0
 @export var inventory: Inventory = null
+@export var torch_steps_remaining: int = 0
 
 
 func _init() -> void:

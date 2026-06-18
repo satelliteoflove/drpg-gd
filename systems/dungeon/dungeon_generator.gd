@@ -42,6 +42,7 @@ func generate(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> Dun
 	dungeon.height = height
 	dungeon.floor_level = floor_level
 	dungeon.seed_value = _rng.seed
+	dungeon.theme = FloorThemes.get_theme(floor_level)
 	dungeon.tiles = _tiles.duplicate()
 	dungeon.rooms = _rooms.duplicate()
 

@@ -44,7 +44,7 @@ func populate() -> void:
 
 
 func get_info_suffix(item: Item) -> String:
-	return "\n\n[color=yellow]Buy: %d gold[/color]" % item.buy_price
+	return "\n\n[color=#%s]Buy: %d gold[/color]" % [UIColors.GOLD.to_html(false), item.buy_price]
 
 
 func get_help_text() -> String:
@@ -86,24 +86,17 @@ func handle_confirm() -> bool:
 
 
 func _create_buy_button(item: Item) -> Button:
-	var btn := Button.new()
-	btn.text = "%s - %d gold" % [item.item_name, item.buy_price]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_buy_item.bind(item))
-
 	var can_afford := GameState.party.has_gold(item.buy_price)
 	var has_space := not GameState.party.inventory.is_full()
+	var dim := not can_afford or (not has_space and not item.is_equipment())
+	var price_fg := UIColors.GOLD if can_afford else UIColors.TEXT_DANGER
+	var chips: Array = [{"text": "%d g" % item.buy_price, "fg": price_fg, "bg": UIColors.SURFACE_SELECTED}]
 
-	if not can_afford:
+	var btn: Button = shop.make_item_row(item, chips, dim)
+	if dim:
 		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
-		btn.tooltip_text = "Not enough gold"
-	elif not has_space and not item.is_equipment():
-		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
-		btn.tooltip_text = "Inventory full"
-
+		btn.tooltip_text = "Not enough gold" if not can_afford else "Inventory full"
+	btn.pressed.connect(_on_buy_item.bind(item))
 	return btn
 
 

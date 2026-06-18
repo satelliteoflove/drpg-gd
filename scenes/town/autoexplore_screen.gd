@@ -20,12 +20,12 @@ var _sim_day: int = 0
 
 var floor_buttons: Array[Button] = []
 var strategy_buttons: Array[Button] = []
-var encounters_spin: SpinBox = null
-var boss_check: CheckBox = null
-var return_spin: SpinBox = null
-var dives_spin: SpinBox = null
-var death_threshold_spin: SpinBox = null
+var boss_toggle: Button = null
 var run_button: Button = null
+
+var _scaffold: ScreenScaffold = null
+var _steppers: Array[Button] = []
+var _party_subtitle: Label = null
 
 @onready var title_label: Label = $MainHBox/LeftPanel/Header/TitleLabel
 @onready var party_info_label: Label = $MainHBox/LeftPanel/Header/PartyInfoLabel
@@ -35,24 +35,47 @@ var run_button: Button = null
 @onready var help_label: Label = $MainHBox/LeftPanel/HelpLabel
 @onready var back_button: Button = $MainHBox/LeftPanel/BackButton
 @onready var tab_bar: TabBar = $MainHBox/RightPanel/TabBar
-@onready var results_label: RichTextLabel = $MainHBox/RightPanel/ResultsPanel/ScrollContainer/ResultsLabel
+@onready var results_scroll: ScrollContainer = $MainHBox/RightPanel/ResultsPanel/ScrollContainer
+@onready var results_host: VBoxContainer = $MainHBox/RightPanel/ResultsPanel/ScrollContainer/ResultsHost
 
 
 func _ready() -> void:
-	back_button.pressed.connect(_on_back_pressed)
+	_install_scaffold()
 	tab_bar.tab_changed.connect(_on_tab_changed)
 	_populate_config()
 	_update_party_info()
 	_update_help()
+	_display_current_tab()
+
+
+## Wrap in the shared scaffold and hide the legacy in-panel header / help / back.
+func _install_scaffold() -> void:
+	var bg := get_node_or_null("Background")
+	if bg != null:
+		bg.queue_free()
+
+	$MainHBox/LeftPanel/Header.visible = false
+	help_label.visible = false
+	back_button.visible = false
+
+	var main: Control = $MainHBox
+	remove_child(main)
+	_scaffold = ScreenScaffold.create({"title": "AUTOEXPLORE", "hint": ""})
+	add_child(_scaffold)
+	move_child(_scaffold, 0)
+	_scaffold.body.add_child(main)
+	_scaffold.back_pressed.connect(_on_back_pressed)
 
 
 func _update_party_info() -> void:
+	if _party_subtitle == null:
+		return
 	if not GameState.has_party():
-		party_info_label.text = "No party"
+		_party_subtitle.text = "No party assembled"
 		return
 	var members := GameState.party.get_members()
 	var avg_level := GameState.party.get_average_level()
-	party_info_label.text = "%d members, Avg Lv%d" % [members.size(), avg_level]
+	_party_subtitle.text = "Simulating with %d members · Avg Level %d" % [members.size(), avg_level]
 
 
 func _populate_config() -> void:
@@ -61,109 +84,87 @@ func _populate_config() -> void:
 	nav_buttons.clear()
 	floor_buttons.clear()
 	strategy_buttons.clear()
+	_steppers.clear()
+
+	_party_subtitle = Label.new()
+	_party_subtitle.theme_type_variation = &"SubtitleLabel"
+	_party_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	config_list.add_child(_party_subtitle)
 
 	if not GameState.has_party():
 		var label := Label.new()
+		label.theme_type_variation = &"MutedLabel"
 		label.text = "Assemble a party at the Guild Hall first."
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		config_list.add_child(label)
 		message_label.text = "No party available."
 		nav = MenuNavigator.new()
-		nav.setup([back_button], 0)
 		return
 
-	var default_floor := clampi(GameState.current_floor, 1, 6)
-	selected_floor = default_floor
+	selected_floor = clampi(GameState.current_floor, 1, 6)
 
-	_add_section_label("Floor Level")
+	_add_section("Floor Level")
 	var floor_row := HBoxContainer.new()
 	floor_row.add_theme_constant_override("separation", 4)
 	for i in range(1, 7):
 		var btn := Button.new()
 		btn.text = str(i)
-		btn.custom_minimum_size = Vector2(40, 32)
 		btn.toggle_mode = true
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, 34)
 		btn.button_pressed = (i == selected_floor)
-		var floor_num := i
-		btn.pressed.connect(_on_floor_selected.bind(floor_num))
+		_style_segment(btn)
+		btn.pressed.connect(_on_floor_selected.bind(i))
 		floor_row.add_child(btn)
 		floor_buttons.append(btn)
 		nav_buttons.append(btn)
 	config_list.add_child(floor_row)
 
-	_add_section_label("Encounters")
-	encounters_spin = SpinBox.new()
-	encounters_spin.min_value = 1
-	encounters_spin.max_value = 8
-	encounters_spin.value = num_encounters
-	encounters_spin.custom_minimum_size = Vector2(200, 32)
-	encounters_spin.value_changed.connect(func(val: float) -> void: num_encounters = int(val))
-	config_list.add_child(encounters_spin)
-
-	_add_section_label("Include Boss")
-	boss_check = CheckBox.new()
-	boss_check.text = "Yes"
-	boss_check.button_pressed = include_boss
-	boss_check.toggled.connect(func(val: bool) -> void: include_boss = val)
-	config_list.add_child(boss_check)
-	nav_buttons.append(boss_check)
-
-	_add_section_label("Return Encounters")
-	return_spin = SpinBox.new()
-	return_spin.min_value = 0
-	return_spin.max_value = 4
-	return_spin.value = return_encounters
-	return_spin.custom_minimum_size = Vector2(200, 32)
-	return_spin.value_changed.connect(func(val: float) -> void: return_encounters = int(val))
-	config_list.add_child(return_spin)
-
-	_add_section_label("Number of Runs")
-	dives_spin = SpinBox.new()
-	dives_spin.min_value = 1
-	dives_spin.max_value = 10
-	dives_spin.value = num_dives
-	dives_spin.custom_minimum_size = Vector2(200, 32)
-	dives_spin.value_changed.connect(func(val: float) -> void: num_dives = int(val))
-	config_list.add_child(dives_spin)
-
-	_add_section_label("Stop on N+ Deaths")
-	death_threshold_spin = SpinBox.new()
-	death_threshold_spin.min_value = 0
-	death_threshold_spin.max_value = 6
-	death_threshold_spin.value = death_threshold
-	death_threshold_spin.custom_minimum_size = Vector2(200, 32)
-	death_threshold_spin.suffix = " (0 = never)"
-	death_threshold_spin.value_changed.connect(func(val: float) -> void: death_threshold = int(val))
-	config_list.add_child(death_threshold_spin)
-
-	_add_section_label("Strategy")
+	_add_section("Strategy")
 	var strat_row := HBoxContainer.new()
 	strat_row.add_theme_constant_override("separation", 4)
-	var strat_configs := [
+	for cfg in [
 		{"name": "Aggressive", "value": PartyAI.Strategy.AGGRESSIVE},
 		{"name": "Balanced", "value": PartyAI.Strategy.BALANCED},
 		{"name": "Defensive", "value": PartyAI.Strategy.DEFENSIVE},
-	]
-	for cfg in strat_configs:
+	]:
 		var btn := Button.new()
 		btn.text = cfg["name"]
-		btn.custom_minimum_size = Vector2(100, 32)
 		btn.toggle_mode = true
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.custom_minimum_size = Vector2(0, 34)
 		var strat_val: PartyAI.Strategy = cfg["value"] as PartyAI.Strategy
 		btn.button_pressed = (strat_val == strategy)
+		_style_segment(btn)
 		btn.pressed.connect(_on_strategy_selected.bind(strat_val))
 		strat_row.add_child(btn)
 		strategy_buttons.append(btn)
 		nav_buttons.append(btn)
 	config_list.add_child(strat_row)
 
+	_add_section("Run Parameters")
+	nav_buttons.append(_make_stepper("Encounters", 1, 8, num_encounters,
+		func(v: int) -> void: num_encounters = v))
+	nav_buttons.append(_make_stepper("Return Encounters", 0, 4, return_encounters,
+		func(v: int) -> void: return_encounters = v))
+	nav_buttons.append(_make_stepper("Number of Runs", 1, 10, num_dives,
+		func(v: int) -> void: num_dives = v))
+	nav_buttons.append(_make_stepper("Stop on Deaths", 0, 6, death_threshold,
+		func(v: int) -> void: death_threshold = v, "Never"))
+
+	boss_toggle = _make_toggle("Include Boss", include_boss,
+		func(v: bool) -> void: include_boss = v)
+	nav_buttons.append(boss_toggle)
+
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 8)
+	spacer.custom_minimum_size = Vector2(0, 10)
 	config_list.add_child(spacer)
 
 	run_button = Button.new()
-	run_button.text = "Run AutoExplore"
-	run_button.custom_minimum_size = Vector2(350, 40)
+	run_button.theme_type_variation = &"PrimaryButton"
+	run_button.text = "▶  Run AutoExplore"
+	run_button.custom_minimum_size = Vector2(0, 46)
+	run_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	run_button.pressed.connect(_on_run_pressed)
 	config_list.add_child(run_button)
 	nav_buttons.append(run_button)
@@ -172,17 +173,133 @@ func _populate_config() -> void:
 	nav.setup(nav_buttons, 0)
 
 
-func _add_section_label(text: String) -> void:
+func _add_section(text: String) -> void:
 	var label := Label.new()
+	label.theme_type_variation = &"SubheaderLabel"
 	label.text = text
-	label.add_theme_color_override("font_color", UIColors.INFO)
 	config_list.add_child(label)
+
+
+# --- Themed config controls -------------------------------------------------
+
+func _style_segment(btn: Button) -> void:
+	var flat := StyleBoxFlat.new()
+	flat.bg_color = UIColors.SURFACE_BACKGROUND
+	flat.set_corner_radius_all(6)
+	flat.content_margin_top = 7
+	flat.content_margin_bottom = 7
+	var hover := flat.duplicate() as StyleBoxFlat
+	hover.bg_color = UIColors.SURFACE_HOVER
+	var active := flat.duplicate() as StyleBoxFlat
+	active.bg_color = UIColors.SURFACE_CARD
+	active.border_width_bottom = 3
+	active.border_color = UIColors.ACCENT
+	var focus := active.duplicate() as StyleBoxFlat
+	focus.set_border_width_all(2)
+	focus.border_color = UIColors.BORDER_FOCUS
+	focus.shadow_color = UIColors.ACCENT_GLOW
+	focus.shadow_size = 4
+	btn.add_theme_stylebox_override("normal", flat)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", active)
+	btn.add_theme_stylebox_override("focus", focus)
+	btn.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+	btn.add_theme_color_override("font_pressed_color", Color.WHITE)
+	btn.add_theme_color_override("font_hover_color", UIColors.TEXT_PRIMARY)
+
+
+## A keyboard-navigable numeric stepper: a focusable row showing "Label  ‹ N ›".
+## Left/Right adjusts it when focused (handled in _unhandled_input).
+func _make_stepper(label_text: String, min_v: int, max_v: int, initial: int,
+		cb: Callable, zero_label: String = "") -> Button:
+	var btn := Button.new()
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.custom_minimum_size = Vector2(0, 38)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.set_meta("min", min_v)
+	btn.set_meta("max", max_v)
+	btn.set_meta("val", initial)
+	btn.set_meta("label", label_text)
+	btn.set_meta("cb", cb)
+	btn.set_meta("zero", zero_label)
+	_style_row(btn)
+	_refresh_stepper_text(btn)
+	config_list.add_child(btn)
+	_steppers.append(btn)
+	return btn
+
+
+func _refresh_stepper_text(btn: Button) -> void:
+	var v: int = btn.get_meta("val")
+	var zero: String = btn.get_meta("zero")
+	var val_str := zero if (v == 0 and zero != "") else str(v)
+	btn.text = "%s          ‹   %s   ›" % [btn.get_meta("label"), val_str]
+
+
+func _adjust_stepper(btn: Button, dir: int) -> void:
+	var v: int = clampi(btn.get_meta("val") + dir, btn.get_meta("min"), btn.get_meta("max"))
+	if v == btn.get_meta("val"):
+		return
+	btn.set_meta("val", v)
+	_refresh_stepper_text(btn)
+	(btn.get_meta("cb") as Callable).call(v)
+	_on_config_changed()
+
+
+func _make_toggle(label_text: String, initial: bool, cb: Callable) -> Button:
+	var btn := Button.new()
+	btn.toggle_mode = true
+	btn.button_pressed = initial
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.custom_minimum_size = Vector2(0, 38)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.set_meta("label", label_text)
+	_style_row(btn)
+	_refresh_toggle_text(btn)
+	btn.toggled.connect(func(v: bool) -> void:
+		_refresh_toggle_text(btn)
+		cb.call(v)
+		_on_config_changed())
+	config_list.add_child(btn)
+	return btn
+
+
+func _refresh_toggle_text(btn: Button) -> void:
+	var on := btn.button_pressed
+	btn.text = "%s          %s" % [btn.get_meta("label"), "●  On" if on else "○  Off"]
+	btn.add_theme_color_override("font_color",
+		UIColors.TEXT_HEALTHY if on else UIColors.TEXT_MUTED)
+
+
+func _style_row(btn: Button) -> void:
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = UIColors.SURFACE_CARD
+	normal.set_corner_radius_all(6)
+	normal.set_border_width_all(1)
+	normal.border_color = UIColors.BORDER_SUBTLE
+	normal.content_margin_left = 12
+	normal.content_margin_right = 12
+	normal.content_margin_top = 7
+	normal.content_margin_bottom = 7
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = UIColors.SURFACE_HOVER
+	var focus := normal.duplicate() as StyleBoxFlat
+	focus.bg_color = UIColors.SURFACE_SELECTED
+	focus.set_border_width_all(2)
+	focus.border_color = UIColors.ACCENT
+	focus.shadow_color = UIColors.ACCENT_GLOW
+	focus.shadow_size = 5
+	btn.add_theme_stylebox_override("normal", normal)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", focus)
+	btn.add_theme_stylebox_override("focus", focus)
 
 
 func _on_floor_selected(floor_num: int) -> void:
 	selected_floor = floor_num
 	for i in range(floor_buttons.size()):
 		floor_buttons[i].button_pressed = (i + 1 == selected_floor)
+	_on_config_changed()
 
 
 func _on_strategy_selected(strat: PartyAI.Strategy) -> void:
@@ -190,6 +307,7 @@ func _on_strategy_selected(strat: PartyAI.Strategy) -> void:
 	var strat_values := [PartyAI.Strategy.AGGRESSIVE, PartyAI.Strategy.BALANCED, PartyAI.Strategy.DEFENSIVE]
 	for i in range(strategy_buttons.size()):
 		strategy_buttons[i].button_pressed = (strat_values[i] == strategy)
+	_on_config_changed()
 
 
 func _on_run_pressed() -> void:
@@ -576,151 +694,542 @@ func _display_current_tab() -> void:
 
 
 func _display_summary() -> void:
+	_clear_results_host()
 	if last_batch_results.is_empty():
-		results_label.text = "Press Run to begin exploration."
+		results_host.alignment = BoxContainer.ALIGNMENT_CENTER
+		results_host.add_child(_build_scenario_preview())
 		return
 
+	results_host.alignment = BoxContainer.ALIGNMENT_BEGIN
 	var s := last_batch_summary
-	var text := "[b]AUTOEXPLORE RESULTS[/b]\n\n"
+	results_host.add_child(_build_headline(s))
+	results_host.add_child(_build_metric_tiles(s))
+	results_host.add_child(_build_dive_strip())
+	var rewards := _build_rewards_card()
+	if rewards != null:
+		results_host.add_child(rewards)
+	var chronicle := _build_chronicle_card()
+	if chronicle != null:
+		results_host.add_child(chronicle)
 
-	text += "[color=gray]Scenario:[/color] Floor %d, %d encounters" % [selected_floor, num_encounters]
+
+func _clear_results_host() -> void:
+	for c in results_host.get_children():
+		c.queue_free()
+	results_scroll.scroll_vertical = 0
+
+
+func _on_config_changed() -> void:
+	# Keep the idle scenario preview in sync as the player tweaks the config.
+	if last_batch_results.is_empty() and current_tab == 0:
+		_display_summary()
+
+
+# --- Scenario preview (idle, pre-run) ---------------------------------------
+
+func _build_scenario_preview() -> Control:
+	var card := _make_card_panel(UIColors.ACCENT)
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.custom_minimum_size = Vector2(440, 0)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 13)
+	card.add_child(vb)
+
+	var title := Label.new()
+	title.theme_type_variation = &"HeaderLabel"
+	title.text = "READY TO SIMULATE"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(title)
+
+	vb.add_child(_hrule())
+
+	var spec := VBoxContainer.new()
+	spec.add_theme_constant_override("separation", 7)
+	vb.add_child(spec)
+	spec.add_child(_spec_row("Floor", "Level %d" % selected_floor))
+	var enc := "%d encounters" % num_encounters
 	if include_boss:
-		text += " + Boss"
+		enc += "    +    Boss"
+	spec.add_child(_spec_row("Combat", enc))
 	if return_encounters > 0:
-		text += ", %d return" % return_encounters
-	text += "\n"
+		spec.add_child(_spec_row("Return trip", "%d encounters" % return_encounters))
+	spec.add_child(_spec_row("Strategy", _strategy_name()))
+	spec.add_child(_spec_row("Runs", "×  %d" % num_dives))
+	if death_threshold > 0:
+		spec.add_child(_spec_row("Stop on deaths", str(death_threshold)))
 
-	var strat_name := "Balanced"
-	match strategy:
-		PartyAI.Strategy.AGGRESSIVE: strat_name = "Aggressive"
-		PartyAI.Strategy.DEFENSIVE: strat_name = "Defensive"
-	text += "[color=gray]Strategy:[/color] %s\n" % strat_name
+	if GameState.has_party():
+		vb.add_child(_hrule())
+		var crests := HBoxContainer.new()
+		crests.alignment = BoxContainer.ALIGNMENT_CENTER
+		crests.add_theme_constant_override("separation", 5)
+		for member in GameState.party.get_members():
+			crests.add_child(_mini_crest(member))
+		vb.add_child(crests)
 
-	text += "[color=gray]Party:[/color] "
-	var member_parts: Array[String] = []
-	for member in GameState.party.get_members():
-		member_parts.append("%s (Lv%d %s)" % [
-			member.character_name, member.level,
-			CharacterEnums.get_class_name(member.character_class)
-		])
-	text += ", ".join(member_parts) + "\n\n"
+		var party_lbl := Label.new()
+		party_lbl.theme_type_variation = &"MutedLabel"
+		party_lbl.text = "Testing %d members   ·   Avg Level %d" % [
+			GameState.party.get_members().size(), GameState.party.get_average_level()]
+		party_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vb.add_child(party_lbl)
 
-	var surv_color := "green" if s.survival_rate >= 80.0 else ("yellow" if s.survival_rate >= 50.0 else "red")
-	text += "[color=%s]Survival Rate: %.0f%%[/color] (%d/%d dives)\n" % [
-		surv_color, s.survival_rate, s.survived, s.total
-	]
+	var prompt := Label.new()
+	prompt.add_theme_color_override("font_color", UIColors.ACCENT)
+	prompt.text = "Press  ▶  Run AutoExplore"
+	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(prompt)
+
+	return card
+
+
+func _spec_row(key: String, value: String) -> Control:
+	var row := HBoxContainer.new()
+	var k := Label.new()
+	k.theme_type_variation = &"MutedLabel"
+	k.text = key
+	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(k)
+	var v := Label.new()
+	v.add_theme_color_override("font_color", UIColors.TEXT_PRIMARY)
+	v.text = value
+	row.add_child(v)
+	return row
+
+
+func _mini_crest(member: Character) -> Control:
+	var color := UIColors.class_color(member.character_class)
+	var b := Label.new()
+	b.text = CharacterEnums.get_class_name(member.character_class).substr(0, 1).to_upper()
+	b.custom_minimum_size = Vector2(26, 26)
+	b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.add_theme_font_size_override("font_size", 12)
+	b.add_theme_color_override("font_color", color.lightened(0.45))
+	b.tooltip_text = "%s · L%d %s" % [
+		member.character_name, member.level, CharacterEnums.get_class_name(member.character_class)]
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color.darkened(0.55)
+	sb.set_corner_radius_all(6)
+	sb.set_border_width_all(1)
+	sb.border_color = color
+	b.add_theme_stylebox_override("normal", sb)
+	return b
+
+
+# --- Results canvas (after a run) -------------------------------------------
+
+func _build_headline(s: Dictionary) -> Control:
+	var col := _survival_color(s.survival_rate)
+	var card := _make_card_panel(col)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	card.add_child(vb)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	vb.add_child(row)
+
+	var big := Label.new()
+	big.text = "%.0f%%" % s.survival_rate
+	big.add_theme_font_size_override("font_size", 44)
+	big.add_theme_color_override("font_color", col)
+	big.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(big)
+
+	var rcol := VBoxContainer.new()
+	rcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rcol.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	rcol.add_theme_constant_override("separation", 1)
+	row.add_child(rcol)
+
+	var cap := Label.new()
+	cap.theme_type_variation = &"MutedLabel"
+	cap.text = "SURVIVAL RATE"
+	rcol.add_child(cap)
+
+	var sub := Label.new()
+	sub.add_theme_color_override("font_color", UIColors.TEXT_PRIMARY)
+	sub.add_theme_font_size_override("font_size", 16)
+	sub.text = "%d of %d dives survived" % [s.survived, s.total]
+	rcol.add_child(sub)
+
 	if s.return_wipes > 0:
-		text += "  Lost on return trip: %d\n" % s.return_wipes
-	text += "\n"
+		var rw := Label.new()
+		rw.theme_type_variation = &"MutedLabel"
+		rw.text = "%d lost on the return trip" % s.return_wipes
+		rcol.add_child(rw)
 
-	text += "Avg Encounters Completed: %.1f / %d\n" % [s.avg_encounters, s.max_encounters]
-	text += "Avg HP Remaining: %.0f%%\n" % s.avg_final_hp_pct
-	text += "Avg MP Remaining: %.0f%%\n" % s.avg_final_mp_pct
-	text += "Avg XP per Dive: %.0f\n" % s.avg_xp
-	text += "Avg Gold per Dive: %.0f\n" % s.avg_gold
-	text += "Avg Deaths per Dive: %.1f\n" % s.avg_deaths
+	var scen := Label.new()
+	scen.theme_type_variation = &"MutedLabel"
+	scen.text = _scenario_line()
+	vb.add_child(scen)
 
-	if s.retreats > 0:
-		text += "Retreats: %d / %d dives\n" % [s.retreats, s.total]
+	return card
 
-	text += "\n[color=cyan]Consumables per Dive:[/color]\n"
-	text += "  Healing Potions: %.1f\n" % s.avg_healing_potions
-	text += "  Mana Potions: %.1f\n" % s.avg_mana_potions
-	text += "  Antidotes: %.1f\n" % s.avg_antidotes
 
-	text += "\n[color=gray]--- Per-Dive Results ---[/color]\n"
+func _build_metric_tiles(s: Dictionary) -> Control:
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(_tile("Cleared", "%.1f / %d" % [s.avg_encounters, s.max_encounters], UIColors.TEXT_PRIMARY))
+	grid.add_child(_tile("HP Left", "%.0f%%" % s.avg_final_hp_pct, _pct_color(s.avg_final_hp_pct)))
+	grid.add_child(_tile("MP Left", "%.0f%%" % s.avg_final_mp_pct, UIColors.MP_BLUE))
+	grid.add_child(_tile("XP / Dive", _commafmt(s.avg_xp), UIColors.GOLD))
+	grid.add_child(_tile("Gold / Dive", _commafmt(s.avg_gold), UIColors.GOLD))
+	var deaths_col := UIColors.TEXT_DANGER if s.avg_deaths > 0.05 else UIColors.TEXT_SECONDARY
+	grid.add_child(_tile("Deaths / Dive", "%.1f" % s.avg_deaths, deaths_col))
+	return grid
+
+
+func _tile(label: String, value: String, value_color: Color) -> Control:
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UIColors.SURFACE_CARD
+	sb.set_corner_radius_all(7)
+	sb.set_border_width_all(1)
+	sb.border_color = UIColors.BORDER_SUBTLE
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 9
+	sb.content_margin_bottom = 9
+	card.add_theme_stylebox_override("panel", sb)
+
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 1)
+	card.add_child(vb)
+
+	var v := Label.new()
+	v.text = value
+	v.add_theme_font_size_override("font_size", 21)
+	v.add_theme_color_override("font_color", value_color)
+	vb.add_child(v)
+
+	var l := Label.new()
+	l.theme_type_variation = &"MutedLabel"
+	l.text = label
+	vb.add_child(l)
+	return card
+
+
+func _build_dive_strip() -> Control:
+	var section := VBoxContainer.new()
+	section.add_theme_constant_override("separation", 7)
+	section.add_child(_caption("PER-DIVE OUTCOME"))
+
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 6)
 	for i in range(last_batch_results.size()):
 		var r: Dictionary = last_batch_results[i]
-		var status := "[color=green]SURVIVED[/color]" if not r.party_wiped else "[color=red]WIPED[/color]"
-		if r.get("retreated", false):
-			status = "[color=yellow]RETREATED[/color]"
-		text += "Dive %d: %s - %d encounters, %d XP, %d gold" % [
-			i + 1, status, r.encounters_won, r.total_xp, r.get("total_gold", 0)
-		]
-		if r.deaths.size() > 0:
-			text += " (deaths: %s)" % ", ".join(r.deaths)
-		text += "\n"
+		var col := UIColors.HP_GREEN
+		var outcome := "Survived"
+		if r.party_wiped:
+			col = UIColors.DANGER
+			outcome = "Wiped"
+		elif r.get("retreated", false):
+			col = UIColors.TEXT_STATUS
+			outcome = "Retreated"
+		var pip := _pip("%d" % (i + 1), col)
+		pip.tooltip_text = "Dive %d: %s  ·  %d enc  ·  %d XP" % [
+			i + 1, outcome, r.encounters_won, r.total_xp]
+		flow.add_child(pip)
+	section.add_child(flow)
 
-	if not last_rewards.is_empty():
-		text += "\n[color=green]--- Rewards Applied ---[/color]\n"
-		text += "Total XP Earned: %d\n" % last_rewards.total_xp
-		text += "Total Gold Earned: %d\n" % last_rewards.total_gold
-		var days: int = last_rewards.get("days_elapsed", 0)
-		if days > 0:
-			text += "Time Elapsed: %d day(s)\n" % days
+	var legend := HBoxContainer.new()
+	legend.add_theme_constant_override("separation", 14)
+	legend.add_child(_legend_dot(UIColors.HP_GREEN, "Survived"))
+	legend.add_child(_legend_dot(UIColors.TEXT_STATUS, "Retreated"))
+	legend.add_child(_legend_dot(UIColors.DANGER, "Wiped"))
+	section.add_child(legend)
+	return section
 
-		var lvl_ups: Array = last_rewards.get("level_ups", [])
-		if not lvl_ups.is_empty():
-			text += "\n[color=cyan]Level Ups:[/color]\n"
-			for lu in lvl_ups:
-				text += "  %s: Lv%d -> Lv%d (dive %d)\n" % [
-					lu.name, lu.old_level, lu.new_level, lu.dive
-				]
 
-		var loot: Array = last_rewards.get("loot_items", [])
-		if not loot.is_empty():
-			text += "\n[color=cyan]Loot Found:[/color]\n"
-			for item_name in loot:
-				text += "  %s\n" % item_name
+func _pip(text: String, color: Color) -> Control:
+	var l := Label.new()
+	l.text = text
+	l.custom_minimum_size = Vector2(30, 30)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", color.lightened(0.5))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color.darkened(0.5)
+	sb.set_corner_radius_all(7)
+	sb.set_border_width_all(1)
+	sb.border_color = color
+	l.add_theme_stylebox_override("normal", sb)
+	return l
 
-		var d_log: Array = last_rewards.get("death_log", [])
-		if not d_log.is_empty():
-			text += "\n[color=red]Deaths:[/color]\n"
-			for d in d_log:
-				text += "  %s (dive %d)\n" % [d.name, d.dive]
 
-		var narr: Array = last_rewards.get("narrative_log", [])
-		if not narr.is_empty():
-			var marks: Array[Dictionary] = []
-			var rels: Array[Dictionary] = []
-			var crystals: Array[Dictionary] = []
-			for entry: Dictionary in narr:
-				match entry.get("type", ""):
-					"mark": marks.append(entry)
-					"relationship": rels.append(entry)
-					"crystallization": crystals.append(entry)
+func _legend_dot(color: Color, label: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	var dot := Label.new()
+	dot.custom_minimum_size = Vector2(11, 11)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color
+	sb.set_corner_radius_all(6)
+	dot.add_theme_stylebox_override("normal", sb)
+	row.add_child(dot)
+	var l := Label.new()
+	l.theme_type_variation = &"MutedLabel"
+	l.text = label
+	row.add_child(l)
+	return row
 
-			if not marks.is_empty():
-				text += "\n[color=#cccc44]Marks Earned:[/color]\n"
-				for m in marks:
-					text += "  %s: %s\n" % [m.get("name", ""), m.get("mark_name", "")]
 
-			if not rels.is_empty():
-				text += "\n[color=#88ccee]Relationship Changes:[/color]\n"
-				var aggregated: Array[Dictionary] = []
-				for r in rels:
-					var found := false
-					for a in aggregated:
-						if a.char_a == r.get("char_a", "") and a.char_b == r.get("char_b", "") and a.source == r.get("source", ""):
-							a.weight += int(r.get("weight", 0))
-							found = true
-							break
-					if not found:
-						aggregated.append({
-							"char_a": r.get("char_a", ""),
-							"char_b": r.get("char_b", ""),
-							"source": r.get("source", ""),
-							"weight": int(r.get("weight", 0)),
-						})
-				for a in aggregated:
-					var sign_str := "+" if a.weight > 0 else ""
-					text += "  %s & %s: %s (%s%d)\n" % [a.char_a, a.char_b, a.source, sign_str, a.weight]
+func _build_rewards_card() -> Control:
+	if last_rewards.is_empty():
+		return null
+	var built := _make_section_card("REWARDS APPLIED")
+	var body: VBoxContainer = built["body"]
 
-			if not crystals.is_empty():
-				text += "\n[color=#ffaa00]Trait Crystallizations:[/color]\n"
-				for c in crystals:
-					text += "  %s's %s crystallized: %s!\n" % [
-						c.get("name", ""), c.get("axis", ""), c.get("trait", "")
-					]
+	var stats := HBoxContainer.new()
+	stats.add_theme_constant_override("separation", 8)
+	stats.add_child(_tile("Total XP", _commafmt(float(last_rewards.total_xp)), UIColors.GOLD))
+	stats.add_child(_tile("Total Gold", _commafmt(float(last_rewards.total_gold)), UIColors.GOLD))
+	stats.add_child(_tile("Days", str(last_rewards.get("days_elapsed", 0)), UIColors.TEXT_SECONDARY))
+	body.add_child(stats)
 
-	results_label.text = text
+	var lvl_ups: Array = last_rewards.get("level_ups", [])
+	if not lvl_ups.is_empty():
+		body.add_child(_subcaption("Level Ups"))
+		for lu in lvl_ups:
+			body.add_child(_kv_line(lu.name, "L%d → L%d" % [lu.old_level, lu.new_level], UIColors.TEXT_HEALTHY))
+
+	var loot: Array = last_rewards.get("loot_items", [])
+	if not loot.is_empty():
+		body.add_child(_subcaption("Loot Found"))
+		var loot_lbl := Label.new()
+		loot_lbl.add_theme_color_override("font_color", UIColors.TEXT_PRIMARY)
+		loot_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		loot_lbl.text = ",   ".join(loot)
+		body.add_child(loot_lbl)
+
+	var d_log: Array = last_rewards.get("death_log", [])
+	if not d_log.is_empty():
+		body.add_child(_subcaption("Deaths"))
+		for d in d_log:
+			body.add_child(_kv_line(d.name, "dive %d" % d.dive, UIColors.TEXT_DANGER))
+
+	return built["card"]
+
+
+func _build_chronicle_card() -> Control:
+	var narr: Array = last_rewards.get("narrative_log", [])
+	if narr.is_empty():
+		return null
+	var marks: Array[Dictionary] = []
+	var rels: Array[Dictionary] = []
+	var crystals: Array[Dictionary] = []
+	for entry: Dictionary in narr:
+		match entry.get("type", ""):
+			"mark": marks.append(entry)
+			"relationship": rels.append(entry)
+			"crystallization": crystals.append(entry)
+	if marks.is_empty() and rels.is_empty() and crystals.is_empty():
+		return null
+
+	var built := _make_section_card("CHRONICLE")
+	var body: VBoxContainer = built["body"]
+
+	if not crystals.is_empty():
+		body.add_child(_subcaption("Trait Crystallizations"))
+		for c in crystals:
+			body.add_child(_kv_line(
+				"%s · %s" % [c.get("name", ""), c.get("axis", "")],
+				c.get("trait", ""), UIColors.TITLE_GOLD))
+
+	if not marks.is_empty():
+		body.add_child(_subcaption("Marks Earned"))
+		for m in marks:
+			body.add_child(_kv_line(m.get("name", ""), m.get("mark_name", ""), UIColors.TEXT_STATUS))
+
+	if not rels.is_empty():
+		body.add_child(_subcaption("Relationship Shifts"))
+		var aggregated: Array[Dictionary] = []
+		for r in rels:
+			var found := false
+			for a in aggregated:
+				if a.char_a == r.get("char_a", "") and a.char_b == r.get("char_b", "") and a.source == r.get("source", ""):
+					a.weight += int(r.get("weight", 0))
+					found = true
+					break
+			if not found:
+				aggregated.append({
+					"char_a": r.get("char_a", ""),
+					"char_b": r.get("char_b", ""),
+					"source": r.get("source", ""),
+					"weight": int(r.get("weight", 0)),
+				})
+		for a in aggregated:
+			var sign_str := "+" if a.weight > 0 else ""
+			var col := UIColors.TEXT_HEALTHY if a.weight > 0 else UIColors.TEXT_DANGER
+			body.add_child(_kv_line(
+				"%s & %s" % [a.char_a, a.char_b],
+				"%s (%s%d)" % [a.source, sign_str, a.weight], col))
+
+	return built["card"]
+
+
+# --- Shared builders --------------------------------------------------------
+
+func _make_card_panel(accent := Color(0, 0, 0, 0)) -> PanelContainer:
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UIColors.SURFACE_PANEL
+	sb.set_corner_radius_all(UITheme.RADIUS_PANEL)
+	sb.set_border_width_all(1)
+	sb.border_color = UIColors.BORDER_SUBTLE
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 13
+	sb.content_margin_bottom = 13
+	if accent.a > 0.0:
+		sb.border_width_left = 4
+		sb.border_color = accent
+	card.add_theme_stylebox_override("panel", sb)
+	return card
+
+
+func _make_section_card(title: String) -> Dictionary:
+	var card := _make_card_panel()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 9)
+	card.add_child(vb)
+	vb.add_child(_caption(title))
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 5)
+	vb.add_child(body)
+	return {"card": card, "body": body}
+
+
+func _caption(text: String) -> Label:
+	var l := Label.new()
+	l.theme_type_variation = &"SubheaderLabel"
+	l.text = text
+	return l
+
+
+func _subcaption(text: String) -> Label:
+	var l := Label.new()
+	l.theme_type_variation = &"MutedLabel"
+	l.text = text.to_upper()
+	l.add_theme_font_size_override("font_size", 11)
+	return l
+
+
+func _kv_line(key: String, value: String, value_color: Color) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var k := Label.new()
+	k.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
+	k.text = key
+	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(k)
+	var v := Label.new()
+	v.add_theme_color_override("font_color", value_color)
+	v.text = value
+	row.add_child(v)
+	return row
+
+
+func _hrule() -> HSeparator:
+	var sep := HSeparator.new()
+	var line := StyleBoxLine.new()
+	line.color = UIColors.BORDER_SUBTLE
+	line.thickness = 1
+	sep.add_theme_stylebox_override("separator", line)
+	return sep
+
+
+func _survival_color(pct: float) -> Color:
+	if pct >= 80.0:
+		return UIColors.HP_GREEN
+	if pct >= 50.0:
+		return UIColors.TEXT_WARNING
+	return UIColors.DANGER
+
+
+func _pct_color(pct: float) -> Color:
+	if pct >= 50.0:
+		return UIColors.HP_GREEN
+	if pct >= 25.0:
+		return UIColors.TEXT_WARNING
+	return UIColors.DANGER
+
+
+func _strategy_name() -> String:
+	match strategy:
+		PartyAI.Strategy.AGGRESSIVE:
+			return "Aggressive"
+		PartyAI.Strategy.DEFENSIVE:
+			return "Defensive"
+	return "Balanced"
+
+
+func _scenario_line() -> String:
+	var parts: Array[String] = []
+	parts.append("Floor %d" % selected_floor)
+	var enc := "%d enc" % num_encounters
+	if include_boss:
+		enc += " + Boss"
+	parts.append(enc)
+	if return_encounters > 0:
+		parts.append("%d return" % return_encounters)
+	parts.append(_strategy_name())
+	parts.append("× %d runs" % num_dives)
+	return "   ·   ".join(parts)
+
+
+func _commafmt(v: float) -> String:
+	return _format_thousands(int(round(v)))
+
+
+func _format_thousands(n: int) -> String:
+	var s := str(absi(n))
+	var out := ""
+	var c := 0
+	for i in range(s.length() - 1, -1, -1):
+		out = s[i] + out
+		c += 1
+		if c % 3 == 0 and i > 0:
+			out = "," + out
+	return ("-" if n < 0 else "") + out
 
 
 func _display_detail() -> void:
+	_clear_results_host()
 	if last_batch_results.is_empty():
-		results_label.text = "Press Run to begin exploration."
+		results_host.alignment = BoxContainer.ALIGNMENT_CENTER
+		var hint := Label.new()
+		hint.theme_type_variation = &"MutedLabel"
+		hint.text = "Run a simulation to see the encounter log."
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		results_host.add_child(hint)
 		return
 
+	results_host.alignment = BoxContainer.ALIGNMENT_BEGIN
+	var log_label := RichTextLabel.new()
+	log_label.bbcode_enabled = true
+	log_label.fit_content = true
+	log_label.scroll_active = false
+	log_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	log_label.add_theme_color_override("default_color", UIColors.TEXT_SECONDARY)
+	log_label.text = _build_encounter_log_bbcode()
+	results_host.add_child(log_label)
+
+
+func _build_encounter_log_bbcode() -> String:
 	var text := "[b]ENCOUNTER LOG[/b]\n"
 
 	for di in range(last_batch_results.size()):
@@ -794,7 +1303,7 @@ func _display_detail() -> void:
 		if r.get("boss_victory", false):
 			text += "  [color=green]Boss defeated![/color]\n"
 
-	results_label.text = text
+	return text
 
 
 func _on_tab_changed(tab_index: int) -> void:
@@ -803,11 +1312,13 @@ func _on_tab_changed(tab_index: int) -> void:
 
 
 func _update_help() -> void:
+	if _scaffold == null:
+		return
 	var v_nav := KeyBindingHelper.get_nav_help()
 	var confirm := KeyBindingHelper.get_confirm_help()
 	var cancel := KeyBindingHelper.get_cancel_help()
-	var h_nav := KeyBindingHelper.get_horizontal_help()
-	help_label.text = "%s | %s | %s: Tabs | %s" % [v_nav, confirm, h_nav.split(":")[0], cancel]
+	_scaffold.set_hint("%s   ·   ‹ / › Adjust / Tabs   ·   %s Run   ·   %s" % [
+		v_nav, confirm.split(":")[0], cancel])
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -816,11 +1327,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.is_action_pressed("menu_left"):
-		if tab_bar.current_tab > 0:
+		var f := get_viewport().gui_get_focus_owner()
+		if f is Button and _steppers.has(f):
+			_adjust_stepper(f, -1)
+		elif tab_bar.current_tab > 0:
 			tab_bar.current_tab -= 1
 		return
 	if event.is_action_pressed("menu_right"):
-		if tab_bar.current_tab < tab_bar.tab_count - 1:
+		var f := get_viewport().gui_get_focus_owner()
+		if f is Button and _steppers.has(f):
+			_adjust_stepper(f, 1)
+		elif tab_bar.current_tab < tab_bar.tab_count - 1:
 			tab_bar.current_tab += 1
 		return
 

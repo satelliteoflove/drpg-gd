@@ -17,12 +17,12 @@ var buttons: Array[Button] = []
 var rename_edit: LineEdit = null
 
 var options_list: VBoxContainer
-var info_label: RichTextLabel
+var detail: CharacterDetailView
 
 
-func init(p_options_list: VBoxContainer, p_info_label: RichTextLabel) -> void:
+func init(p_options_list: VBoxContainer, p_detail: CharacterDetailView) -> void:
 	options_list = p_options_list
-	info_label = p_info_label
+	detail = p_detail
 
 
 func reset() -> void:
@@ -143,23 +143,7 @@ func _populate_roster_view() -> void:
 
 	_displayed_roster_chars = _sort_characters(GameState.roster.get_all())
 	for character in _displayed_roster_chars:
-		var btn := Button.new()
-		btn.text = "%s - L%d %s %s" % [
-			character.character_name,
-			character.level,
-			CharacterEnums.get_race_name(character.race),
-			CharacterEnums.get_class_name(character.character_class)
-		]
-		btn.custom_minimum_size = Vector2(350, 36)
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-
-		if character.is_dead:
-			btn.modulate = UIColors.MODULATE_DEAD
-		elif character.is_training():
-			btn.modulate = UIColors.TEXT_WARNING
-		elif GameState.party.has_member(character):
-			btn.modulate = UIColors.TEXT_IN_PARTY
-
+		var btn := _char_row(character)
 		options_list.add_child(btn)
 		buttons.append(btn)
 
@@ -167,9 +151,41 @@ func _populate_roster_view() -> void:
 		var empty_label := Label.new()
 		empty_label.text = "(No characters in roster)"
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.theme_type_variation = &"MutedLabel"
 		options_list.add_child(empty_label)
 
 	_setup_nav()
+
+
+func _char_row(character: Character) -> MenuListRow:
+	var chips: Array = []
+	var status := _status_chip(character)
+	if not status.is_empty():
+		chips.append(status)
+	return MenuListRow.create({
+		"badge": CharacterEnums.get_class_name(character.character_class).substr(0, 1).to_upper(),
+		"badge_color": UIColors.class_color(character.character_class),
+		"title": character.character_name,
+		"title_color": UIColors.TEXT_DANGER if character.is_dead else UIColors.TEXT_PRIMARY,
+		"subtitle": "L%d %s %s" % [character.level, CharacterEnums.get_race_name(character.race), CharacterEnums.get_class_name(character.character_class)],
+		"chips": chips,
+		"dim": character.is_dead,
+	})
+
+
+func _status_chip(c: Character) -> Dictionary:
+	if c.has_status(CharacterEnums.StatusEffect.LOST):
+		return {"text": "LOST", "fg": UIColors.TEXT_LOST, "bg": Color(0.20, 0.08, 0.08)}
+	if c.is_dead:
+		return {"text": "DEAD", "fg": UIColors.TEXT_DANGER, "bg": Color(0.28, 0.10, 0.12)}
+	if c.is_training():
+		var e := c.get_training_days_elapsed(GameState.game_day)
+		return {"text": "TRAINING %d/%d" % [e, c.get_training_total()], "fg": UIColors.TEXT_WARNING, "bg": UIColors.SURFACE_SELECTED}
+	if GameState.party.has_member(c):
+		return {"text": "IN PARTY", "fg": UIColors.TEXT_IN_PARTY, "bg": UIColors.SURFACE_SELECTED}
+	if c.town_job >= 0:
+		return {"text": TownJobs.get_job_name(c.town_job).to_upper(), "fg": UIColors.INFO, "bg": UIColors.SURFACE_SELECTED}
+	return {}
 
 
 func _populate_manage_actions() -> void:
@@ -519,7 +535,7 @@ func _on_roster_mode_back() -> void:
 
 func _update_roster_info() -> void:
 	if nav == null and roster_mode == RosterMode.VIEW:
-		info_label.text = "Select a character to manage."
+		detail.show_text("Select a character to manage.")
 		return
 
 	match roster_mode:
@@ -529,7 +545,7 @@ func _update_roster_info() -> void:
 			if idx >= 0 and idx < characters.size():
 				_show_character_info(characters[idx])
 			else:
-				info_label.text = "Select a character to manage."
+				detail.show_text("Select a character to manage.")
 		RosterMode.MANAGE:
 			if selected_character:
 				_show_character_info(selected_character)
@@ -544,183 +560,11 @@ func _update_roster_info() -> void:
 
 
 func _show_character_info(character: Character) -> void:
-	info_label.text = format_character_info(character)
-
-
-static func format_character_info(character: Character) -> String:
-	var text := "[b]%s[/b]  L%d %s %s  %s  Age %d (%s)\n" % [
-		character.character_name,
-		character.level,
-		CharacterEnums.get_race_name(character.race),
-		CharacterEnums.get_class_name(character.character_class),
-		CharacterEnums.get_alignment_name(character.alignment),
-		character.get_age_years(),
-		character.get_life_phase_name()
-	]
-
-	text += "HP: %d/%d  MP: %d/%d  XP: %d" % [
-		character.current_hp, character.max_hp,
-		character.current_mp, character.max_mp,
-		character.experience
-	]
-	if character.pending_level_up:
-		text += " [color=yellow](Level up!)[/color]"
-	text += "\n"
-
-	text += "STR: %d  INT: %d  PIE: %d  VIT: %d  AGI: %d  LCK: %d\n" % [
-		character.strength, character.intelligence, character.piety,
-		character.vitality, character.agility, character.luck
-	]
-
-	text += _format_personality(character)
-	text += _format_relationships(character)
-
-	var equip_text := _format_equipment(character)
-	if equip_text != "":
-		text += equip_text
-
-	if character.max_spell_level > 0:
-		text += "\n[color=cyan]Spells:[/color] "
-		text += _format_spell_book(character)
-
-	var all_marks := character.get_marks()
-	if not all_marks.is_empty():
-		var major := character.get_major_marks()
-		var minor_count := all_marks.size() - major.size()
-		text += "\n[color=yellow]Marks:[/color]"
-		for mark in major:
-			text += "\n  [color=orange]%s[/color]" % mark.get("name")
-		if minor_count > 0:
-			text += "\n  [color=gray](%d minor marks)[/color]" % minor_count
-
-	if character.is_dead:
-		if character.has_status(CharacterEnums.StatusEffect.LOST):
-			text += "\n[color=red]LOST FOREVER[/color]"
-		elif character.has_status(CharacterEnums.StatusEffect.ASHED):
-			text += "\n[color=orange]ASHED[/color]"
-		else:
-			text += "\n[color=red]DEAD[/color]"
-	elif character.is_training():
-		var t_elapsed := character.get_training_days_elapsed(GameState.game_day)
-		var t_total := character.get_training_total()
-		var t_remain := t_total - t_elapsed
-		text += "\n[color=orange]Training as %s - Day %d/%d (%d remaining)[/color]" % [
-			CharacterEnums.get_class_name(character.training_target_class),
-			t_elapsed, t_total, t_remain]
-	elif GameState.party.has_member(character):
-		text += "\n[color=cyan]In party[/color]"
-
-	if not character.is_dead and character.town_job >= 0:
-		text += "\n[color=cyan]Job: %s[/color]" % TownJobs.get_job_name(character.town_job)
-
-	if not character.is_dead and not character.is_training():
-		var preview_bonus := minf(Character.REST_BONUS_MAX, 1.0 + character.town_days_accumulated * Character.REST_BONUS_PER_TOWN_DAY)
-		if character.rest_bonus_xp_multiplier > 1.0:
-			text += "\n[color=green]Rested: +%.0f%% XP in dungeon[/color]" % ((character.rest_bonus_xp_multiplier - 1.0) * 100)
-		elif preview_bonus > 1.0:
-			text += "\n[color=green]Rested: +%.0f%% XP on next dive[/color]" % ((preview_bonus - 1.0) * 100)
-
-	return text
-
-
-static func _format_personality(character: Character) -> String:
-	if character.tendencies.is_empty():
-		return ""
-	var parts: Array[String] = []
-	for axis: int in Personality.Axis.values():
-		var option: int = character.get_active_trait(axis as Personality.Axis)
-		if option < 0:
-			continue
-		var trait_name: String = Personality.get_option_name(axis as Personality.Axis, option)
-		if character.is_trait_crystallized(axis as Personality.Axis):
-			parts.append("[b]%s[/b]" % trait_name)
-		else:
-			parts.append("[color=gray]%s[/color]" % trait_name)
-	if parts.is_empty():
-		return ""
-	return "Personality: %s\n" % ", ".join(parts)
-
-
-static func _format_relationships(character: Character) -> String:
-	var rels := RelationshipManager.get_relationships_for(character.id)
-	if rels.is_empty():
-		return ""
-	rels.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return abs(a.get("weight", 0)) > abs(b.get("weight", 0)))
-	var parts: Array[String] = []
-	var count := mini(rels.size(), 3)
-	for i in range(count):
-		var rel: Dictionary = rels[i]
-		var other := GameState.roster.get_character(rel.other_id)
-		var rel_name: String = other.character_name if other else rel.other_id
-		var tier: Relationships.BondTier = rel.tier
-		var tier_name := Relationships.get_tier_name(tier)
-		var weight: int = rel.weight
-		var color := "white"
-		if tier == Relationships.BondTier.BONDED:
-			color = "green"
-		elif tier == Relationships.BondTier.COMPANION:
-			color = "yellow"
-		if tier == Relationships.BondTier.NEUTRAL:
-			parts.append("%s (%+d)" % [rel_name, weight])
-		else:
-			parts.append("[color=%s]%s: %s (%+d)[/color]" % [color, rel_name, tier_name, weight])
-	return "Bonds: %s\n" % ", ".join(parts)
-
-
-static func _format_equipment(character: Character) -> String:
-	var slots: Array[Dictionary] = [
-		{"type": Item.ItemType.WEAPON, "name": "Wpn"},
-		{"type": Item.ItemType.ARMOR, "name": "Arm"},
-		{"type": Item.ItemType.SHIELD, "name": "Shd"},
-		{"type": Item.ItemType.HELMET, "name": "Hlm"},
-		{"type": Item.ItemType.GLOVES, "name": "Glv"},
-		{"type": Item.ItemType.BOOTS, "name": "Bts"},
-		{"type": Item.ItemType.ACCESSORY, "name": "Acc"}
-	]
-
-	var parts: Array[String] = []
-	for slot_info in slots:
-		var item: Item = character.get_equipped_item(slot_info["type"])
-		if item:
-			var item_name := item.get_display_name()
-			if item.is_cursed and item.is_identified:
-				parts.append("[color=red]%s[/color]" % item_name)
-			else:
-				parts.append(item_name)
-
-	if parts.is_empty():
-		return ""
-	return "[color=cyan]Gear:[/color] %s\n" % ", ".join(parts)
-
-
-static func _format_spell_book(character: Character) -> String:
-	if character.known_spells.is_empty():
-		return "  [color=gray](No spells known)[/color]\n"
-
-	var spells_by_level: Dictionary = {}
-	for spell_id in character.known_spells:
-		var spell: Spell = SpellDatabase.get_spell(spell_id)
-		if spell == null:
-			continue
-		if not spells_by_level.has(spell.level):
-			spells_by_level[spell.level] = []
-		spells_by_level[spell.level].append(spell.name)
-
-	var text := ""
-	var levels: Array = spells_by_level.keys()
-	levels.sort()
-
-	for level in levels:
-		var spell_names: Array = spells_by_level[level]
-		var can_cast: bool = level <= character.max_spell_level
-		var color := "white" if can_cast else "gray"
-		text += "  [color=%s]L%d: %s[/color]\n" % [color, level, ", ".join(spell_names)]
-
-	if character.max_spell_level > 0:
-		text += "  [color=yellow]Can cast up to Level %d[/color]\n" % character.max_spell_level
-
-	return text
+	# Show the Front/Back row chip only for characters actually in the party, so
+	# an in-party member reads consistently whether viewed here or on the Party
+	# tab; a benched roster character has no row to show.
+	var pidx := GameState.party.get_members().find(character)
+	detail.show_character(character, maxi(pidx, 0), pidx >= 0)
 
 
 func _show_delete_info() -> void:
@@ -739,7 +583,7 @@ func _show_delete_info() -> void:
 	if GameState.party.has_member(selected_character):
 		text += "\n\n[color=orange]This character is currently in your party\nand will be removed from it.[/color]"
 
-	info_label.text = text
+	detail.show_text(text)
 
 
 func _show_rename_info() -> void:
@@ -755,7 +599,7 @@ func _show_rename_info() -> void:
 	text += "Enter a new name in the text field.\n"
 	text += "Maximum 20 characters."
 
-	info_label.text = text
+	detail.show_text(text)
 
 
 func _show_class_change_info() -> void:
@@ -765,7 +609,7 @@ func _show_class_change_info() -> void:
 	var idx := nav.get_current_index()
 	var class_count := CharacterEnums.CharacterClass.values().size()
 	if idx < 0 or idx >= class_count:
-		info_label.text = "Press Enter to cancel."
+		detail.show_text("Press Enter to cancel.")
 		return
 
 	var char_class: CharacterEnums.CharacterClass = idx as CharacterEnums.CharacterClass
@@ -799,12 +643,12 @@ func _show_class_change_info() -> void:
 		text += "Training time: %d days (available %s)\n" % [train_days, GameCalendar.format_short(completion_day)]
 		text += "Stats and known spells will be preserved."
 
-	info_label.text = text
+	detail.show_text(text)
 
 
 func _show_job_assignment_info() -> void:
 	if selected_character == null:
-		info_label.text = ""
+		detail.show_text("")
 		return
 	var text := "[b]%s[/b] - Job Assignment\n\n" % selected_character.character_name
 	text += "Town jobs provide daily income while benched:\n"
@@ -814,7 +658,7 @@ func _show_job_assignment_info() -> void:
 		text += "Current job: [color=cyan]%s[/color]" % TownJobs.get_job_name(selected_character.town_job)
 	else:
 		text += "Currently unemployed."
-	info_label.text = text
+	detail.show_text(text)
 
 
 func _sort_characters(chars: Array[Character]) -> Array[Character]:

@@ -10,35 +10,33 @@ var buttons: Array[Button] = []
 var roster_tab: GuildHallRosterTab = null
 var party_tab: GuildHallPartyTab = null
 
-@onready var title_label: Label = $MainHBox/LeftPanel/Header/TitleLabel
-@onready var count_label: Label = $MainHBox/LeftPanel/Header/CountLabel
-var _date_labels: Dictionary = {}
-var roster_value_label: Label = null
+var _scaffold: ScreenScaffold = null
+var _detail: CharacterDetailView = null
+var _count_strip: Label = null
+
+@onready var left_panel: VBoxContainer = $MainHBox/LeftPanel
 @onready var tab_bar: TabBar = $MainHBox/LeftPanel/TabBar
 @onready var options_panel: PanelContainer = $MainHBox/LeftPanel/OptionsPanel
 @onready var options_list: VBoxContainer = $MainHBox/LeftPanel/OptionsPanel/ScrollContainer/OptionsList
 @onready var message_label: Label = $MainHBox/LeftPanel/MessageLabel
 @onready var help_label: Label = $MainHBox/LeftPanel/HelpLabel
 @onready var back_button: Button = $MainHBox/LeftPanel/BackButton
-@onready var info_panel: PanelContainer = $MainHBox/RightPanel/InfoPanel
-@onready var info_label: RichTextLabel = $MainHBox/RightPanel/InfoPanel/InfoLabel
-@onready var roster_label: Label = $MainHBox/RightPanel/RosterLabel
-@onready var roster_panel: PanelContainer = $MainHBox/RightPanel/RosterPanel
-@onready var roster_list: VBoxContainer = $MainHBox/RightPanel/RosterPanel/ScrollContainer/RosterList
+@onready var right_panel: Control = $MainHBox/RightPanel
 
 
 func _ready() -> void:
-	back_button.pressed.connect(_on_back_pressed)
+	_install_scaffold()
+	_detail = CharacterDetailView.new(right_panel)
+	_build_count_strip()
 	tab_bar.tab_changed.connect(_on_tab_changed)
-	_build_header_grid()
 
 	roster_tab = GuildHallRosterTab.new()
-	roster_tab.init(options_list, info_label)
+	roster_tab.init(options_list, _detail)
 	roster_tab.message_changed.connect(_on_delegate_message)
 	roster_tab.display_refresh_requested.connect(_refresh_display)
 
 	party_tab = GuildHallPartyTab.new()
-	party_tab.init(options_list, info_label)
+	party_tab.init(options_list, _detail)
 	party_tab.message_changed.connect(_on_delegate_message)
 	party_tab.display_refresh_requested.connect(_refresh_display)
 
@@ -52,24 +50,34 @@ func _ready() -> void:
 	_refresh_display()
 
 
-func _build_header_grid() -> void:
-	count_label.hide()
-	var header: HBoxContainer = title_label.get_parent()
-	_date_labels = GameCalendar.create_date_grid(GameState.game_day)
-	var grid: GridContainer = _date_labels["grid"]
-	grid.columns = 4
-	grid.size_flags_horizontal = Control.SIZE_SHRINK_END
-	var roster_header := Label.new()
-	roster_header.text = "Roster"
-	roster_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	roster_header.add_theme_font_size_override("font_size", UIColors.FONT_SIZE_SMALL)
-	roster_header.add_theme_color_override("font_color", UIColors.TEXT_SECONDARY)
-	grid.add_child(roster_header)
-	grid.move_child(roster_header, 3)
-	roster_value_label = Label.new()
-	roster_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	grid.add_child(roster_value_label)
-	header.add_child(grid)
+## Wrap the guild hall in the shared scaffold for the same top-bar pill (title +
+## live date/gold), corner frame and Back affordance as every other screen.
+func _install_scaffold() -> void:
+	var bg := get_node_or_null("Background")
+	if bg != null:
+		bg.queue_free()
+
+	$MainHBox/LeftPanel/Header.visible = false
+	help_label.visible = false
+	back_button.visible = false
+
+	var main: Control = $MainHBox
+	remove_child(main)
+	_scaffold = ScreenScaffold.create({"title": "GUILD HALL", "hint": ""})
+	add_child(_scaffold)
+	move_child(_scaffold, 0)
+	_scaffold.body.add_child(main)
+	_scaffold.back_pressed.connect(_on_back_pressed)
+
+
+## A persistent, always-visible roster tally pinned beneath the tabs, so "how
+## many adventurers do I have?" is answerable from any tab without hunting.
+func _build_count_strip() -> void:
+	_count_strip = Label.new()
+	_count_strip.theme_type_variation = &"MutedLabel"
+	_count_strip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	left_panel.add_child(_count_strip)
+	left_panel.move_child(_count_strip, tab_bar.get_index() + 1)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -91,10 +99,8 @@ func _on_delegate_message(text: String) -> void:
 
 
 func _refresh_display() -> void:
-	if not _date_labels.is_empty():
-		GameCalendar.update_date_labels(_date_labels, GameState.game_day)
-		roster_value_label.text = "%d/%d" % [GameState.roster.size(), GameState.roster.MAX_SIZE]
-	_update_roster_overview()
+	if _count_strip != null:
+		_count_strip.text = "Roster   %d / %d" % [GameState.roster.size(), GameState.roster.MAX_SIZE]
 
 	match current_tab:
 		Tab.CREATE:
@@ -139,71 +145,39 @@ func _populate_create_tab() -> void:
 
 	_setup_nav()
 
-	var text := "[b]Create Character[/b]\n\n"
-	text += "Create a new adventurer by choosing their race,\n"
-	text += "background, stats, class, alignment, and name.\n\n"
-	text += "[color=cyan]Roster capacity:[/color] %d/%d\n" % [
-		GameState.roster.size(), GameState.roster.MAX_SIZE
-	]
-	if GameState.roster.is_full():
-		text += "\n[color=red]Roster is full! Delete a character to make room.[/color]"
-	info_label.text = text
+	# The right pane has no character to portrait on this tab, so fill it with a
+	# living snapshot of the guild itself rather than leaving it blank.
+	_detail.show_text(_guild_summary_text())
+
+
+func _guild_summary_text() -> String:
+	var roster := GameState.roster
+	var living := 0
+	var dead := 0
+	for c in roster.get_all():
+		if c.is_dead:
+			dead += 1
+		else:
+			living += 1
+
+	var text := "[b]The Adventurers' Guild[/b]\n\n"
+	text += "Roster      %d / %d\n" % [roster.size(), roster.MAX_SIZE]
+	text += "Ready       %d\n" % living
+	if dead > 0:
+		text += "[color=red]Fallen      %d[/color]\n" % dead
+	text += "In Party    %d / 6\n\n" % GameState.party.size()
+
+	if roster.is_full():
+		text += "[color=red]The roster is full — delete a character to make room.[/color]"
+	elif roster.is_empty():
+		text += "Your guild has no members yet.\nRecruit your first adventurer to begin."
+	else:
+		text += "Recruit a new adventurer to join the guild."
+	return text
 
 
 func _on_create_character() -> void:
 	SceneManager.go_to_character_creation()
-
-
-func _update_roster_overview() -> void:
-	for child in roster_list.get_children():
-		child.queue_free()
-
-	var characters: Array[Character] = GameState.roster.get_all()
-	if characters.is_empty():
-		var label := Label.new()
-		label.text = "(No characters in roster)"
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		roster_list.add_child(label)
-		return
-
-	for c in characters:
-		var row := _create_roster_row(c)
-		roster_list.add_child(row)
-
-
-func _create_roster_row(c: Character) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0, 24)
-
-	var name_label := Label.new()
-	name_label.text = c.character_name
-	name_label.custom_minimum_size = Vector2(100, 0)
-	row.add_child(name_label)
-
-	var class_label := Label.new()
-	class_label.text = "L%d %s" % [c.level, CharacterEnums.get_class_name(c.character_class)]
-	class_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(class_label)
-
-	var status_label := Label.new()
-	if c.has_status(CharacterEnums.StatusEffect.LOST):
-		status_label.text = "[LOST]"
-		status_label.add_theme_color_override("font_color", UIColors.TEXT_LOST)
-	elif c.is_dead:
-		status_label.text = "[DEAD]"
-		status_label.add_theme_color_override("font_color", UIColors.DANGER)
-	elif c.is_training():
-		var t_elapsed := c.get_training_days_elapsed(GameState.game_day)
-		status_label.text = "[Training %d/%d]" % [t_elapsed, c.get_training_total()]
-		status_label.add_theme_color_override("font_color", UIColors.TEXT_WARNING)
-	elif GameState.party.has_member(c):
-		status_label.text = "[PARTY]"
-		status_label.add_theme_color_override("font_color", UIColors.TEXT_IN_PARTY)
-	else:
-		status_label.text = ""
-	row.add_child(status_label)
-
-	return row
 
 
 func _clear_options() -> void:
@@ -231,6 +205,9 @@ func _update_help() -> void:
 			help_label.text = roster_tab.get_help_text()
 		Tab.PARTY:
 			help_label.text = party_tab.get_help_text()
+
+	if _scaffold != null:
+		_scaffold.set_hint(help_label.text)
 
 
 func _unhandled_input(event: InputEvent) -> void:

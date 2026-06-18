@@ -23,7 +23,8 @@ theme_override_constants/separation = 12
 
 [node name="ChestModalHeader" type="Label" parent="ChestModalVBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_type_variation = &"HeaderLabel"
+theme_override_colors/font_color = Color(0.87, 0.74, 0.47, 1)
 text = "A chest appears..."
 horizontal_alignment = 1
 

@@ -7,8 +7,17 @@
 Prefer reusing running game sessions over stopping/restarting:
 - Many code changes hot-reload without requiring a restart
 - Only restart when: adding new autoloads, changing project settings, or after crashes
-- Use screenshots to verify state rather than restarting to "check if it worked"
+- Verify state by reading runtime state or screenshots rather than restarting to "check if it worked" (see **Screenshots & Game Observation** below — prefer text introspection and the game-observer sub-agent)
 - If unsure whether a change requires restart, try it first - worst case is a crash
+
+### Screenshots & Game Observation
+
+Screenshots compound in cost: any frame Claude views is inlined into context and **persists for the whole session with no decay** (~600–1,200 tokens each). A long visual session can drown in stale frames. So:
+
+- **Prefer text introspection over pixels.** Structural/state questions (focused control, label text, HP/MP/gold, current scene, node visibility, player position/facing, enemy count) are answerable as cheap text via godot-mcp's `godot_runtime_state` / `godot_node_read` / `godot_scene3d`. Screenshot only for genuinely *visual* judgments (spacing, color, art, animation, legibility).
+- **Isolate screenshot-heavy work in the `game-observer` sub-agent** (`.claude/agents/game-observer.md`). For any multi-frame or screenshot-driven verification — UI, combat, dungeon navigation, anything — dispatch game-observer. It drives the game (optional freeze + input sequence + captures), interprets the frames, and returns a **text** verdict; the frames die with its discarded context instead of bloating the main session. Reserve inline screenshots in the main loop for frames the **user** needs to see (those are the deliverable).
+- **Default capture is ~640px** — a sensible baseline that keeps the common case cheap; request higher resolution when finer detail helps (alignment, small art, tiny text). It's a default, not a hard cap.
+- game-observer is **read-only** (prompt-enforced). If a check needs game-state setup it can't reach read-only (spawn enemies, force a dungeon state), that's the trigger to add a separate *setup-capable* observer — split on the permission boundary, not by domain.
 
 ### Handling Crashes Gracefully
 

@@ -19,10 +19,27 @@ const BINDABLE_ACTIONS: Dictionary = {
 
 var _defaults: Dictionary = {}
 
+# Gamepad bindings layered onto the menu_* actions so the whole keyboard-driven
+# UI is controller-navigable. Added at RUNTIME (not project.godot) because the
+# key-rebind system erases/re-adds only InputEventKey, which would otherwise
+# strip joypad events whenever a saved config loads. Re-applied after every
+# load / rebind / reset so they always survive.
+const JOYPAD_BINDINGS: Dictionary = {
+	"menu_up": [{"button": JOY_BUTTON_DPAD_UP}, {"axis": JOY_AXIS_LEFT_Y, "value": -1.0}],
+	"menu_down": [{"button": JOY_BUTTON_DPAD_DOWN}, {"axis": JOY_AXIS_LEFT_Y, "value": 1.0}],
+	"menu_left": [{"button": JOY_BUTTON_DPAD_LEFT}, {"axis": JOY_AXIS_LEFT_X, "value": -1.0}],
+	"menu_right": [{"button": JOY_BUTTON_DPAD_RIGHT}, {"axis": JOY_AXIS_LEFT_X, "value": 1.0}],
+	"menu_confirm": [{"button": JOY_BUTTON_A}],
+	"menu_cancel": [{"button": JOY_BUTTON_B}],
+	"menu_select": [{"button": JOY_BUTTON_Y}],
+}
+
 
 func _ready() -> void:
 	_store_defaults()
 	_load_bindings()
+	_ensure_joypad_bindings()
+	_strip_ui_joypad()
 
 
 func _store_defaults() -> void:
@@ -69,6 +86,7 @@ func rebind_action(action: String, slot: int, new_event: InputEventKey) -> void:
 	for key_event in key_events:
 		InputMap.action_add_event(action, key_event)
 
+	_ensure_joypad_bindings()
 	_save_bindings()
 
 
@@ -84,6 +102,8 @@ func reset_defaults() -> void:
 	var dir := DirAccess.open("user://")
 	if dir and dir.file_exists("keybindings.cfg"):
 		dir.remove("keybindings.cfg")
+
+	_ensure_joypad_bindings()
 
 
 func get_action_keys(action: String) -> Array[InputEventKey]:
@@ -161,6 +181,60 @@ func _load_bindings() -> void:
 			var event := _deserialize_key(data)
 			if event:
 				InputMap.action_add_event(action, event)
+
+
+func _ensure_joypad_bindings() -> void:
+	for action: String in JOYPAD_BINDINGS:
+		if not InputMap.has_action(action):
+			continue
+		for binding: Dictionary in JOYPAD_BINDINGS[action]:
+			if binding.has("button"):
+				if not _has_joy_button(action, binding["button"]):
+					var ev := InputEventJoypadButton.new()
+					ev.button_index = binding["button"]
+					InputMap.action_add_event(action, ev)
+			elif binding.has("axis"):
+				if not _has_joy_axis(action, binding["axis"], binding["value"]):
+					var ev := InputEventJoypadMotion.new()
+					ev.axis = binding["axis"]
+					ev.axis_value = binding["value"]
+					InputMap.action_add_event(action, ev)
+
+
+## Godot binds the gamepad to its built-in ui_* focus navigation by default,
+## which fights this game's custom menu_*-driven navigation (controls set their
+## focus neighbours to self, so built-in ui_right lands on itself and eats the
+## press). Strip the joypad off the ui_* actions so the pad drives ONLY menu_*,
+## the single navigation system the whole UI already uses for the keyboard.
+func _strip_ui_joypad() -> void:
+	var ui_actions := [
+		"ui_left", "ui_right", "ui_up", "ui_down",
+		"ui_accept", "ui_cancel", "ui_focus_next", "ui_focus_prev", "ui_select"]
+	for action: String in ui_actions:
+		if not InputMap.has_action(action):
+			continue
+		var to_erase: Array = []
+		for e in InputMap.action_get_events(action):
+			if e is InputEventJoypadButton or e is InputEventJoypadMotion:
+				to_erase.append(e)
+		for e in to_erase:
+			InputMap.action_erase_event(action, e)
+
+
+func _has_joy_button(action: String, button_index: int) -> bool:
+	for event in InputMap.action_get_events(action):
+		if event is InputEventJoypadButton and (event as InputEventJoypadButton).button_index == button_index:
+			return true
+	return false
+
+
+func _has_joy_axis(action: String, axis: int, value: float) -> bool:
+	for event in InputMap.action_get_events(action):
+		if event is InputEventJoypadMotion:
+			var m := event as InputEventJoypadMotion
+			if m.axis == axis and signf(m.axis_value) == signf(value):
+				return true
+	return false
 
 
 func _serialize_key(event: InputEventKey) -> Dictionary:

@@ -44,8 +44,8 @@ func populate() -> void:
 
 
 func get_info_suffix(item: Item) -> String:
-	var text := "\n\n[color=red]Uncurse cost: %d gold[/color]" % item.buy_price
-	text += "\n[color=gray]Item will be destroyed[/color]"
+	var text := "\n\n[color=#%s]Uncurse cost: %d gold[/color]" % [UIColors.TEXT_DANGER.to_html(false), item.buy_price]
+	text += "\n[color=#%s]Item will be destroyed[/color]" % UIColors.TEXT_MUTED.to_html(false)
 	return text
 
 
@@ -82,18 +82,23 @@ func handle_confirm() -> bool:
 
 
 func _create_uncurse_button(index: int, member: Character, item: Item) -> Button:
-	var btn := Button.new()
 	var cost := item.buy_price
-	btn.text = "%s's %s - %d gold" % [member.character_name, item.get_display_name(), cost]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_uncurse_item.bind(index))
-
-	if not GameState.party.has_gold(cost):
+	var can_afford := GameState.party.has_gold(cost)
+	var b := ItemView.badge(item)
+	var btn := MenuListRow.create({
+		"badge": b["text"],
+		"badge_color": UIColors.TEXT_DANGER,
+		"title": "%s's %s" % [member.character_name, item.get_display_name()],
+		"title_color": UIColors.TEXT_DANGER,
+		"subtitle": "Cursed " + item.get_type_name(),
+		"chips": [{"text": "%d g" % cost,
+			"fg": UIColors.GOLD if can_afford else UIColors.TEXT_DANGER, "bg": UIColors.SURFACE_SELECTED}],
+		"dim": not can_afford,
+	})
+	if not can_afford:
 		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
 		btn.tooltip_text = "Not enough gold"
-
+	btn.pressed.connect(_on_uncurse_item.bind(index))
 	return btn
 
 

@@ -4,7 +4,7 @@ signal closed
 
 const TILE_SIZE: int = 12
 const WALL_THICKNESS: int = 2
-const LEGEND_WIDTH: int = 150
+const LEGEND_WIDTH: int = 210
 
 const COLOR_FLOOR := Color(0.2, 0.2, 0.25)
 const COLOR_WALL := Color(0.6, 0.55, 0.4)
@@ -15,9 +15,10 @@ const COLOR_STAIRS_UP := Color(0.2, 0.6, 0.2)
 const COLOR_STAIRS_DOWN := Color(0.6, 0.2, 0.2)
 const COLOR_PLAYER := Color(1.0, 1.0, 0.0)
 const COLOR_UNDISCOVERED := Color(0.05, 0.05, 0.05)
-const COLOR_BACKGROUND := Color(0.0, 0.0, 0.0, 0.85)
-const COLOR_LEGEND_BG := Color(0.1, 0.1, 0.1, 0.9)
-const COLOR_TEXT := Color(0.8, 0.8, 0.8)
+const COLOR_BACKGROUND := Color(0.04, 0.035, 0.06, 0.93)
+const COLOR_LEGEND_BG := Color(0.14, 0.13, 0.17, 0.96)
+const COLOR_TEXT := Color(0.88, 0.86, 0.82)
+const COLOR_TITLE := Color(0.87, 0.74, 0.47)
 const COLOR_ENEMY_LOS := Color(0.9, 0.2, 0.2)
 const COLOR_ENEMY_SPOTTED := Color(0.7, 0.4, 0.4)
 const COLOR_ENEMY_REVEALED := Color(0.5, 0.3, 0.3, 0.7)
@@ -51,45 +52,29 @@ func _ready() -> void:
 
 
 func _create_map_buttons() -> void:
-	var button_style := StyleBoxFlat.new()
-	button_style.bg_color = Color(0.15, 0.15, 0.18)
-	button_style.border_color = Color(0.5, 0.5, 0.55)
-	button_style.set_border_width_all(1)
-	button_style.set_corner_radius_all(3)
-	button_style.set_content_margin_all(8)
-
-	var button_hover := StyleBoxFlat.new()
-	button_hover.bg_color = Color(0.22, 0.22, 0.26)
-	button_hover.border_color = Color(0.6, 0.6, 0.65)
-	button_hover.set_border_width_all(1)
-	button_hover.set_corner_radius_all(3)
-	button_hover.set_content_margin_all(8)
-
-	reveal_button = _create_styled_button("[R] Reveal Map", button_style, button_hover)
+	reveal_button = _create_styled_button("[R] Reveal Map")
 	reveal_button.pressed.connect(_on_reveal_pressed)
 
-	show_enemies_button = _create_styled_button("[E] Show Enemies", button_style, button_hover)
+	show_enemies_button = _create_styled_button("[E] Show Enemies")
 	show_enemies_button.pressed.connect(_on_show_enemies_pressed)
 
-	show_zones_button = _create_styled_button("[Z] Show Zones", button_style, button_hover)
+	show_zones_button = _create_styled_button("[Z] Show Zones")
 	show_zones_button.pressed.connect(_on_show_zones_pressed)
 
-	close_button = _create_styled_button("[N] Close Map", button_style, button_hover)
+	close_button = _create_styled_button("[N] Close Map")
 	close_button.pressed.connect(_on_close_pressed)
 
 	_update_enemy_button_text()
 	_update_zones_button_text()
 
 
-func _create_styled_button(text: String, normal_style: StyleBoxFlat, hover_style: StyleBoxFlat) -> Button:
+# Buttons inherit the central Arcane-Tome theme; only sizing is set here.
+func _create_styled_button(text: String) -> Button:
 	var btn := Button.new()
 	btn.text = text
-	btn.custom_minimum_size = Vector2(130, 32)
-	btn.add_theme_stylebox_override("normal", normal_style)
-	btn.add_theme_stylebox_override("hover", hover_style)
-	btn.add_theme_stylebox_override("pressed", hover_style)
-	btn.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9))
-	btn.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
+	btn.custom_minimum_size = Vector2(LEGEND_WIDTH - 24, 34)
+	btn.clip_text = true
+	btn.focus_mode = Control.FOCUS_NONE
 	add_child(btn)
 	return btn
 
@@ -149,6 +134,7 @@ func _draw() -> void:
 	var map_area_width := screen_size.x - LEGEND_WIDTH
 
 	draw_rect(Rect2(Vector2.ZERO, screen_size), COLOR_BACKGROUND)
+	_draw_title(map_area_width)
 
 	var map_width_tiles := dungeon_data.width
 	var map_height_tiles := dungeon_data.height
@@ -190,6 +176,17 @@ func _draw() -> void:
 	_draw_enemies(offset_x, offset_y)
 	_draw_player(offset_x, offset_y)
 	_draw_legend(screen_size)
+
+
+func _draw_title(map_area_width: float) -> void:
+	var font := get_theme_default_font()
+	if font == null:
+		return
+	var title := "FLOOR %d" % GameState.current_floor
+	var fsize := 26
+	var dims := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize)
+	var pos := Vector2(map_area_width * 0.5 - dims.x * 0.5, 38)
+	draw_string(font, pos, title, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, COLOR_TITLE)
 
 
 func _draw_walls(tile: DungeonTile, tile_pos: Vector2) -> void:
@@ -265,14 +262,15 @@ func _draw_legend(screen_size: Vector2) -> void:
 	var legend_x := screen_size.x - LEGEND_WIDTH
 	var legend_rect := Rect2(legend_x, 0, LEGEND_WIDTH, screen_size.y)
 	draw_rect(legend_rect, COLOR_LEGEND_BG)
+	draw_line(Vector2(legend_x, 0), Vector2(legend_x, screen_size.y), UIColors.TITLE_GOLD_DIM, 1.0)
 
-	var font := ThemeDB.fallback_font
+	var font := get_theme_default_font()
 	var font_size := 14
 	var line_height := 24
-	var padding := 10
-	var y_pos := 30
+	var padding := 12
+	var y_pos := 32
 
-	draw_string(font, Vector2(legend_x + padding, y_pos), "MAP LEGEND", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, COLOR_TEXT)
+	draw_string(font, Vector2(legend_x + padding, y_pos), "MAP LEGEND", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, COLOR_TITLE)
 	y_pos += line_height + 10
 
 	var items := [

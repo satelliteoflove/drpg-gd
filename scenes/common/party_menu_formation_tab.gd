@@ -49,32 +49,83 @@ func _create_slot_button(slot_index: int) -> Button:
 
 
 func _update_slot_button(btn: Button, slot_index: int) -> void:
-	var character: Character = null
-	if GameState.party and slot_index < GameState.party.size():
-		character = GameState.party.get_member_at(slot_index)
-
+	var character: Character = _slot_character(slot_index)
 	if character:
-		btn.text = "%s\nL%d %s" % [character.character_name, character.level, CharacterEnums.get_class_name(character.character_class)]
-		btn.modulate = UIColors.MODULATE_DEAD if character.is_dead else Color.WHITE
+		var tag := "  ✝" if character.is_dead else ""
+		btn.text = "%s%s\nL%d %s" % [
+			character.character_name, tag, character.level,
+			CharacterEnums.get_class_name(character.character_class)]
 	else:
 		btn.text = "(Empty)"
-		btn.modulate = UIColors.MODULATE_DISABLED
+
+
+func _slot_character(slot_index: int) -> Character:
+	if GameState.party and slot_index < GameState.party.size():
+		return GameState.party.get_member_at(slot_index)
+	return null
 
 
 func _update_selection() -> void:
 	for i in range(slot_buttons.size()):
-		var btn := slot_buttons[i]
+		var character: Character = _slot_character(i)
+		var state := "normal"
 		if i == selected_index:
-			btn.add_theme_color_override("font_color", UIColors.TEXT_ACTIVE)
-			btn.add_theme_color_override("font_hover_color", UIColors.TEXT_ACTIVE)
+			state = "picked"
 		elif i == current_slot:
-			btn.add_theme_color_override("font_color", UIColors.WARNING)
-			btn.add_theme_color_override("font_hover_color", UIColors.WARNING)
-		else:
-			btn.remove_theme_color_override("font_color")
-			btn.remove_theme_color_override("font_hover_color")
+			state = "cursor"
+		_style_slot(slot_buttons[i], state, character)
 
 	_update_info()
+
+
+## A formation slot's whole visual state lives here so the cursor (accent glow)
+## and the picked-up slot (gold border) always read clearly — never confused
+## with the dead tint, which is now carried by red text + a dagger, not a wash.
+func _style_slot(btn: Button, state: String, character: Character) -> void:
+	var is_empty := character == null
+	var is_dead := character != null and character.is_dead
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UIColors.SURFACE_CARD
+	sb.set_corner_radius_all(8)
+	sb.set_border_width_all(1)
+	sb.border_color = UIColors.BORDER_SUBTLE
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+
+	match state:
+		"cursor":
+			sb.bg_color = UIColors.SURFACE_SELECTED
+			sb.set_border_width_all(2)
+			sb.border_color = UIColors.ACCENT
+			sb.shadow_color = UIColors.ACCENT_GLOW
+			sb.shadow_size = 5
+		"picked":
+			sb.bg_color = UIColors.SURFACE_SELECTED
+			sb.set_border_width_all(2)
+			sb.border_color = UIColors.TITLE_GOLD
+			sb.shadow_color = Color(UIColors.TITLE_GOLD.r, UIColors.TITLE_GOLD.g, UIColors.TITLE_GOLD.b, 0.35)
+			sb.shadow_size = 5
+
+	for s in ["normal", "hover", "pressed"]:
+		btn.add_theme_stylebox_override(s, sb)
+
+	var font_color := UIColors.TEXT_MUTED
+	if is_empty:
+		font_color = UIColors.TEXT_MUTED
+	elif is_dead:
+		font_color = UIColors.TEXT_DANGER
+	elif state == "picked":
+		font_color = UIColors.TITLE_GOLD
+	elif state == "cursor":
+		font_color = Color.WHITE
+	else:
+		font_color = UIColors.TEXT_PRIMARY
+	btn.add_theme_color_override("font_color", font_color)
+	btn.add_theme_color_override("font_hover_color", font_color)
+	btn.modulate = Color.WHITE
 
 
 func _update_info() -> void:

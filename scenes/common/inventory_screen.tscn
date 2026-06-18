@@ -333,6 +333,7 @@ grow_vertical = 2
 
 [node name="TitleLabel" type="Label" parent="VBoxContainer" unique_id=786176839]
 layout_mode = 2
+theme_type_variation = &"HeaderLabel"
 text = "INVENTORY"
 horizontal_alignment = 1
 

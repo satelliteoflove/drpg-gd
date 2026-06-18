@@ -48,24 +48,29 @@ func _refresh_spell_party() -> void:
 	if GameState.party == null or GameState.party.is_empty():
 		var label := Label.new()
 		label.text = "(No party)"
+		label.theme_type_variation = &"MutedLabel"
 		spell_party_list.add_child(label)
 		return
 
 	for i in range(GameState.party.size()):
 		var member: Character = GameState.party.get_member_at(i)
-		var btn := Button.new()
-		var status_text := ""
+		var mp_fg := UIColors.MP_BLUE if member.max_mp > 0 else UIColors.TEXT_MUTED
+		var chips: Array = [{"text": "MP %d/%d" % [member.current_mp, member.max_mp],
+			"fg": mp_fg, "bg": UIColors.SURFACE_SELECTED}]
 		if member.is_dead:
-			status_text = " [DEAD]"
+			chips.append({"text": "DEAD", "fg": UIColors.TEXT_DANGER, "bg": Color(0.28, 0.10, 0.12)})
 		elif member.is_silenced():
-			status_text = " [SIL]"
-		btn.text = "%s - MP: %d/%d%s" % [member.character_name, member.current_mp, member.max_mp, status_text]
-		btn.custom_minimum_size = Vector2(180, 28)
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		if member.is_dead:
-			btn.modulate = UIColors.MODULATE_DEAD
-		elif member.is_silenced():
-			btn.modulate = UIColors.MODULATE_DISABLED
+			chips.append({"text": "SILENCED", "fg": UIColors.TEXT_WARNING, "bg": UIColors.SURFACE_SELECTED})
+		var castable := not member.is_dead and not member.is_silenced() and member.max_mp > 0
+		var class_str := CharacterEnums.get_class_name(member.character_class)
+		var btn := MenuListRow.create({
+			"badge": class_str.substr(0, 1).to_upper(),
+			"badge_color": UIColors.class_color(member.character_class),
+			"title": member.character_name,
+			"subtitle": "L%d %s  ·  %d spells" % [member.level, class_str, member.known_spells.size()],
+			"chips": chips,
+			"dim": not castable,
+		})
 		btn.pressed.connect(_on_spell_party_selected.bind(member))
 		spell_party_list.add_child(btn)
 		spell_party_buttons.append(btn)
@@ -147,30 +152,35 @@ func _refresh_spell_list() -> void:
 
 	if selected_character == null:
 		var label := Label.new()
-		label.text = "Select a character"
+		label.text = "Select a caster to view spells"
+		label.theme_type_variation = &"MutedLabel"
 		spell_list.add_child(label)
 		return
 
 	var spells_at_level: Array = all_spells.get(current_level, [])
 	if spells_at_level.is_empty():
 		var label := Label.new()
-		label.text = "(No spells at this level)"
+		label.text = "No spells known at level %d" % current_level
+		label.theme_type_variation = &"MutedLabel"
 		spell_list.add_child(label)
 		return
 
 	for spell: Spell in spells_at_level:
-		var btn := Button.new()
-		btn.text = "%s  (%d MP)" % [spell.name, spell.mp_cost]
-		btn.custom_minimum_size = Vector2(200, 28)
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-
+		var can_afford := selected_character.current_mp >= spell.mp_cost
+		var castable := spell.out_of_combat and can_afford \
+			and not (selected_character.is_dead or selected_character.is_silenced() or selected_character.is_disabled())
+		var chips: Array = [{"text": "%d MP" % spell.mp_cost,
+			"fg": UIColors.MP_BLUE if can_afford else UIColors.TEXT_DANGER, "bg": UIColors.SURFACE_SELECTED}]
 		if not spell.out_of_combat:
-			btn.modulate = UIColors.MODULATE_DISABLED
-		elif selected_character.current_mp < spell.mp_cost:
-			btn.modulate = UIColors.MODULATE_DISABLED
-		elif selected_character.is_dead or selected_character.is_silenced() or selected_character.is_disabled():
-			btn.modulate = UIColors.MODULATE_DISABLED
-
+			chips.append({"text": "COMBAT", "fg": UIColors.TEXT_MUTED, "bg": UIColors.SURFACE_SELECTED})
+		var btn := MenuListRow.create({
+			"badge": spell.get_school_name().substr(0, 1).to_upper(),
+			"badge_color": UIColors.school_color(spell.school),
+			"title": spell.name,
+			"subtitle": "L%d %s  ·  %s" % [spell.level, spell.get_school_name(), spell.get_target_description()],
+			"chips": chips,
+			"dim": not castable,
+		})
 		btn.pressed.connect(_on_spell_selected.bind(spell))
 		spell_list.add_child(btn)
 		spell_list_buttons.append(btn)
@@ -221,25 +231,21 @@ func _refresh_spell_targets() -> void:
 	var is_dead_target := selected_spell.target_type == CharacterEnums.SpellTargetType.DEAD_ALLY
 
 	for member in GameState.party.get_members():
-		var btn := Button.new()
-		var hp_text := "%d/%d HP" % [member.current_hp, member.max_hp]
-		var status := ""
+		var valid_target := member.is_dead if is_dead_target else not member.is_dead
+		var chips: Array = [{"text": "%d/%d HP" % [member.current_hp, member.max_hp],
+			"fg": UIColors.HP_GREEN, "bg": UIColors.SURFACE_SELECTED}]
 		if member.is_dead:
-			status = " [DEAD]"
-		btn.text = "%s: %s%s" % [member.character_name, hp_text, status]
-		btn.custom_minimum_size = Vector2(200, 28)
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-
-		var valid_target := false
-		if is_dead_target:
-			valid_target = member.is_dead
-		else:
-			valid_target = not member.is_dead
-
+			chips.append({"text": "DEAD", "fg": UIColors.TEXT_DANGER, "bg": Color(0.28, 0.10, 0.12)})
+		var btn := MenuListRow.create({
+			"badge": member.character_name.substr(0, 1).to_upper(),
+			"badge_color": UIColors.class_color(member.character_class),
+			"title": member.character_name,
+			"subtitle": "L%d %s" % [member.level, CharacterEnums.get_class_name(member.character_class)],
+			"chips": chips,
+			"dim": not valid_target,
+		})
 		if not valid_target:
 			btn.disabled = true
-			btn.modulate = UIColors.MODULATE_DISABLED
-
 		btn.pressed.connect(_on_spell_target_selected.bind(member))
 		spell_target_list.add_child(btn)
 		spell_target_buttons.append(btn)

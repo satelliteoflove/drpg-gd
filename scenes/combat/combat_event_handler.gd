@@ -33,7 +33,8 @@ func pregenerate_event_dialogue() -> void:
 
 
 func show_event_modal(event_data: Dictionary) -> void:
-	combat.get_node("MainLayout").visible = false
+	if combat.stage_root:
+		combat.stage_root.visible = false
 
 	var root: Control = combat.EventModalScene.instantiate()
 	combat.add_child(root)
@@ -65,11 +66,13 @@ func cleanup_event_modal() -> void:
 
 
 func show_micro_event(data: Dictionary) -> void:
-	combat.get_node("MainLayout").visible = false
+	if combat.stage_root:
+		combat.stage_root.visible = false
 	var overlay: CanvasLayer = combat.MicroEventScene.instantiate()
 	combat.add_child(overlay)
 	overlay.setup(data, GameState.get_party_members())
 	overlay.micro_event_closed.connect(func() -> void:
-		combat.get_node("MainLayout").visible = true
+		if combat.stage_root:
+			combat.stage_root.visible = true
 		combat._finish_exit_combat(true)
 	)

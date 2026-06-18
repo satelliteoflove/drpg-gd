@@ -88,6 +88,9 @@ const STARTER_LEVEL: int = 1
 func new_game() -> void:
 	party = Party.new()
 	party.add_gold(100)
+	var starter_torch := ShopItems.get_item("torch")
+	if starter_torch:
+		party.inventory.add_item(starter_torch.duplicate() as Item, 8)
 	roster = CharacterRoster.new()
 	party_formations = []
 	floor_tracker = FloorTracker.new()

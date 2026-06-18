@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://cqauit0ymcu2"]
+[gd_scene load_steps=4 format=3 uid="uid://cqauit0ymcu2"]
 
 [ext_resource type="Script" uid="uid://dgfhj4yg3ql0i" path="res://scenes/town/town.gd" id="1_n11nm"]
+[ext_resource type="Script" path="res://systems/ui/arcane_backdrop.gd" id="2_backdrop"]
+[ext_resource type="Script" path="res://systems/ui/arcane_frame.gd" id="3_frame"]
 
 [node name="Town" type="Control"]
 layout_mode = 3
@@ -11,76 +13,109 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_n11nm")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 0
+[node name="Backdrop" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.12, 0.1, 0.14, 1)
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_backdrop")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
-layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -100.0
-offset_top = -150.0
-offset_right = 100.0
-offset_bottom = 150.0
+[node name="TopBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchor_right = 1.0
+offset_left = 18.0
+offset_top = 16.0
+offset_right = -18.0
+grow_horizontal = 2
 
-[node name="Title" type="Label" parent="VBoxContainer"]
+[node name="Margin" type="MarginContainer" parent="TopBar"]
 layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 8
+
+[node name="Bar" type="HBoxContainer" parent="TopBar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="TopBar/Margin/Bar"]
+layout_mode = 2
+size_flags_vertical = 1
+theme_type_variation = &"HeaderLabel"
 text = "TOWN"
-horizontal_alignment = 1
 
-[node name="DayLabel" type="Label" parent="VBoxContainer"]
+[node name="Spacer" type="Control" parent="TopBar/Margin/Bar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DateContainer" type="HBoxContainer" parent="TopBar/Margin/Bar"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 8
+
+[node name="DayLabel" type="Label" parent="TopBar/Margin/Bar/DateContainer"]
 layout_mode = 2
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 
-[node name="Spacer" type="Control" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 20)
+[node name="Sep" type="VSeparator" parent="TopBar/Margin/Bar"]
 layout_mode = 2
 
-[node name="HintLabel" type="Label" parent="VBoxContainer"]
+[node name="GoldBox" type="HBoxContainer" parent="TopBar/Margin/Bar"]
 layout_mode = 2
-text = "Visit the Guild Hall to assemble your party"
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="GoldCaption" type="Label" parent="TopBar/Margin/Bar/GoldBox"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "GOLD"
+
+[node name="GoldValue" type="Label" parent="TopBar/Margin/Bar/GoldBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.75, 0.25, 1)
+theme_override_font_sizes/font_size = 17
+text = "0"
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 44.0
+mouse_filter = 2
+
+[node name="Content" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(440, 0)
+theme_override_constants/separation = 7
+
+[node name="Frame" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_frame")
+
+[node name="ControlsHint" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -280.0
+offset_top = -34.0
+offset_right = 280.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_type_variation = &"MutedLabel"
+text = "↑ / ↓   Navigate      ·      Enter   Select      ·      Esc   Back"
 horizontal_alignment = 1
-autowrap_mode = 2
-visible = false
-
-[node name="GuildHallButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "Guild Hall"
-
-[node name="ShopButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "Shop"
-
-[node name="PartyButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "Party"
-
-[node name="InnButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "Inn"
-
-[node name="TempleButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "Temple"
-
-[node name="SimulatorButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "AutoExplore"
-
-[node name="Spacer2" type="Control" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 20)
-layout_mode = 2
-
-[node name="DungeonButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "Enter Dungeon"
-
-[node name="MainMenuButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "Main Menu"

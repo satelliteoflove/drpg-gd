@@ -43,7 +43,7 @@ func populate() -> void:
 
 func get_info_suffix(item: Item) -> String:
 	var cost := item.buy_price / 2
-	return "\n\n[color=yellow]Identify cost: %d gold[/color]" % cost
+	return "\n\n[color=#%s]Identify cost: %d gold[/color]" % [UIColors.GOLD.to_html(false), cost]
 
 
 func get_help_text() -> String:
@@ -79,18 +79,15 @@ func handle_confirm() -> bool:
 
 
 func _create_identify_button(index: int, item: Item) -> Button:
-	var btn := Button.new()
 	var cost := item.buy_price / 2
-	btn.text = "%s - %d gold" % [item.get_display_name(), cost]
-	btn.custom_minimum_size = Vector2(400, 32)
-	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.pressed.connect(_on_identify_item.bind(index, item))
-
-	if not GameState.party.has_gold(cost):
+	var can_afford := GameState.party.has_gold(cost)
+	var chips: Array = [{"text": "%d g" % cost,
+		"fg": UIColors.INFO if can_afford else UIColors.TEXT_DANGER, "bg": UIColors.SURFACE_SELECTED}]
+	var btn: Button = shop.make_item_row(item, chips, not can_afford)
+	if not can_afford:
 		btn.disabled = true
-		btn.modulate = UIColors.MODULATE_DISABLED
 		btn.tooltip_text = "Not enough gold"
-
+	btn.pressed.connect(_on_identify_item.bind(index, item))
 	return btn
 
 

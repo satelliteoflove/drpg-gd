@@ -24,6 +24,7 @@ var available_spells: Dictionary = {}
 var spell_target_mode: String = ""
 var dispel_target_mode: bool = false
 var breath_target_mode: bool = false
+var ally_target_mode: String = ""  # "" / "item" / "spell" — on-field ally targeting
 var _input_cooldown: float = 0.0
 var _active_panel_tween: Tween = null
 var _target_highlight_tween: Tween = null
@@ -80,26 +81,31 @@ class EnemyUI:
 	var status_label: Label
 	var status_icons_hbox: HBoxContainer
 
-@onready var portrait_texture: TextureRect = $MainLayout/PortraitSection/PortraitMargin/PortraitVBox/PortraitTexture
-@onready var portrait_name: Label = $MainLayout/PortraitSection/PortraitMargin/PortraitVBox/PortraitName
-@onready var enemy_grid: GridContainer = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/EnemyGrid
-@onready var row_labels: VBoxContainer = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels
-@onready var back_label: Label = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/BackLabel
-@onready var middle_label: Label = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/MiddleLabel
-@onready var front_label: Label = $MainLayout/RightColumn/EnemySection/EnemyMargin/EnemyVBox/EnemyGridHBox/RowLabels/FrontLabel
-@onready var party_front_row: HBoxContainer = $MainLayout/RightColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/FrontRow
-@onready var party_back_row: HBoxContainer = $MainLayout/RightColumn/PartySection/PartyMargin/PartyVBox/PartyGridHBox/PartyGrid/BackRow
-@onready var turn_order_hbox: HBoxContainer = $MainLayout/RightColumn/TurnOrderBar/TurnOrderMargin/TurnOrderHBox
-@onready var message_log: RichTextLabel = $MainLayout/RightColumn/MessageSection/MessageMargin/MessageLog
-@onready var active_char_label: Label = $MainLayout/RightColumn/ActionSection/ActionVBox/ActiveCharLabel
+# --- Battle-stage controls (built in _build_stage) ---
+var stage_root: MarginContainer = null
+var banner_label: Label = null
+var portrait_texture: TextureRect = null
+var portrait_name: Label = null
+var enemy_grid: GridContainer = null
+var back_label: Label = null
+var middle_label: Label = null
+var front_label: Label = null
+var party_front_row: HBoxContainer = null
+var party_back_row: HBoxContainer = null
+var turn_order_hbox: HBoxContainer = null
+var message_log: RichTextLabel = null
+var active_char_label: Label = null
 
-@onready var attack_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/AttackButton
-@onready var defend_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/DefendButton
-@onready var spell_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/SpellButton
-@onready var dispel_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/DispelButton
-@onready var breath_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/BreathButton
-@onready var item_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/ItemButton
-@onready var escape_button: Button = $MainLayout/RightColumn/ActionSection/ActionVBox/ActionHBox/EscapeButton
+var attack_button: Button = null
+var defend_button: Button = null
+var spell_button: Button = null
+var dispel_button: Button = null
+var breath_button: Button = null
+var item_button: Button = null
+var escape_button: Button = null
+
+var _hint_label: Label = null
+var _last_device_gamepad: bool = false
 
 @onready var modal_overlay: ColorRect = $ModalOverlay
 @onready var item_modal: PanelContainer = $ItemModal
@@ -125,6 +131,7 @@ func _process(delta: float) -> void:
 
 func _ready() -> void:
 	set_process(false)
+	_build_stage()
 	_init_delegates()
 
 	attack_button.pressed.connect(_on_attack_pressed)
@@ -149,6 +156,314 @@ func _ready() -> void:
 	_start_combat()
 
 
+## Builds the entire battle stage in code (the .tscn carries only the root +
+## the targeting/spell/item modals). Regions, top to bottom: encounter banner,
+## a mid row of [enemy tableau | featured portrait], the turn-order ribbon, the
+## active-character command bar, the party rail, and a demoted combat log. The
+## opaque ArcaneBackdrop sits behind everything so the dungeon no longer bleeds
+## through. Assigns every control the controller/display delegates reference.
+func _build_stage() -> void:
+	var backdrop := ArcaneBackdrop.new()
+	backdrop.subdued = true
+	add_child(backdrop)
+	move_child(backdrop, 0)
+
+	stage_root = MarginContainer.new()
+	stage_root.name = "Stage"
+	stage_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stage_root.add_theme_constant_override("margin_left", 22)
+	stage_root.add_theme_constant_override("margin_right", 22)
+	stage_root.add_theme_constant_override("margin_top", 12)
+	stage_root.add_theme_constant_override("margin_bottom", 10)
+	add_child(stage_root)
+	move_child(stage_root, 1)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	stage_root.add_child(col)
+
+	# --- Encounter banner (spans the full stage width) ---
+	var banner := PanelContainer.new()
+	var banner_m := MarginContainer.new()
+	_pad(banner_m, 12, 4)
+	banner.add_child(banner_m)
+	banner_label = Label.new()
+	banner_label.theme_type_variation = &"HeaderLabel"
+	banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner_label.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
+	banner_label.text = "Battle"
+	banner_m.add_child(banner_label)
+	col.add_child(banner)
+
+	# --- Body: main column (left, everything) + featured-portrait rail (right) ---
+	# Keeping the enemy tableau, turn ribbon, command bar and party rail in ONE
+	# column means they all share a single centered axis; the portrait is a
+	# dedicated full-height right rail (A3 fills it with live target info).
+	var body := HBoxContainer.new()
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 12)
+	col.add_child(body)
+
+	var main_col := VBoxContainer.new()
+	main_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_col.add_theme_constant_override("separation", 5)
+	body.add_child(main_col)
+
+	# Enemy tableau.
+	var enemy_section := PanelContainer.new()
+	enemy_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	enemy_section.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_col.add_child(enemy_section)
+	var enemy_m := MarginContainer.new()
+	_pad(enemy_m, 14, 6)
+	enemy_section.add_child(enemy_m)
+	var enemy_vbox := VBoxContainer.new()
+	enemy_vbox.add_theme_constant_override("separation", 6)
+	enemy_m.add_child(enemy_vbox)
+	enemy_vbox.add_child(_section_header("ENEMIES", UIColors.DANGER))
+	var enemy_grid_hbox := HBoxContainer.new()
+	enemy_grid_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	enemy_grid_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	enemy_grid_hbox.add_theme_constant_override("separation", 10)
+	enemy_vbox.add_child(enemy_grid_hbox)
+	var er_labels := VBoxContainer.new()
+	er_labels.custom_minimum_size = Vector2(42, 0)
+	er_labels.add_theme_constant_override("separation", 4)
+	enemy_grid_hbox.add_child(er_labels)
+	back_label = _row_label("Back", UIColors.BACK_ROW)
+	middle_label = _row_label("Mid", UIColors.MID_ROW)
+	front_label = _row_label("Front", UIColors.FRONT_ROW)
+	for rl: Label in [back_label, middle_label, front_label]:
+		rl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		er_labels.add_child(rl)
+	enemy_grid = GridContainer.new()
+	enemy_grid.columns = 3
+	enemy_grid.add_theme_constant_override("h_separation", 8)
+	enemy_grid.add_theme_constant_override("v_separation", 8)
+	enemy_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	enemy_grid_hbox.add_child(enemy_grid)
+
+	# Turn-order ribbon.
+	var turn_bar := PanelContainer.new()
+	var turn_m := MarginContainer.new()
+	_pad(turn_m, 10, 5)
+	turn_bar.add_child(turn_m)
+	turn_order_hbox = HBoxContainer.new()
+	turn_order_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	turn_order_hbox.add_theme_constant_override("separation", 4)
+	turn_m.add_child(turn_order_hbox)
+	main_col.add_child(turn_bar)
+
+	# Active-character command bar.
+	var command_section := PanelContainer.new()
+	main_col.add_child(command_section)
+	var command_m := MarginContainer.new()
+	_pad(command_m, 10, 8)
+	command_section.add_child(command_m)
+	var command_vbox := VBoxContainer.new()
+	command_vbox.add_theme_constant_override("separation", 6)
+	command_m.add_child(command_vbox)
+	active_char_label = Label.new()
+	active_char_label.theme_type_variation = &"SubheaderLabel"
+	active_char_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	active_char_label.add_theme_color_override("font_color", UIColors.TEXT_ACTIVE)
+	command_vbox.add_child(active_char_label)
+	var action_hbox := HBoxContainer.new()
+	action_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	action_hbox.add_theme_constant_override("separation", 10)
+	command_vbox.add_child(action_hbox)
+	attack_button = _command_chip("Attack")
+	defend_button = _command_chip("Defend")
+	spell_button = _command_chip("Spell")
+	dispel_button = _command_chip("Dispel")
+	breath_button = _command_chip("Breath")
+	item_button = _command_chip("Item")
+	escape_button = _command_chip("Escape")
+	for b: Button in [attack_button, defend_button, spell_button, dispel_button, breath_button, item_button, escape_button]:
+		action_hbox.add_child(b)
+
+	# Party rail.
+	var party_section := PanelContainer.new()
+	main_col.add_child(party_section)
+	var party_m := MarginContainer.new()
+	_pad(party_m, 12, 8)
+	party_section.add_child(party_m)
+	var party_vbox := VBoxContainer.new()
+	party_vbox.add_theme_constant_override("separation", 5)
+	party_m.add_child(party_vbox)
+	party_vbox.add_child(_section_header("PARTY", UIColors.INFO))
+	var party_grid_hbox := HBoxContainer.new()
+	party_grid_hbox.add_theme_constant_override("separation", 8)
+	party_vbox.add_child(party_grid_hbox)
+	var pr_labels := VBoxContainer.new()
+	pr_labels.custom_minimum_size = Vector2(42, 0)
+	pr_labels.add_theme_constant_override("separation", 4)
+	party_grid_hbox.add_child(pr_labels)
+	var pf := _row_label("Front", UIColors.FRONT_ROW)
+	pf.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var pb := _row_label("Back", UIColors.BACK_ROW)
+	pb.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pr_labels.add_child(pf)
+	pr_labels.add_child(pb)
+	var party_grid := VBoxContainer.new()
+	party_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	party_grid.add_theme_constant_override("separation", 5)
+	party_grid_hbox.add_child(party_grid)
+	party_front_row = HBoxContainer.new()
+	party_front_row.add_theme_constant_override("separation", 6)
+	party_grid.add_child(party_front_row)
+	party_back_row = HBoxContainer.new()
+	party_back_row.add_theme_constant_override("separation", 6)
+	party_grid.add_child(party_back_row)
+
+	# Featured-portrait rail (right; full body height): foe portrait on top, the
+	# demoted combat log filling the rail's lower half. Keeping the log here frees
+	# the main column to fit the 720px viewport without clipping the party rail.
+	var portrait_section := PanelContainer.new()
+	portrait_section.custom_minimum_size = Vector2(288, 0)
+	portrait_section.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(portrait_section)
+	var portrait_m := MarginContainer.new()
+	_pad(portrait_m, 12, 10)
+	portrait_section.add_child(portrait_m)
+	var portrait_vbox := VBoxContainer.new()
+	portrait_vbox.add_theme_constant_override("separation", 6)
+	portrait_m.add_child(portrait_vbox)
+	portrait_vbox.add_child(_section_header("FOE", UIColors.DANGER))
+	portrait_texture = TextureRect.new()
+	portrait_texture.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	portrait_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait_vbox.add_child(portrait_texture)
+	portrait_name = Label.new()
+	portrait_name.theme_type_variation = &"SubheaderLabel"
+	portrait_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	portrait_vbox.add_child(portrait_name)
+
+	portrait_vbox.add_child(_section_header("COMBAT LOG", UIColors.ACCENT))
+	var log_panel := PanelContainer.new()
+	log_panel.custom_minimum_size = Vector2(0, 150)
+	log_panel.add_theme_stylebox_override("panel", _log_box())
+	portrait_vbox.add_child(log_panel)
+	var log_m := MarginContainer.new()
+	_pad(log_m, 8, 6)
+	log_panel.add_child(log_m)
+	message_log = RichTextLabel.new()
+	message_log.bbcode_enabled = true
+	message_log.scroll_following = true
+	message_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	log_m.add_child(message_log)
+
+	# --- Control-hint footer (adapts to the last input device) ---
+	_hint_label = Label.new()
+	_hint_label.theme_type_variation = &"MutedLabel"
+	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(_hint_label)
+	_update_hint_footer()
+
+
+func _update_hint_footer() -> void:
+	if _hint_label == null:
+		return
+	if _last_device_gamepad:
+		_hint_label.text = "Stick / D-Pad  Navigate      (A) Confirm      (B) Back"
+	else:
+		_hint_label.text = "h j k l / Arrows  Navigate      Enter Confirm      Esc Back"
+
+
+func _note_input_device(event: InputEvent) -> void:
+	var is_pad := event is InputEventJoypadButton or event is InputEventJoypadMotion
+	var is_key := event is InputEventKey
+	if not is_pad and not is_key:
+		return
+	if is_pad != _last_device_gamepad:
+		_last_device_gamepad = is_pad
+		_update_hint_footer()
+
+
+func _pad(m: MarginContainer, h: int, v: int) -> void:
+	m.add_theme_constant_override("margin_left", h)
+	m.add_theme_constant_override("margin_right", h)
+	m.add_theme_constant_override("margin_top", v)
+	m.add_theme_constant_override("margin_bottom", v)
+
+
+func _section_header(text_value: String, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text_value
+	l.theme_type_variation = &"SubheaderLabel"
+	l.add_theme_color_override("font_color", color)
+	return l
+
+
+func _row_label(text_value: String, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text_value
+	l.add_theme_font_size_override("font_size", 11)
+	l.add_theme_color_override("font_color", color)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return l
+
+
+## A command chip: a focusable themed Button whose face carries a title line and
+## a smaller sub-line. The sub-line shows the reason an action is unavailable
+## ("out of range", "silenced", "no MP", ...) so the player is never left
+## guessing why a greyed command does nothing. `_apply_chip` drives its state.
+func _command_chip(title: String) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(110, 46)
+	b.clip_text = true
+	var vb := VBoxContainer.new()
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_theme_constant_override("separation", 0)
+	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	b.add_child(vb)
+	var title_lbl := Label.new()
+	title_lbl.text = title
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_lbl.add_theme_font_size_override("font_size", 14)
+	vb.add_child(title_lbl)
+	var sub_lbl := Label.new()
+	sub_lbl.visible = false
+	sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sub_lbl.add_theme_font_size_override("font_size", 10)
+	sub_lbl.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
+	vb.add_child(sub_lbl)
+	b.set_meta("title_lbl", title_lbl)
+	b.set_meta("sub_lbl", sub_lbl)
+	return b
+
+
+## Drive a command chip's enabled/disabled state. A disabled chip stays visible
+## (so the player learns the option exists) but is made non-focusable so the
+## cursor never lands on a dead command, and it shows the reason inline.
+func _apply_chip(b: Button, on: bool, reason: String = "") -> void:
+	b.disabled = not on
+	b.focus_mode = Control.FOCUS_ALL if on else Control.FOCUS_NONE
+	b.modulate = Color.WHITE if on else UIColors.MODULATE_DISABLED
+	var title_lbl: Label = b.get_meta("title_lbl")
+	var sub_lbl: Label = b.get_meta("sub_lbl")
+	title_lbl.add_theme_color_override(
+		"font_color", UIColors.TEXT_PRIMARY if on else UIColors.TEXT_DISABLED)
+	var show_reason := not on and not reason.is_empty()
+	sub_lbl.text = reason if show_reason else ""
+	sub_lbl.visible = show_reason
+
+
+func _log_box() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UIColors.SURFACE_PANEL.darkened(0.15)
+	sb.set_corner_radius_all(6)
+	sb.set_border_width_all(1)
+	sb.border_color = UIColors.BORDER_SUBTLE
+	sb.anti_aliasing = true
+	return sb
+
+
 func _init_delegates() -> void:
 	display = CombatDisplay.new()
 	display.init(self)
@@ -167,7 +482,10 @@ func _init_delegates() -> void:
 func _setup_action_nav() -> void:
 	action_buttons = [attack_button, defend_button, spell_button, dispel_button, breath_button, item_button, escape_button]
 	action_nav = MenuNavigator.new()
-	action_nav.setup(action_buttons, 0)
+	# Horizontal command bar: rely on the themed focus ring (no glide cursor) and
+	# don't replay the entrance fade every turn when the bar rebuilds.
+	action_nav.use_cursor = false
+	action_nav.animate_entrance = false
 
 
 func _setup_spell_level_tabs() -> void:
@@ -268,6 +586,8 @@ func _start_combat() -> void:
 	display.build_enemy_display()
 	display.build_party_display()
 	display.update_display()
+
+	banner_label.text = "Boss Battle" if is_boss_encounter else "Battle"
 
 
 func _on_turn_started(_combatant_id: String, is_player: bool) -> void:
@@ -456,6 +776,7 @@ func _on_cancel_target() -> void:
 
 
 func _close_all_modals() -> void:
+	ally_target_mode = ""
 	targeting.clear_target_highlights()
 	targeting.clear_grid_target_buttons()
 	modal_overlay.visible = false
@@ -469,78 +790,91 @@ func _close_all_modals() -> void:
 		chest_modal.visible = false
 
 
+## Refresh the command card for the active character: each chip shows whether
+## its action is available and, when not, WHY (inline reason). Dispel and Breath
+## are contextual — shown only when the character can use them at all. Only the
+## available chips are handed to the navigator, so the cursor never lands on a
+## dead command.
 func _set_actions_enabled(enabled: bool) -> void:
-	var can_attack := enabled
-	var can_cast := enabled
-	var can_dispel := false
-	var can_breath := false
+	var current_char: Character = null
 	if enabled and combat_system:
-		var current_char := _get_character_by_id(combat_system.current_combatant_id)
-		if current_char:
-			var party := combat_system.get_party_resource()
-			var enemies := combat_system.get_enemies()
-			var reachable := Targeting.get_reachable_enemies(current_char, party, enemies)
-			can_attack = not reachable.is_empty()
-			can_cast = _can_character_cast_spells(current_char)
-			can_dispel = DispelUndead.can_dispel(current_char) and \
-				not DispelUndead.get_valid_targets(combat_system.get_living_enemies()).is_empty()
-			can_breath = current_char.can_use_breath()
+		current_char = _get_character_by_id(combat_system.current_combatant_id)
 
-	attack_button.disabled = not can_attack
-	if not can_attack and enabled:
-		attack_button.modulate = UIColors.MODULATE_DISABLED
-	else:
-		attack_button.modulate = Color.WHITE
+	# Enemy turn / combat over: every command inert, no reasons, specials hidden.
+	if current_char == null:
+		for b: Button in action_buttons:
+			_apply_chip(b, false)
+		dispel_button.visible = false
+		breath_button.visible = false
+		return
 
-	defend_button.disabled = not enabled
-	spell_button.disabled = not can_cast
-	if not can_cast and enabled:
-		spell_button.modulate = UIColors.MODULATE_DISABLED
-	else:
-		spell_button.modulate = Color.WHITE
-	dispel_button.disabled = not can_dispel
-	if not can_dispel and enabled:
-		dispel_button.modulate = UIColors.MODULATE_DISABLED
-	else:
-		dispel_button.modulate = Color.WHITE
-	breath_button.disabled = not can_breath
-	if not can_breath and enabled:
-		breath_button.modulate = UIColors.MODULATE_DISABLED
-	else:
-		breath_button.modulate = Color.WHITE
-	item_button.disabled = not enabled
-	if is_boss_encounter:
-		escape_button.disabled = true
-		escape_button.modulate = UIColors.MODULATE_DISABLED
-	else:
-		escape_button.disabled = not enabled
+	var party := combat_system.get_party_resource()
+	var enemies := combat_system.get_enemies()
 
-	if enabled and action_nav:
-		var start_index := _get_first_available_action_index(can_attack, can_cast, can_dispel)
-		action_nav.setup(action_buttons, start_index)
+	# Attack — needs a reachable foe (range + row + weapon).
+	var reachable := Targeting.get_reachable_enemies(current_char, party, enemies)
+	_apply_chip(attack_button, not reachable.is_empty(), "out of range")
+
+	# Defend — always available on your turn.
+	_apply_chip(defend_button, true)
+
+	# Spell — surface the specific blocker.
+	var spell_reason := _spell_disabled_reason(current_char)
+	_apply_chip(spell_button, spell_reason.is_empty(), spell_reason)
+
+	# Item — only if the party actually carries something usable.
+	var can_item := _has_usable_items()
+	_apply_chip(item_button, can_item, "no items")
+
+	# Dispel — a blessing-caster ability; only shown when relevant.
+	var can_dispel_char: bool = DispelUndead.can_dispel(current_char)
+	dispel_button.visible = can_dispel_char
+	if can_dispel_char:
+		var has_undead := not DispelUndead.get_valid_targets(combat_system.get_living_enemies()).is_empty()
+		_apply_chip(dispel_button, has_undead, "no undead")
+
+	# Breath — a draconic ability; only shown when the character has it.
+	var can_breath: bool = current_char.can_use_breath()
+	breath_button.visible = can_breath
+	if can_breath:
+		_apply_chip(breath_button, true)
+
+	# Escape — barred in boss fights.
+	_apply_chip(escape_button, not is_boss_encounter, "trapped")
+
+	# Hand only the live commands to the navigator so focus skips the rest.
+	var focusable: Array[Button] = []
+	for b: Button in action_buttons:
+		if b.visible and not b.disabled:
+			focusable.append(b)
+	if action_nav and not focusable.is_empty():
+		action_nav.setup(focusable, 0)
 
 
-func _can_character_cast_spells(character: Character) -> bool:
+func _spell_disabled_reason(character: Character) -> String:
 	if character.is_silenced():
-		return false
+		return "silenced"
 	if character.known_spells.is_empty():
-		return false
+		return "no spells"
 	var spells_by_level := SpellValidator.get_spells_by_level(character, true)
 	for level in spells_by_level:
 		for spell in spells_by_level[level]:
 			if character.current_mp >= spell.mp_cost:
-				return true
+				return ""
+	return "no MP"
+
+
+func _has_usable_items() -> bool:
+	if GameState.party == null or GameState.party.inventory == null:
+		return false
+	var inv := GameState.party.inventory
+	for i in range(inv.size()):
+		var item: Item = inv.get_item_at(i)
+		if item == null or item.item_type != Item.ItemType.CONSUMABLE:
+			continue
+		if item.heal_amount > 0 or item.mp_restore > 0 or not item.cures_status.is_empty():
+			return true
 	return false
-
-
-func _get_first_available_action_index(can_attack: bool, can_cast: bool, can_dispel: bool) -> int:
-	if can_attack:
-		return 0
-	if can_cast:
-		return 2
-	if can_dispel:
-		return 3
-	return 1
 
 
 func _get_character_by_id(id: String) -> Character:
@@ -561,6 +895,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("debug_win"):
 		_debug_win_combat()
 		return
+
+	_note_input_device(event)
 
 	if _input_cooldown > 0.0:
 		return

@@ -90,6 +90,7 @@ enum ItemRarity {
 @export var mp_restore: int = 0
 @export var cures_status: Array[CharacterEnums.StatusEffect] = []
 @export var reveal_duration: int = 0
+@export var burn_duration: int = 0
 
 
 ## Creates a new weapon item with the specified properties.
@@ -295,6 +296,15 @@ func get_stats_text() -> String:
 		parts.append("Heals %d HP" % heal_amount)
 	if mp_restore > 0:
 		parts.append("Restores %d MP" % mp_restore)
+	if not cures_status.is_empty():
+		var cure_names: Array[String] = []
+		for status in cures_status:
+			cure_names.append(CharacterEnums.get_status_noun(status))
+		parts.append("Cures %s" % ", ".join(cure_names))
+	if reveal_duration > 0:
+		parts.append("Reveals enemies for %d steps" % reveal_duration)
+	if burn_duration > 0:
+		parts.append("Burns for ~%d steps" % burn_duration)
 
 	if is_cursed:
 		parts.append("[CURSED]")

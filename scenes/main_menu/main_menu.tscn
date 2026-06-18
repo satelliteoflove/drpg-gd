@@ -1,6 +1,9 @@
-[gd_scene load_steps=2 format=3 uid="uid://dkb2t2c0fobl1"]
+[gd_scene load_steps=5 format=3 uid="uid://dkb2t2c0fobl1"]
 
 [ext_resource type="Script" uid="uid://b805314jcoc34" path="res://scenes/main_menu/main_menu.gd" id="1_script"]
+[ext_resource type="Script" path="res://systems/ui/arcane_backdrop.gd" id="2_backdrop"]
+[ext_resource type="Script" path="res://systems/ui/arcane_frame.gd" id="3_frame"]
+[ext_resource type="Script" path="res://systems/ui/arcane_divider.gd" id="4_divider"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -11,40 +14,106 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 0
+[node name="Backdrop" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.12, 0.1, 0.14, 1)
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_backdrop")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
-layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -100.0
-offset_top = -100.0
-offset_right = 100.0
-offset_bottom = 100.0
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
 
-[node name="Title" type="Label" parent="VBoxContainer"]
+[node name="Content" type="VBoxContainer" parent="CenterContainer"]
 layout_mode = 2
+custom_minimum_size = Vector2(380, 0)
+theme_override_constants/separation = 6
+
+[node name="Title" type="Label" parent="CenterContainer/Content"]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 66
 text = "DRPG"
 horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 40)
+[node name="Divider" type="Control" parent="CenterContainer/Content"]
+modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(280, 18)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("4_divider")
+
+[node name="Subtitle" type="Label" parent="CenterContainer/Content"]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+theme_type_variation = &"SubtitleLabel"
+text = "D U N G E O N   R P G"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="CenterContainer/Content"]
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 
-[node name="NewGameButton" type="Button" parent="VBoxContainer"]
+[node name="NewGameButton" type="Button" parent="CenterContainer/Content"]
 layout_mode = 2
+theme_type_variation = &"MenuButton"
 text = "New Game"
 
-[node name="ContinueButton" type="Button" parent="VBoxContainer"]
+[node name="ContinueButton" type="Button" parent="CenterContainer/Content"]
 layout_mode = 2
+theme_type_variation = &"MenuButton"
 text = "Continue"
 
-[node name="QuitButton" type="Button" parent="VBoxContainer"]
+[node name="QuitButton" type="Button" parent="CenterContainer/Content"]
 layout_mode = 2
+theme_type_variation = &"MenuButton"
 text = "Quit"
+
+[node name="Frame" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_frame")
+
+[node name="VersionLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -36.0
+offset_right = 200.0
+offset_bottom = -16.0
+grow_vertical = 0
+theme_type_variation = &"MutedLabel"
+text = "v0.1.0"
+
+[node name="ControlsHint" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -240.0
+offset_top = -36.0
+offset_right = 240.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_type_variation = &"MutedLabel"
+text = "↑ / ↓   Navigate      ·      Enter   Select"
+horizontal_alignment = 1

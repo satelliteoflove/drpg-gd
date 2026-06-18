@@ -8,6 +8,7 @@ const DIR_OFFSET := {"north": Vector2i(0, -1), "south": Vector2i(0, 1), "east": 
 @export var height: int = 31
 @export var floor_level: int = 1
 @export var seed_value: int = 0
+@export var theme: FloorTheme = null
 
 @export var tiles: Array[DungeonTile] = []
 @export var rooms: Array[DungeonRoom] = []
