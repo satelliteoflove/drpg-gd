@@ -239,7 +239,7 @@ func _apply_save_data(data) -> void:
 	if data.relationship_state:
 		RelationshipManager.load_save_state(data.relationship_state)
 
-	GameState.bosses_slain = data.bosses_slain.duplicate() if data.bosses_slain else []
+	GameState.bosses_slain.assign(data.bosses_slain if data.bosses_slain else [])
 	GameState.victory_day = data.victory_day
 	GameState.intro_seen = data.intro_seen
 	# Saves from before deepest_floor existed: infer it from the floors visited.
