@@ -291,8 +291,10 @@ func process_homecoming(surface_days: int, deep_days: int) -> Dictionary:
 		if phase_after != phase_before:
 			_add_phase_mark(member, phase_after)
 		var died := false
-		if phase_after == CharacterEnums.LifePhase.FRAGILE:
+		if phase_after == CharacterEnums.LifePhase.FRAGILE and not member.last_descent:
 			died = member.check_old_age_death()
+			if died:
+				member.end_service("old_age", game_day)
 		rows.append({
 			"character": member,
 			"age_before": before[member.id]["age"],
@@ -300,8 +302,16 @@ func process_homecoming(surface_days: int, deep_days: int) -> Dictionary:
 			"phase_before": phase_before,
 			"phase_after": phase_after,
 			"died_of_age": died,
+			"legend": member.last_descent,
 		})
-	return {"surface_days": surface_days, "deep_days": deep_days, "members": rows}
+
+	# Anyone sworn to a last descent passes on now, whether they fell below
+	# or made it back up.
+	var legends: Array[Dictionary] = []
+	for member in party.get_members().duplicate():
+		if member.last_descent:
+			legends.append({"character": member, "lines": LastDescent.pass_on(member, party)})
+	return {"surface_days": surface_days, "deep_days": deep_days, "members": rows, "legends": legends}
 
 
 const PHASE_MARKS: Dictionary = {

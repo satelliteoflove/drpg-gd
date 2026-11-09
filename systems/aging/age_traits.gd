@@ -165,6 +165,8 @@ static func try_intercede(dying: Character) -> bool:
 ## Short lines for the traits [param c] has right now.
 static func describe(c: Character) -> Array[String]:
 	var lines: Array[String] = []
+	if c.last_descent:
+		lines.append("Last descent: prime body, +%d all stats, won't come home" % LastDescent.STAT_BONUS)
 	if is_youth(c):
 		lines.append("Quick study: +25% experience")
 	if is_veteran(c):

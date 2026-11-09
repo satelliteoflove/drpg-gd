@@ -87,14 +87,14 @@ static func note_for(place: String) -> String:
 
 
 static func can_retire(c: Character) -> bool:
-	return AgeTraits.is_veteran(c) and not c.is_dead and not c.is_retired() \
-		and not c.is_training() and not c.has_status(CharacterEnums.StatusEffect.LOST)
+	return AgeTraits.is_veteran(c) and not c.is_dead and not c.has_left_service() \
+		and not c.last_descent and not c.is_training() and not c.has_status(CharacterEnums.StatusEffect.LOST)
 
 
 static func apprentice_candidates(mentor: Character) -> Array[Character]:
 	var out: Array[Character] = []
 	for c in GameState.roster.get_all():
-		if c == mentor or c.is_dead or c.is_retired() or c.is_training():
+		if c == mentor or c.is_dead or c.has_left_service() or c.last_descent or c.is_training():
 			continue
 		if c.has_status(CharacterEnums.StatusEffect.LOST):
 			continue
@@ -102,8 +102,8 @@ static func apprentice_candidates(mentor: Character) -> Array[Character]:
 	return out
 
 
-static func apprentice_level(mentor: Character, apprentice: Character) -> int:
-	return maxi(apprentice.level, mentor.level - APPRENTICE_LEVEL_GAP)
+static func apprentice_level(mentor: Character, apprentice: Character, gap: int = APPRENTICE_LEVEL_GAP) -> int:
+	return maxi(apprentice.level, mentor.level - gap)
 
 
 ## Retires [param c] to their post, with an optional apprentice. Returns the
@@ -121,6 +121,7 @@ static func retire(c: Character, apprentice: Character) -> Array[String]:
 	c.town_job = -1
 	c.availability = Character.AVAILABILITY_RETIRED
 	c.town_post = post_id
+	c.end_service("retired", GameState.game_day)
 	c.add_mark(Marks.create_mark("Retired as the guild's %s" % post_title(post_id), "retirement",
 		["retirement"] as Array[String], Marks.Agency.ACTOR, Marks.Severity.MAJOR,
 		[] as Array[String], GameState.game_day))
@@ -128,14 +129,17 @@ static func retire(c: Character, apprentice: Character) -> Array[String]:
 		c.character_name, c.get_age_years(), post_title(post_id), post_effect(post_id)])
 
 	if apprentice:
-		lines.append_array(_train_apprentice(c, apprentice))
+		lines.append_array(train_apprentice(c, apprentice))
 	return lines
 
 
-static func _train_apprentice(mentor: Character, apprentice: Character) -> Array[String]:
+## Raises [param apprentice] to [param gap] levels below the mentor and passes
+## on a piece of the mentor's story and some of their bonds.
+static func train_apprentice(mentor: Character, apprentice: Character,
+		gap: int = APPRENTICE_LEVEL_GAP) -> Array[String]:
 	var lines: Array[String] = []
 	var old_level := apprentice.level
-	var target := apprentice_level(mentor, apprentice)
+	var target := apprentice_level(mentor, apprentice, gap)
 	if target > old_level:
 		var needed := ExperienceTable.get_required_xp(target, apprentice.race, apprentice.character_class)
 		apprentice.add_experience(maxi(0, needed - apprentice.experience))
@@ -188,7 +192,7 @@ static func inherited_story(mentor: Character) -> Dictionary:
 	var marks := mentor.get_major_marks()
 	for i in range(marks.size() - 1, -1, -1):
 		var origin: String = marks[i].get("origin", "")
-		if origin in ["deep_time", "retirement", "apprenticeship", "inherited"]:
+		if origin in ["deep_time", "retirement", "apprenticeship", "inherited", "last_descent"]:
 			continue
 		return marks[i]
 	return {}

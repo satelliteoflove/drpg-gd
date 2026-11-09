@@ -105,6 +105,8 @@ func _homecoming_worth_showing(report: Dictionary) -> bool:
 		return false
 	if int(report.get("deep_days", 0)) >= GameCalendar.DAYS_PER_MONTH:
 		return true
+	if not report.get("legends", []).is_empty():
+		return true
 	for row: Dictionary in report.get("members", []):
 		if row["died_of_age"] or row["phase_after"] != row["phase_before"]:
 			return true
@@ -152,17 +154,23 @@ func _show_homecoming(report: Dictionary) -> void:
 		if row["died_of_age"]:
 			phase_lbl.text = "Died"
 			name_lbl.add_theme_color_override("font_color", UIColors.TEXT_MUTED)
+		if row.get("legend", false):
+			phase_lbl.text = "Legend"
+			phase_lbl.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
+			name_lbl.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
 		grid.add_child(phase_lbl)
 
 		if row["died_of_age"]:
 			notes.append("%s made it up the last stair and sat down to rest, and didn't get up again. Dead of old age at %d." % [c.character_name, years_after])
-		elif changed:
+		elif changed and not row.get("legend", false):
 			var note := _phase_note(c.character_name, row["phase_after"])
 			var gained := AgeTraits.gained_on(c, row["phase_after"])
 			if gained != "":
 				note += " (%s)" % gained
 			notes.append(note)
 
+	for legend: Dictionary in report.get("legends", []):
+		notes.append(" ".join(legend["lines"]))
 	for note in notes:
 		var p := _modal_paragraph(note)
 		p.add_theme_color_override("font_color", UIColors.TITLE_GOLD)

@@ -116,6 +116,8 @@ func _settle_expedition() -> void:
 
 func go_to_dungeon(floor_num: int = -1, spawn_at_stairs_up: bool = true) -> void:
 	GameState.party.prepare_for_dungeon()
+	for member in GameState.party.get_members():
+		member.note_first_descent(GameState.game_day)
 	if floor_num > 0:
 		GameState.set_floor(floor_num)
 	GameState.deepest_floor = maxi(GameState.deepest_floor, GameState.current_floor)

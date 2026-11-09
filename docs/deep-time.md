@@ -113,6 +113,8 @@ An Elder can declare One Last Descent at the guild hall. For one expedition thei
 
 This is the moment players will remember. It turns the slow sadness of aging into a choice the player makes, and a way to go out well.
 
+As built (`systems/aging/last_descent.gd`), the vow is sworn from the guild hall's Roster tab and can't be taken back. The apprentice is named when the vow is sworn but only trained when the Legend passes, at whatever level they reached on the way down, so swearing the vow and then benching the Elder gets nothing. A Legend passes on whenever the expedition ends, by the stairs, a Recall Stone or the final victory. Everyone who went down with them gets a mark. There's no guild wall screen yet, so the plaque is a gold LEGEND chip on the roster.
+
 ### 7. The temple's price
 
 Resurrection costs years: 1d4 years, more for anyone raised more than once. The dead come back older. It connects death and aging, and it makes the temple a real decision for short-lived characters.
@@ -120,6 +122,8 @@ Resurrection costs years: 1d4 years, more for anyone raised more than once. The 
 ### 8. The ending becomes a saga
 
 The victory screen gets a timeline. The surface calendar runs along the top. Below it, a line for each character who ever served shows their age going in, their age coming out, their phase, and how it ended: still serving, retired to a post, died of age, fell in battle, or Legend. The headline line contrasts the two clocks: *140 days on the surface. 212 years spent below, between them.*
+
+As built, each line is a lifeline instead of a span on the surface calendar: the character's whole lifespan, faintly split into the four phases and fading out at the far end, with the years they served drawn bright. That makes race differences obvious at a glance: an elf's service is a sliver, and a human's can run from Prime into Elder. Legends get their own paragraph above it.
 
 ## Race choice under deep time
 
@@ -149,8 +153,8 @@ Each step stands on its own as an improvement:
 1. **Deep time plus the homecoming report**, with ages shown on the cards. This alone makes aging visible and gives depth a cost. *Built.* Rough estimate from floor sizes (about 520 walkable tiles each, 120 steps a day): someone who goes on every expedition ages about 20 years over a campaign, short of the 35–45 target. Tune with real play data before raising the table.
 2. **Phase traits** (Veteran/Elder and Counsel), so aging is something to manage rather than a pure loss. *Built.*
 3. **Retirement posts and apprentices**, which make the roster a pipeline and give the town a history. *Built.* Retire from the guild hall's Roster tab. Retirees leave the party list for good, and the ending lists them under "Keeping the Town".
-4. **One Last Descent and the saga ending**.
-5. Resurrection aging, portrait aging, and LLM embellishment.
+4. **One Last Descent and the saga ending**. *Built.*
+5. Resurrection aging, portrait aging, and LLM embellishment. Resurrection already adds 1–5 years (`Character.resurrect`), though not more for anyone raised more than once.
 
 ## Risks
 

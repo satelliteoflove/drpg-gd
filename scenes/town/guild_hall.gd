@@ -157,7 +157,7 @@ func _guild_summary_text() -> String:
 	for c in roster.get_all():
 		if c.is_dead:
 			dead += 1
-		else:
+		elif c.is_available():
 			living += 1
 
 	var text := "[b]The Adventurers' Guild[/b]\n\n"

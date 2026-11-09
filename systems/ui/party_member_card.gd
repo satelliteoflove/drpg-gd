@@ -90,7 +90,9 @@ func _build(opts: Dictionary) -> void:
 		CharacterEnums.get_class_name(member.character_class),
 		member.get_age_years()]
 	var phase := member.get_life_phase()
-	if phase == CharacterEnums.LifePhase.DECLINE or phase == CharacterEnums.LifePhase.FRAGILE:
+	if member.last_descent:
+		sub.text += "  Last Descent"
+	elif phase == CharacterEnums.LifePhase.DECLINE or phase == CharacterEnums.LifePhase.FRAGILE:
 		sub.text += "  " + member.get_life_phase_name()
 	col.add_child(sub)
 

@@ -90,32 +90,27 @@ func _build(col: VBoxContainer) -> void:
 			grid.add_child(_member_card(member))
 		col.add_child(grid)
 
-	var retired: Array[String] = []
-	for c in GameState.roster.get_all():
-		if c.is_retired():
-			var post := Retirement.post_title(c.town_post)
-			retired.append("%s, %s" % [c.character_name, post if post else "retired"])
-	if not retired.is_empty():
-		col.add_child(_section_header("Keeping the Town"))
-		var posts := Label.new()
-		posts.theme_type_variation = &"MutedLabel"
-		posts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		posts.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		posts.text = "  ·  ".join(retired)
-		col.add_child(posts)
+	var legends := _legends()
+	if not legends.is_empty():
+		col.add_child(_section_header("Legends"))
+		for c in legends:
+			var p := Label.new()
+			p.theme_type_variation = &"SubtitleLabel"
+			p.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			p.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			p.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
+			p.text = LastDescent.epitaph(c)
+			col.add_child(p)
 
-	var fallen := _fallen_characters()
-	if not fallen.is_empty():
-		col.add_child(_section_header("In Memory"))
-		var names: Array[String] = []
-		for c in fallen:
-			names.append("%s, %s %s" % [c.character_name, c.get_race_name(), c.get_class_name()])
-		var memorial := Label.new()
-		memorial.theme_type_variation = &"MutedLabel"
-		memorial.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		memorial.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		memorial.text = "  ·  ".join(names)
-		col.add_child(memorial)
+	var served := _who_served()
+	if not served.is_empty():
+		col.add_child(_section_header("The Saga"))
+		col.add_child(_phase_key())
+		var rows := VBoxContainer.new()
+		rows.add_theme_constant_override("separation", 6)
+		for c in served:
+			rows.add_child(_saga_row(c))
+		col.add_child(rows)
 
 	var after := Label.new()
 	after.theme_type_variation = &"MutedLabel"
@@ -241,15 +236,97 @@ func _signature_mark(c: Character) -> String:
 	return ""
 
 
-## Characters gone for good: lost beyond resurrection.
-func _fallen_characters() -> Array[Character]:
+func _legends() -> Array[Character]:
 	var result: Array[Character] = []
-	if GameState.roster == null:
-		return result
 	for c in GameState.roster.get_all():
-		if c.has_status(CharacterEnums.StatusEffect.LOST):
+		if c.is_legend():
 			result.append(c)
+	result.sort_custom(func(a: Character, b: Character) -> bool: return a.final_day < b.final_day)
 	return result
+
+
+## Everyone who ever went below, in the order they first went down.
+func _who_served() -> Array[Character]:
+	var result: Array[Character] = []
+	for c in GameState.roster.get_all():
+		if c.first_descent_day >= 0 or c.days_below > 0 or not c.fate.is_empty():
+			result.append(c)
+	result.sort_custom(func(a: Character, b: Character) -> bool:
+		return a.first_descent_day < b.first_descent_day)
+	return result
+
+
+## How a character's service ended, and the color to show it in.
+func _fate(c: Character) -> Array:
+	match c.fate:
+		"legend":
+			return ["Legend", UIColors.TITLE_GOLD]
+		"retired":
+			var post := Retirement.post_title(c.town_post)
+			return ["Retired, %s" % post if post else "Retired", UIColors.TEXT_PRIMARY]
+		"old_age":
+			return ["Died of old age", UIColors.TEXT_SECONDARY]
+	if c.has_status(CharacterEnums.StatusEffect.LOST):
+		return ["Lost", UIColors.TEXT_MUTED]
+	if c.is_dead:
+		return ["Fell in battle", UIColors.TEXT_DANGER]
+	return ["Still serving", UIColors.TEXT_IN_PARTY]
+
+
+func _saga_row(c: Character) -> Control:
+	var fate := _fate(c)
+	var fate_color: Color = fate[1]
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+
+	var who := VBoxContainer.new()
+	who.custom_minimum_size = Vector2(190, 0)
+	who.add_theme_constant_override("separation", -2)
+	var name_label := Label.new()
+	name_label.text = c.character_name
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	if c.is_legend():
+		name_label.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
+	who.add_child(name_label)
+	var kind := Label.new()
+	kind.theme_type_variation = &"MutedLabel"
+	kind.text = "%s %s" % [c.get_race_name(), c.get_class_name()]
+	who.add_child(kind)
+	row.add_child(who)
+
+	var age_in := LastDescent.saga_age_in(c)
+	var age_out := LastDescent.saga_age_out(c)
+	row.add_child(SagaLifeline.create(c, age_in, age_out, fate_color))
+
+	var right := VBoxContainer.new()
+	right.custom_minimum_size = Vector2(190, 0)
+	right.add_theme_constant_override("separation", -2)
+	var ages := Label.new()
+	var years_in := age_in / CharacterEnums.DAYS_PER_YEAR
+	var years_out := age_out / CharacterEnums.DAYS_PER_YEAR
+	ages.text = "%d  →  %d" % [years_in, years_out] if years_out != years_in else "%d" % years_out
+	right.add_child(ages)
+	var fate_label := Label.new()
+	fate_label.theme_type_variation = &"MutedLabel"
+	fate_label.text = fate[0]
+	fate_label.add_theme_color_override("font_color", fate_color)
+	right.add_child(fate_label)
+	row.add_child(right)
+	return row
+
+
+## The colors of the four life phases, as a key for the lifelines.
+func _phase_key() -> Control:
+	var key := HBoxContainer.new()
+	key.alignment = BoxContainer.ALIGNMENT_CENTER
+	key.add_theme_constant_override("separation", 18)
+	for phase: CharacterEnums.LifePhase in SagaLifeline.PHASE_COLORS:
+		var l := Label.new()
+		l.theme_type_variation = &"MutedLabel"
+		l.text = "■ " + CharacterEnums.get_life_phase_name(phase)
+		l.add_theme_color_override("font_color", SagaLifeline.PHASE_COLORS[phase])
+		key.add_child(l)
+	return key
 
 
 func _total_days_below() -> int:
