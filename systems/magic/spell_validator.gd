@@ -71,6 +71,8 @@ static func calculate_fizzle_chance(caster: Character, spell: Spell) -> float:
 
 	base += (18 - caster.luck) * 0.5
 
+	base -= AgeTraits.counsel_fizzle_reduction(caster)
+
 	return clampf(base, 0, 95)
 
 

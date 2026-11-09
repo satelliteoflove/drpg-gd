@@ -581,7 +581,9 @@ func _start_combat() -> void:
 	combat_system.monster_turn_delay_requested.connect(_on_monster_turn_delay)
 	combat_system.layout_changed.connect(display.on_layout_changed)
 
-	combat_system.start_combat(GameState.party, typed_enemies)
+	CombatNotes.clear()
+	var surprise: Surprise.Result = encounter.get("surprise", Surprise.Result.NONE)
+	combat_system.start_combat(GameState.party, typed_enemies, surprise)
 	GameState.party_member_died.connect(_on_party_member_died_in_combat)
 	display.build_enemy_display()
 	display.build_party_display()
@@ -607,7 +609,7 @@ func _on_monster_turn_delay(delay: float) -> void:
 
 func _on_action_performed(message: String) -> void:
 	message_log.append_text("[color=#aaaaaa]>[/color] " + message + "\n")
-	for extra in AgeTraits.take_pending_messages():
+	for extra in CombatNotes.take():
 		message_log.append_text("[color=#debc78]>[/color] " + extra + "\n")
 	display.schedule_display_update()
 

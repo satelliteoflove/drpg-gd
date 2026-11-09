@@ -74,3 +74,22 @@ When the game is launched from the Steam build of the Godot editor, llama-server
 The likely cause is the environment the game inherits. The Steam editor runs inside pressure-vessel, so the game has `LD_LIBRARY_PATH` pointing at the Steam runtime's pinned libraries and `VK_ICD_FILENAMES` / `VK_DRIVER_FILES` pointing at pressure-vessel's Vulkan ICDs, and llama-server (a Vulkan build) inherits all of it. I haven't confirmed which variable breaks it, since the server runs with `--log-disable` and `OS.create_process` can't capture output.
 
 Possible directions: launch through `sh -c` with `env -u LD_LIBRARY_PATH` and the VK_ variables cleared (inside the container the host libraries may not be visible either); in debug builds, send the server's output to a file under `user://` so failures like this aren't silent; show something on the AI Dialogue menu entry when the server failed to start.
+
+## Critical hits and surprise
+
+Both follow Wizardry. The rules come from taotao54321's disassembly of the NES Wizardry I and the Wizardry I–III formula notes on zimlab. I couldn't find a primary source for Wizardry V or Gaiden IV specifically, but every source agrees on the shape.
+
+**Critical hits kill outright.** Ninjas can land them: level × 2% (up to 50%), then (24 − monster level) / 35 for it to take. Guardians are immune. A level 10 ninja crits about 12% of hits on floor 3 and 10% on floor 7. In Wizardry, gear with a critical flag can grant the ability too. There's no such gear yet, so for now only ninjas crit.
+
+Monsters flagged `can_critical` can land them on the party. So far that's Bandits (floors 3–4) and Minotaurs (floor 7 and below). Characters get the Wizardry I–III save: fighters and ninjas 15%, samurai and lords 10%, humans +5%, +5% per five levels, and up to +15% for luck. Failing that, they get a further level × 2% (up to 50%) to slip it. The monster's level scales the chance, as in the NES version. A bandit crits about 5–6% of the hits it lands, and a minotaur 8–11%. An elder priest's Intercession works against a critical hit.
+
+**Surprise gives one side a free round.** Each combatant on the surprising side acts once before normal turn order begins. Wizardry uses a flat 20% each way. Here it depends on how the fight starts, since the groups are visible:
+
+| How it starts | Party surprises | Monsters surprise |
+|---|---|---|
+| Party walks into a group that hasn't noticed it | 50% | 10% |
+| Party walks into a group that's hunting it | 20% | 10% |
+| A group catches the party head-on | 10% | 20% |
+| A group catches the party from behind or the side | 10% | 50% |
+
+Guardians are never surprised and never surprise. An elder thief in the party means the monsters can't surprise it. The simulator still uses its own older surprise roll, which goes by agility.

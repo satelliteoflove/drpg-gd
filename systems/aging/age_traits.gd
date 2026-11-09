@@ -6,23 +6,19 @@ extends RefCounted
 ##
 ## Youth learn fast. Veterans gain a trait from their class's archetype, and
 ## Elders gain a stronger one on top of it, plus Counsel: everyone else in
-## the party learns faster and strikes truer while an elder travels with them.
+## the party learns faster, strikes truer and casts more surely while an elder
+## travels with them.
 
 enum Archetype { MARTIAL, SKULKER, ARCANE, DIVINE, BISHOP }
 
 const YOUTH_XP_MULTIPLIER := 1.25
 const COUNSEL_XP_MULTIPLIER := 1.10
 const COUNSEL_ACCURACY := 1
+const COUNSEL_FIZZLE_REDUCTION := 10.0
 const VETERAN_MELEE_BONUS := 2
 const ARCANE_MP_MULTIPLIER := 1.2
 const ARCANE_SPELL_DAMAGE_MULTIPLIER := 1.25
 const DIVINE_HEALING_MULTIPLIER := 1.25
-
-## Messages raised outside the normal combat log flow (an elder priest's
-## intercession happens inside take_damage). The combat and chest screens
-## flush these after each action.
-static var pending_messages: Array[String] = []
-
 
 static func archetype(c: Character) -> Archetype:
 	match c.character_class:
@@ -76,8 +72,8 @@ static func safe_disarm(c: Character) -> bool:
 	return _has(c, Archetype.SKULKER, false)
 
 
-## An elder thief never misreads a chest.
-static func sure_inspect(c: Character) -> bool:
+## No one catches a party with an elder thief in it off guard.
+static func prevents_surprise(c: Character) -> bool:
 	return _has(c, Archetype.SKULKER, true)
 
 
@@ -143,6 +139,11 @@ static func party_has(party: Party, check: Callable) -> bool:
 	return false
 
 
+## Fizzle chance (percentage points) taken off by an elder's counsel.
+static func counsel_fizzle_reduction(c: Character) -> float:
+	return COUNSEL_FIZZLE_REDUCTION if is_counseled(c, GameState.party) else 0.0
+
+
 ## Once per expedition, an elder priest's prayer holds a dying ally at 1 HP.
 ## Returns true if [param dying] was saved.
 static func try_intercede(dying: Character) -> bool:
@@ -153,16 +154,10 @@ static func try_intercede(dying: Character) -> bool:
 		if m == dying or m.is_dead or m.intercession_used or not can_intercede(m):
 			continue
 		m.intercession_used = true
-		pending_messages.append("%s cries out a prayer, and %s does not fall." % [
+		CombatNotes.add("%s cries out a prayer, and %s does not fall." % [
 			m.get_display_name(), dying.get_display_name()])
 		return true
 	return false
-
-
-static func take_pending_messages() -> Array[String]:
-	var out := pending_messages.duplicate()
-	pending_messages.clear()
-	return out
 
 
 # --- Descriptions ----------------------------------------------------------------
@@ -180,7 +175,7 @@ static func describe(c: Character) -> Array[String]:
 	return lines
 
 
-const COUNSEL_LINE := "Counsel: party +10% XP, +1 accuracy"
+const COUNSEL_LINE := "Counsel: party +10% XP, +1 accuracy, -10% fizzle"
 
 
 ## What a character gains on entering [param phase], for the homecoming report.
@@ -209,7 +204,7 @@ static func _veteran_line(arch: Archetype) -> String:
 static func _elder_line(arch: Archetype) -> String:
 	match arch:
 		Archetype.SKULKER:
-			return "Seen it all: never misreads a chest"
+			return "Seen it all: the party can't be surprised"
 		Archetype.ARCANE:
 			return "Decades of study: +25% spell damage"
 		Archetype.DIVINE:

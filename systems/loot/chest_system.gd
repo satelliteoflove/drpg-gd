@@ -59,7 +59,7 @@ static func attempt_inspect(chest: Chest, inspector: Character) -> Dictionary:
 	success_chance = clampf(success_chance, 0.05, 0.95)
 
 	var roll := CombatRNG.randf()
-	var success := roll < success_chance or AgeTraits.sure_inspect(inspector)
+	var success := roll < success_chance
 
 	if success and chest.is_trapped and chest.trap != null:
 		chest.trap_identified = true

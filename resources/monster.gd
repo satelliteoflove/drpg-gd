@@ -23,6 +23,9 @@ extends Resource
 @export var race: CharacterEnums.Race = CharacterEnums.Race.HUMAN
 @export var loot_drops: Array[LootDrop] = []
 @export var is_boss: bool = false
+## Whether this monster's physical attacks can land a critical hit (instant
+## death) on a party member.
+@export var can_critical: bool = false
 
 @export_group("Spawn Info")
 @export var min_floor: int = 1

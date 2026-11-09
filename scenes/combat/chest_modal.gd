@@ -118,7 +118,7 @@ func _on_quick_open() -> void:
 
 	for msg in result.messages:
 		_add_status_message(msg)
-	for msg in AgeTraits.take_pending_messages():
+	for msg in CombatNotes.take():
 		_add_status_message(msg)
 
 	if result.get("combat_triggered", false):
@@ -162,7 +162,7 @@ func _on_disarm() -> void:
 		var trap_result := ChestSystem.trigger_trap(chest, disarmer, party)
 		for msg in trap_result.messages:
 			_add_status_message(msg)
-		for msg in AgeTraits.take_pending_messages():
+		for msg in CombatNotes.take():
 			_add_status_message(msg)
 
 		if trap_result.get("combat_triggered", false):
@@ -187,7 +187,7 @@ func _on_open() -> void:
 
 	for msg in result.messages:
 		_add_status_message(msg)
-	for msg in AgeTraits.take_pending_messages():
+	for msg in CombatNotes.take():
 		_add_status_message(msg)
 
 	if result.get("combat_triggered", false):

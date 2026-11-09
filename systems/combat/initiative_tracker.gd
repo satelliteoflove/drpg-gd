@@ -7,6 +7,8 @@ class CombatantEntry:
 	var agility: int
 	var ticks: float
 	var is_extra_action: bool = false
+	## A free action from a surprise round; it costs no initiative.
+	var is_surprise: bool = false
 	var accuracy_penalty: int = 0
 
 	func _init(p_id: String, p_is_player: bool, p_agility: int) -> void:
@@ -20,10 +22,14 @@ var combatants: Array[CombatantEntry] = []
 ## extra actions has several entries sharing one id, so the delay after acting
 ## has to land on the entry that actually acted.
 var _current: CombatantEntry = null
+## Free actions owed to the side that sprang a surprise, taken before the
+## normal order begins.
+var _surprise_queue: Array[CombatantEntry] = []
 
 
 func clear() -> void:
 	combatants.clear()
+	_surprise_queue.clear()
 	_current = null
 
 
@@ -45,6 +51,9 @@ func remove_combatant(id: String) -> void:
 	for i in range(combatants.size() - 1, -1, -1):
 		if combatants[i].id == id:
 			combatants.remove_at(i)
+	for i in range(_surprise_queue.size() - 1, -1, -1):
+		if _surprise_queue[i].id == id:
+			_surprise_queue.remove_at(i)
 
 
 func add_extra_actions(id: String, is_player: bool, agility: int, count: int) -> void:
@@ -56,7 +65,25 @@ func add_extra_actions(id: String, is_player: bool, agility: int, count: int) ->
 		combatants.append(entry)
 
 
+## Gives every combatant on one side a free action, in initiative order,
+## before anyone on the other side moves.
+func grant_surprise_round(players: bool) -> void:
+	var side: Array[CombatantEntry] = []
+	for entry in combatants:
+		if entry.is_player == players and not entry.is_extra_action:
+			side.append(entry)
+	side.sort_custom(func(a: CombatantEntry, b: CombatantEntry) -> bool: return a.ticks < b.ticks)
+	for entry in side:
+		var free := CombatantEntry.new(entry.id, entry.is_player, entry.agility)
+		free.is_surprise = true
+		_surprise_queue.append(free)
+
+
 func get_next_combatant() -> CombatantEntry:
+	if not _surprise_queue.is_empty():
+		_current = _surprise_queue.pop_front()
+		return _current
+
 	if combatants.is_empty():
 		return null
 
@@ -77,6 +104,8 @@ func get_next_combatant() -> CombatantEntry:
 
 
 func apply_action_delay(id: String) -> void:
+	if _current != null and _current.is_surprise and _current.id == id:
+		return
 	if _current != null and _current.id == id and combatants.has(_current):
 		_current.ticks += _calculate_attack_delay(_current.agility)
 		return

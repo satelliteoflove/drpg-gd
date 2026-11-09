@@ -65,19 +65,19 @@ The phases get new names. The old Decline and Fragile frame aging as failure, an
 | **Youth** | Full | +25% XP (they learn fast) |
 | **Prime** | Full | None, this is the baseline |
 | **Veteran** | STR, VIT and AGI fall gradually | A class veteran trait (below) |
-| **Elder** | Physical stats fall faster, max HP shrinks | A stronger class trait, plus **Counsel**: a party-wide bonus while they're in the party (+1 accuracy and +10% XP for everyone else) |
+| **Elder** | Physical stats fall faster, max HP shrinks | A stronger class trait, plus **Counsel**: a party-wide bonus while they're in the party (everyone else gets +10% XP, +1 accuracy, and 10 points off their spell fizzle chance) |
 
 Class traits, as built (`systems/aging/age_traits.gd`). Elders keep their Veteran trait.
 
 | Archetype | Veteran | Elder |
 |---|---|---|
 | Fighter, Samurai, Lord, Valkyrie, Monk, Ranger | +2 damage on every hit | Always acts first in the opening round |
-| Thief, Ninja, Bard | A failed disarm doesn't spring the trap | Never misreads a chest (inspection always succeeds) |
+| Thief, Ninja, Bard | A failed disarm doesn't spring the trap | The party can't be surprised |
 | Mage, Alchemist, Psionic | +20% max MP | +25% spell damage |
 | Priest | +25% healing | Intercession: once per expedition, a dying ally is held at 1 HP |
 | Bishop | Everything the party finds is identified | +20% max MP and +25% healing |
 
-These differ a little from the first draft. There's no crit system in the game, so veteran fighters get flat damage instead. Surprise only exists in the simulator, so elder thieves got sure inspection. Elder priests got Intercession, a passive save, because raising someone in the field would need a new combat action. Trait names show in the character sheet's header, with the full lines in the story overlay (S) and in the homecoming report.
+These differ a little from the first draft. There's no crit system in the game, so veteran fighters get flat damage instead. Elder priests got Intercession, a passive save, because raising someone in the field would need a new combat action. Trait names show in the character sheet's header, with the full lines in the story overlay (S) and in the homecoming report.
 
 The point is that an Elder in the back row is a force multiplier with a glass body. The player has to choose between carrying that risk and benching the person who makes everyone better.
 

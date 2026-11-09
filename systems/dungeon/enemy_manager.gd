@@ -367,6 +367,14 @@ func _find_patrol_destination(from: Vector2i, zone: EncounterZone, exclude: Arra
 	return candidates[randi() % candidates.size()]
 
 
+const AWARE_STATES: Array[EnemyGroup.State] = [
+	EnemyGroup.State.CHASE, EnemyGroup.State.PURSUE, EnemyGroup.State.SEARCH]
+const FACING_VECTORS := {0: Vector2i(0, -1), 1: Vector2i(1, 0), 2: Vector2i(0, 1), 3: Vector2i(-1, 0)}
+
+## How the most recent fight started, for the surprise roll.
+var last_engagement: Dictionary = {}
+
+
 func on_player_move(new_pos: Vector2i, facing: int) -> EnemyGroup:
 	floor_tracker.increment_step()
 
@@ -378,8 +386,18 @@ func on_player_move(new_pos: Vector2i, facing: int) -> EnemyGroup:
 			break
 
 	if combat_group != null:
+		# The party walked into them.
+		last_engagement = {
+			"party_engaged": true,
+			"group_aware": combat_group.state in AWARE_STATES,
+			"from_behind": false,
+		}
 		combat_triggered.emit(combat_group)
 		return combat_group
+
+	var before := {}
+	for group in enemy_groups:
+		before[group] = group.grid_position
 
 	_update_all_enemies(new_pos, facing)
 
@@ -389,6 +407,15 @@ func on_player_move(new_pos: Vector2i, facing: int) -> EnemyGroup:
 			break
 
 	if combat_group != null:
+		# They ran the party down. Coming from anywhere but straight ahead
+		# counts as from behind.
+		var came_from: Vector2i = before.get(combat_group, new_pos) - new_pos
+		var ahead: Vector2i = FACING_VECTORS.get(facing, Vector2i.ZERO)
+		last_engagement = {
+			"party_engaged": false,
+			"group_aware": true,
+			"from_behind": came_from.x * ahead.x + came_from.y * ahead.y <= 0,
+		}
 		combat_triggered.emit(combat_group)
 
 	_process_respawns()

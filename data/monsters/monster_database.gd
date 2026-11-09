@@ -401,6 +401,7 @@ static func _create_wolf() -> void:
 static func _create_bandit() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Bandit"
+	monster.can_critical = true
 	monster.max_hp = 24
 	monster.strength = 11
 	monster.agility = 13
@@ -664,6 +665,7 @@ static func _create_skeleton_mage() -> void:
 static func _create_minotaur() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Minotaur"
+	monster.can_critical = true
 	monster.max_hp = 75
 	monster.strength = 20
 	monster.agility = 10

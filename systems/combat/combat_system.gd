@@ -48,7 +48,7 @@ func _emit_combat_math() -> void:
 		DamageCalculator.last_save_detail = ""
 
 
-func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
+func start_combat(p_party: Party, enemy_list: Array[Monster], surprise: Surprise.Result = Surprise.Result.NONE) -> void:
 	party = p_party
 	party_members = party.get_members()
 	enemies = []
@@ -107,6 +107,14 @@ func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 		action_performed.emit("A %s appears!" % enemies[0].monster_name)
 	else:
 		action_performed.emit("%d enemies appear!" % enemy_count)
+
+	match surprise:
+		Surprise.Result.PARTY:
+			initiative.grant_surprise_round(true)
+			action_performed.emit("You surprised the monsters! Your party strikes first.")
+		Surprise.Result.MONSTERS:
+			initiative.grant_surprise_round(false)
+			action_performed.emit("The monsters surprised you! They strike before you can react.")
 
 	_advance_turn()
 

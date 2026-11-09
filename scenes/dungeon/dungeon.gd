@@ -936,6 +936,11 @@ func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
 	var encounter := {"enemies": enemies, "enemy_group": group}
 	if is_boss:
 		encounter["is_boss"] = true
+	var how: Dictionary = enemy_manager.last_engagement if enemy_manager else {}
+	encounter["surprise"] = Surprise.roll(
+		how.get("party_engaged", true), how.get("group_aware", true),
+		how.get("from_behind", false), is_boss, GameState.party)
+	enemy_manager.last_engagement = {}
 	return encounter
 
 
