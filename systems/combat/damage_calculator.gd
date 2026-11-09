@@ -87,10 +87,13 @@ static func calculate_character_attack(attacker: Character, target: Monster, acc
 	if not hit:
 		return {"hit": false, "damage": 0}
 
+	# Equipment damage bonuses (the "+2" on a weapon) and experience both add
+	# to a hit. Without the level term, armored late-game foes shrug off
+	# fighters entirely.
 	var damage := calculate_damage(
 		attacker.weapon_dice,
 		attacker.strength,
-		0,
+		attacker.damage_bonus + attacker.level / 2,
 		target.defense
 	)
 	return {"hit": true, "damage": damage}

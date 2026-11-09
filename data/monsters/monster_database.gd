@@ -39,9 +39,11 @@ static func get_monsters_for_floor(floor_num: int) -> Array[String]:
 static func get_boss_for_floor(floor_num: int) -> Monster:
 	_ensure_initialized()
 	var boss_id: String = _boss_floor_map.get(floor_num, "")
-	if boss_id != "" and _monsters.has(boss_id):
-		return _monsters[boss_id].duplicate(true)
-	return null
+	if boss_id == "":
+		return null
+	# get_monster carries over boss_phases and extra_actions, which a plain
+	# duplicate() drops because they aren't exported properties.
+	return get_monster(boss_id)
 
 
 static func get_boss_minions(floor_num: int) -> Array[String]:
@@ -951,6 +953,8 @@ static func _create_boss_drake() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Vrakthorne the Drake"
 	monster.max_hp = 260
+	# Acts twice a round, as befits the last thing in the dungeon.
+	monster.extra_actions = 1
 	monster.strength = 22
 	monster.agility = 12
 	monster.defense = 10

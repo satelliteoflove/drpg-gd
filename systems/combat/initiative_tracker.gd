@@ -16,10 +16,15 @@ class CombatantEntry:
 		ticks = 0.0
 
 var combatants: Array[CombatantEntry] = []
+## The entry most recently handed out by get_next_combatant. A combatant with
+## extra actions has several entries sharing one id, so the delay after acting
+## has to land on the entry that actually acted.
+var _current: CombatantEntry = null
 
 
 func clear() -> void:
 	combatants.clear()
+	_current = null
 
 
 func add_combatant(id: String, is_player: bool, agility: int) -> void:
@@ -59,10 +64,14 @@ func get_next_combatant() -> CombatantEntry:
 		for entry in combatants:
 			entry.ticks -= lowest_ticks
 
+	_current = next_entry
 	return next_entry
 
 
 func apply_action_delay(id: String) -> void:
+	if _current != null and _current.id == id and combatants.has(_current):
+		_current.ticks += _calculate_attack_delay(_current.agility)
+		return
 	for entry in combatants:
 		if entry.id == id:
 			entry.ticks += _calculate_attack_delay(entry.agility)
