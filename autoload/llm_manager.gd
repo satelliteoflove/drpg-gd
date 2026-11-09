@@ -46,6 +46,12 @@ const TOP_P := 0.8
 const TOP_K := 20
 const PRESENCE_PENALTY := 1.5
 
+## Player opt-in for AI-written party dialogue. Turning it on downloads a
+## llama.cpp server and a ~2.9 GB model, so it's off unless the player asks
+## for it. Installs that already have the model count as opted in.
+const SETTINGS_PATH := "user://settings.cfg"
+var opted_in := false
+
 var _enabled := false
 var _server_healthy := false
 var _pid: int = -1
@@ -91,6 +97,7 @@ func _ready() -> void:
 
 	_gpu_vendor = _detect_gpu_vendor()
 	_kill_stale_servers()
+	opted_in = _load_opt_in()
 	_deferred_boot()
 
 
@@ -102,6 +109,9 @@ func _deferred_boot() -> void:
 
 
 func _boot() -> void:
+	if not opted_in:
+		print_debug("[LLMManager] AI dialogue is off; using written dialogue")
+		return
 	var binary_path := _find_binary()
 	var model_path := _find_model()
 	print_debug("[LLMManager] Binary: %s" % binary_path)
@@ -148,6 +158,32 @@ func _emit_download_progress(request: HTTPRequest, known_total: int, start_time:
 
 
 var debug_force_fallback := false
+
+
+func _load_opt_in() -> bool:
+	var config := ConfigFile.new()
+	var default_value := _find_model() != ""
+	if config.load(SETTINGS_PATH) != OK:
+		return default_value
+	return bool(config.get_value("llm", "enabled", default_value))
+
+
+## Turns AI dialogue on or off and remembers the choice. Turning it on starts
+## the download/boot; turning it off stops the server.
+func set_opted_in(value: bool) -> void:
+	var config := ConfigFile.new()
+	config.load(SETTINGS_PATH)
+	config.set_value("llm", "enabled", value)
+	config.save(SETTINGS_PATH)
+	if value == opted_in:
+		return
+	opted_in = value
+	if value:
+		_boot()
+	else:
+		_kill_server()
+		_enabled = false
+		_server_healthy = false
 
 
 func is_available() -> bool:
