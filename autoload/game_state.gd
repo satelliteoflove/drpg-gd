@@ -120,6 +120,11 @@ func new_game() -> void:
 	intro_seen = false
 	_populate_starter_roster()
 	_create_starter_formation()
+	# The starters begin as the active party so a new player's first choice
+	# can be the dungeon, not a roster screen.
+	for character in roster.get_all():
+		if not party.is_full():
+			party.add_member(character)
 
 
 func _create_starter_formation() -> void:

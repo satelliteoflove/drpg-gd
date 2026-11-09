@@ -127,7 +127,7 @@ func _show_intro() -> void:
 
 	var paragraphs: Array[String] = [
 		"Beneath the town lies a dungeon %d floors deep. In its lowest chamber sleeps %s, and for as long as anyone can remember its servants have crept up through the halls above." % [GameState.FINAL_FLOOR, final_name],
-		"The council has chartered your guild to end it. Recruit at the Guild Hall, outfit your party at the Shop, and go below. Guardians wait on floors %s, and the last of them is the drake itself." % floor_list,
+		"The council has chartered your guild to end it. Six adventurers have already signed on. Outfit them at the Shop, rest them at the Inn, and go below. Guardians wait on floors %s, and the last of them is the drake itself." % floor_list,
 		"Time passes with every step underground and every night at the inn, and your adventurers age with it. Choose who you send with care.",
 	]
 	for text in paragraphs:

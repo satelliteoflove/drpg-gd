@@ -892,7 +892,7 @@ func _get_enemy_by_combat_id(combat_id: String) -> Monster:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("debug_win"):
+	if OS.is_debug_build() and event.is_action_pressed("debug_win"):
 		_debug_win_combat()
 		return
 
@@ -901,7 +901,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _input_cooldown > 0.0:
 		return
 
-	if event is InputEventKey and event.pressed:
+	# Instant-win shortcuts for testing chests; debug builds only.
+	if OS.is_debug_build() and event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_1:
 				if combat_system and combat_system.is_active:

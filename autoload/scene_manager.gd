@@ -107,6 +107,7 @@ func go_to_dungeon(floor_num: int = -1, spawn_at_stairs_up: bool = true) -> void
 	GameState.party.prepare_for_dungeon()
 	if floor_num > 0:
 		GameState.set_floor(floor_num)
+	GameState.deepest_floor = maxi(GameState.deepest_floor, GameState.current_floor)
 	GameState.dungeon_spawn_at_stairs_up = spawn_at_stairs_up
 	GameState.set_mode(GameState.GameMode.DUNGEON)
 	if GameState.has_party():

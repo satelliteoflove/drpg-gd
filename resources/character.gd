@@ -525,6 +525,8 @@ func check_old_age_death() -> bool:
 	var death_chance: float = 0.8 * progress * progress
 	if CombatRNG.randf() < death_chance:
 		_die()
+		# Old age is final: nothing reverses aging, so the temple can't either.
+		add_status(CharacterEnums.StatusEffect.LOST, -1, "", 0)
 		return true
 	return false
 
