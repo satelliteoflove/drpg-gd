@@ -9,6 +9,7 @@ Prefer reusing running game sessions over stopping/restarting:
 - Only restart when: adding new autoloads, changing project settings, or after crashes
 - Verify state by reading runtime state or screenshots rather than restarting to "check if it worked" (see **Screenshots & Game Observation** below — prefer text introspection and the game-observer sub-agent)
 - If unsure whether a change requires restart, try it first - worst case is a crash
+- For playtests that don't need LLM dialogue, start the editor with `DRPG_DISABLE_LLM=1` in its environment (the game inherits it). The game then skips the model download and never starts llama-server, and dialogue uses its static fallbacks. Stopping the game from the editor force-kills it, so a llama-server it started stays running until the next launch cleans it up.
 
 ### Screenshots & Game Observation
 

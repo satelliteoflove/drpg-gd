@@ -41,6 +41,11 @@ const ARCHIVES := {
 
 const DOWNLOAD_OVERLAY_SCENE := preload("res://scenes/ui/download_overlay.tscn")
 
+# Set to 1 (or true) to skip the LLM entirely: no download, no llama-server.
+# For automated playtests and CI. Everything the LLM touches already falls back
+# to static dialogue when is_available() is false.
+const DISABLE_ENV := "DRPG_DISABLE_LLM"
+
 const TEMPERATURE := 0.7
 const TOP_P := 0.8
 const TOP_K := 20
@@ -102,6 +107,11 @@ func _deferred_boot() -> void:
 
 
 func _boot() -> void:
+	var disable_value := OS.get_environment(DISABLE_ENV).strip_edges().to_lower()
+	if disable_value == "1" or disable_value == "true":
+		print_debug("[LLMManager] Disabled by %s, using fallback dialogue" % DISABLE_ENV)
+		_mark_setup_complete()
+		return
 	var binary_path := _find_binary()
 	var model_path := _find_model()
 	print_debug("[LLMManager] Binary: %s" % binary_path)
