@@ -88,7 +88,7 @@ static func _process_damage(
 	var base_damage := DamageCalculator.roll_dice(effect.damage_dice)
 	var level_bonus := effect.damage_per_level * caster.level
 	var spell_power := _calculate_spell_power(caster)
-	var total_base := int((base_damage + level_bonus) * spell_power / 100.0)
+	var total_base := int((base_damage + level_bonus) * spell_power / 100.0 * AgeTraits.spell_damage_multiplier(caster))
 	DamageCalculator.last_damage_detail = "%s(%d) + lvl(%d) x power(%d%%) = %d" % [effect.damage_dice, base_damage, level_bonus, spell_power, total_base]
 
 	for target in targets:
@@ -132,7 +132,7 @@ static func _process_healing(
 			healing = DamageCalculator.roll_dice(effect.heal_dice)
 			healing += effect.heal_per_level * caster.level
 			var spell_power := _calculate_spell_power(caster)
-			healing = int(healing * spell_power / 100.0)
+			healing = int(healing * spell_power / 100.0 * AgeTraits.healing_multiplier(caster))
 
 		var actual: int = target.heal(healing)
 		result.healing += actual

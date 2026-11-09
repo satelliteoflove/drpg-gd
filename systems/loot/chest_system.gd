@@ -59,7 +59,7 @@ static func attempt_inspect(chest: Chest, inspector: Character) -> Dictionary:
 	success_chance = clampf(success_chance, 0.05, 0.95)
 
 	var roll := CombatRNG.randf()
-	var success := roll < success_chance
+	var success := roll < success_chance or AgeTraits.sure_inspect(inspector)
 
 	if success and chest.is_trapped and chest.trap != null:
 		chest.trap_identified = true
@@ -112,6 +112,13 @@ static func attempt_disarm(chest: Chest, disarmer: Character) -> Dictionary:
 		return {
 			"success": true,
 			"message": "%s attempts to disarm the trap... Success!" % disarmer.get_display_name()
+		}
+	elif AgeTraits.safe_disarm(disarmer):
+		# The trap stays armed, but it didn't go off.
+		return {
+			"success": false,
+			"held": true,
+			"message": "%s attempts to disarm the trap... Failed, but steady hands keep it from springing." % disarmer.get_display_name()
 		}
 	else:
 		return {
@@ -188,6 +195,14 @@ static func quick_open(chest: Chest, thief: Character, party: Party) -> Dictiona
 		var inspect_result := attempt_inspect(chest, thief)
 		if inspect_result.found_trap:
 			var disarm_result := attempt_disarm(chest, thief)
+			if disarm_result.get("held", false):
+				return {
+					"success": false,
+					"items": [],
+					"messages": [inspect_result.message, disarm_result.message],
+					"combat_triggered": false,
+					"party_wiped": false
+				}
 			if not disarm_result.success:
 				var trap_result := trigger_trap(chest, thief, party)
 				var all_messages: Array[String] = [inspect_result.message, disarm_result.message]

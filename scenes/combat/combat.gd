@@ -607,6 +607,8 @@ func _on_monster_turn_delay(delay: float) -> void:
 
 func _on_action_performed(message: String) -> void:
 	message_log.append_text("[color=#aaaaaa]>[/color] " + message + "\n")
+	for extra in AgeTraits.take_pending_messages():
+		message_log.append_text("[color=#debc78]>[/color] " + extra + "\n")
 	display.schedule_display_update()
 
 

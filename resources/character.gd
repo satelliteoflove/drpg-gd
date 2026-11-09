@@ -81,6 +81,8 @@ class ActiveStatus:
 @export var death_count: int = 0
 ## Lifetime aging done below, where time runs fast (docs/deep-time.md).
 @export var days_below: int = 0
+## Whether this character's elder intercession has been spent this expedition.
+@export var intercession_used: bool = false
 @export var _active_status_data: Array[Dictionary] = []
 var is_defending: bool = false
 var active_statuses: Array[ActiveStatus] = []
@@ -257,6 +259,7 @@ func _calculate_max_mp() -> void:
 		max_mp = maxi(0, (2 + stat_bonus) * level + equip_bonus)
 	else:
 		max_mp = maxi(0, (mp_base + stat_bonus) * level + equip_bonus)
+	max_mp = int(max_mp * AgeTraits.max_mp_multiplier(self))
 
 
 func _calculate_combat_stats() -> void:
@@ -513,6 +516,8 @@ func advance_age(days: int) -> void:
 	age_days += days
 	apply_aging_effects()
 	_recalculate_derived_stats()
+	current_hp = mini(current_hp, max_hp)
+	current_mp = mini(current_mp, max_mp)
 
 
 func check_old_age_death() -> bool:
@@ -575,6 +580,9 @@ func take_damage(amount: int, ignore_defense: bool = false) -> int:
 	var actual := mini(reduced_amount, current_hp)
 	current_hp -= actual
 	if current_hp <= 0:
+		if AgeTraits.try_intercede(self):
+			current_hp = 1
+			return actual - 1
 		current_hp = 0
 		_die()
 	return actual

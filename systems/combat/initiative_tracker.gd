@@ -33,6 +33,14 @@ func add_combatant(id: String, is_player: bool, agility: int) -> void:
 	combatants.append(entry)
 
 
+## Puts a combatant ahead of everyone for their next turn.
+func move_to_front(id: String) -> void:
+	for entry in combatants:
+		if entry.id == id and not entry.is_extra_action:
+			entry.ticks = -1.0
+			return
+
+
 func remove_combatant(id: String) -> void:
 	for i in range(combatants.size() - 1, -1, -1):
 		if combatants[i].id == id:

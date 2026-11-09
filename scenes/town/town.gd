@@ -157,7 +157,11 @@ func _show_homecoming(report: Dictionary) -> void:
 		if row["died_of_age"]:
 			notes.append("%s made it up the last stair and sat down to rest, and didn't get up again. Dead of old age at %d." % [c.character_name, years_after])
 		elif changed:
-			notes.append(_phase_note(c.character_name, row["phase_after"]))
+			var note := _phase_note(c.character_name, row["phase_after"])
+			var gained := AgeTraits.gained_on(c, row["phase_after"])
+			if gained != "":
+				note += " (%s)" % gained
+			notes.append(note)
 
 	for note in notes:
 		var p := _modal_paragraph(note)

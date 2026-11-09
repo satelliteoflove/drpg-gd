@@ -73,7 +73,7 @@ static func calculate_damage(base_dice: String, strength: int, bonus: int, reduc
 ## [param accuracy_modifier]: Optional accuracy bonus/penalty from status effects.
 ## [return]: Dictionary with "hit" (bool) and "damage" (int).
 static func calculate_character_attack(attacker: Character, target: Monster, accuracy_modifier: int = 0) -> Dictionary:
-	var total_accuracy := attacker.accuracy + accuracy_modifier
+	var total_accuracy := attacker.accuracy + accuracy_modifier + AgeTraits.counsel_accuracy(attacker)
 	var effective_evasion := target.evasion
 
 	if target.is_flying:
@@ -93,7 +93,7 @@ static func calculate_character_attack(attacker: Character, target: Monster, acc
 	var damage := calculate_damage(
 		attacker.weapon_dice,
 		attacker.strength,
-		attacker.damage_bonus + attacker.level / 2,
+		attacker.damage_bonus + attacker.level / 2 + AgeTraits.melee_damage_bonus(attacker),
 		target.defense
 	)
 	return {"hit": true, "damage": damage}

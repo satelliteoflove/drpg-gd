@@ -70,6 +70,8 @@ func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 		if not character.is_dead:
 			character.init_combat()
 			initiative.add_combatant(character.id, true, character.agility)
+			if AgeTraits.acts_first(character):
+				initiative.move_to_front(character.id)
 
 	for enemy in enemies:
 		initiative.add_combatant(enemy.combat_id, false, enemy.agility)

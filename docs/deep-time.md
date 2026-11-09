@@ -67,15 +67,17 @@ The phases get new names. The old Decline and Fragile frame aging as failure, an
 | **Veteran** | STR, VIT and AGI fall gradually | A class veteran trait (below) |
 | **Elder** | Physical stats fall faster, max HP shrinks | A stronger class trait, plus **Counsel**: a party-wide bonus while they're in the party (+1 accuracy and +10% XP for everyone else) |
 
-Class traits, first pass:
+Class traits, as built (`systems/aging/age_traits.gd`). Elders keep their Veteran trait.
 
-| Class | Veteran | Elder |
+| Archetype | Veteran | Elder |
 |---|---|---|
-| Fighter, Samurai, Lord | +10% crit chance | Always acts first in round 1 |
-| Thief, Ninja | Traps never fire on a failed disarm by them | Party can't be surprised |
-| Mage | +20% max MP | Spells cost 1 less MP (min 1) |
-| Priest | Heals +25% | Once per expedition, can raise a fallen ally in the field |
-| Bishop | Identifies everything automatically | Both of the above at a lesser rate |
+| Fighter, Samurai, Lord, Valkyrie, Monk, Ranger | +2 damage on every hit | Always acts first in the opening round |
+| Thief, Ninja, Bard | A failed disarm doesn't spring the trap | Never misreads a chest (inspection always succeeds) |
+| Mage, Alchemist, Psionic | +20% max MP | +25% spell damage |
+| Priest | +25% healing | Intercession: once per expedition, a dying ally is held at 1 HP |
+| Bishop | Everything the party finds is identified | +20% max MP and +25% healing |
+
+These differ a little from the first draft. There's no crit system in the game, so veteran fighters get flat damage instead. Surprise only exists in the simulator, so elder thieves got sure inspection. Elder priests got Intercession, a passive save, because raising someone in the field would need a new combat action. Trait names show in the character sheet's header, with the full lines in the story overlay (S) and in the homecoming report.
 
 The point is that an Elder in the back row is a force multiplier with a glass body. The player has to choose between carrying that risk and benching the person who makes everyone better.
 
@@ -143,7 +145,7 @@ The short-lived races then need something to pay for it. Lean into the existing 
 Each step stands on its own as an improvement:
 
 1. **Deep time plus the homecoming report**, with ages shown on the cards. This alone makes aging visible and gives depth a cost. *Built.* Rough estimate from floor sizes (about 520 walkable tiles each, 120 steps a day): someone who goes on every expedition ages about 20 years over a campaign, short of the 35–45 target. Tune with real play data before raising the table.
-2. **Phase traits** (Veteran/Elder and Counsel), so aging is something to manage rather than a pure loss.
+2. **Phase traits** (Veteran/Elder and Counsel), so aging is something to manage rather than a pure loss. *Built.*
 3. **Retirement posts and apprentices**, which make the roster a pipeline and give the town a history.
 4. **One Last Descent and the saga ending**.
 5. Resurrection aging, portrait aging, and LLM embellishment.

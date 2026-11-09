@@ -451,6 +451,16 @@ func _draw_hero_band(r: Rect2) -> void:
 	var sub := "Level %d   ·   %s %s" % [_character.level, CharacterEnums.get_race_name(_character.race), CharacterEnums.get_class_name(_character.character_class)]
 	draw_string(_font_semibold, Vector2(tx, ty + 45.0), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UIColors.TEXT_SECONDARY)
 
+	# What their time of life gives them, by name; the story overlay has details.
+	var trait_names: Array[String] = []
+	for line in AgeTraits.describe(_character):
+		trait_names.append(line.get_slice(":", 0))
+	if not trait_names.is_empty():
+		var traits_text := "  ·  ".join(trait_names)
+		var right := r.position.x + r.size.x - 16.0
+		var tw := _font_semibold.get_string_size(traits_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		draw_string(_font_semibold, Vector2(right - tw, ty + 45.0), traits_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UIColors.TITLE_GOLD)
+
 	# Identity chips.
 	var cy := ty + 53.0
 	var cx := tx
@@ -871,6 +881,18 @@ func _get_marks_detail() -> String:
 	return text
 
 
+func _get_age_detail() -> String:
+	var text := "[b]%s, age %d[/b]\n" % [_character.get_life_phase_name(), _character.get_age_years()]
+	var lines := AgeTraits.describe(_character)
+	if lines.is_empty():
+		text += "In the prime of life. Nothing gained or lost to age yet."
+	for line in lines:
+		text += line + "\n"
+	if _character.days_below >= CharacterEnums.DAYS_PER_YEAR:
+		text += "%d years spent below." % (_character.days_below / CharacterEnums.DAYS_PER_YEAR)
+	return text
+
+
 ## The character's full story — personality, bonds and marks in detail — as one
 ## bbcode block, with each section header tinted gold. Used by the Status tab's
 ## story overlay.
@@ -878,7 +900,7 @@ func get_story_detail() -> String:
 	if _character == null:
 		return ""
 	var gold := UIColors.TITLE_GOLD.to_html(false)
-	var sections := [_get_personality_detail(), _get_bonds_detail(), _get_marks_detail()]
+	var sections := [_get_age_detail(), _get_personality_detail(), _get_bonds_detail(), _get_marks_detail()]
 	var out := ""
 	for s in sections:
 		# Each helper opens with a single "[b]Header[/b]" line; tint it gold.

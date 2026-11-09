@@ -118,6 +118,8 @@ func _on_quick_open() -> void:
 
 	for msg in result.messages:
 		_add_status_message(msg)
+	for msg in AgeTraits.take_pending_messages():
+		_add_status_message(msg)
 
 	if result.get("combat_triggered", false):
 		await get_tree().create_timer(1.0).timeout
@@ -156,9 +158,11 @@ func _on_disarm() -> void:
 
 	_add_status_message(result.message)
 
-	if not result.success:
+	if not result.success and not result.get("held", false):
 		var trap_result := ChestSystem.trigger_trap(chest, disarmer, party)
 		for msg in trap_result.messages:
+			_add_status_message(msg)
+		for msg in AgeTraits.take_pending_messages():
 			_add_status_message(msg)
 
 		if trap_result.get("combat_triggered", false):
@@ -182,6 +186,8 @@ func _on_open() -> void:
 	var result := ChestSystem.open_chest(chest, opener, party)
 
 	for msg in result.messages:
+		_add_status_message(msg)
+	for msg in AgeTraits.take_pending_messages():
 		_add_status_message(msg)
 
 	if result.get("combat_triggered", false):
@@ -212,7 +218,10 @@ func _collect_items() -> void:
 	var items_collected: Array[Item] = []
 	var items_left_behind: Array[Item] = []
 
+	var appraised := AgeTraits.party_has(GameState.party, AgeTraits.identifies_loot)
 	for item in chest.contents:
+		if appraised:
+			item.is_identified = true
 		var remaining := GameState.party.inventory.add_item(item)
 		if remaining == 0:
 			items_collected.append(item)

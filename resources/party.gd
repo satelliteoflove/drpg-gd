@@ -123,6 +123,7 @@ func prepare_for_dungeon() -> void:
 	for member in members:
 		member.calculate_rest_bonus()
 		member.town_days_accumulated = 0
+		member.intercession_used = false
 
 
 func get_front_row() -> Array[Character]:
@@ -245,6 +246,7 @@ func distribute_experience(total_xp: int) -> void:
 			var level_diff := avg_level - member.level
 			xp *= minf(1.5, 1.0 + 0.05 * level_diff)
 		xp *= member.get_xp_multiplier()
+		xp *= AgeTraits.xp_multiplier(member, self)
 		member.add_experience(int(xp))
 		member.decay_rest_bonus()
 
