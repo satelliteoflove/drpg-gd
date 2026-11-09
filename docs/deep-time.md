@@ -119,6 +119,8 @@ As built (`systems/aging/last_descent.gd`), the vow is sworn from the guild hall
 
 Resurrection costs years: 1d4 years, more for anyone raised more than once. The dead come back older. It connects death and aging, and it makes the temple a real decision for short-lived characters.
 
+As built, each raise rolls 1d4 years per time the character has been raised, so the first costs 1d4, the second 2d4, and so on. That applies at the temple and to resurrection spells. The temple shows the range before you pay and the years taken afterward.
+
 ### 8. The ending becomes a saga
 
 The victory screen gets a timeline. The surface calendar runs along the top. Below it, a line for each character who ever served shows their age going in, their age coming out, their phase, and how it ended: still serving, retired to a post, died of age, fell in battle, or Legend. The headline line contrasts the two clocks: *140 days on the surface. 212 years spent below, between them.*
@@ -154,7 +156,7 @@ Each step stands on its own as an improvement:
 2. **Phase traits** (Veteran/Elder and Counsel), so aging is something to manage rather than a pure loss. *Built.*
 3. **Retirement posts and apprentices**, which make the roster a pipeline and give the town a history. *Built.* Retire from the guild hall's Roster tab. Retirees leave the party list for good, and the ending lists them under "Keeping the Town".
 4. **One Last Descent and the saga ending**. *Built.*
-5. Resurrection aging, portrait aging, and LLM embellishment. Resurrection already adds 1–5 years (`Character.resurrect`), though not more for anyone raised more than once.
+5. Resurrection aging, portrait aging, and LLM embellishment. *Built, apart from the LLM.* Characters have class emblems rather than portraits, so the emblem grays in the Veteran and Elder years, and the character sheet's header carries the lifeline from section 2 (the same drawing as the saga). LLM embellishment waits until AI dialogue is back on.
 
 ## Risks
 

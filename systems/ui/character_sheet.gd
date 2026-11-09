@@ -473,6 +473,15 @@ func _draw_hero_band(r: Rect2) -> void:
 		var row_color := UIColors.FRONT_ROW if _party_index < 3 else UIColors.BACK_ROW
 		cx += _draw_chip(cx, cy, row_text, row_color) + 6.0
 
+	# Where they are in life, and how much of it the dungeon has had.
+	var line_left := cx + 8.0
+	var line_right := r.position.x + r.size.x - inset
+	if line_right - line_left > 80.0:
+		var served := _character.first_descent_day >= 0 or _character.days_below > 0
+		var age_in := LastDescent.saga_age_in(_character) if served else _character.age_days
+		SagaLifeline.paint(self, Rect2(line_left, cy + CHIP_H * 0.5 - 6.0, line_right - line_left, 12.0),
+			_character.race, age_in, _character.age_days, UIColors.TITLE_GOLD)
+
 	# Status chip pinned to the right edge.
 	var status_text := "DEAD" if _character.is_dead else _get_status_text()
 	var status_color := UIColors.SUCCESS
@@ -485,6 +494,11 @@ func _draw_hero_band(r: Rect2) -> void:
 
 func _draw_emblem(r: Rect2) -> void:
 	var tint := _class_tint(_character.character_class)
+	# The emblem grays a little in the veteran years and more as an elder.
+	if AgeTraits.is_elder(_character):
+		tint = tint.lerp(Color(0.72, 0.70, 0.68), 0.55)
+	elif AgeTraits.is_veteran(_character):
+		tint = tint.lerp(Color(0.72, 0.70, 0.68), 0.28)
 	var plate := StyleBoxFlat.new()
 	plate.bg_color = tint.darkened(0.55)
 	plate.set_corner_radius_all(10)

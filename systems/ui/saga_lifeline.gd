@@ -36,48 +36,43 @@ static func create(c: Character, p_age_in: int, p_age_out: int, p_end_color: Col
 	return line
 
 
-func _span() -> Vector2i:
-	var start := CharacterEnums.get_base_age(race) * CharacterEnums.DAYS_PER_YEAR
-	var end := CharacterEnums.get_max_age_days(race)
-	return Vector2i(mini(start, age_in), maxi(end, age_out))
-
-
-func _x(age: int) -> float:
-	var span := _span()
-	return size.x * clampf(float(age - span.x) / float(maxi(1, span.y - span.x)), 0.0, 1.0)
-
-
-func _phase_at(age: int) -> CharacterEnums.LifePhase:
-	return CharacterEnums.get_life_phase(race, age)
-
-
 func _draw() -> void:
-	var span := _span()
-	var mid := size.y * 0.5
-	var thin := 4.0
-	var thick := size.y - 4.0
+	paint(self, Rect2(Vector2.ZERO, size), race, age_in, age_out, end_color)
+
+
+## Draws a lifeline into [param r] on any canvas item, so custom-drawn
+## screens like the character sheet can show one too.
+static func paint(canvas: CanvasItem, r: Rect2, p_race: CharacterEnums.Race,
+		p_age_in: int, p_age_out: int, p_end_color: Color) -> void:
+	var start := mini(CharacterEnums.get_base_age(p_race) * CharacterEnums.DAYS_PER_YEAR, p_age_in)
+	var end := maxi(CharacterEnums.get_max_age_days(p_race), p_age_out)
+	var x_of := func(age: int) -> float:
+		return r.position.x + r.size.x * clampf(float(age - start) / float(maxi(1, end - start)), 0.0, 1.0)
+	var mid := r.position.y + r.size.y * 0.5
+	var thin := maxf(2.0, r.size.y * 0.25)
+	var thick := maxf(thin, r.size.y - 4.0)
 
 	# The whole life, faint and fading out toward the end.
 	for i in SLICES:
-		var a := span.x + int(float(span.y - span.x) * i / SLICES)
-		var b := span.x + int(float(span.y - span.x) * (i + 1) / SLICES)
+		var a := start + int(float(end - start) * i / SLICES)
+		var b := start + int(float(end - start) * (i + 1) / SLICES)
 		var t := float(i) / SLICES
 		var fade := 1.0 if t < FADE_FROM else clampf(1.0 - (t - FADE_FROM) / (1.0 - FADE_FROM), 0.0, 1.0)
-		var col: Color = PHASE_COLORS[_phase_at(a)]
+		var col: Color = PHASE_COLORS[CharacterEnums.get_life_phase(p_race, a)]
 		col.a = 0.28 * fade
-		draw_rect(Rect2(_x(a), mid - thin * 0.5, _x(b) - _x(a), thin), col)
+		canvas.draw_rect(Rect2(x_of.call(a), mid - thin * 0.5, x_of.call(b) - x_of.call(a), thin), col)
 
 	# The years in service, bright, phase by phase.
-	var a := age_in
-	while a < age_out:
-		var phase := _phase_at(a)
+	var step := maxi(1, (p_age_out - p_age_in) / 200)
+	var a := p_age_in
+	while a < p_age_out:
+		var phase := CharacterEnums.get_life_phase(p_race, a)
 		var b := a
-		var step := maxi(1, (age_out - age_in) / 200)
-		while b < age_out and _phase_at(b) == phase:
-			b = mini(age_out, b + step)
-		draw_rect(Rect2(_x(a), mid - thick * 0.5, maxf(2.0, _x(b) - _x(a)), thick), PHASE_COLORS[phase])
+		while b < p_age_out and CharacterEnums.get_life_phase(p_race, b) == phase:
+			b = mini(p_age_out, b + step)
+		canvas.draw_rect(Rect2(x_of.call(a), mid - thick * 0.5, maxf(2.0, x_of.call(b) - x_of.call(a)), thick),
+			PHASE_COLORS[phase])
 		a = b
 
 	# Where service ended (or where they stand now).
-	var end_x := _x(age_out)
-	draw_rect(Rect2(end_x - 1.5, 0, 3, size.y), end_color)
+	canvas.draw_rect(Rect2(x_of.call(p_age_out) - 1.5, r.position.y, 3, r.size.y), p_end_color)

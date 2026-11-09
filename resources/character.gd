@@ -136,6 +136,11 @@ const SLOT_MAP: Dictionary = {
 @export var last_descent: bool = false
 ## Who inherits a Legend's level, by id.
 @export var legacy_apprentice_id: String = ""
+## How many times the temple or a spell has brought this character back.
+## Each raise costs more years than the last.
+@export var times_raised: int = 0
+## Years the most recent raise cost, for the message that reports it.
+var last_raise_years: int = 0
 
 @export_group("Saga")
 ## How the character's service ended: "", "retired", "legend" or "old_age".
@@ -721,7 +726,11 @@ func resurrect(vitality_loss: int = 1) -> bool:
 		return false
 
 	peak_vitality = maxi(1, peak_vitality - vitality_loss)
-	age_days += CombatRNG.randi_range(1, 5) * CharacterEnums.DAYS_PER_YEAR
+	times_raised += 1
+	last_raise_years = 0
+	for _i in times_raised:
+		last_raise_years += CombatRNG.randi_range(1, 4)
+	age_days += last_raise_years * CharacterEnums.DAYS_PER_YEAR
 	is_dead = false
 	if fate.is_empty():
 		final_day = -1
@@ -735,6 +744,12 @@ func resurrect(vitality_loss: int = 1) -> bool:
 
 	revived.emit()
 	return true
+
+
+## The years the next raise will cost, as (least, most).
+func next_raise_years() -> Vector2i:
+	var dice := times_raised + 1
+	return Vector2i(dice, dice * 4)
 
 
 ## Adds experience points and checks for level up eligibility.

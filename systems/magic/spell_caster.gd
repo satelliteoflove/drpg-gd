@@ -267,7 +267,8 @@ static func _process_resurrection(
 
 		if target.resurrect(1):
 			target.current_hp = maxi(1, int(target.max_hp * effect.restore_hp_percent))
-			result.messages.append("%s is resurrected!" % target.get_display_name())
+			result.messages.append("%s is resurrected, %d year%s older." % [target.get_display_name(),
+				target.last_raise_years, "" if target.last_raise_years == 1 else "s"])
 		else:
 			result.messages.append("Failed to resurrect %s!" % target.get_display_name())
 
