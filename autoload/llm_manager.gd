@@ -19,6 +19,10 @@ const HEALTH_TIMEOUT := 30.0
 const HEALTH_POLL_INTERVAL := 1.0
 const DEFAULT_N_PREDICT := 128
 const GENERATE_TIMEOUT_SEC := 15.0
+## Records the running server's PID so a later launch can clean it up if this
+## run dies without stopping it.
+const PID_FILE := "user://llama_server.pid"
+const _UNIX_KILL_IF_SERVER := "ps -p %d -o comm= 2>/dev/null | grep -q llama-server && kill %d"
 
 const MODEL_NAME := "Qwen3.5-4B-UD-Q4_K_XL"
 const MODEL_FILENAME := "Qwen3.5-4B-UD-Q4_K_XL.gguf"
@@ -828,6 +832,8 @@ func _start_server(model_path: String) -> void:
 
 	_enabled = true
 	print_debug("[LLMManager] Started llama-server (PID %d)" % _pid)
+	_write_pid_file(_pid)
+	_start_orphan_watcher(_pid)
 
 	_health_elapsed = 0.0
 	_health_timer = Timer.new()
@@ -942,11 +948,44 @@ func _kill_server() -> void:
 		OS.kill(_pid)
 		print_debug("[LLMManager] Killed llama-server (PID %d)" % _pid)
 		_pid = -1
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(PID_FILE))
 	_server_healthy = false
 
 
+## Kills a server left behind by an earlier run, using the PID it recorded.
+## Only a process that is still named llama-server gets killed, so an
+## unrelated process that inherited the PID, or a llama-server some other
+## program started, is left alone.
 func _kill_stale_servers() -> void:
+	if not FileAccess.file_exists(PID_FILE):
+		return
+	var stale_pid := FileAccess.get_file_as_string(PID_FILE).strip_edges().to_int()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PID_FILE))
+	if stale_pid <= 0:
+		return
 	if OS.get_name() == "Windows":
-		OS.execute("taskkill", ["/F", "/IM", "llama-server.exe"], [], false)
+		OS.execute("taskkill", ["/F", "/FI", "PID eq %d" % stale_pid, "/FI", "IMAGENAME eq llama-server.exe"])
 	else:
-		OS.execute("pkill", ["-f", "llama-server"], [], false)
+		OS.execute("sh", ["-c", _UNIX_KILL_IF_SERVER % [stale_pid, stale_pid]])
+
+
+func _write_pid_file(pid: int) -> void:
+	var f := FileAccess.open(PID_FILE, FileAccess.WRITE)
+	if f:
+		f.store_string(str(pid))
+
+
+## The editor stops a running game with a hard kill, so neither of the
+## notifications above arrives and the server would outlive the game. A small
+## watcher process waits for the game to disappear and then stops the server.
+func _start_orphan_watcher(server_pid: int) -> void:
+	var game_pid := OS.get_process_id()
+	if OS.get_name() == "Windows":
+		var ps := ("Wait-Process -Id %d -ErrorAction SilentlyContinue; "
+			+ "Get-Process -Id %d -ErrorAction SilentlyContinue | "
+			+ "Where-Object { $_.ProcessName -eq 'llama-server' } | Stop-Process -Force") % [game_pid, server_pid]
+		OS.create_process("powershell", ["-NoProfile", "-WindowStyle", "Hidden", "-Command", ps])
+	else:
+		var sh := ("while kill -0 %d 2>/dev/null; do sleep 2; done; " % game_pid) \
+			+ (_UNIX_KILL_IF_SERVER % [server_pid, server_pid])
+		OS.create_process("sh", ["-c", sh])
