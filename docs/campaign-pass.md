@@ -53,7 +53,7 @@ The sim party plays worse than a person does. It doesn't retreat to heal between
 
 **Aging (#20).** A campaign now takes something like 200 in-game days, so aging matters even less than before. Options: treat it as flavor and say so, make each expedition cost weeks or months of game time, or shrink lifespans drastically. My lean is the second, since it also gives the inn and recovery times more meaning, but it touches a lot of systems.
 
-**Random encounters (#15).** `_check_random_encounter` is still dead code. Roaming visible groups seem like the better design for this game, so I'd delete it, but that's your call.
+**Random encounters (#15).** Decided: roaming groups only. The dead `_check_random_encounter` and `GameState.encounter_chance` are removed.
 
 **Boss art (#9).** Ironjaw, the Lich and the Drake have no portraits and show the dark silhouette fallback. That's w-p's area, so I left it alone. The final fight would look much better with a real Drake.
 

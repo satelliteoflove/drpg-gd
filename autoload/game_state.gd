@@ -26,7 +26,6 @@ var party_formations: Array[PartyFormation] = []
 var dungeon_floors: Dictionary = {}
 var dungeon_spawn_at_stairs_up: bool = true
 var current_encounter: Dictionary = {}
-var encounter_chance: float = 0.15
 var dungeon_player_position: Vector2i = Vector2i.ZERO
 var dungeon_player_facing: int = 0
 var returning_from_combat: bool = false

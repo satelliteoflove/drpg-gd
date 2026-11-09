@@ -1299,12 +1299,6 @@ func _process_enemy_turn() -> void:
 		return
 
 
-func _check_random_encounter() -> void:
-	if randf() < GameState.encounter_chance:
-		var encounter := EncounterGenerator.generate_encounter()
-		_open_combat(encounter)
-
-
 func _force_combat() -> void:
 	var encounter := EncounterGenerator.generate_encounter()
 	_open_combat(encounter)
