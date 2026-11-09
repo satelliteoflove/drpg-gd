@@ -40,6 +40,9 @@ var victory_day: int = 0
 var deepest_floor: int = 0
 ## Whether the opening premise has been shown for this campaign.
 var intro_seen: bool = true
+## What the last trip below did to the party, for the town to show once.
+## Empty when there's nothing to report. Not saved.
+var pending_homecoming: Dictionary = {}
 
 
 func clear_dungeon_floors() -> void:
@@ -117,6 +120,7 @@ func new_game() -> void:
 	victory_day = 0
 	deepest_floor = 0
 	intro_seen = false
+	pending_homecoming = {}
 	_populate_starter_roster()
 	_create_starter_formation()
 	# The starters begin as the active party so a new player's first choice
@@ -259,6 +263,63 @@ func get_boss_floors() -> Array[int]:
 		if MonsterDatabase.get_boss_for_floor(f) != null:
 			floors.append(f)
 	return floors
+
+
+## Settles the time an expedition took. The surface calendar moves by
+## [param surface_days] for everyone; the party, who were below where time
+## runs fast, age by [param deep_days] in total. Elders face the old-age roll
+## here, once per homecoming, rather than at the inn.
+func process_homecoming(surface_days: int, deep_days: int) -> Dictionary:
+	var before := {}
+	for member in party.get_members():
+		if not member.is_dead:
+			before[member.id] = {"age": member.age_days, "phase": member.get_life_phase()}
+
+	if surface_days > 0:
+		advance_game_days(surface_days)
+
+	var rows: Array[Dictionary] = []
+	for member in party.get_members():
+		if not before.has(member.id):
+			continue
+		var extra := maxi(0, deep_days - surface_days)
+		if extra > 0:
+			member.advance_age(extra)
+		member.days_below += maxi(deep_days, surface_days)
+		var phase_before: CharacterEnums.LifePhase = before[member.id]["phase"]
+		var phase_after := member.get_life_phase()
+		if phase_after != phase_before:
+			_add_phase_mark(member, phase_after)
+		var died := false
+		if phase_after == CharacterEnums.LifePhase.FRAGILE:
+			died = member.check_old_age_death()
+		rows.append({
+			"character": member,
+			"age_before": before[member.id]["age"],
+			"age_after": member.age_days,
+			"phase_before": phase_before,
+			"phase_after": phase_after,
+			"died_of_age": died,
+		})
+	return {"surface_days": surface_days, "deep_days": deep_days, "members": rows}
+
+
+const PHASE_MARKS: Dictionary = {
+	CharacterEnums.LifePhase.PRIME: "Came into their own",
+	CharacterEnums.LifePhase.DECLINE: "Graying at the temples",
+	CharacterEnums.LifePhase.FRAGILE: "An elder of the guild",
+}
+
+
+func _add_phase_mark(member: Character, phase: CharacterEnums.LifePhase) -> void:
+	var mark_name: String = PHASE_MARKS.get(phase, "")
+	if mark_name == "":
+		return
+	var severity := Marks.Severity.MINOR if phase == CharacterEnums.LifePhase.PRIME else Marks.Severity.MAJOR
+	var tags: Array[String] = ["aging"]
+	var involved: Array[String] = []
+	member.add_mark(Marks.create_mark(mark_name, "deep_time", tags, Marks.Agency.SUBJECT,
+		severity, involved, game_day))
 
 
 func advance_game_days(days: int) -> void:

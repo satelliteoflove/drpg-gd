@@ -6,6 +6,9 @@ signal reveal_expired
 signal step_taken(total_steps: int)
 
 const STEPS_PER_DAY: int = 120
+## Time runs faster the deeper you go. Days of personal aging per surface day
+## spent on each floor; see docs/deep-time.md. Index 0 is unused.
+const DEEP_DAYS_PER_DAY: Array[int] = [1, 1, 7, 28, 56, 84, 140, 196, 280]
 
 var global_step_count: int = 0
 var accumulated_steps: int = 0
@@ -13,11 +16,15 @@ var spotted_groups: Dictionary = {}
 var reveal_active: bool = false
 var reveal_steps_remaining: int = 0
 var current_floor: int = 0
+## Personal aging accrued below since the party last came home, in days.
+var deep_days: float = 0.0
 
 
 func increment_step() -> void:
 	global_step_count += 1
 	accumulated_steps += 1
+	var f := clampi(current_floor, 1, DEEP_DAYS_PER_DAY.size() - 1)
+	deep_days += float(DEEP_DAYS_PER_DAY[f]) / STEPS_PER_DAY
 	if reveal_active:
 		reveal_steps_remaining -= 1
 		if reveal_steps_remaining <= 0:
@@ -78,6 +85,13 @@ func consume_dungeon_days() -> int:
 	return days
 
 
+## Returns the personal aging accrued below, in whole days, and resets it.
+func consume_deep_days() -> int:
+	var days := floori(deep_days)
+	deep_days -= days
+	return days
+
+
 func save_state() -> Dictionary:
 	return {
 		"global_step_count": global_step_count,
@@ -85,7 +99,8 @@ func save_state() -> Dictionary:
 		"spotted_groups": spotted_groups.duplicate(),
 		"reveal_active": reveal_active,
 		"reveal_steps_remaining": reveal_steps_remaining,
-		"current_floor": current_floor
+		"current_floor": current_floor,
+		"deep_days": deep_days,
 	}
 
 
@@ -96,3 +111,4 @@ func load_state(data: Dictionary) -> void:
 	reveal_active = data.get("reveal_active", false)
 	reveal_steps_remaining = data.get("reveal_steps_remaining", 0)
 	current_floor = data.get("current_floor", 0)
+	deep_days = data.get("deep_days", 0.0)

@@ -86,10 +86,7 @@ func go_to_main_menu() -> void:
 
 
 func go_to_town() -> void:
-	if GameState.current_mode == GameState.GameMode.DUNGEON:
-		var dungeon_days: int = GameState.floor_tracker.consume_dungeon_days()
-		if dungeon_days > 0:
-			GameState.advance_game_days(dungeon_days)
+	_settle_expedition()
 	GameState.set_mode(GameState.GameMode.TOWN)
 	if GameState.has_party():
 		SaveManager.autosave()
@@ -99,8 +96,22 @@ func go_to_town() -> void:
 ## Shows the victory screen. The game mode is left as DUNGEON so the trip's
 ## days are still counted when the party returns to town afterward.
 func go_to_ending() -> void:
+	# Settle the final expedition first so the ending shows the party's true
+	# ages. The town shows the homecoming report afterward.
+	_settle_expedition()
+	GameState.set_mode(GameState.GameMode.TOWN)
 	SaveManager.autosave()
 	change_scene("ending")
+
+
+## Applies the time an expedition took, once, when the party leaves the
+## dungeon by any route.
+func _settle_expedition() -> void:
+	if GameState.current_mode != GameState.GameMode.DUNGEON:
+		return
+	var surface_days: int = GameState.floor_tracker.consume_dungeon_days()
+	var deep_days: int = GameState.floor_tracker.consume_deep_days()
+	GameState.pending_homecoming = GameState.process_homecoming(surface_days, deep_days)
 
 
 func go_to_dungeon(floor_num: int = -1, spawn_at_stairs_up: bool = true) -> void:

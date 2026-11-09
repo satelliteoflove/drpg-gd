@@ -430,8 +430,8 @@ const RACE_MAX_AGE: Dictionary = {
 const LIFE_PHASE_NAMES: Dictionary = {
 	LifePhase.YOUTH: "Youth",
 	LifePhase.PRIME: "Prime",
-	LifePhase.DECLINE: "Decline",
-	LifePhase.FRAGILE: "Fragile"
+	LifePhase.DECLINE: "Veteran",
+	LifePhase.FRAGILE: "Elder"
 }
 
 const DAYS_PER_YEAR: int = 364

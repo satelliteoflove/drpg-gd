@@ -276,7 +276,6 @@ func _on_rest_selected() -> void:
 	var total_hp := 0
 	var total_mp := 0
 	var cured_count := 0
-	var old_age_deaths: Array[String] = []
 
 	for day in range(selected_days):
 		GameState.advance_game_days(1)
@@ -299,13 +298,6 @@ func _on_rest_selected() -> void:
 						member.remove_status(status)
 						cured_count += 1
 
-		for character in GameState.roster.get_all():
-			if character.is_dead:
-				continue
-			if character.get_life_phase() == CharacterEnums.LifePhase.FRAGILE:
-				if character.check_old_age_death():
-					old_age_deaths.append(character.character_name)
-
 	var level_up_results: Array[Dictionary] = []
 	for member in GameState.party.get_members():
 		if member.is_dead:
@@ -322,9 +314,7 @@ func _on_rest_selected() -> void:
 	selected_days = _calculate_default_days()
 	_refresh_display()
 
-	if not old_age_deaths.is_empty():
-		_show_old_age_deaths(old_age_deaths)
-	elif not level_up_results.is_empty():
+	if not level_up_results.is_empty():
 		_show_level_up_results(level_up_results)
 	else:
 		_message_label.text = result_text
@@ -365,14 +355,6 @@ func _process_level_ups(member: Character) -> Dictionary:
 		"hp_gain": member.max_hp - old_hp, "mp_gain": member.max_mp - old_mp,
 		"stat_gains": stat_gains
 	}
-
-
-func _show_old_age_deaths(names: Array[String]) -> void:
-	var text := "[b]Passage of Time[/b]\n\n"
-	for char_name in names:
-		text += "[color=gray]%s has passed away of old age.[/color]\n" % char_name
-	_info_label.text = text
-	_message_label.text = "The passage of time claims all."
 
 
 func _show_level_up_results(results: Array[Dictionary]) -> void:

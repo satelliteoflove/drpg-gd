@@ -142,7 +142,7 @@ The short-lived races then need something to pay for it. Lean into the existing 
 
 Each step stands on its own as an improvement:
 
-1. **Deep time plus the homecoming report**, with ages shown on the cards. This alone makes aging visible and gives depth a cost.
+1. **Deep time plus the homecoming report**, with ages shown on the cards. This alone makes aging visible and gives depth a cost. *Built.* Rough estimate from floor sizes (about 520 walkable tiles each, 120 steps a day): someone who goes on every expedition ages about 20 years over a campaign, short of the 35–45 target. Tune with real play data before raising the table.
 2. **Phase traits** (Veteran/Elder and Counsel), so aging is something to manage rather than a pure loss.
 3. **Retirement posts and apprentices**, which make the roster a pipeline and give the town a history.
 4. **One Last Descent and the saga ending**.

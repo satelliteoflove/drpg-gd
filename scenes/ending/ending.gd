@@ -67,6 +67,16 @@ func _build(col: VBoxContainer) -> void:
 	epilogue.text = _epilogue_text(boss_name, days)
 	col.add_child(epilogue)
 
+	var below_days := _total_days_below()
+	if below_days >= CharacterEnums.DAYS_PER_YEAR:
+		var clocks := Label.new()
+		clocks.theme_type_variation = &"SubheaderLabel"
+		clocks.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		clocks.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
+		clocks.text = "%d days on the surface. %d years spent below, between them." % [
+			days, below_days / CharacterEnums.DAYS_PER_YEAR]
+		col.add_child(clocks)
+
 	col.add_child(_stats_row(days))
 
 	var party := GameState.get_party_members()
@@ -189,6 +199,9 @@ func _member_card(c: Character) -> Control:
 	var line := Label.new()
 	line.theme_type_variation = &"MutedLabel"
 	line.text = "Level %d %s %s  ·  age %d" % [c.level, c.get_race_name(), c.get_class_name(), c.get_age_years()]
+	var below_years := c.days_below / CharacterEnums.DAYS_PER_YEAR
+	if below_years >= 1:
+		line.text += ", %d below" % below_years
 	v.add_child(line)
 
 	var mark := _signature_mark(c)
@@ -223,6 +236,14 @@ func _fallen_characters() -> Array[Character]:
 		if c.has_status(CharacterEnums.StatusEffect.LOST):
 			result.append(c)
 	return result
+
+
+func _total_days_below() -> int:
+	var total := 0
+	if GameState.roster:
+		for c in GameState.roster.get_all():
+			total += c.days_below
+	return total
 
 
 func _total_deaths() -> int:

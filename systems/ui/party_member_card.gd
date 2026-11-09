@@ -84,10 +84,14 @@ func _build(opts: Dictionary) -> void:
 	# Subtitle: L<lvl> <race> <class>.
 	var sub := Label.new()
 	sub.theme_type_variation = &"MutedLabel"
-	sub.text = "L%d  %s  %s" % [
+	sub.text = "L%d  %s  %s  ·  %d" % [
 		member.level,
 		CharacterEnums.get_race_name(member.race),
-		CharacterEnums.get_class_name(member.character_class)]
+		CharacterEnums.get_class_name(member.character_class),
+		member.get_age_years()]
+	var phase := member.get_life_phase()
+	if phase == CharacterEnums.LifePhase.DECLINE or phase == CharacterEnums.LifePhase.FRAGILE:
+		sub.text += "  " + member.get_life_phase_name()
 	col.add_child(sub)
 
 	# Resource bars — always rendered (living AND dead, HP AND MP even at 0/0)

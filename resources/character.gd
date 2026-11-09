@@ -79,6 +79,8 @@ class ActiveStatus:
 @export var is_dead: bool = false
 @export var status_effects: Array[CharacterEnums.StatusEffect] = []
 @export var death_count: int = 0
+## Lifetime aging done below, where time runs fast (docs/deep-time.md).
+@export var days_below: int = 0
 @export var _active_status_data: Array[Dictionary] = []
 var is_defending: bool = false
 var active_statuses: Array[ActiveStatus] = []
