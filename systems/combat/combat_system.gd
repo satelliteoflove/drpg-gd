@@ -1582,6 +1582,11 @@ func _get_charmed_monster_spell_targets(spell: Spell, caster: Monster) -> Array:
 
 
 func _check_combat_end() -> void:
+	# A delayed turn can land after the fight is already over. Without this
+	# guard the end was processed twice: loot rolled again (the duplicate
+	# chest items in #12) and XP and gold paid out twice.
+	if not is_active:
+		return
 	if _all_enemies_dead():
 		var total_exp := 0
 		var total_gold := 0
@@ -1596,6 +1601,9 @@ func _check_combat_end() -> void:
 		var floor_level: int = GameState.current_floor
 		var party_luck: int = party.get_average_luck() if party else 10
 		var loot: Array[Item] = LootGenerator.generate_combat_loot(enemies, floor_level, party_luck)
+		# Roll the key here so the victory message counts it.
+		if not loot.is_empty():
+			ChestSystem.maybe_add_dungeon_key(loot)
 
 		var loot_msg := ""
 		if not loot.is_empty():

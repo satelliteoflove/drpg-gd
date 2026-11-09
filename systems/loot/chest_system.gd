@@ -14,13 +14,14 @@ const THIEF_DISARM_CHANCE: float = 0.85
 
 
 static func create_chest_from_loot(loot: Array[Item], is_boss: bool) -> Chest:
-	_maybe_add_dungeon_key(loot)
 	var chest_type := _determine_chest_type(loot, is_boss)
 	var trap := _maybe_generate_trap(chest_type)
 	return Chest.create(chest_type, loot, trap)
 
 
-static func _maybe_add_dungeon_key(loot: Array[Item]) -> void:
+## Sometimes adds a dungeon key to a fight's loot. Only call this when there
+## is loot, since a key alone would otherwise produce a chest.
+static func maybe_add_dungeon_key(loot: Array[Item]) -> void:
 	if randf() < DUNGEON_KEY_CHANCE:
 		var key := ShopItems.get_item("dungeon_key")
 		if key != null:
