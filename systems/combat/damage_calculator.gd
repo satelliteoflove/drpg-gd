@@ -141,8 +141,8 @@ static func calculate_monster_attack(attacker: Monster, attack: MonsterAttack, t
 
 # --- Critical hits ---------------------------------------------------------------
 #
-# As in Wizardry I-V: a critical hit kills outright. Ninjas can land them on
-# monsters, with the chance from the NES disassembly (taotao54321's Wiz1
+# As in Wizardry I-V: a critical hit kills outright. Ninjas, and anyone
+# holding a weapon that grants it, can land them on monsters, with the chance from the NES disassembly (taotao54321's Wiz1
 # analysis): level x 2% up to 50%, then (24 - monster level) / 35 for it to
 # take, so very high-level foes shrug it off. Guardians never fall to one.
 #
@@ -155,7 +155,9 @@ const CRIT_IMMUNE_MONSTER_LEVEL := 24
 
 
 static func can_critical(c: Character) -> bool:
-	return c.character_class == CharacterEnums.CharacterClass.NINJA
+	if c.character_class == CharacterEnums.CharacterClass.NINJA:
+		return true
+	return c.equipped_weapon != null and c.equipped_weapon.grants_critical
 
 
 static func character_critical_chance(attacker: Character, target: Monster) -> float:

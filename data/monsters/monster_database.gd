@@ -427,6 +427,7 @@ static func _create_bandit() -> void:
 		LootDrop.create("leather_boots", 0.08),
 		LootDrop.create("healing_potion", 0.12),
 		LootDrop.create("mana_potion", 0.06),
+		LootDrop.create("cutthroats_dirk", 0.02),
 	]
 
 	monster.min_floor = 3
@@ -692,6 +693,7 @@ static func _create_minotaur() -> void:
 		LootDrop.create("iron_helm", 0.10),
 		LootDrop.create("iron_shield", 0.08),
 		LootDrop.create("greater_healing", 0.15),
+		LootDrop.create("headsmans_axe", 0.03),
 	]
 
 	monster.min_floor = 7
