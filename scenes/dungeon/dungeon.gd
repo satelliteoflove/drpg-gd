@@ -36,6 +36,7 @@ const SFX_STAIRS := "res://audio/sfx/stairs.wav"
 const SFX_TORCH_LIGHT := "res://audio/sfx/torch_light.wav"
 const SFX_TORCH_LOW := "res://audio/sfx/torch_low.wav"
 const SFX_ENCOUNTER := "res://audio/sfx/encounter.wav"
+const BOSS_MUSIC := "res://audio/music/music_boss.ogg"
 const SFX_TORCH_LOOP := "res://audio/sfx/torch_loop.wav"
 
 enum Facing { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 }
@@ -1290,6 +1291,8 @@ func _open_combat(encounter: Dictionary) -> void:
 
 	AudioManager.play_sfx_path(SFX_ENCOUNTER)
 	AudioManager.stop_ambient(0.3)
+	if encounter.get("is_boss", false):
+		AudioManager.crossfade_music(load(BOSS_MUSIC), 0.6)
 	if _torch_audio:
 		_torch_audio.stop()
 
@@ -1338,6 +1341,8 @@ func _close_combat() -> void:
 		_vitals_strip.refresh()
 	if _theme and _theme.ambient_bed != "" and ResourceLoader.exists(_theme.ambient_bed):
 		AudioManager.play_ambient(load(_theme.ambient_bed))
+	if _theme and _theme.music != "" and ResourceLoader.exists(_theme.music):
+		AudioManager.crossfade_music(load(_theme.music), 1.5)
 	_update_torch_audio()
 	if combat_ui:
 		combat_ui.queue_free()

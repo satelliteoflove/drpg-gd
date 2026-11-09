@@ -30,6 +30,7 @@ func _ready() -> void:
 
 	_setup_navigation(primary_index)
 	_play_intro()
+	AudioManager.crossfade_music(load(SceneManager.TOWN_MUSIC), 1.5)
 
 
 func _setup_navigation(start_index: int = 0) -> void:

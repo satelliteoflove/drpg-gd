@@ -4,7 +4,7 @@ extends Control
 ## campaign back to the player: how long it took, who finished it, and who
 ## didn't make it. Afterward the guild returns to town and can keep delving.
 
-const MUSIC_PATH := "res://audio/music/candidates/town_hometown_junkala.ogg"
+const MUSIC_PATH := "res://audio/music/music_town.ogg"
 
 var _scaffold: ScreenScaffold
 var _continue_btn: Button

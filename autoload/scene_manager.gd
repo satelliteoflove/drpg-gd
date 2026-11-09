@@ -20,6 +20,13 @@ const SCENES: Dictionary = {
 	"ending": "res://scenes/ending/ending.tscn",
 }
 
+## Scenes that share the town theme. The dungeon and ending pick their own music.
+const TOWN_MUSIC := "res://audio/music/music_town.ogg"
+const TOWN_MUSIC_SCENES: Array[String] = [
+	"main_menu", "town", "character_creation", "guild_hall", "inn", "temple",
+	"shop", "party_menu", "autoexplore",
+]
+
 var current_scene_name: String = ""
 var is_transitioning: bool = false
 
@@ -57,6 +64,9 @@ func change_scene(scene_name: String) -> void:
 		return
 
 	current_scene_name = scene_name
+	if TOWN_MUSIC_SCENES.has(scene_name):
+		AudioManager.stop_ambient(1.0)
+		AudioManager.crossfade_music(load(TOWN_MUSIC), 1.5)
 
 	# Let the new scene initialise (and start its entrance) under the veil.
 	await get_tree().process_frame
