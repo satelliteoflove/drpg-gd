@@ -860,7 +860,10 @@ static func _create_boss_ironjaw() -> void:
 static func _create_boss_lich() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Nethris the Lich"
-	monster.max_hp = 140
+	monster.max_hp = 170
+	# Acts twice a round. A lone caster acting once a round against six
+	# adventurers fell over long before the floor 4 boss did.
+	monster.extra_actions = 1
 	monster.strength = 8
 	monster.agility = 12
 	monster.defense = 5
@@ -875,7 +878,7 @@ static func _create_boss_lich() -> void:
 	monster.exp_reward = 500
 	monster.gold_reward_dice = "8d10"
 
-	var soul_rend := MonsterAttack.create_magical("Soul Rend", "3d6", CharacterEnums.Element.DARK, 4)
+	var soul_rend := MonsterAttack.create_magical("Soul Rend", "4d6+2", CharacterEnums.Element.DARK, 4)
 
 	var death_touch := MonsterAttack.create_with_effect(
 		"Death Touch",
@@ -892,7 +895,7 @@ static func _create_boss_lich() -> void:
 
 	var wail := MonsterAttack.create_ability(
 		"Wail of Despair",
-		"1d6",
+		"2d6",
 		CharacterEnums.StatusEffect.AFRAID,
 		0.45,
 		"2+1d3",
