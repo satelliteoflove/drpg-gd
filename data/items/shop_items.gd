@@ -172,6 +172,9 @@ static func _create_items() -> void:
 	_items["torch"].burn_duration = 150
 	_items["torch"].description = "A pitch-soaked brand. Lights the way for about 150 steps before it gutters out. The dungeon is lightless without one."
 
+	_items["recall_stone"] = Item.create_consumable("recall_stone", "Recall Stone", 0, 0, 40)
+	_items["recall_stone"].description = "A smooth stone bound to the town square. Crush it in the dungeon (T) to return the party to town at once."
+
 	var dungeon_key := Item.new()
 	dungeon_key.id = "dungeon_key"
 	dungeon_key.item_name = "Dungeon Key"

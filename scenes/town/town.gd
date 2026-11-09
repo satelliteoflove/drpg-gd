@@ -12,7 +12,8 @@ const DESTS: Array = [
 	{"id": "temple", "badge": RuneBadge.Kind.DIAMOND, "name": "Temple",
 		"desc": "Heal afflictions and revive the fallen", "needs_party": true},
 	{"id": "autoexplore", "badge": RuneBadge.Kind.TRIANGLE, "name": "AutoExplore",
-		"desc": "Simulate dungeon runs to test your party", "needs_party": true},
+		"desc": "Simulate dungeon runs to test your party", "needs_party": true,
+		"debug_only": true},
 	{"id": "dungeon", "badge": RuneBadge.Kind.CHEVRON_DOWN, "name": "Enter Dungeon",
 		"desc": "Descend into the depths", "needs_party": true, "primary": true},
 	{"id": "menu", "badge": RuneBadge.Kind.ARCH, "name": "Main Menu",
@@ -160,6 +161,10 @@ func _dismiss_intro() -> void:
 
 func _build_rows() -> void:
 	for d in DESTS:
+		# AutoExplore is a balancing tool: it stocks free test potions and can
+		# refight bosses, so it stays out of release builds.
+		if d.get("debug_only", false) and not OS.is_debug_build():
+			continue
 		if d.get("primary", false):
 			var gap := Control.new()
 			gap.custom_minimum_size = Vector2(0, 10)

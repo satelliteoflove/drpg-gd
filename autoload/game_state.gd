@@ -102,6 +102,9 @@ func new_game() -> void:
 	var starter_torch := ShopItems.get_item("torch")
 	if starter_torch:
 		party.inventory.add_item(starter_torch.duplicate() as Item, 8)
+	var starter_recall := ShopItems.get_item("recall_stone")
+	if starter_recall:
+		party.inventory.add_item(starter_recall.duplicate() as Item, 2)
 	roster = CharacterRoster.new()
 	party_formations = []
 	floor_tracker = FloorTracker.new()

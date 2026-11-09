@@ -67,6 +67,12 @@ func _create_map_buttons() -> void:
 	_update_enemy_button_text()
 	_update_zones_button_text()
 
+	# Reveal / enemies / zones are development aids, not player features.
+	if not OS.is_debug_build():
+		for b in [reveal_button, show_enemies_button, show_zones_button]:
+			b.visible = false
+			b.disabled = true
+
 
 # Buttons inherit the central Arcane-Tome theme; only sizing is set here.
 func _create_styled_button(text: String) -> Button:
@@ -313,7 +319,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_map") or event.is_action_pressed("menu_cancel"):
 		closed.emit()
 		get_viewport().set_input_as_handled()
-	elif event is InputEventKey and event.pressed:
+	elif OS.is_debug_build() and event is InputEventKey and event.pressed:
 		if event.keycode == KEY_R or event.unicode == 114 or event.unicode == 82:
 			_on_reveal_pressed()
 			get_viewport().set_input_as_handled()
