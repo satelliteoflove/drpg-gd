@@ -84,6 +84,8 @@ Example: `uv run --with Pillow python3 script.py`
 - Shift+l - Strafe right
 
 ### Dungeon Debug Keys
+Debug keys (here, on the map screen, and in combat) only work in debug builds, which includes running from the editor.
+- T - Return to town (costs a Recall Stone; not a debug key)
 - G - Add gold
 - Shift+F - Teleport to next floor (at stairs up)
 - Ctrl+F - Teleport to previous floor (at stairs up)
