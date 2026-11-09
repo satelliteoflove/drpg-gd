@@ -95,15 +95,17 @@ Losing characters is only fun if their time leaves something behind. Any Veteran
 
 | Class | Post | Service |
 |---|---|---|
-| Fighter, Samurai, Lord | Armsmaster | Weapons and armor 15% cheaper |
-| Priest | Temple elder | Resurrection cheaper, and less chance of ending up LOST |
-| Mage | Archivist | Shop identification is free |
-| Thief, Ninja | Fence | Items sell for 25% more |
-| Bishop | Keeper of the guild wall | Monster lore: show enemy HP and weaknesses in combat |
+| Fighter, Samurai, Lord, Valkyrie, Monk, Ranger | Armsmaster | Weapons and armor 15% cheaper |
+| Priest | Temple elder | Resurrection 25% cheaper, and ashes come back 75% of the time instead of 50% |
+| Mage, Alchemist, Psionic | Archivist | Shop identification is free |
+| Thief, Ninja, Bard | Fence | Items sell for 25% more |
+| Bishop | Almoner | A night at the inn costs half as much |
 
-One post per class, so a later retiree can take a post over from a predecessor. Over a campaign the town fills up with your old guild members, and that becomes the guild's history.
+As built (`systems/aging/retirement.gd`), posts go by the same archetypes as the phase traits. The Bishop's post changed from monster lore to Almoner, since combat already shows enemy HP. Holders are named in the top bar of the shop, temple and inn.
 
-**An apprentice.** When retiring, the character names an apprentice from the roster. The apprentice jumps to a level close to the mentor's (two below at most), inherits one of the mentor's marks, and starts with a bond to the mentor's closest companions. This is the catch-up valve that keeps the pipeline workable: a fresh 18-year-old can take the old fighter's place at floor 7 without grinding floor 1 again.
+One holder per post, so a later retiree takes a post over from a predecessor, who stays retired. Over a campaign the town fills up with your old guild members, and that becomes the guild's history.
+
+**An apprentice.** When retiring, the character names an apprentice from the roster. The apprentice jumps to a level close to the mentor's (two below at most), inherits one of the mentor's marks, and starts with a bond to the mentor's closest companions. This is the catch-up valve that keeps the pipeline workable: a fresh 18-year-old can take the old fighter's place at floor 7 without grinding floor 1 again. As built, the apprentice gets the mentor's newest major mark (credited as the mentor's story), a companion-level bond with the mentor, and a third of the mentor's bond with each of the people the mentor knew.
 
 ### 6. One Last Descent
 
@@ -146,7 +148,7 @@ Each step stands on its own as an improvement:
 
 1. **Deep time plus the homecoming report**, with ages shown on the cards. This alone makes aging visible and gives depth a cost. *Built.* Rough estimate from floor sizes (about 520 walkable tiles each, 120 steps a day): someone who goes on every expedition ages about 20 years over a campaign, short of the 35–45 target. Tune with real play data before raising the table.
 2. **Phase traits** (Veteran/Elder and Counsel), so aging is something to manage rather than a pure loss. *Built.*
-3. **Retirement posts and apprentices**, which make the roster a pipeline and give the town a history.
+3. **Retirement posts and apprentices**, which make the roster a pipeline and give the town a history. *Built.* Retire from the guild hall's Roster tab. Retirees leave the party list for good, and the ending lists them under "Keeping the Town".
 4. **One Last Descent and the saga ending**.
 5. Resurrection aging, portrait aging, and LLM embellishment.
 

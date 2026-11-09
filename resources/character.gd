@@ -89,6 +89,8 @@ var active_statuses: Array[ActiveStatus] = []
 
 const AVAILABILITY_AVAILABLE: int = 0
 const AVAILABILITY_TRAINING: int = 1
+## Retired to a town post (see Retirement). Never comes back.
+const AVAILABILITY_RETIRED: int = 2
 const REST_BONUS_MAX: float = 1.5
 const REST_BONUS_PER_TOWN_DAY: float = 0.01
 const REST_BONUS_DECAY_PER_ENCOUNTER: float = 0.1
@@ -125,6 +127,8 @@ const SLOT_MAP: Dictionary = {
 @export var training_days_total: int = 0
 @export var training_target_class: int = -1
 @export var town_job: int = -1
+## Retirement post id (Retirement.POSTS), or "" if none.
+@export var town_post: String = ""
 @export var town_days_accumulated: int = 0
 @export var rest_bonus_xp_multiplier: float = 1.0
 
@@ -900,6 +904,10 @@ func is_available() -> bool:
 
 func is_training() -> bool:
 	return availability == AVAILABILITY_TRAINING
+
+
+func is_retired() -> bool:
+	return availability == AVAILABILITY_RETIRED
 
 
 func start_training(target_class: int, days: int, current_day: int) -> void:

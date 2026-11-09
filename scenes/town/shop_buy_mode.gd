@@ -44,7 +44,7 @@ func populate() -> void:
 
 
 func get_info_suffix(item: Item) -> String:
-	return "\n\n[color=#%s]Buy: %d gold[/color]" % [UIColors.GOLD.to_html(false), item.buy_price]
+	return "\n\n[color=#%s]Buy: %d gold[/color]" % [UIColors.GOLD.to_html(false), Retirement.buy_price(item)]
 
 
 func get_help_text() -> String:
@@ -86,11 +86,11 @@ func handle_confirm() -> bool:
 
 
 func _create_buy_button(item: Item) -> Button:
-	var can_afford := GameState.party.has_gold(item.buy_price)
+	var can_afford := GameState.party.has_gold(Retirement.buy_price(item))
 	var has_space := not GameState.party.inventory.is_full()
 	var dim := not can_afford or (not has_space and not item.is_equipment())
 	var price_fg := UIColors.GOLD if can_afford else UIColors.TEXT_DANGER
-	var chips: Array = [{"text": "%d g" % item.buy_price, "fg": price_fg, "bg": UIColors.SURFACE_SELECTED}]
+	var chips: Array = [{"text": "%d g" % Retirement.buy_price(item), "fg": price_fg, "bg": UIColors.SURFACE_SELECTED}]
 
 	var btn: Button = shop.make_item_row(item, chips, dim)
 	if dim:
@@ -103,11 +103,11 @@ func _create_buy_button(item: Item) -> Button:
 func _sort_by_type_and_price(a: Item, b: Item) -> bool:
 	if a.item_type != b.item_type:
 		return a.item_type < b.item_type
-	return a.buy_price < b.buy_price
+	return Retirement.buy_price(a) < Retirement.buy_price(b)
 
 
 func _on_buy_item(item: Item) -> void:
-	if not GameState.party.has_gold(item.buy_price):
+	if not GameState.party.has_gold(Retirement.buy_price(item)):
 		shop.message_label.text = "Not enough gold!"
 		return
 
@@ -125,7 +125,7 @@ func _show_quantity_dialog(item: Item) -> void:
 	buy_state = BuyState.QUANTITY_SELECT
 	selected_quantity = 1
 
-	var max_afford := GameState.party.gold / item.buy_price
+	var max_afford := GameState.party.gold / Retirement.buy_price(item)
 	var space_left := Inventory.MAX_SLOTS - GameState.party.inventory.size()
 	max_quantity = mini(max_afford, space_left)
 	max_quantity = maxi(1, max_quantity)
@@ -139,7 +139,7 @@ func _show_quantity_dialog(item: Item) -> void:
 
 func _update_quantity_display() -> void:
 	shop.quantity_value.text = str(selected_quantity)
-	shop.total_label.text = "Total: %d gold" % (selected_quantity * selected_item.buy_price)
+	shop.total_label.text = "Total: %d gold" % (selected_quantity * Retirement.buy_price(selected_item))
 
 	shop.minus_button.disabled = (selected_quantity <= 1)
 	shop.plus_button.disabled = (selected_quantity >= max_quantity)
@@ -176,7 +176,7 @@ func _on_quantity_cancel() -> void:
 
 func _show_equip_dialog(item: Item) -> void:
 	buy_state = BuyState.EQUIP_SELECT
-	shop.equip_item_name.text = "%s - %d gold" % [item.item_name, item.buy_price]
+	shop.equip_item_name.text = "%s - %d gold" % [item.item_name, Retirement.buy_price(item)]
 
 	for child in shop.equip_options.get_children():
 		child.queue_free()
@@ -246,7 +246,7 @@ func _on_equip_to_member(member: Character) -> void:
 		shop.message_label.text = "Inventory full! Cannot store old equipment."
 		return
 
-	if not GameState.party.spend_gold(selected_item.buy_price):
+	if not GameState.party.spend_gold(Retirement.buy_price(selected_item)):
 		shop.message_label.text = "Not enough gold!"
 		return
 
@@ -256,7 +256,7 @@ func _on_equip_to_member(member: Character) -> void:
 	if unequipped:
 		GameState.party.inventory.add_item(unequipped, 1)
 
-	shop.message_label.text = "Equipped %s on %s for %d gold." % [selected_item.item_name, member.character_name, selected_item.buy_price]
+	shop.message_label.text = "Equipped %s on %s for %d gold." % [selected_item.item_name, member.character_name, Retirement.buy_price(selected_item)]
 
 	shop.modal_overlay.visible = false
 	shop.equip_dialog.visible = false
@@ -275,7 +275,7 @@ func _on_equip_cancel() -> void:
 
 
 func _buy_to_inventory(item: Item, quantity: int) -> void:
-	var total_cost := item.buy_price * quantity
+	var total_cost := Retirement.buy_price(item) * quantity
 
 	if not GameState.party.has_gold(total_cost):
 		shop.message_label.text = "Not enough gold!"
@@ -290,7 +290,7 @@ func _buy_to_inventory(item: Item, quantity: int) -> void:
 		if leftover == 0:
 			added += 1
 		else:
-			GameState.party.add_gold(item.buy_price)
+			GameState.party.add_gold(Retirement.buy_price(item))
 			break
 
 	if added == quantity:

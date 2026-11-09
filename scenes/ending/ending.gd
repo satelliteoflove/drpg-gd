@@ -90,6 +90,20 @@ func _build(col: VBoxContainer) -> void:
 			grid.add_child(_member_card(member))
 		col.add_child(grid)
 
+	var retired: Array[String] = []
+	for c in GameState.roster.get_all():
+		if c.is_retired():
+			var post := Retirement.post_title(c.town_post)
+			retired.append("%s, %s" % [c.character_name, post if post else "retired"])
+	if not retired.is_empty():
+		col.add_child(_section_header("Keeping the Town"))
+		var posts := Label.new()
+		posts.theme_type_variation = &"MutedLabel"
+		posts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		posts.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		posts.text = "  ·  ".join(retired)
+		col.add_child(posts)
+
 	var fallen := _fallen_characters()
 	if not fallen.is_empty():
 		col.add_child(_section_header("In Memory"))

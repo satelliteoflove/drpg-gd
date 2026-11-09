@@ -1,7 +1,7 @@
 class_name GuildHallRosterTab
 extends RefCounted
 
-enum RosterMode { VIEW, MANAGE, CONFIRM_DELETE, RENAME, CHANGE_CLASS, ASSIGN_JOB }
+enum RosterMode { VIEW, MANAGE, CONFIRM_DELETE, RENAME, CHANGE_CLASS, ASSIGN_JOB, RETIRE_APPRENTICE, CONFIRM_RETIRE, RETIRE_REPORT }
 enum SortMode { DEFAULT, NAME, LEVEL, CLASS, RACE }
 
 signal message_changed(text: String)
@@ -11,6 +11,11 @@ var roster_mode: RosterMode = RosterMode.VIEW
 var selected_character: Character = null
 var roster_sort_mode: SortMode = SortMode.DEFAULT
 var _displayed_roster_chars: Array[Character] = []
+## Retirement flow: the apprentice picked (null for none), the candidates on
+## screen, and the lines to show once it's done.
+var retire_apprentice: Character = null
+var _apprentice_choices: Array[Character] = []
+var _retire_report: Array[String] = []
 
 var nav: MenuNavigator = null
 var buttons: Array[Button] = []
@@ -50,6 +55,14 @@ func populate() -> void:
 		RosterMode.ASSIGN_JOB:
 			_populate_job_assignment()
 			message_changed.emit("Select a job for %s." % selected_character.character_name)
+		RosterMode.RETIRE_APPRENTICE:
+			_populate_apprentice_choice()
+			message_changed.emit("Who will %s train before retiring?" % selected_character.character_name)
+		RosterMode.CONFIRM_RETIRE:
+			_populate_retire_confirm()
+			message_changed.emit("Retirement is permanent.")
+		RosterMode.RETIRE_REPORT:
+			_populate_retire_report()
 
 	_update_roster_info()
 
@@ -103,8 +116,10 @@ func get_help_text() -> String:
 			return "Type name | Enter: Confirm | %s" % cancel
 		RosterMode.CHANGE_CLASS:
 			return "%s | %s | %s | Level resets to 1!" % [v_nav, confirm, cancel]
-		RosterMode.CONFIRM_DELETE:
+		RosterMode.CONFIRM_DELETE, RosterMode.CONFIRM_RETIRE:
 			return "%s | %s | Permanent!" % [v_nav, confirm]
+		RosterMode.RETIRE_REPORT:
+			return confirm
 		RosterMode.VIEW:
 			return "%s | %s | %s | %s | %s" % [h_nav, v_nav, confirm, cancel, sort_hint]
 		_:
@@ -178,6 +193,9 @@ func _status_chip(c: Character) -> Dictionary:
 		return {"text": "LOST", "fg": UIColors.TEXT_LOST, "bg": Color(0.20, 0.08, 0.08)}
 	if c.is_dead:
 		return {"text": "DEAD", "fg": UIColors.TEXT_DANGER, "bg": Color(0.28, 0.10, 0.12)}
+	if c.is_retired():
+		var post := Retirement.post_title(c.town_post)
+		return {"text": post.to_upper() if post else "RETIRED", "fg": UIColors.WARNING, "bg": UIColors.SURFACE_SELECTED}
 	if c.is_training():
 		var e := c.get_training_days_elapsed(GameState.game_day)
 		return {"text": "TRAINING %d/%d" % [e, c.get_training_total()], "fg": UIColors.TEXT_WARNING, "bg": UIColors.SURFACE_SELECTED}
@@ -212,7 +230,11 @@ func _populate_manage_actions() -> void:
 	reclass_btn.text = "Change Class"
 	reclass_btn.custom_minimum_size = Vector2(350, 36)
 	reclass_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	reclass_btn.pressed.connect(_on_manage_action.bind("change_class"))
+	if selected_character.is_retired():
+		reclass_btn.disabled = true
+		reclass_btn.modulate = UIColors.MODULATE_DISABLED
+	else:
+		reclass_btn.pressed.connect(_on_manage_action.bind("change_class"))
 	options_list.add_child(reclass_btn)
 	buttons.append(reclass_btn)
 
@@ -220,13 +242,30 @@ func _populate_manage_actions() -> void:
 	job_btn.text = "Assign Job"
 	job_btn.custom_minimum_size = Vector2(350, 36)
 	job_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	if selected_character.is_dead or selected_character.is_training() or GameState.party.has_member(selected_character):
+	if selected_character.is_dead or selected_character.is_training() or selected_character.is_retired() \
+			or GameState.party.has_member(selected_character):
 		job_btn.disabled = true
 		job_btn.modulate = UIColors.MODULATE_DISABLED
 	else:
 		job_btn.pressed.connect(_on_manage_action.bind("assign_job"))
 	options_list.add_child(job_btn)
 	buttons.append(job_btn)
+
+	if not selected_character.is_retired():
+		var retire_btn := Button.new()
+		var post := Retirement.post_title(Retirement.post_for(selected_character))
+		retire_btn.custom_minimum_size = Vector2(350, 36)
+		retire_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if Retirement.can_retire(selected_character):
+			retire_btn.text = "Retire as %s" % post
+			retire_btn.add_theme_color_override("font_color", UIColors.WARNING)
+			retire_btn.pressed.connect(_on_manage_action.bind("retire"))
+		else:
+			retire_btn.text = "Retire (Veterans and Elders only)"
+			retire_btn.disabled = true
+			retire_btn.modulate = UIColors.MODULATE_DISABLED
+		options_list.add_child(retire_btn)
+		buttons.append(retire_btn)
 
 	var delete_btn := Button.new()
 	delete_btn.text = "Delete"
@@ -427,6 +466,9 @@ func _on_manage_action(action_id: String) -> void:
 			roster_mode = RosterMode.ASSIGN_JOB
 		"delete":
 			roster_mode = RosterMode.CONFIRM_DELETE
+		"retire":
+			retire_apprentice = null
+			roster_mode = RosterMode.RETIRE_APPRENTICE
 	display_refresh_requested.emit()
 
 
@@ -528,8 +570,15 @@ func _on_roster_mode_back() -> void:
 		RosterMode.MANAGE:
 			roster_mode = RosterMode.VIEW
 			selected_character = null
-		RosterMode.CONFIRM_DELETE, RosterMode.RENAME, RosterMode.CHANGE_CLASS, RosterMode.ASSIGN_JOB:
+		RosterMode.CONFIRM_DELETE, RosterMode.RENAME, RosterMode.CHANGE_CLASS, RosterMode.ASSIGN_JOB, \
+				RosterMode.RETIRE_APPRENTICE:
 			roster_mode = RosterMode.MANAGE
+		RosterMode.CONFIRM_RETIRE:
+			roster_mode = RosterMode.RETIRE_APPRENTICE
+		RosterMode.RETIRE_REPORT:
+			roster_mode = RosterMode.VIEW
+			selected_character = null
+			_retire_report.clear()
 	display_refresh_requested.emit()
 
 
@@ -557,6 +606,12 @@ func _update_roster_info() -> void:
 			_show_class_change_info()
 		RosterMode.ASSIGN_JOB:
 			_show_job_assignment_info()
+		RosterMode.RETIRE_APPRENTICE:
+			_show_apprentice_info()
+		RosterMode.CONFIRM_RETIRE:
+			_show_retire_confirm_info()
+		RosterMode.RETIRE_REPORT:
+			detail.show_text("\n\n".join(_retire_report))
 
 
 func _show_character_info(character: Character) -> void:
@@ -659,6 +714,119 @@ func _show_job_assignment_info() -> void:
 	else:
 		text += "Currently unemployed."
 	detail.show_text(text)
+
+
+# --- Retirement ------------------------------------------------------------------
+
+func _add_button(text: String, on_pressed: Callable) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.custom_minimum_size = Vector2(350, 36)
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.pressed.connect(on_pressed)
+	options_list.add_child(btn)
+	buttons.append(btn)
+	return btn
+
+
+func _populate_apprentice_choice() -> void:
+	_clear_options()
+	if selected_character == null:
+		_on_roster_mode_back()
+		return
+	_apprentice_choices = Retirement.apprentice_candidates(selected_character)
+	for c in _apprentice_choices:
+		var new_level := Retirement.apprentice_level(selected_character, c)
+		var text := "%s  L%d %s" % [c.character_name, c.level, CharacterEnums.get_class_name(c.character_class)]
+		if new_level > c.level:
+			text += "  → L%d" % new_level
+		_add_button(text, _on_apprentice_chosen.bind(c))
+	_add_button("No apprentice", _on_apprentice_chosen.bind(null))
+	var cancel := _add_button("Cancel", _on_roster_mode_back)
+	cancel.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_setup_nav()
+
+
+func _on_apprentice_chosen(c: Character) -> void:
+	retire_apprentice = c
+	roster_mode = RosterMode.CONFIRM_RETIRE
+	display_refresh_requested.emit()
+
+
+func _show_apprentice_info() -> void:
+	if selected_character == null:
+		return
+	var idx := nav.get_current_index() if nav else -1
+	if idx >= 0 and idx < _apprentice_choices.size():
+		var c := _apprentice_choices[idx]
+		var text := "[b]%s as %s's apprentice[/b]\n\n" % [c.character_name, selected_character.character_name]
+		var new_level := Retirement.apprentice_level(selected_character, c)
+		if new_level > c.level:
+			text += "Trained up from level %d to [color=cyan]level %d[/color].\n" % [c.level, new_level]
+		else:
+			text += "Already level %d, so no levels gained.\n" % c.level
+		var story := Retirement.inherited_story(selected_character)
+		if not story.is_empty():
+			text += "Carries on “%s”.\n" % story.get("name", "")
+		text += "Starts on good terms with %s and the people %s was close to." % [
+			selected_character.character_name, selected_character.character_name]
+		detail.show_text(text)
+	elif idx == _apprentice_choices.size():
+		detail.show_text("%s retires without training anyone." % selected_character.character_name)
+	else:
+		_show_character_info(selected_character)
+
+
+func _populate_retire_confirm() -> void:
+	_clear_options()
+	if selected_character == null:
+		_on_roster_mode_back()
+		return
+	var yes := _add_button("Yes, retire %s" % selected_character.character_name, _on_retire_confirmed)
+	yes.add_theme_color_override("font_color", UIColors.WARNING)
+	_add_button("Not yet", _on_roster_mode_back)
+	_setup_nav()
+	if nav:
+		nav.select(1)
+
+
+func _show_retire_confirm_info() -> void:
+	if selected_character == null:
+		return
+	var c := selected_character
+	var post_id := Retirement.post_for(c)
+	var text := "[b]Retire %s?[/b]\n\n" % c.character_name
+	text += "%s, %d, becomes the guild's [color=yellow]%s[/color]: %s.\n\n" % [
+		c.character_name, c.get_age_years(), Retirement.post_title(post_id), Retirement.post_effect(post_id)]
+	var previous := Retirement.holder(post_id)
+	if previous:
+		text += "%s steps down from the post.\n\n" % previous.character_name
+	if retire_apprentice:
+		text += "%s becomes %s's apprentice" % [retire_apprentice.character_name, c.character_name]
+		var new_level := Retirement.apprentice_level(c, retire_apprentice)
+		if new_level > retire_apprentice.level:
+			text += " and rises to level %d" % new_level
+		text += ".\n\n"
+	text += "[color=orange]%s won't go into the dungeon again.[/color]" % c.character_name
+	detail.show_text(text)
+
+
+func _on_retire_confirmed() -> void:
+	if selected_character == null:
+		_on_roster_mode_back()
+		return
+	_retire_report = Retirement.retire(selected_character, retire_apprentice)
+	message_changed.emit("%s has retired." % selected_character.character_name)
+	retire_apprentice = null
+	roster_mode = RosterMode.RETIRE_REPORT
+	display_refresh_requested.emit()
+
+
+func _populate_retire_report() -> void:
+	_clear_options()
+	var btn := _add_button("Continue", _on_roster_mode_back)
+	btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_setup_nav()
 
 
 func _sort_characters(chars: Array[Character]) -> Array[Character]:

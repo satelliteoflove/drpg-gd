@@ -63,6 +63,7 @@ func _build_ui() -> void:
 	_scaffold = ScreenScaffold.create({"title": "TEMPLE", "hint": ""})
 	add_child(_scaffold)
 	_scaffold.back_pressed.connect(_on_back_pressed)
+	_scaffold.set_note(Retirement.note_for("temple"))
 
 	var hbox := HBoxContainer.new()
 	hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -335,7 +336,7 @@ func _calculate_resurrect_cost(member: Character) -> int:
 	var base := RESURRECT_BASE_COST + member.level * RESURRECT_PER_LEVEL
 	if member.has_status(CharacterEnums.StatusEffect.ASHED):
 		base = int(base * 2.0)
-	return base
+	return int(base * Retirement.resurrect_cost_multiplier())
 
 
 func _calculate_cure_cost(member: Character) -> int:
@@ -380,7 +381,7 @@ func _update_service_info(idx: int) -> void:
 	match service_type:
 		ServiceType.RESURRECT:
 			text += "[color=yellow]Cost:[/color] %d + %d per level\n" % [RESURRECT_BASE_COST, RESURRECT_PER_LEVEL]
-			text += "[color=yellow]Ashed:[/color] Double cost, 50% success\n\n"
+			text += "[color=yellow]Ashed:[/color] Double cost, %d%% success\n\n" % roundi(Retirement.ash_success_chance() * 100)
 			text += "[color=#8da0c8]Resurrection may cost 1 Vitality. At 0 Vitality the character is lost forever.[/color]\n\n"
 			var dead_count := 0
 			var ashed_count := 0
@@ -450,7 +451,7 @@ func _update_resurrect_info(idx: int) -> void:
 	if member.has_status(CharacterEnums.StatusEffect.LOST):
 		text += "[color=red]This character is LOST FOREVER and cannot be resurrected.[/color]"
 	elif member.has_status(CharacterEnums.StatusEffect.ASHED):
-		text += "[color=orange]Reduced to ashes — 50% success. Failure turns ashes to dust (LOST).[/color]\n\n"
+		text += "[color=orange]Reduced to ashes — %d%% success. Failure turns ashes to dust (LOST).[/color]\n\n" % roundi(Retirement.ash_success_chance() * 100)
 		if member.vitality <= 1:
 			text += "[color=red]WARNING: Low vitality — high risk of permanent loss![/color]"
 	else:
@@ -528,7 +529,7 @@ func _on_resurrect_member(member: Character) -> void:
 		return
 
 	if member.has_status(CharacterEnums.StatusEffect.ASHED):
-		if randf() < 0.5:
+		if randf() >= Retirement.ash_success_chance():
 			member.remove_status(CharacterEnums.StatusEffect.ASHED)
 			member.add_status(CharacterEnums.StatusEffect.LOST)
 			_message_label.text = "%s's ashes crumble to dust... lost forever." % member.character_name

@@ -40,6 +40,7 @@ func _build_ui() -> void:
 	})
 	add_child(_scaffold)
 	_scaffold.back_pressed.connect(_on_back_pressed)
+	_scaffold.set_note(Retirement.note_for("inn"))
 
 	var hbox := HBoxContainer.new()
 	hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -252,7 +253,7 @@ func _get_living_party_count() -> int:
 
 
 func _get_rest_cost() -> int:
-	return GameState.party.get_highest_level() * GOLD_PER_LEVEL_PER_DAY * selected_days
+	return int(GameState.party.get_highest_level() * GOLD_PER_LEVEL_PER_DAY * selected_days * Retirement.inn_cost_multiplier())
 
 
 func _on_days_plus() -> void:
