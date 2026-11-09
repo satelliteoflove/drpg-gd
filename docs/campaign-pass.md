@@ -62,3 +62,15 @@ The sim party plays worse than a person does. It doesn't retreat to heal between
 **#8** can probably be narrowed: all four boss fights now run with phases in the sim, though nobody has played floors 7 and 8 by hand yet.
 
 **#12** is probably fixed by the double-end guard, but I haven't reproduced the original report to be sure.
+
+**#19** is fixed: a watcher process stops llama-server when the game's PID disappears, and a PID file replaces the old `pkill -f`. The Windows branch is untested.
+
+## Not filed yet: AI dialogue never starts from the Steam editor
+
+I tried to open this as an issue and the permission was denied, so here's the draft.
+
+When the game is launched from the Steam build of the Godot editor, llama-server exits right after it starts (it shows as `<defunct>`), the health check times out after 30 seconds, and AI dialogue is quietly off for the session. None of the runs in the console's recent history reached "Server healthy". The same binary and model start fine from a normal shell, and nothing else is on port 8787.
+
+The likely cause is the environment the game inherits. The Steam editor runs inside pressure-vessel, so the game has `LD_LIBRARY_PATH` pointing at the Steam runtime's pinned libraries and `VK_ICD_FILENAMES` / `VK_DRIVER_FILES` pointing at pressure-vessel's Vulkan ICDs, and llama-server (a Vulkan build) inherits all of it. I haven't confirmed which variable breaks it, since the server runs with `--log-disable` and `OS.create_process` can't capture output.
+
+Possible directions: launch through `sh -c` with `env -u LD_LIBRARY_PATH` and the VK_ variables cleared (inside the container the host libraries may not be visible either); in debug builds, send the server's output to a file under `user://` so failures like this aren't silent; show something on the AI Dialogue menu entry when the server failed to start.
