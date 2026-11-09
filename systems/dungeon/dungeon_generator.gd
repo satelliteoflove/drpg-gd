@@ -554,6 +554,10 @@ func _place_stairs(dungeon: DungeonData) -> void:
 	var stairs_down: Vector2i = farthest_room.get_center()
 	dungeon.stairs_down_pos = stairs_down
 
+	# The final floor has no way down. stairs_down_pos still marks the deepest
+	# chamber, which the boss zone is built around.
+	if floor_level >= GameState.FINAL_FLOOR:
+		return
 	var down_tile: DungeonTile = dungeon.get_tile(stairs_down.x, stairs_down.y)
 	if down_tile:
 		down_tile.special = DungeonTile.SpecialType.STAIRS_DOWN

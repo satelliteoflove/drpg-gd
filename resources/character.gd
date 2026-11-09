@@ -662,6 +662,7 @@ func _die() -> void:
 	if is_dead:
 		return
 	is_dead = true
+	death_count += 1
 	MarkSystem.add_ko_mark(self)
 	add_status(CharacterEnums.StatusEffect.DEAD, -1, "", 0)
 	died.emit()

@@ -92,6 +92,9 @@ func _calculate_initial_spawn_count(zone: EncounterZone) -> int:
 func _spawn_enemy_in_zone(zone: EncounterZone) -> EnemyGroup:
 	if zone.current_group_count >= zone.max_groups:
 		return null
+	# Slain bosses stay dead; their lair is left empty.
+	if zone.zone_type == EncounterZone.ZoneType.BOSS and GameState.is_boss_slain(dungeon_data.floor_level):
+		return null
 
 	var spawn_pos := _find_valid_spawn_position(zone)
 	if spawn_pos == Vector2i(-1, -1):

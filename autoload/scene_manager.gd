@@ -17,6 +17,7 @@ const SCENES: Dictionary = {
 	"shop": "res://scenes/town/shop.tscn",
 	"party_menu": "res://scenes/common/party_menu.tscn",
 	"autoexplore": "res://scenes/town/autoexplore_screen.tscn",
+	"ending": "res://scenes/ending/ending.tscn",
 }
 
 var current_scene_name: String = ""
@@ -83,6 +84,13 @@ func go_to_town() -> void:
 	if GameState.has_party():
 		SaveManager.autosave()
 	change_scene("town")
+
+
+## Shows the victory screen. The game mode is left as DUNGEON so the trip's
+## days are still counted when the party returns to town afterward.
+func go_to_ending() -> void:
+	SaveManager.autosave()
+	change_scene("ending")
 
 
 func go_to_dungeon(floor_num: int = -1, spawn_at_stairs_up: bool = true) -> void:

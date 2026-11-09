@@ -11,6 +11,9 @@ signal game_loaded()
 
 enum GameMode { MAIN_MENU, TOWN, DUNGEON, COMBAT }
 
+## The deepest floor. Its boss is the final foe; slaying it wins the game.
+const FINAL_FLOOR: int = 8
+
 var current_mode: GameMode = GameMode.MAIN_MENU
 var current_floor: int = 1
 var in_combat: bool = false
@@ -30,6 +33,14 @@ var returning_from_combat: bool = false
 var combat_speed: int = 5
 var game_day: int = 1
 var floor_tracker: FloorTracker = null
+## Floor numbers whose boss has been slain. Slain bosses stay dead.
+var bosses_slain: Array[int] = []
+## Game day the final boss fell, or 0 if the game hasn't been won yet.
+var victory_day: int = 0
+## Deepest floor any party has set foot on.
+var deepest_floor: int = 0
+## Whether the opening premise has been shown for this campaign.
+var intro_seen: bool = true
 
 
 func clear_dungeon_floors() -> void:
@@ -100,6 +111,10 @@ func new_game() -> void:
 	current_floor = 1
 	current_encounter = {}
 	game_day = 1
+	bosses_slain = []
+	victory_day = 0
+	deepest_floor = 0
+	intro_seen = false
 	_populate_starter_roster()
 	_create_starter_formation()
 
@@ -178,6 +193,7 @@ func set_mode(mode: GameMode) -> void:
 
 func set_floor(floor_num: int) -> void:
 	current_floor = floor_num
+	deepest_floor = maxi(deepest_floor, floor_num)
 	floor_changed.emit(floor_num)
 
 
@@ -209,6 +225,33 @@ func _clear_combat_only_statuses(character: Resource) -> void:
 		if character.has_status(status):
 			character.remove_status(status)
 	character.is_defending = false
+
+
+func is_boss_slain(floor_num: int) -> bool:
+	return bosses_slain.has(floor_num)
+
+
+## Records a boss kill. Returns true if this kill wins the game.
+func record_boss_slain(floor_num: int) -> bool:
+	if not bosses_slain.has(floor_num):
+		bosses_slain.append(floor_num)
+	if floor_num == FINAL_FLOOR and victory_day == 0:
+		victory_day = game_day
+		return true
+	return false
+
+
+func has_won() -> bool:
+	return victory_day > 0
+
+
+## Floors that have a boss, in descending order.
+func get_boss_floors() -> Array[int]:
+	var floors: Array[int] = []
+	for f in range(1, FINAL_FLOOR + 1):
+		if MonsterDatabase.get_boss_for_floor(f) != null:
+			floors.append(f)
+	return floors
 
 
 func advance_game_days(days: int) -> void:

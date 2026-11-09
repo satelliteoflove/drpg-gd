@@ -1035,7 +1035,7 @@ func _handle_debug_keys(event: InputEventKey) -> bool:
 		_debug_level_party(5)
 		return true
 	elif event.keycode == KEY_F and event.shift_pressed:
-		_debug_teleport_floor(GameState.current_floor + 1)
+		_debug_teleport_floor(mini(GameState.current_floor + 1, GameState.FINAL_FLOOR))
 		return true
 	elif event.keycode == KEY_F and event.ctrl_pressed and GameState.current_floor > 1:
 		_debug_teleport_floor(GameState.current_floor - 1)
@@ -1307,6 +1307,10 @@ func _on_combat_closed(victory: bool) -> void:
 		var group: EnemyGroup = encounter.enemy_group
 		if enemy_manager != null:
 			enemy_manager.remove_defeated_group(group)
+		if group.ai_type == EnemyGroup.AIType.BOSS:
+			if GameState.record_boss_slain(GameState.current_floor):
+				SceneManager.go_to_ending()
+				return
 
 	if not victory:
 		var all_dead := true

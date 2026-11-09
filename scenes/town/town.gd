@@ -29,11 +29,133 @@ var _meta: Array = []
 @onready var _gold_sep: VSeparator = $TopBar/Margin/Bar/Sep
 
 
+var _intro: CanvasLayer = null
+
+
 func _ready() -> void:
+	_build_quest_strip()
 	_build_rows()
 	_update_states()
 	_setup_navigation()
 	_setup_date_display()
+	if not GameState.intro_seen:
+		_show_intro()
+
+
+## One line under the title that keeps the campaign goal in view.
+func _build_quest_strip() -> void:
+	var strip := Label.new()
+	strip.theme_type_variation = &"SubtitleLabel"
+	strip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strip.text = _quest_text()
+	strip.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
+	_content.add_child(strip)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 4)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_content.add_child(gap)
+
+
+func _quest_text() -> String:
+	var final_boss := MonsterDatabase.get_boss_for_floor(GameState.FINAL_FLOOR)
+	var final_name := final_boss.monster_name if final_boss else "the master of the depths"
+	if GameState.has_won():
+		return "%s was slain on %s" % [final_name, GameCalendar.format_date(GameState.victory_day)]
+	var boss_floors := GameState.get_boss_floors()
+	var slain := 0
+	for f in boss_floors:
+		if GameState.is_boss_slain(f):
+			slain += 1
+	var deepest := "Not yet entered" if GameState.deepest_floor <= 0 \
+		else "Deepest floor %d of %d" % [GameState.deepest_floor, GameState.FINAL_FLOOR]
+	return "Slay %s  ·  %s  ·  Guardians slain %d of %d" % [
+		final_name.get_slice(" ", 0), deepest, slain, boss_floors.size()]
+
+
+## The opening premise, shown once per campaign on first arrival in town.
+func _show_intro() -> void:
+	var final_boss := MonsterDatabase.get_boss_for_floor(GameState.FINAL_FLOOR)
+	var final_name := final_boss.monster_name if final_boss else "a drake"
+	var floors: Array[String] = []
+	for f in GameState.get_boss_floors():
+		floors.append(str(f))
+	var floor_list := ", ".join(floors.slice(0, -1)) + " and " + floors[-1] if floors.size() > 1 \
+		else ", ".join(floors)
+
+	# A CanvasLayer keeps the charter above the menu cursor and its effects.
+	_intro = CanvasLayer.new()
+	_intro.layer = 10
+	add_child(_intro)
+
+	var dim := ColorRect.new()
+	dim.color = UIColors.SURFACE_MODAL_OVERLAY
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_intro.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_intro.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(640, 0)
+	center.add_child(panel)
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right"]:
+		margin.add_theme_constant_override("margin_" + side, 36)
+	for side in ["top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 28)
+	panel.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 14)
+	margin.add_child(col)
+
+	var title := Label.new()
+	title.theme_type_variation = &"TitleLabel"
+	title.text = "The Guild Charter"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(title)
+
+	var divider := ArcaneDivider.new()
+	divider.custom_minimum_size = Vector2(320, 14)
+	divider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(divider)
+
+	var paragraphs: Array[String] = [
+		"Beneath the town lies a dungeon %d floors deep. In its lowest chamber sleeps %s, and for as long as anyone can remember its servants have crept up through the halls above." % [GameState.FINAL_FLOOR, final_name],
+		"The council has chartered your guild to end it. Recruit at the Guild Hall, outfit your party at the Shop, and go below. Guardians wait on floors %s, and the last of them is the drake itself." % floor_list,
+		"Time passes with every step underground and every night at the inn, and your adventurers age with it. Choose who you send with care.",
+	]
+	for text in paragraphs:
+		var p := Label.new()
+		p.theme_type_variation = &"SubtitleLabel"
+		p.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		p.custom_minimum_size = Vector2(560, 0)
+		p.text = text
+		col.add_child(p)
+
+	var begin := Button.new()
+	begin.text = "Begin"
+	begin.theme_type_variation = &"PrimaryButton"
+	begin.custom_minimum_size = Vector2(200, 44)
+	begin.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	begin.pressed.connect(_dismiss_intro)
+	col.add_child(begin)
+	begin.grab_focus.call_deferred()
+
+
+func _dismiss_intro() -> void:
+	if _intro == null:
+		return
+	GameState.intro_seen = true
+	AudioManager.play_ui("confirm")
+	_intro.queue_free()
+	_intro = null
+	if nav:
+		nav.update_focus()
 
 
 func _build_rows() -> void:
@@ -144,5 +266,10 @@ func _setup_date_display() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _intro != null:
+		if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel"):
+			get_viewport().set_input_as_handled()
+			_dismiss_intro()
+		return
 	if nav:
 		nav.handle_input(event)
