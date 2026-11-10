@@ -52,10 +52,11 @@ Each dungeon needs its own master. Until more art arrives, masters use placehold
 
 Deep time stays as built: every step below ages the party according to the floor it's on, and deeper floors cost far more. Measured (see [deep-time.md](deep-time.md#measured)), a dungeon run costs a fresh party about 16 years and an experienced one about 10, before the inefficiencies of real play, which might push it to 15 to 30. That lands close to the two-to-four-dungeon target.
 
-## Still open
+## Later sets and the great floor's clock
 
-- **Later sets in free play.** I've assumed each new set is harder than the last, since the surviving veterans keep their levels.
-- **Deep time on the great floor.** It needs a rate. Floor 8's rate, or something steeper, would make the final fight the most expensive place in the game to linger.
+In free play, each new set of four is a tier harder than the last, with stronger monsters and masters, so surviving veterans still have something to push against.
+
+Deep time on the great floor runs gentler than on the deep floors, so the final dungeon isn't also a race against age. Floor 5's rate (about three months per surface day) is a starting point to tune from.
 
 ## Build order
 
