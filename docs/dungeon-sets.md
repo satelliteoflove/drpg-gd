@@ -38,7 +38,7 @@ Each dungeon needs its own master. Until more art arrives, masters use placehold
 
 ## Aging by depth
 
-Deep time stays as built: every step below ages the party according to the floor it's on, and deeper floors cost far more. Measuring what that adds up to over a dungeon run is the next piece of work, and its results belong here.
+Deep time stays as built: every step below ages the party according to the floor it's on, and deeper floors cost far more. Measured (see [deep-time.md](deep-time.md#measured)), a dungeon run costs a fresh party about 16 years and an experienced one about 10, before the inefficiencies of real play, which might push it to 15 to 30. That lands close to the two-to-four-dungeon target.
 
 ## Open questions
 
