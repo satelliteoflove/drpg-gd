@@ -42,7 +42,9 @@ func test_simulation_positive_turns() -> void:
 	simulator.setup(party, enemies, 99999)
 	var result := simulator.run()
 
-	assert_gt(result.turns, 0)
+	# A surprise round can settle a fight against one slime before the first
+	# regular turn; otherwise the fight has to take at least one turn.
+	assert_true(result.turns > 0 or result.surprise != "none")
 
 
 func test_simulation_has_metrics() -> void:
