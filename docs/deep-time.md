@@ -62,7 +62,7 @@ The phases get new names. The old Decline and Fragile frame aging as failure, an
 
 | Phase | Body | Gains |
 |---|---|---|
-| **Youth** | Full | +25% XP (they learn fast) |
+| **Youth** | Full | None. The +25% XP bonus was cut, since it lasted far longer for long-lived races |
 | **Prime** | Full | None, this is the baseline |
 | **Veteran** | STR, VIT and AGI fall gradually | A class veteran trait (below) |
 | **Elder** | Physical stats fall faster, max HP shrinks | A stronger class trait, plus **Counsel**: a party-wide bonus while they're in the party (everyone else gets +10% XP, +1 accuracy, and 10 points off their spell fizzle chance) |
@@ -138,7 +138,7 @@ With the deep-time table above and someone who goes on every expedition:
 | Hobbit, Faerie, Dracon | Prime throughout, a few gray hairs |
 | Dwarf, Gnome, Elf | Unchanged. They're the ones who remember everyone else |
 
-The short-lived races then need something to pay for it. Lean into the existing racial XP modifiers so they level noticeably faster, and give them the best Youth bonus. A Rawulf fighter should feel like a comet.
+The short-lived races then need something to pay for it. Lean into the existing racial XP modifiers so they level noticeably faster. A Rawulf fighter should feel like a comet.
 
 ## What this replaces in the current code
 

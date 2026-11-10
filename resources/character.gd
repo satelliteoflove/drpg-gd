@@ -755,7 +755,7 @@ func next_raise_years() -> Vector2i:
 ## Adds experience points and checks for level up eligibility.
 ## [param amount]: XP to add.
 func add_experience(amount: int) -> void:
-	if is_dead or level >= ExperienceTable.MAX_LEVEL:
+	if is_dead:
 		return
 
 	experience += amount
@@ -769,7 +769,7 @@ func add_experience(amount: int) -> void:
 ## Confirms a pending level up, increasing stats and potentially learning spells.
 ## [return]: True if level up was processed.
 func confirm_level_up() -> bool:
-	if not pending_level_up or level >= ExperienceTable.MAX_LEVEL:
+	if not pending_level_up:
 		return false
 
 	var old_max_hp := max_hp
@@ -794,7 +794,7 @@ func confirm_level_up() -> bool:
 		spells_learned.emit(learned_spells)
 
 	var next_required := ExperienceTable.get_required_xp(level + 1, race, character_class)
-	if experience >= next_required and level < ExperienceTable.MAX_LEVEL:
+	if experience >= next_required:
 		pending_level_up = true
 		level_up_pending.emit()
 
@@ -814,9 +814,6 @@ func get_xp_to_next_level() -> int:
 
 
 func get_xp_progress_percent() -> float:
-	if level >= ExperienceTable.MAX_LEVEL:
-		return 100.0
-
 	var current_req := ExperienceTable.get_required_xp(level, race, character_class)
 	var next_req := ExperienceTable.get_required_xp(level + 1, race, character_class)
 	var range_xp := next_req - current_req

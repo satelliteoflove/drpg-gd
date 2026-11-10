@@ -46,13 +46,13 @@ Difficulty should be tuned against a typical roster for that campaign (a few vet
 
 ## Things that work against the race trade-off today
 
-Building toward this turned up three places where the current numbers push the wrong way.
+Building toward this turned up three places where the numbers pushed the wrong way.
 
-**The level cap.** Levels stop at 20, and the first campaign ends around 10 to 12. A second campaign takes a survivor to the high teens, and after that the long-lived characters stop growing just when they should be pulling ahead. Wizardry never capped levels. Past level 13 each level cost the same fixed amount of XP. I'd do the same: extend the table past 20 with a flat step per level, with HP and stat gains tapering off, so an elf in their fourth campaign is still getting stronger, just slowly.
+**The level cap.** Levels stopped at 20, and the first campaign ends around 10 to 12, so long-lived characters would have stopped growing just when they should be pulling ahead. Levels are now uncapped, as in Wizardry. Past 20, each level costs a flat 68,000 XP (before race and class modifiers), the same as the step from 19 to 20. *Done.*
 
-**The Youth bonus.** Youth lasts for the first 7% of a race's working life, which is about 3 years for a Rawulf, 4 for a human, and 40 for an elf. Since everyone ages the same years per campaign, an elf keeps the +25% XP bonus for about two campaigns while a Rawulf loses it partway through the first. That's backward for this design. I'd give Youth a fixed length in years (say the first five), so the bonus helps every race's first campaign equally and short-lived races keep their speed advantage from the class modifiers.
+**The Youth bonus.** Youth lasts for the first 7% of a race's working life, which is about 3 years for a Rawulf and 40 for an elf, so the +25% XP bonus favored exactly the wrong races. It's been removed. Short-lived races keep their speed through the race and class XP modifiers. *Done.*
 
-**Death is cheap for the long-lived.** Raising the dead costs years, and a few years mean almost nothing to an elf. So the risk you want long-lived characters to carry, being killed in the dungeon, barely exists unless they end up as ashes. I'd bring back Wizardry's resurrection risk: an ordinary raise can fail and leave ashes, with the chance growing each time a character has been raised and as their vitality wears down. Then the guild's 300-year-old anchor is something to protect, and losing them for good is a real possibility.
+**Death is cheap for the long-lived.** Raising the dead costs years, and a few years mean almost nothing to an elf. The temple always succeeds, so the only risk at raising time is a party member's resurrection spell failing. That's acceptable for now. If long-lived characters turn out too safe, the lifetime cost of a raise could rise for them, but that waits on play.
 
 ## Tuning the clock
 
@@ -63,7 +63,7 @@ This needs a measured campaign, not my estimate. The campaign sim should report 
 ## Build order
 
 1. **The next charter and the interlude.** After victory, the town offers the next charter. Taking it skips surface years, shows the interlude card, and starts a new dungeon with a new seed, reusing the existing monsters at a higher tier. This alone makes campaigns repeatable.
-2. **Room to grow and room to die.** Extend the XP table past 20, give Youth a fixed length, and add resurrection risk. Measure years per campaign and tune deep time and the interlude.
+2. **Room to grow.** Uncapped levels and no Youth bonus (*done*). Measure years per campaign and tune deep time and the interlude.
 3. **Tiers and masters.** Tier names, palettes and loot, and a new final boss for each campaign. The bosses are the part that needs new art.
 4. **The chronicle.** The saga spans campaigns, and the guild hall gets a record of past charters and Legends.
 
