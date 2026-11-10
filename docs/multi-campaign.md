@@ -52,7 +52,7 @@ Building toward this turned up three places where the numbers pushed the wrong w
 
 **The Youth bonus.** Youth lasts for the first 7% of a race's working life, which is about 3 years for a Rawulf and 40 for an elf, so the +25% XP bonus favored exactly the wrong races. It's been removed. Short-lived races keep their speed through the race and class XP modifiers. *Done.*
 
-**Death is cheap for the long-lived.** Raising the dead costs years, and a few years mean almost nothing to an elf. The temple always succeeds, so the only risk at raising time is a party member's resurrection spell failing. That's acceptable for now. If long-lived characters turn out too safe, the lifetime cost of a raise could rise for them, but that waits on play.
+**Death is cheap for the long-lived.** Raising the dead costs years, and a few years mean almost nothing to an elf. The temple always raises a body, so the risk lives in the dungeon: raising someone by spell when things go south. As in Wizardry, a failed Resurrect turns the body to ashes, which only True Resurrect or the temple can bring back, and a failed raise from ashes loses the character for good. That's the risk a long-lived character carries. If they still turn out too safe, the lifetime cost of a raise could rise for them, but that waits on play. *Done.*
 
 ## Tuning the clock
 

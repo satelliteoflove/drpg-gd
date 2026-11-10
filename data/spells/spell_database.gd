@@ -171,7 +171,7 @@ static func _create_priest_spells() -> void:
 	spell.add_damage_effect(CharacterEnums.Element.HOLY, "3d8", 2)
 	_spells["p5_major_smite"] = spell
 
-	spell = Spell.create("p5_resurrect", "Resurrect", "", CharacterEnums.SpellSchool.PRIEST, 5, CharacterEnums.SpellTargetType.DEAD_ALLY, "Attempts to resurrect a dead ally.")
+	spell = Spell.create("p5_resurrect", "Resurrect", "", CharacterEnums.SpellSchool.PRIEST, 5, CharacterEnums.SpellTargetType.DEAD_ALLY, "Attempts to resurrect a dead ally. If it fails, the body crumbles to ashes.")
 	spell.effects.append(SpellEffect.create_resurrection(0.75, 0.25))
 	spell.set_out_of_combat(true)
 	_spells["p5_resurrect"] = spell
@@ -186,8 +186,8 @@ static func _create_priest_spells() -> void:
 	spell.add_damage_effect(CharacterEnums.Element.HOLY, "6d6", 1)
 	_spells["p6_holy_blades"] = spell
 
-	spell = Spell.create("p7_true_resurrect", "True Resurrect", "", CharacterEnums.SpellSchool.PRIEST, 7, CharacterEnums.SpellTargetType.DEAD_ALLY, "Resurrects a dead ally, even from ashes.")
-	spell.effects.append(SpellEffect.create_resurrection(1.0, 0.5))
+	spell = Spell.create("p7_true_resurrect", "True Resurrect", "", CharacterEnums.SpellSchool.PRIEST, 7, CharacterEnums.SpellTargetType.DEAD_ALLY, "Resurrects a dead ally. It can raise ashes too, but if that fails they're lost for good.")
+	spell.effects.append(SpellEffect.create_resurrection(1.0, 0.5, true, 0.5))
 	spell.set_out_of_combat(true)
 	_spells["p7_true_resurrect"] = spell
 
