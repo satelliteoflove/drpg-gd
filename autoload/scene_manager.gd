@@ -17,7 +17,15 @@ const SCENES: Dictionary = {
 	"shop": "res://scenes/town/shop.tscn",
 	"party_menu": "res://scenes/common/party_menu.tscn",
 	"autoexplore": "res://scenes/town/autoexplore_screen.tscn",
+	"ending": "res://scenes/ending/ending.tscn",
 }
+
+## Scenes that share the town theme. The dungeon and ending pick their own music.
+const TOWN_MUSIC := "res://audio/music/music_town.ogg"
+const TOWN_MUSIC_SCENES: Array[String] = [
+	"main_menu", "town", "character_creation", "guild_hall", "inn", "temple",
+	"shop", "party_menu", "autoexplore",
+]
 
 var current_scene_name: String = ""
 var is_transitioning: bool = false
@@ -56,6 +64,9 @@ func change_scene(scene_name: String) -> void:
 		return
 
 	current_scene_name = scene_name
+	if TOWN_MUSIC_SCENES.has(scene_name):
+		AudioManager.stop_ambient(1.0)
+		AudioManager.crossfade_music(load(TOWN_MUSIC), 1.5)
 
 	# Let the new scene initialise (and start its entrance) under the veil.
 	await get_tree().process_frame
@@ -75,20 +86,41 @@ func go_to_main_menu() -> void:
 
 
 func go_to_town() -> void:
-	if GameState.current_mode == GameState.GameMode.DUNGEON:
-		var dungeon_days: int = GameState.floor_tracker.consume_dungeon_days()
-		if dungeon_days > 0:
-			GameState.advance_game_days(dungeon_days)
+	_settle_expedition()
 	GameState.set_mode(GameState.GameMode.TOWN)
 	if GameState.has_party():
 		SaveManager.autosave()
 	change_scene("town")
 
 
+## Shows the victory screen. The game mode is left as DUNGEON so the trip's
+## days are still counted when the party returns to town afterward.
+func go_to_ending() -> void:
+	# Settle the final expedition first so the ending shows the party's true
+	# ages. The town shows the homecoming report afterward.
+	_settle_expedition()
+	GameState.set_mode(GameState.GameMode.TOWN)
+	SaveManager.autosave()
+	change_scene("ending")
+
+
+## Applies the time an expedition took, once, when the party leaves the
+## dungeon by any route.
+func _settle_expedition() -> void:
+	if GameState.current_mode != GameState.GameMode.DUNGEON:
+		return
+	var surface_days: int = GameState.floor_tracker.consume_dungeon_days()
+	var deep_days: int = GameState.floor_tracker.consume_deep_days()
+	GameState.pending_homecoming = GameState.process_homecoming(surface_days, deep_days)
+
+
 func go_to_dungeon(floor_num: int = -1, spawn_at_stairs_up: bool = true) -> void:
 	GameState.party.prepare_for_dungeon()
+	for member in GameState.party.get_members():
+		member.note_first_descent(GameState.game_day)
 	if floor_num > 0:
 		GameState.set_floor(floor_num)
+	GameState.deepest_floor = maxi(GameState.deepest_floor, GameState.current_floor)
 	GameState.dungeon_spawn_at_stairs_up = spawn_at_stairs_up
 	GameState.set_mode(GameState.GameMode.DUNGEON)
 	if GameState.has_party():

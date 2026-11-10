@@ -19,6 +19,10 @@ const HEALTH_TIMEOUT := 30.0
 const HEALTH_POLL_INTERVAL := 1.0
 const DEFAULT_N_PREDICT := 128
 const GENERATE_TIMEOUT_SEC := 15.0
+## Records the running server's PID so a later launch can clean it up if this
+## run dies without stopping it.
+const PID_FILE := "user://llama_server.pid"
+const _UNIX_KILL_IF_SERVER := "ps -p %d -o comm= 2>/dev/null | grep -q llama-server && kill %d"
 
 const MODEL_NAME := "Qwen3.5-4B-UD-Q4_K_XL"
 const MODEL_FILENAME := "Qwen3.5-4B-UD-Q4_K_XL.gguf"
@@ -45,6 +49,12 @@ const TEMPERATURE := 0.7
 const TOP_P := 0.8
 const TOP_K := 20
 const PRESENCE_PENALTY := 1.5
+
+## Player opt-in for AI-written party dialogue. Turning it on downloads a
+## llama.cpp server and a ~2.9 GB model, so it's off unless the player asks
+## for it. Installs that already have the model count as opted in.
+const SETTINGS_PATH := "user://settings.cfg"
+var opted_in := false
 
 var _enabled := false
 var _server_healthy := false
@@ -91,6 +101,7 @@ func _ready() -> void:
 
 	_gpu_vendor = _detect_gpu_vendor()
 	_kill_stale_servers()
+	opted_in = _load_opt_in()
 	_deferred_boot()
 
 
@@ -102,6 +113,9 @@ func _deferred_boot() -> void:
 
 
 func _boot() -> void:
+	if not opted_in:
+		print_debug("[LLMManager] AI dialogue is off; using written dialogue")
+		return
 	var binary_path := _find_binary()
 	var model_path := _find_model()
 	print_debug("[LLMManager] Binary: %s" % binary_path)
@@ -148,6 +162,32 @@ func _emit_download_progress(request: HTTPRequest, known_total: int, start_time:
 
 
 var debug_force_fallback := false
+
+
+func _load_opt_in() -> bool:
+	var config := ConfigFile.new()
+	var default_value := _find_model() != ""
+	if config.load(SETTINGS_PATH) != OK:
+		return default_value
+	return bool(config.get_value("llm", "enabled", default_value))
+
+
+## Turns AI dialogue on or off and remembers the choice. Turning it on starts
+## the download/boot; turning it off stops the server.
+func set_opted_in(value: bool) -> void:
+	var config := ConfigFile.new()
+	config.load(SETTINGS_PATH)
+	config.set_value("llm", "enabled", value)
+	config.save(SETTINGS_PATH)
+	if value == opted_in:
+		return
+	opted_in = value
+	if value:
+		_boot()
+	else:
+		_kill_server()
+		_enabled = false
+		_server_healthy = false
 
 
 func is_available() -> bool:
@@ -792,6 +832,8 @@ func _start_server(model_path: String) -> void:
 
 	_enabled = true
 	print_debug("[LLMManager] Started llama-server (PID %d)" % _pid)
+	_write_pid_file(_pid)
+	_start_orphan_watcher(_pid)
 
 	_health_elapsed = 0.0
 	_health_timer = Timer.new()
@@ -906,11 +948,44 @@ func _kill_server() -> void:
 		OS.kill(_pid)
 		print_debug("[LLMManager] Killed llama-server (PID %d)" % _pid)
 		_pid = -1
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(PID_FILE))
 	_server_healthy = false
 
 
+## Kills a server left behind by an earlier run, using the PID it recorded.
+## Only a process that is still named llama-server gets killed, so an
+## unrelated process that inherited the PID, or a llama-server some other
+## program started, is left alone.
 func _kill_stale_servers() -> void:
+	if not FileAccess.file_exists(PID_FILE):
+		return
+	var stale_pid := FileAccess.get_file_as_string(PID_FILE).strip_edges().to_int()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PID_FILE))
+	if stale_pid <= 0:
+		return
 	if OS.get_name() == "Windows":
-		OS.execute("taskkill", ["/F", "/IM", "llama-server.exe"], [], false)
+		OS.execute("taskkill", ["/F", "/FI", "PID eq %d" % stale_pid, "/FI", "IMAGENAME eq llama-server.exe"])
 	else:
-		OS.execute("pkill", ["-f", "llama-server"], [], false)
+		OS.execute("sh", ["-c", _UNIX_KILL_IF_SERVER % [stale_pid, stale_pid]])
+
+
+func _write_pid_file(pid: int) -> void:
+	var f := FileAccess.open(PID_FILE, FileAccess.WRITE)
+	if f:
+		f.store_string(str(pid))
+
+
+## The editor stops a running game with a hard kill, so neither of the
+## notifications above arrives and the server would outlive the game. A small
+## watcher process waits for the game to disappear and then stops the server.
+func _start_orphan_watcher(server_pid: int) -> void:
+	var game_pid := OS.get_process_id()
+	if OS.get_name() == "Windows":
+		var ps := ("Wait-Process -Id %d -ErrorAction SilentlyContinue; "
+			+ "Get-Process -Id %d -ErrorAction SilentlyContinue | "
+			+ "Where-Object { $_.ProcessName -eq 'llama-server' } | Stop-Process -Force") % [game_pid, server_pid]
+		OS.create_process("powershell", ["-NoProfile", "-WindowStyle", "Hidden", "-Command", ps])
+	else:
+		var sh := ("while kill -0 %d 2>/dev/null; do sleep 2; done; " % game_pid) \
+			+ (_UNIX_KILL_IF_SERVER % [server_pid, server_pid])
+		OS.create_process("sh", ["-c", sh])

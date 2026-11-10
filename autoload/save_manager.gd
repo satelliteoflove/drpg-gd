@@ -182,6 +182,11 @@ func _create_save_data() -> Resource:
 	data.relationship_state = RelationshipManager.get_save_state()
 	data.event_state = EventManager.get_save_state()
 
+	data.bosses_slain = GameState.bosses_slain.duplicate()
+	data.victory_day = GameState.victory_day
+	data.deepest_floor = GameState.deepest_floor
+	data.intro_seen = GameState.intro_seen
+
 	data.save_timestamp = int(Time.get_unix_time_from_system())
 	data.play_time_seconds = _get_total_play_time()
 
@@ -234,9 +239,22 @@ func _apply_save_data(data) -> void:
 	if data.relationship_state:
 		RelationshipManager.load_save_state(data.relationship_state)
 
+	GameState.bosses_slain.assign(data.bosses_slain if data.bosses_slain else [])
+	GameState.victory_day = data.victory_day
+	GameState.intro_seen = data.intro_seen
+	# Saves from before deepest_floor existed: infer it from the floors visited.
+	var deepest: int = data.deepest_floor
+	for floor_num in GameState.dungeon_floors.keys():
+		deepest = maxi(deepest, int(floor_num))
+	GameState.deepest_floor = deepest
+
 	var event_data: Dictionary = data.get("event_state")
 	if event_data and not event_data.is_empty():
 		EventManager.load_save_state(event_data)
+
+
+func get_play_time_seconds() -> int:
+	return _get_total_play_time()
 
 
 func _get_total_play_time() -> int:

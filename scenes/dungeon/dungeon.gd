@@ -36,6 +36,8 @@ const SFX_STAIRS := "res://audio/sfx/stairs.wav"
 const SFX_TORCH_LIGHT := "res://audio/sfx/torch_light.wav"
 const SFX_TORCH_LOW := "res://audio/sfx/torch_low.wav"
 const SFX_ENCOUNTER := "res://audio/sfx/encounter.wav"
+const BOSS_MUSIC := "res://audio/music/music_boss.ogg"
+const RECALL_ITEM := "recall_stone"
 const SFX_TORCH_LOOP := "res://audio/sfx/torch_loop.wav"
 
 enum Facing { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 }
@@ -244,7 +246,8 @@ func _build_nav_buttons() -> void:
 	row.add_child(menu_btn)
 
 	var town_btn := Button.new()
-	town_btn.text = "Town (T)"
+	town_btn.text = "Recall (T)"
+	town_btn.tooltip_text = "Crush a Recall Stone to return to town"
 	town_btn.focus_mode = Control.FOCUS_NONE
 	town_btn.pressed.connect(_on_town_pressed)
 	row.add_child(town_btn)
@@ -933,6 +936,11 @@ func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
 	var encounter := {"enemies": enemies, "enemy_group": group}
 	if is_boss:
 		encounter["is_boss"] = true
+	var how: Dictionary = enemy_manager.last_engagement if enemy_manager else {}
+	encounter["surprise"] = Surprise.roll(
+		how.get("party_engaged", true), how.get("group_aware", true),
+		how.get("from_behind", false), is_boss, GameState.party)
+	enemy_manager.last_engagement = {}
 	return encounter
 
 
@@ -981,7 +989,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if menu_open or map_open or combat_open or event_open or is_moving:
 		return
 
-	if event is InputEventKey and event.pressed and _handle_debug_keys(event as InputEventKey):
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and _handle_debug_keys(event as InputEventKey):
 		return
 
 	if event.is_action_pressed("strafe_left"):
@@ -1004,6 +1012,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_open_map()
 	elif event.is_action_pressed("go_to_town"):
 		_on_town_pressed()
+	elif not OS.is_debug_build():
+		return
+	# Debug-only keys below; release builds stop at the line above.
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_X:
 		_force_combat()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_G:
@@ -1035,7 +1046,7 @@ func _handle_debug_keys(event: InputEventKey) -> bool:
 		_debug_level_party(5)
 		return true
 	elif event.keycode == KEY_F and event.shift_pressed:
-		_debug_teleport_floor(GameState.current_floor + 1)
+		_debug_teleport_floor(mini(GameState.current_floor + 1, GameState.FINAL_FLOOR))
 		return true
 	elif event.keycode == KEY_F and event.ctrl_pressed and GameState.current_floor > 1:
 		_debug_teleport_floor(GameState.current_floor - 1)
@@ -1173,6 +1184,9 @@ func _check_special_tile() -> void:
 
 
 func _descend_stairs() -> void:
+	if _stairs_sealed():
+		_show_dungeon_message("A seal of black iron bars the stairs. This floor's guardian still lives.")
+		return
 	AudioManager.play_sfx_path(SFX_STAIRS)
 	var next_floor := GameState.current_floor + 1
 	var event_context := {
@@ -1193,6 +1207,17 @@ func _descend_stairs() -> void:
 			print_debug("Descending to floor ", next_floor)
 			SceneManager.go_to_dungeon(next_floor, true)
 	)
+
+
+## The way down stays sealed until the floor's guardian falls. A party that
+## has already been deeper (an older save, say) is let through.
+func _stairs_sealed() -> bool:
+	var floor_num := GameState.current_floor
+	if MonsterDatabase.get_boss_for_floor(floor_num) == null:
+		return false
+	if GameState.is_boss_slain(floor_num):
+		return false
+	return GameState.deepest_floor <= floor_num
 
 
 func _ascend_stairs() -> void:
@@ -1253,7 +1278,17 @@ func _check_held_movement() -> void:
 		movement.turn_right()
 
 
+## Returning to town from the depths costs a Recall Stone. Walking out up the
+## floor 1 stairs is always free.
 func _on_town_pressed() -> void:
+	if combat_open or GameState.party == null:
+		return
+	var inventory := GameState.party.inventory
+	if inventory == null or not inventory.has_item(RECALL_ITEM):
+		_show_dungeon_message("You have no Recall Stone. Find the stairs up, or buy stones in town.")
+		return
+	inventory.remove_item(RECALL_ITEM, 1)
+	_show_dungeon_message("The Recall Stone crumbles, and the dungeon falls away.")
 	SceneManager.go_to_town()
 
 
@@ -1267,12 +1302,6 @@ func _process_enemy_turn() -> void:
 
 	if combat_group != null:
 		return
-
-
-func _check_random_encounter() -> void:
-	if randf() < GameState.encounter_chance:
-		var encounter := EncounterGenerator.generate_encounter()
-		_open_combat(encounter)
 
 
 func _force_combat() -> void:
@@ -1290,6 +1319,8 @@ func _open_combat(encounter: Dictionary) -> void:
 
 	AudioManager.play_sfx_path(SFX_ENCOUNTER)
 	AudioManager.stop_ambient(0.3)
+	if encounter.get("is_boss", false):
+		AudioManager.crossfade_music(load(BOSS_MUSIC), 0.6)
 	if _torch_audio:
 		_torch_audio.stop()
 
@@ -1307,6 +1338,11 @@ func _on_combat_closed(victory: bool) -> void:
 		var group: EnemyGroup = encounter.enemy_group
 		if enemy_manager != null:
 			enemy_manager.remove_defeated_group(group)
+		if group.ai_type == EnemyGroup.AIType.BOSS:
+			if GameState.record_boss_slain(GameState.current_floor):
+				SceneManager.go_to_ending()
+				return
+			_show_dungeon_message("Somewhere ahead, the seal on the stairs cracks and falls away.")
 
 	if not victory:
 		var all_dead := true
@@ -1334,6 +1370,8 @@ func _close_combat() -> void:
 		_vitals_strip.refresh()
 	if _theme and _theme.ambient_bed != "" and ResourceLoader.exists(_theme.ambient_bed):
 		AudioManager.play_ambient(load(_theme.ambient_bed))
+	if _theme and _theme.music != "" and ResourceLoader.exists(_theme.music):
+		AudioManager.crossfade_music(load(_theme.music), 1.5)
 	_update_torch_audio()
 	if combat_ui:
 		combat_ui.queue_free()
@@ -1475,8 +1513,9 @@ func _setup_message_label() -> void:
 	_message_label.anchor_right = 0.5
 	_message_label.anchor_top = 1.0
 	_message_label.anchor_bottom = 1.0
-	_message_label.offset_left = -200
-	_message_label.offset_right = 200
+	_message_label.offset_left = -380
+	_message_label.offset_right = 380
+	_message_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_message_label.offset_top = -150
 	_message_label.offset_bottom = -120
 	_message_label.add_theme_font_size_override("font_size", 18)
@@ -1490,7 +1529,8 @@ func _show_dungeon_message(text: String) -> void:
 	if _message_tween:
 		_message_tween.kill()
 	_message_tween = create_tween()
-	_message_tween.tween_interval(1.5)
+	# Long messages stay up long enough to read.
+	_message_tween.tween_interval(maxf(1.5, text.length() / 22.0))
 	_message_tween.tween_property(_message_label, "modulate:a", 0.0, 0.5)
 
 

@@ -1,27 +1,30 @@
 class_name ExperienceTable
 extends RefCounted
 
+# Tuned for a campaign of roughly 10-15 hours: about a dozen fights to reach
+# level 2 and ~190 to reach level 10, the level the floor 8 boss expects.
+# (The original Wizardry-scale table needed ~600 fights to reach level 10.)
 const BASE_XP_TABLE: Array[int] = [
-	0,        # Level 1
-	1000,     # Level 2
-	2500,     # Level 3
-	5000,     # Level 4
-	9000,     # Level 5
-	15000,    # Level 6
-	25000,    # Level 7
-	40000,    # Level 8
-	60000,    # Level 9
-	90000,    # Level 10
-	135000,   # Level 11
-	200000,   # Level 12
-	280000,   # Level 13
-	380000,   # Level 14
-	500000,   # Level 15
-	650000,   # Level 16
-	830000,   # Level 17
-	1050000,  # Level 18
-	1300000,  # Level 19
-	1600000   # Level 20
+	0,       # Level 1
+	300,     # Level 2
+	800,     # Level 3
+	1600,    # Level 4
+	2800,    # Level 5
+	4600,    # Level 6
+	7200,    # Level 7
+	11000,   # Level 8
+	16500,   # Level 9
+	24000,   # Level 10
+	34000,   # Level 11
+	48000,   # Level 12
+	66000,   # Level 13
+	88000,   # Level 14
+	115000,  # Level 15
+	148000,  # Level 16
+	188000,  # Level 17
+	236000,  # Level 18
+	292000,  # Level 19
+	360000   # Level 20
 ]
 
 const MAX_LEVEL: int = 20

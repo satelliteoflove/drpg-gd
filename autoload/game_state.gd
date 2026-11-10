@@ -11,6 +11,9 @@ signal game_loaded()
 
 enum GameMode { MAIN_MENU, TOWN, DUNGEON, COMBAT }
 
+## The deepest floor. Its boss is the final foe; slaying it wins the game.
+const FINAL_FLOOR: int = 8
+
 var current_mode: GameMode = GameMode.MAIN_MENU
 var current_floor: int = 1
 var in_combat: bool = false
@@ -23,13 +26,23 @@ var party_formations: Array[PartyFormation] = []
 var dungeon_floors: Dictionary = {}
 var dungeon_spawn_at_stairs_up: bool = true
 var current_encounter: Dictionary = {}
-var encounter_chance: float = 0.15
 var dungeon_player_position: Vector2i = Vector2i.ZERO
 var dungeon_player_facing: int = 0
 var returning_from_combat: bool = false
 var combat_speed: int = 5
 var game_day: int = 1
 var floor_tracker: FloorTracker = null
+## Floor numbers whose boss has been slain. Slain bosses stay dead.
+var bosses_slain: Array[int] = []
+## Game day the final boss fell, or 0 if the game hasn't been won yet.
+var victory_day: int = 0
+## Deepest floor any party has set foot on.
+var deepest_floor: int = 0
+## Whether the opening premise has been shown for this campaign.
+var intro_seen: bool = true
+## What the last trip below did to the party, for the town to show once.
+## Empty when there's nothing to report. Not saved.
+var pending_homecoming: Dictionary = {}
 
 
 func clear_dungeon_floors() -> void:
@@ -91,6 +104,9 @@ func new_game() -> void:
 	var starter_torch := ShopItems.get_item("torch")
 	if starter_torch:
 		party.inventory.add_item(starter_torch.duplicate() as Item, 8)
+	var starter_recall := ShopItems.get_item("recall_stone")
+	if starter_recall:
+		party.inventory.add_item(starter_recall.duplicate() as Item, 2)
 	roster = CharacterRoster.new()
 	party_formations = []
 	floor_tracker = FloorTracker.new()
@@ -100,8 +116,18 @@ func new_game() -> void:
 	current_floor = 1
 	current_encounter = {}
 	game_day = 1
+	bosses_slain = []
+	victory_day = 0
+	deepest_floor = 0
+	intro_seen = false
+	pending_homecoming = {}
 	_populate_starter_roster()
 	_create_starter_formation()
+	# The starters begin as the active party so a new player's first choice
+	# can be the dungeon, not a roster screen.
+	for character in roster.get_all():
+		if not party.is_full():
+			party.add_member(character)
 
 
 func _create_starter_formation() -> void:
@@ -178,6 +204,7 @@ func set_mode(mode: GameMode) -> void:
 
 func set_floor(floor_num: int) -> void:
 	current_floor = floor_num
+	deepest_floor = maxi(deepest_floor, floor_num)
 	floor_changed.emit(floor_num)
 
 
@@ -209,6 +236,100 @@ func _clear_combat_only_statuses(character: Resource) -> void:
 		if character.has_status(status):
 			character.remove_status(status)
 	character.is_defending = false
+
+
+func is_boss_slain(floor_num: int) -> bool:
+	return bosses_slain.has(floor_num)
+
+
+## Records a boss kill. Returns true if this kill wins the game.
+func record_boss_slain(floor_num: int) -> bool:
+	if not bosses_slain.has(floor_num):
+		bosses_slain.append(floor_num)
+	if floor_num == FINAL_FLOOR and victory_day == 0:
+		victory_day = game_day
+		return true
+	return false
+
+
+func has_won() -> bool:
+	return victory_day > 0
+
+
+## Floors that have a boss, in descending order.
+func get_boss_floors() -> Array[int]:
+	var floors: Array[int] = []
+	for f in range(1, FINAL_FLOOR + 1):
+		if MonsterDatabase.get_boss_for_floor(f) != null:
+			floors.append(f)
+	return floors
+
+
+## Settles the time an expedition took. The surface calendar moves by
+## [param surface_days] for everyone; the party, who were below where time
+## runs fast, age by [param deep_days] in total. Elders face the old-age roll
+## here, once per homecoming, rather than at the inn.
+func process_homecoming(surface_days: int, deep_days: int) -> Dictionary:
+	var before := {}
+	for member in party.get_members():
+		if not member.is_dead:
+			before[member.id] = {"age": member.age_days, "phase": member.get_life_phase()}
+
+	if surface_days > 0:
+		advance_game_days(surface_days)
+
+	var rows: Array[Dictionary] = []
+	for member in party.get_members():
+		if not before.has(member.id):
+			continue
+		var extra := maxi(0, deep_days - surface_days)
+		if extra > 0:
+			member.advance_age(extra)
+		member.days_below += maxi(deep_days, surface_days)
+		var phase_before: CharacterEnums.LifePhase = before[member.id]["phase"]
+		var phase_after := member.get_life_phase()
+		if phase_after != phase_before:
+			_add_phase_mark(member, phase_after)
+		var died := false
+		if phase_after == CharacterEnums.LifePhase.FRAGILE and not member.last_descent:
+			died = member.check_old_age_death()
+			if died:
+				member.end_service("old_age", game_day)
+		rows.append({
+			"character": member,
+			"age_before": before[member.id]["age"],
+			"age_after": member.age_days,
+			"phase_before": phase_before,
+			"phase_after": phase_after,
+			"died_of_age": died,
+			"legend": member.last_descent,
+		})
+
+	# Anyone sworn to a last descent passes on now, whether they fell below
+	# or made it back up.
+	var legends: Array[Dictionary] = []
+	for member in party.get_members().duplicate():
+		if member.last_descent:
+			legends.append({"character": member, "lines": LastDescent.pass_on(member, party)})
+	return {"surface_days": surface_days, "deep_days": deep_days, "members": rows, "legends": legends}
+
+
+const PHASE_MARKS: Dictionary = {
+	CharacterEnums.LifePhase.PRIME: "Came into their own",
+	CharacterEnums.LifePhase.DECLINE: "Graying at the temples",
+	CharacterEnums.LifePhase.FRAGILE: "An elder of the guild",
+}
+
+
+func _add_phase_mark(member: Character, phase: CharacterEnums.LifePhase) -> void:
+	var mark_name: String = PHASE_MARKS.get(phase, "")
+	if mark_name == "":
+		return
+	var severity := Marks.Severity.MINOR if phase == CharacterEnums.LifePhase.PRIME else Marks.Severity.MAJOR
+	var tags: Array[String] = ["aging"]
+	var involved: Array[String] = []
+	member.add_mark(Marks.create_mark(mark_name, "deep_time", tags, Marks.Agency.SUBJECT,
+		severity, involved, game_day))
 
 
 func advance_game_days(days: int) -> void:

@@ -79,12 +79,20 @@ class ActiveStatus:
 @export var is_dead: bool = false
 @export var status_effects: Array[CharacterEnums.StatusEffect] = []
 @export var death_count: int = 0
+## Lifetime aging done below, where time runs fast (docs/deep-time.md).
+@export var days_below: int = 0
+## Whether this character's elder intercession has been spent this expedition.
+@export var intercession_used: bool = false
 @export var _active_status_data: Array[Dictionary] = []
 var is_defending: bool = false
 var active_statuses: Array[ActiveStatus] = []
 
 const AVAILABILITY_AVAILABLE: int = 0
 const AVAILABILITY_TRAINING: int = 1
+## Retired to a town post (see Retirement). Never comes back.
+const AVAILABILITY_RETIRED: int = 2
+## Passed on after One Last Descent (see LastDescent). Never comes back.
+const AVAILABILITY_LEGEND: int = 3
 const REST_BONUS_MAX: float = 1.5
 const REST_BONUS_PER_TOWN_DAY: float = 0.01
 const REST_BONUS_DECAY_PER_ENCOUNTER: float = 0.1
@@ -121,6 +129,28 @@ const SLOT_MAP: Dictionary = {
 @export var training_days_total: int = 0
 @export var training_target_class: int = -1
 @export var town_job: int = -1
+## Retirement post id (Retirement.POSTS), or "" if none.
+@export var town_post: String = ""
+## Sworn to One Last Descent: prime body and +2 to every stat until the
+## expedition ends, then they pass on as a Legend.
+@export var last_descent: bool = false
+## Who inherits a Legend's level, by id.
+@export var legacy_apprentice_id: String = ""
+## How many times the temple or a spell has brought this character back.
+## Each raise costs more years than the last.
+@export var times_raised: int = 0
+## Years the most recent raise cost, for the message that reports it.
+var last_raise_years: int = 0
+
+@export_group("Saga")
+## How the character's service ended: "", "retired", "legend" or "old_age".
+## A blank fate on a dead character means they fell in battle.
+@export var fate: String = ""
+@export var first_descent_day: int = -1
+@export var first_descent_age_days: int = -1
+## The surface day and age when service ended, or -1 while still serving.
+@export var final_day: int = -1
+@export var final_age_days: int = -1
 @export var town_days_accumulated: int = 0
 @export var rest_bonus_xp_multiplier: float = 1.0
 
@@ -255,6 +285,7 @@ func _calculate_max_mp() -> void:
 		max_mp = maxi(0, (2 + stat_bonus) * level + equip_bonus)
 	else:
 		max_mp = maxi(0, (mp_base + stat_bonus) * level + equip_bonus)
+	max_mp = int(max_mp * AgeTraits.max_mp_multiplier(self))
 
 
 func _calculate_combat_stats() -> void:
@@ -445,6 +476,11 @@ func get_life_phase_name() -> String:
 
 
 func apply_aging_effects() -> void:
+	if last_descent:
+		for stat_name in ["strength", "intelligence", "piety", "vitality", "agility", "luck"]:
+			set(stat_name, get("peak_" + stat_name) + LastDescent.STAT_BONUS)
+		return
+
 	var phase: CharacterEnums.LifePhase = get_life_phase()
 
 	if phase == CharacterEnums.LifePhase.YOUTH or phase == CharacterEnums.LifePhase.PRIME:
@@ -511,6 +547,8 @@ func advance_age(days: int) -> void:
 	age_days += days
 	apply_aging_effects()
 	_recalculate_derived_stats()
+	current_hp = mini(current_hp, max_hp)
+	current_mp = mini(current_mp, max_mp)
 
 
 func check_old_age_death() -> bool:
@@ -525,6 +563,8 @@ func check_old_age_death() -> bool:
 	var death_chance: float = 0.8 * progress * progress
 	if CombatRNG.randf() < death_chance:
 		_die()
+		# Old age is final: nothing reverses aging, so the temple can't either.
+		add_status(CharacterEnums.StatusEffect.LOST, -1, "", 0)
 		return true
 	return false
 
@@ -571,6 +611,9 @@ func take_damage(amount: int, ignore_defense: bool = false) -> int:
 	var actual := mini(reduced_amount, current_hp)
 	current_hp -= actual
 	if current_hp <= 0:
+		if AgeTraits.try_intercede(self):
+			current_hp = 1
+			return actual - 1
 		current_hp = 0
 		_die()
 	return actual
@@ -662,6 +705,10 @@ func _die() -> void:
 	if is_dead:
 		return
 	is_dead = true
+	death_count += 1
+	if fate.is_empty():
+		final_day = GameState.game_day
+		final_age_days = age_days
 	MarkSystem.add_ko_mark(self)
 	add_status(CharacterEnums.StatusEffect.DEAD, -1, "", 0)
 	died.emit()
@@ -679,8 +726,15 @@ func resurrect(vitality_loss: int = 1) -> bool:
 		return false
 
 	peak_vitality = maxi(1, peak_vitality - vitality_loss)
-	age_days += CombatRNG.randi_range(1, 5) * CharacterEnums.DAYS_PER_YEAR
+	times_raised += 1
+	last_raise_years = 0
+	for _i in times_raised:
+		last_raise_years += CombatRNG.randi_range(1, 4)
+	age_days += last_raise_years * CharacterEnums.DAYS_PER_YEAR
 	is_dead = false
+	if fate.is_empty():
+		final_day = -1
+		final_age_days = -1
 	remove_status(CharacterEnums.StatusEffect.DEAD)
 	remove_status(CharacterEnums.StatusEffect.ASHED)
 
@@ -690,6 +744,12 @@ func resurrect(vitality_loss: int = 1) -> bool:
 
 	revived.emit()
 	return true
+
+
+## The years the next raise will cost, as (least, most).
+func next_raise_years() -> Vector2i:
+	var dice := times_raised + 1
+	return Vector2i(dice, dice * 4)
 
 
 ## Adds experience points and checks for level up eligibility.
@@ -887,6 +947,31 @@ func is_available() -> bool:
 
 func is_training() -> bool:
 	return availability == AVAILABILITY_TRAINING
+
+
+func is_retired() -> bool:
+	return availability == AVAILABILITY_RETIRED
+
+
+func is_legend() -> bool:
+	return availability == AVAILABILITY_LEGEND
+
+
+## Retired or a Legend: still on the roster, but never going down again.
+func has_left_service() -> bool:
+	return is_retired() or is_legend()
+
+
+func note_first_descent(day: int) -> void:
+	if first_descent_day < 0:
+		first_descent_day = day
+		first_descent_age_days = age_days
+
+
+func end_service(new_fate: String, day: int) -> void:
+	fate = new_fate
+	final_day = day
+	final_age_days = age_days
 
 
 func start_training(target_class: int, days: int, current_day: int) -> void:

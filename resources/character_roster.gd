@@ -66,6 +66,8 @@ func get_all() -> Array[Character]:
 func get_available(party: Party) -> Array[Character]:
 	var available: Array[Character] = []
 	for character in characters:
+		if character.has_left_service():
+			continue
 		if party == null or party.get_member(character.id) == null:
 			available.append(character)
 	return available

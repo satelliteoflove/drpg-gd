@@ -17,7 +17,8 @@ static func can_dispel(character: Character) -> bool:
 static func get_valid_targets(enemies: Array[Monster]) -> Array[Monster]:
 	var targets: Array[Monster] = []
 	for enemy in enemies:
-		if not enemy.is_dead and enemy.is_undead():
+		# Bosses are too powerful to banish outright.
+		if not enemy.is_dead and enemy.is_undead() and not enemy.is_boss:
 			targets.append(enemy)
 	return targets
 
@@ -41,6 +42,13 @@ static func attempt_dispel(character: Character, target: Monster) -> Dictionary:
 			"success": false,
 			"reason": "not_undead",
 			"message": "%s is not undead." % target.monster_name
+		}
+
+	if target.is_boss:
+		return {
+			"success": false,
+			"reason": "boss_immune",
+			"message": "%s is too powerful to dispel." % target.monster_name
 		}
 
 	if target.is_dead:

@@ -81,7 +81,7 @@ func _build_count_strip() -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.shift_pressed and event.keycode == KEY_D:
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and event.shift_pressed and event.keycode == KEY_D:
 		GameState.advance_game_days(30)
 		message_label.text = "DEBUG: Advanced 30 days. Now %s." % GameCalendar.format_short(GameState.game_day)
 		_refresh_display()
@@ -157,7 +157,7 @@ func _guild_summary_text() -> String:
 	for c in roster.get_all():
 		if c.is_dead:
 			dead += 1
-		else:
+		elif c.is_available():
 			living += 1
 
 	var text := "[b]The Adventurers' Guild[/b]\n\n"

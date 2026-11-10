@@ -28,6 +28,12 @@ extends Resource
 @export_group("Events")
 @export var event_state: Dictionary = {}
 
+# Campaign progress
+@export var bosses_slain: Array[int] = []
+@export var victory_day: int = 0
+@export var deepest_floor: int = 0
+@export var intro_seen: bool = true
+
 @export_group("Meta")
 @export var save_version: int = 5
 @export var save_timestamp: int = 0

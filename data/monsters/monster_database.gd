@@ -39,9 +39,11 @@ static func get_monsters_for_floor(floor_num: int) -> Array[String]:
 static func get_boss_for_floor(floor_num: int) -> Monster:
 	_ensure_initialized()
 	var boss_id: String = _boss_floor_map.get(floor_num, "")
-	if boss_id != "" and _monsters.has(boss_id):
-		return _monsters[boss_id].duplicate(true)
-	return null
+	if boss_id == "":
+		return null
+	# get_monster carries over boss_phases and extra_actions, which a plain
+	# duplicate() drops because they aren't exported properties.
+	return get_monster(boss_id)
 
 
 static func get_boss_minions(floor_num: int) -> Array[String]:
@@ -399,6 +401,7 @@ static func _create_wolf() -> void:
 static func _create_bandit() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Bandit"
+	monster.can_critical = true
 	monster.max_hp = 24
 	monster.strength = 11
 	monster.agility = 13
@@ -424,6 +427,7 @@ static func _create_bandit() -> void:
 		LootDrop.create("leather_boots", 0.08),
 		LootDrop.create("healing_potion", 0.12),
 		LootDrop.create("mana_potion", 0.06),
+		LootDrop.create("cutthroats_dirk", 0.02),
 	]
 
 	monster.min_floor = 3
@@ -662,6 +666,7 @@ static func _create_skeleton_mage() -> void:
 static func _create_minotaur() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Minotaur"
+	monster.can_critical = true
 	monster.max_hp = 75
 	monster.strength = 20
 	monster.agility = 10
@@ -688,6 +693,7 @@ static func _create_minotaur() -> void:
 		LootDrop.create("iron_helm", 0.10),
 		LootDrop.create("iron_shield", 0.08),
 		LootDrop.create("greater_healing", 0.15),
+		LootDrop.create("headsmans_axe", 0.03),
 	]
 
 	monster.min_floor = 7
@@ -860,7 +866,10 @@ static func _create_boss_ironjaw() -> void:
 static func _create_boss_lich() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Nethris the Lich"
-	monster.max_hp = 140
+	monster.max_hp = 170
+	# Acts twice a round. A lone caster acting once a round against six
+	# adventurers fell over long before the floor 4 boss did.
+	monster.extra_actions = 1
 	monster.strength = 8
 	monster.agility = 12
 	monster.defense = 5
@@ -875,7 +884,7 @@ static func _create_boss_lich() -> void:
 	monster.exp_reward = 500
 	monster.gold_reward_dice = "8d10"
 
-	var soul_rend := MonsterAttack.create_magical("Soul Rend", "3d6", CharacterEnums.Element.DARK, 4)
+	var soul_rend := MonsterAttack.create_magical("Soul Rend", "4d6+2", CharacterEnums.Element.DARK, 4)
 
 	var death_touch := MonsterAttack.create_with_effect(
 		"Death Touch",
@@ -892,7 +901,7 @@ static func _create_boss_lich() -> void:
 
 	var wail := MonsterAttack.create_ability(
 		"Wail of Despair",
-		"1d6",
+		"2d6",
 		CharacterEnums.StatusEffect.AFRAID,
 		0.45,
 		"2+1d3",
@@ -948,6 +957,8 @@ static func _create_boss_drake() -> void:
 	var monster := Monster.new()
 	monster.monster_name = "Vrakthorne the Drake"
 	monster.max_hp = 260
+	# Acts twice a round, as befits the last thing in the dungeon.
+	monster.extra_actions = 1
 	monster.strength = 22
 	monster.agility = 12
 	monster.defense = 10

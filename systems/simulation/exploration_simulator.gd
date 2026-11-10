@@ -487,7 +487,8 @@ func _heal_between_combats(party: Party) -> Dictionary:
 			continue
 		var reserve := _get_mp_reserve(healer)
 
-		while true:
+		# Capped so a heal that can't land (a silenced healer, say) can't spin forever.
+		for _attempt in range(50):
 			var target := _find_most_hurt_member(party)
 			if target == null:
 				break
@@ -502,6 +503,8 @@ func _heal_between_combats(party: Party) -> Dictionary:
 			var result := SpellCaster.cast_spell(healer, spell, [target], false)
 			metrics.hp_restored += result.total_healing
 			metrics.mp_spent += result.mp_consumed
+			if result.mp_consumed <= 0 and result.total_healing <= 0:
+				break
 
 	var potion_result := _use_healing_potions(party)
 	metrics.hp_restored += potion_result.hp_restored

@@ -35,7 +35,7 @@ func populate() -> void:
 
 
 func get_info_suffix(item: Item) -> String:
-	return "\n\n[color=#%s]Sell: %d gold[/color]" % [UIColors.TEXT_HEALTHY.to_html(false), item.sell_price]
+	return "\n\n[color=#%s]Sell: %d gold[/color]" % [UIColors.TEXT_HEALTHY.to_html(false), Retirement.sell_price(item)]
 
 
 func get_help_text() -> String:
@@ -101,7 +101,7 @@ func _create_sell_button(index: int, item: Item, qty: int) -> Button:
 			"bg": Color(0.12, 0.22, 0.14) if selected else UIColors.SURFACE_SELECTED})
 	if qty > 1:
 		chips.append({"text": "×%d" % qty, "fg": UIColors.TEXT_SECONDARY, "bg": UIColors.SURFACE_SELECTED})
-	chips.append({"text": "%d g" % item.sell_price, "fg": UIColors.SUCCESS, "bg": UIColors.SURFACE_SELECTED})
+	chips.append({"text": "%d g" % Retirement.sell_price(item), "fg": UIColors.SUCCESS, "bg": UIColors.SURFACE_SELECTED})
 	var btn: Button = shop.make_item_row(item, chips, false)
 	btn.pressed.connect(_on_sell_item.bind(index, item))
 	return btn
@@ -114,8 +114,8 @@ func _on_sell_item(slot_index: int, item: Item) -> void:
 
 	var removed := GameState.party.inventory.remove_item(item.id, 1)
 	if removed > 0:
-		GameState.party.add_gold(item.sell_price)
-		shop.message_label.text = "Sold %s for %d gold." % [item.item_name, item.sell_price]
+		GameState.party.add_gold(Retirement.sell_price(item))
+		shop.message_label.text = "Sold %s for %d gold." % [item.item_name, Retirement.sell_price(item)]
 	else:
 		shop.message_label.text = "Failed to sell item."
 
@@ -149,7 +149,7 @@ func _sell_selected_items() -> void:
 		var item: Item = shop.displayed_items[idx]
 		var removed := GameState.party.inventory.remove_item(item.id, 1)
 		if removed > 0:
-			total_gold += item.sell_price
+			total_gold += Retirement.sell_price(item)
 			sold_count += 1
 
 	GameState.party.add_gold(total_gold)

@@ -28,3 +28,10 @@ them into `FloorThemes`, and trim this pool (it should not ship as-is).
 | `combat_slay_the_evil_hydrogene.ogg` | combat | 8-bit - Slay The Evil | HydroGene | CC0 | https://opengameart.org/content/8-bit-slay-the-evil |
 | `combat_junkala_level1.ogg` | combat | Level 1 (Retro Game Music Pack) | Juhani Junkala | CC0 | https://opengameart.org/content/5-chiptunes-action |
 | `boss_junkala_level3.ogg` | boss | Level 3 (Retro Game Music Pack) | Juhani Junkala | CC0 | https://opengameart.org/content/5-chiptunes-action |
+
+## Promoted out of the pool
+
+| File | Was | Title | Artist | License | Source |
+|------|-----|-------|--------|---------|--------|
+| `audio/music/music_town.ogg` | `town_hometown_junkala.ogg` | Town1 - Home Town (JRPG Pack 2) | Juhani Junkala | CC0 1.0 | https://archive.org/details/JuhaniJunkala-JRPGpack2Town |
+| `audio/music/music_boss.ogg` | `combat_evil_boss_kosmo.ogg` | Evil boss music | Kosmo The Cat | CC0 | https://opengameart.org/content/evil-boss-music |
