@@ -38,7 +38,7 @@ Every day spent below ages each party member according to the deepest floor reac
 | 7 | 7 months |
 | 8 | 10 months |
 
-The target is that a character who goes on every expedition of a full campaign ages about 35–45 years. That takes a 20-year-old human to the edge of Elder by the final fight. A Rawulf or Mook goes through their whole life, an elf ages a little, and dwarves and gnomes barely notice.
+The target is that a character who goes on every expedition of a full campaign ages about 15–25 years, so an average character lasts two to four campaigns. A human lasts two or three, a Rawulf or Mook about two, a hobbit four or five, and dwarves, gnomes and elves outlast everyone. The spread between races is intended: it's a large part of what makes race choice matter.
 
 The surface calendar keeps its current rules (days below, inn nights), so the date stays human-scaled and the ending can set the two side by side.
 
@@ -152,7 +152,7 @@ The short-lived races then need something to pay for it. Lean into the existing 
 
 Each step stands on its own as an improvement:
 
-1. **Deep time plus the homecoming report**, with ages shown on the cards. This alone makes aging visible and gives depth a cost. *Built.* Rough estimate from floor sizes (about 520 walkable tiles each, 120 steps a day): someone who goes on every expedition ages about 20 years over a campaign, short of the 35–45 target. Tune with real play data before raising the table.
+1. **Deep time plus the homecoming report**, with ages shown on the cards. This alone makes aging visible and gives depth a cost. *Built.* Rough estimate from floor sizes (about 520 walkable tiles each, 120 steps a day): someone who goes on every expedition ages about 20 years over a campaign, inside the 15–25 target. Confirm with a measured campaign.
 2. **Phase traits** (Veteran/Elder and Counsel), so aging is something to manage rather than a pure loss. *Built.*
 3. **Retirement posts and apprentices**, which make the roster a pipeline and give the town a history. *Built.* Retire from the guild hall's Roster tab. Retirees leave the party list for good, and the ending lists them under "Keeping the Town".
 4. **One Last Descent and the saga ending**. *Built.*
