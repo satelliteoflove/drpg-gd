@@ -40,6 +40,18 @@ Only one party is active at a time, but the guild can have several parties **out
 
 A party that isn't active is **frozen**, as in Wizardry. It doesn't move, fight or age until the player switches back to it. Only the active party's steps move the surface calendar and its own deep-time clock.
 
+Switching away from a party only pauses it. Its expedition hasn't ended, so nothing that happens at an expedition's end (the homecoming, a Legend passing on) is triggered by the switch.
+
+## Wipes and rescue
+
+A party wipe is always a major setback. The party stays where it fell, bodies and gear with it, and another party has to go down and bring them back.
+
+So a wipe can never lock the game, a rescue party must always be able to form and train. New recruits are always available at the guild hall, and the upper floors of every dungeon stay at their original difficulty (see above). A wiped party's gold and gear are below with it, which is one argument for a guild bank.
+
+## Gold: undecided
+
+Whether gold belongs to each character (Wizardry), to the party, or to the guild (Etrian Odyssey) is open, and wants a careful look at what each encourages. Per-character gold makes wipes cost more and gives pooling and the bank a purpose, at the price of bookkeeping on every shop screen. A shared pool is frictionless but means a wipe costs no gold at all. Today the party shares one pool.
+
 ## Collapse
 
 When a dungeon's master falls, the dungeon collapses. Every living party inside is cast out to town safely, along with any bodies they carry. Bodies still lying in the dungeon are **lost for good**. The collapse is always the player's choice, since it only happens when the master is defeated, so the game warns before the master's fight if anyone is still lying below.
