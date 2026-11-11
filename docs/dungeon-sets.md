@@ -4,7 +4,7 @@ A proposal for how the game's story is structured: several procedurally generate
 
 ## The shape
 
-The story is a **set of four dungeons** and a **fifth**. Each dungeon is generated fresh and goes down to a master. Defeating the master collapses that dungeon for good. When all four have collapsed, a condensed fifth dungeon appears. Defeating its master ends the story and shows the ending. After that the game goes on in free play: a new set of four appears, and the cycle starts again.
+The story is a **set of four dungeons** and a **fifth**. Each dungeon is generated fresh and goes down to a master. Defeating the master collapses that dungeon for good. When all four have collapsed, a fifth dungeon appears. Defeating its master ends the story and shows the ending. After that the game goes on in free play: a new set of four appears, and the cycle starts again.
 
 There are no campaigns with gaps between them. Time is continuous, and the unit of play is the dungeon run. The roster works the way it does in Wizardry: party members are interchangeable. Whoever is in the party goes down. Everyone else stays in town, working a job, training, earning a little, and aging slowly on the surface calendar.
 
@@ -26,9 +26,13 @@ Already done in support of this:
 
 ## The four and the fifth
 
-All four dungeons in a set are open at once, and the player clears them in whatever order they like. The four are alike in depth and difficulty, eight floors each, and differ in theme and master. That keeps them simple to build and leaves the choice of order to the player's taste rather than to strategy. A guild that has cleared three will find the fourth easier, and that's fine.
+All four dungeons in a set are open at once, and the player clears them in whatever order they like. The four start alike in depth and difficulty, eight floors each, and differ in theme and master. The choice of order is the player's.
 
-The fifth dungeon is **one great floor**: a single large level with the story's final master at its heart. It appears once all four have collapsed.
+**Each collapse makes the rest harder.** When a dungeon collapses, its evil energies pour into the ones that remain, and their monsters grow stronger. The town screen and the dungeon entrance say how many have collapsed, so the player always knows what they're walking into.
+
+**The energy pools in the deep.** *(Proposed, not yet agreed.)* The strengthening grows with depth. Floors 1 and 2 of every dungeon never change, the middle floors get part of it, and the bottom floors get all of it. That keeps veterans working where it matters while a party of new recruits always has somewhere safe to train, however many dungeons have fallen. Stronger monsters also give more XP, so a new party catches up faster on the middle floors than the first party did. Apprentices are the other way up.
+
+The fifth dungeon is **one great floor**: a single large level with the story's final master at its heart. It appears once all four have collapsed. This is tentative. Dungeon generation is due a rethink after this feature, and the fifth dungeon's shape, or whether it needs one of its own, will be decided then.
 
 ## More than one party
 
@@ -36,13 +40,11 @@ Only one party is active at a time, but the guild can have several parties **out
 
 A party that isn't active is **frozen**, as in Wizardry. It doesn't move, fight or age until the player switches back to it. Only the active party's steps move the surface calendar and its own deep-time clock.
 
-## Gold and the guild bank
-
-Each character carries their own purse, as in Wizardry. The guild also keeps a **bank**, a communal store of gold and items that anyone can draw on in town. Today the party shares one pool of gold, so this replaces that.
-
 ## Collapse
 
-When a dungeon's master falls, the dungeon collapses. Everyone inside is cast out to town safely: the victorious party, any other parties in that dungeon, and any bodies they carry. Nothing is lost to the collapse except the dungeon itself, which disappears from the town's list along with its maps, seals and remaining loot.
+When a dungeon's master falls, the dungeon collapses. Every living party inside is cast out to town safely, along with any bodies they carry. Bodies still lying in the dungeon are **lost for good**. The collapse is always the player's choice, since it only happens when the master is defeated, so the game warns before the master's fight if anyone is still lying below.
+
+Each collapse gets a short card: which dungeon fell, who was there, and what it means for the dungeons that remain. The full saga waits for the story's ending.
 
 ## Masters and art
 
@@ -60,8 +62,9 @@ Deep time on the great floor runs gentler than on the deep floors, so the final 
 
 ## Build order
 
-1. **Collapse and the set.** Four dungeons open at once, collapse when a master falls, the great floor, the story ending, and a new set after. Masters start as placeholders or tinted copies.
-2. **Parties out.** Several parties out at once, switching between them, frozen while inactive.
-3. **Purses and the bank.** Per-character gold and the guild bank.
-4. **Later sets.** Tiers for free play.
-5. **The chronicle.** The saga covers every dungeon so far, and the guild hall keeps a record of collapsed dungeons and Legends.
+1. **The data model.** Per-dungeon state (floors, seals, masters, step clock) and per-party state (where it is, whether it's out), in the save format from the start, even while the UI still drives one party.
+2. **Collapse and the set.** Four dungeons open at once, collapse when a master falls, strengthening of the rest, the fifth dungeon, the story ending, and a new set after. Masters start as placeholders or tinted copies.
+3. **Parties out.** Several parties out at once, switching between them, wipes that leave the party below, and rescue.
+4. **Gold.** Once decided.
+5. **Later sets.** Tiers for free play.
+6. **The chronicle.** The saga covers every dungeon so far, and the guild hall keeps a record of collapsed dungeons and Legends.
