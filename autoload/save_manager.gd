@@ -222,7 +222,7 @@ func _apply_save_data(data) -> void:
 		_deduplicate_inventory_items(GameState.party.inventory)
 
 	GameState.current_floor = data.current_floor
-	GameState.dungeon_floors.clear()
+	GameState.dungeon_set = DungeonSet.create_single()
 	for floor_num in data.dungeon_floors.keys():
 		var dungeon_data = data.dungeon_floors[floor_num]
 		if dungeon_data:

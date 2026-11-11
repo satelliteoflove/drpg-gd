@@ -23,7 +23,12 @@ var debug_verbose: bool = false
 var party: Party = null
 var roster: CharacterRoster = null
 var party_formations: Array[PartyFormation] = []
-var dungeon_floors: Dictionary = {}
+## The dungeons open to the guild. Until sets are built out there is one.
+var dungeon_set: DungeonSet = null
+## Views onto the active dungeon, kept so older code reads as before.
+var dungeon_floors: Dictionary:
+	get: return active_dungeon().floors
+	set(value): active_dungeon().floors = value
 var dungeon_spawn_at_stairs_up: bool = true
 var current_encounter: Dictionary = {}
 var dungeon_player_position: Vector2i = Vector2i.ZERO
@@ -32,17 +37,26 @@ var returning_from_combat: bool = false
 var combat_speed: int = 5
 var game_day: int = 1
 var floor_tracker: FloorTracker = null
-## Floor numbers whose boss has been slain. Slain bosses stay dead.
-var bosses_slain: Array[int] = []
+var bosses_slain: Array[int]:
+	get: return active_dungeon().bosses_slain
+	set(value): active_dungeon().bosses_slain.assign(value)
 ## Game day the final boss fell, or 0 if the game hasn't been won yet.
 var victory_day: int = 0
-## Deepest floor any party has set foot on.
-var deepest_floor: int = 0
+var deepest_floor: int:
+	get: return active_dungeon().deepest_floor
+	set(value): active_dungeon().deepest_floor = value
 ## Whether the opening premise has been shown for this campaign.
 var intro_seen: bool = true
 ## What the last trip below did to the party, for the town to show once.
 ## Empty when there's nothing to report. Not saved.
 var pending_homecoming: Dictionary = {}
+
+
+## The dungeon the active party is in, or would enter from town.
+func active_dungeon() -> Dungeon:
+	if dungeon_set == null:
+		dungeon_set = DungeonSet.create_single()
+	return dungeon_set.dungeons[0]
 
 
 func clear_dungeon_floors() -> void:
@@ -112,13 +126,11 @@ func new_game() -> void:
 	floor_tracker = FloorTracker.new()
 	RelationshipManager.clear()
 	EventManager.clear()
-	dungeon_floors.clear()
+	dungeon_set = DungeonSet.create_single()
 	current_floor = 1
 	current_encounter = {}
 	game_day = 1
-	bosses_slain = []
 	victory_day = 0
-	deepest_floor = 0
 	intro_seen = false
 	pending_homecoming = {}
 	_populate_starter_roster()
@@ -239,7 +251,7 @@ func _clear_combat_only_statuses(character: Resource) -> void:
 
 
 func is_boss_slain(floor_num: int) -> bool:
-	return bosses_slain.has(floor_num)
+	return active_dungeon().is_boss_slain(floor_num)
 
 
 ## Records a boss kill. Returns true if this kill wins the game.
