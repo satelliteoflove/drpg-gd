@@ -125,13 +125,16 @@ A character belongs to at most one party. The guild hall's available list leaves
 
 **Gold stays as it is for now.** All spending already goes through `Party.has_gold`, `spend_gold` and `add_gold`, so when the gold question is settled only those change. Until then gold and scrap are one guild-wide pool that those methods read, which is today's behaviour with one party. Items belong to the party carrying them.
 
+One option to weigh (*proposed*): the guild's gold is communal in town, but gold found below is carried by the party that found it and only joins the guild's pool when they walk back into town. A lost party then lies there with its takings and its loot, worth going back for, without per-character purses on every shop screen.
+
 ### The calendar
 
 Today the surface calendar only moves when a party comes home, which breaks once parties can be paused below. Instead:
 
 - The surface calendar advances as the active party walks, a day per 120 steps, and at the inn as now.
 - A surface day ages everyone in town and the active party by one day. Members of paused and wiped parties are skipped. They're frozen.
-- Deep time still settles at homecoming: the party's accrued deep days, less the surface days they've already aged through.
+- Deep time is applied as it accrues too. Each surface day the active party walks below, its members age by that day's deep time for the floors they walked, so characters gray, change phase and gain or lose traits in the dungeon itself. The homecoming report becomes a summary of what the trip cost, not the moment it's charged.
+- Death of old age still only happens on reaching town, never below.
 
 ### GameState as a view
 
