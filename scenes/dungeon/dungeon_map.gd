@@ -13,6 +13,7 @@ const COLOR_DOOR_OPEN := Color(0.5, 0.35, 0.15, 0.4)
 const COLOR_DOOR_LOCKED := Color(0.7, 0.15, 0.15)
 const COLOR_STAIRS_UP := Color(0.2, 0.6, 0.2)
 const COLOR_STAIRS_DOWN := Color(0.6, 0.2, 0.2)
+const COLOR_FALLEN := Color(0.95, 0.85, 0.55)
 const COLOR_PLAYER := Color(1.0, 1.0, 0.0)
 const COLOR_UNDISCOVERED := Color(0.05, 0.05, 0.05)
 const COLOR_BACKGROUND := Color(0.04, 0.035, 0.06, 0.93)
@@ -180,6 +181,7 @@ func _draw() -> void:
 
 	_draw_zone_overlays(offset_x, offset_y)
 	_draw_enemies(offset_x, offset_y)
+	_draw_fallen(offset_x, offset_y)
 	_draw_player(offset_x, offset_y)
 	_draw_legend(screen_size)
 
@@ -232,6 +234,18 @@ func _get_wall_color(tile: DungeonTile, direction: String) -> Color:
 			return COLOR_DOOR_OPEN
 		return COLOR_DOOR
 	return COLOR_WALL
+
+
+## Where a dead party lies on this floor. The guild knows where they fell,
+## so it shows whether or not that tile has been seen.
+func _draw_fallen(offset_x: float, offset_y: float) -> void:
+	for fallen in GameState.fallen_parties_on(GameState.current_floor):
+		var center := Vector2(
+			offset_x + fallen.position.x * TILE_SIZE + TILE_SIZE / 2.0,
+			offset_y + fallen.position.y * TILE_SIZE + TILE_SIZE / 2.0)
+		var arm := TILE_SIZE * 0.35
+		draw_line(center + Vector2(-arm, -arm), center + Vector2(arm, arm), COLOR_FALLEN, 2.0)
+		draw_line(center + Vector2(-arm, arm), center + Vector2(arm, -arm), COLOR_FALLEN, 2.0)
 
 
 func _draw_player(offset_x: float, offset_y: float) -> void:
@@ -288,6 +302,7 @@ func _draw_legend(screen_size: Vector2) -> void:
 		{"color": COLOR_STAIRS_UP, "label": "Stairs Up"},
 		{"color": COLOR_STAIRS_DOWN, "label": "Stairs Down"},
 		{"color": COLOR_PLAYER, "label": "You"},
+		{"color": COLOR_FALLEN, "label": "Fallen Party"},
 		{"color": COLOR_ENEMY_LOS, "label": "Enemy (Visible)"},
 		{"color": COLOR_ENEMY_SPOTTED, "label": "Enemy (Tracked)"},
 		{"color": COLOR_LEGEND_ZONE_SAFE, "label": "Zone: Safe"},

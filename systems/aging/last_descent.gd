@@ -12,7 +12,7 @@ const STAT_BONUS := 2
 
 
 static func can_declare(c: Character) -> bool:
-	return AgeTraits.is_elder(c) and not c.is_dead and not c.last_descent \
+	return AgeTraits.is_elder(c) and not c.is_dead and not GameState.is_away(c) and not c.last_descent \
 		and not c.has_left_service() and not c.is_training() \
 		and not c.has_status(CharacterEnums.StatusEffect.LOST)
 

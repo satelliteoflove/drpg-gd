@@ -104,6 +104,41 @@ func go_to_ending() -> void:
 	change_scene("ending")
 
 
+## The active party has been wiped out. It stays where it fell, with its
+## gear, and the player is back in town to send someone after it.
+func party_fell() -> void:
+	var fallen := GameState.party
+	var names: Array[String] = []
+	for member in fallen.get_members():
+		names.append(member.character_name)
+	GameState.pending_wipe = {
+		"names": names, "where": GameState.party_whereabouts(fallen).trim_prefix("lying dead in "),
+	}
+	GameState.leave_party_below()
+	GameState.set_mode(GameState.GameMode.TOWN)
+	SaveManager.autosave()
+	change_scene("town")
+
+
+## The active party makes camp below and the player turns to another party.
+func camp_party() -> void:
+	GameState.leave_party_below()
+	GameState.set_mode(GameState.GameMode.TOWN)
+	SaveManager.autosave()
+	change_scene("town")
+
+
+## Turns the player's attention to [param p]: back into the dungeon where it
+## camped, or to the guild hall's party if it's in town.
+func switch_to_party(p: Party) -> void:
+	GameState.set_active_party(p)
+	if p.is_out():
+		GameState.resume_at_position = true
+		go_to_dungeon(p.floor_num, p.spawn_at_stairs_up)
+	else:
+		go_to_town()
+
+
 ## Applies the time an expedition took, once, when the party leaves the
 ## dungeon by any route.
 func _settle_expedition() -> void:

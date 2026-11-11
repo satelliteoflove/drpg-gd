@@ -87,14 +87,14 @@ static func note_for(place: String) -> String:
 
 
 static func can_retire(c: Character) -> bool:
-	return AgeTraits.is_veteran(c) and not c.is_dead and not c.has_left_service() \
+	return AgeTraits.is_veteran(c) and not c.is_dead and not GameState.is_away(c) and not c.has_left_service() \
 		and not c.last_descent and not c.is_training() and not c.has_status(CharacterEnums.StatusEffect.LOST)
 
 
 static func apprentice_candidates(mentor: Character) -> Array[Character]:
 	var out: Array[Character] = []
 	for c in GameState.roster.get_all():
-		if c == mentor or c.is_dead or c.has_left_service() or c.last_descent or c.is_training():
+		if c == mentor or c.is_dead or GameState.is_away(c) or c.has_left_service() or c.last_descent or c.is_training():
 			continue
 		if c.has_status(CharacterEnums.StatusEffect.LOST):
 			continue

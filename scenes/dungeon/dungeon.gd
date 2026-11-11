@@ -253,6 +253,13 @@ func _build_nav_buttons() -> void:
 	town_btn.pressed.connect(_on_town_pressed)
 	row.add_child(town_btn)
 
+	var camp_btn := Button.new()
+	camp_btn.text = "Camp (C)"
+	camp_btn.tooltip_text = "Leave this party here and turn to another. They wait, frozen, until you return."
+	camp_btn.focus_mode = Control.FOCUS_NONE
+	camp_btn.pressed.connect(_on_camp_pressed)
+	row.add_child(camp_btn)
+
 
 func _build_vitals_strip() -> void:
 	_vitals_strip = PartyVitalsStrip.new()
@@ -805,16 +812,59 @@ func _update_enemy_door_visuals() -> void:
 
 
 func _spawn_player() -> void:
-	if GameState.dungeon_spawn_at_stairs_up:
+	if GameState.resume_at_position and dungeon_data.is_walkable(GameState.dungeon_player_position.x, GameState.dungeon_player_position.y):
+		grid_position = GameState.dungeon_player_position
+		facing = GameState.dungeon_player_facing as Facing
+	elif GameState.dungeon_spawn_at_stairs_up:
 		grid_position = dungeon_data.stairs_up_pos
 		facing = Facing.SOUTH
 	else:
 		grid_position = dungeon_data.stairs_down_pos
 		facing = Facing.NORTH
 
+	GameState.resume_at_position = false
+	GameState.dungeon_player_position = grid_position
+	GameState.dungeon_player_facing = facing
 	previous_grid_position = grid_position
 	movement.update_camera_transform()
 	_mark_current_tile_discovered()
+	_announce_fallen.call_deferred()
+
+
+## Tells the party about anyone lying dead on this floor, and warns before a
+## master's fight that the collapse will take whoever is still below.
+func _announce_fallen() -> void:
+	var here := GameState.active_dungeon()
+	var lines: Array[String] = []
+	for fallen in GameState.fallen_parties_on(GameState.current_floor):
+		lines.append("%s lies dead somewhere on this floor. Find them to bring them home." % GameState.party_label(fallen))
+	if GameState.current_floor >= here.depth:
+		var below := GameState.bodies_below(here)
+		if not below.is_empty():
+			lines.append("If this dungeon's master falls, the dungeon falls with it, and %s will be lost for good." % ", ".join(below))
+	if not lines.is_empty():
+		_show_dungeon_message(" ".join(lines))
+
+
+## Gathers up any fallen party lying where the party now stands.
+func _recover_fallen_here() -> void:
+	for fallen in GameState.fallen_parties_on(GameState.current_floor):
+		if fallen.position != grid_position:
+			continue
+		var result := GameState.recover_fallen(fallen)
+		var recovered: Array = result["recovered"]
+		var text := ""
+		if recovered.is_empty():
+			text = "The dead lie here, but there's no room in the party to carry anyone."
+		else:
+			text = "The party gathers up %s." % ", ".join(recovered)
+			if result["gold"] > 0:
+				text += " They had %d gold on them." % result["gold"]
+			if result["left"] > 0:
+				text += " %d more will have to wait for another trip." % result["left"]
+		_show_dungeon_message(text)
+		if _vitals_strip:
+			_vitals_strip.refresh()
 
 
 func _initialize_enemy_system() -> void:
@@ -1018,6 +1068,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_open_map()
 	elif event.is_action_pressed("go_to_town"):
 		_on_town_pressed()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C \
+			and not event.shift_pressed and not event.ctrl_pressed:
+		_on_camp_pressed()
 	elif not OS.is_debug_build():
 		return
 	# Debug-only keys below; release builds stop at the line above.
@@ -1284,6 +1337,13 @@ func _check_held_movement() -> void:
 		movement.turn_right()
 
 
+## Leaves the party here and returns the player to town to drive another.
+func _on_camp_pressed() -> void:
+	if combat_open or menu_open or map_open or event_open or is_moving:
+		return
+	SceneManager.camp_party()
+
+
 ## Returning to town from the depths costs a Recall Stone. Walking out up the
 ## floor 1 stairs is always free.
 func _on_town_pressed() -> void:
@@ -1302,6 +1362,13 @@ func _process_enemy_turn() -> void:
 	if enemy_manager == null:
 		return
 
+	if GameState.party.is_wiped():
+		SceneManager.party_fell()
+		return
+	GameState.dungeon_player_position = grid_position
+	GameState.dungeon_player_facing = facing
+	# Deferred so its message isn't replaced by this step's other messages.
+	_recover_fallen_here.call_deferred()
 	var combat_group := enemy_manager.on_player_move(grid_position, facing)
 	GameState.tick_expedition()
 	_rebuild_group_lookup()
@@ -1364,7 +1431,10 @@ func _on_combat_closed(victory: bool) -> void:
 					all_dead = false
 					break
 		if all_dead:
-			SceneManager.go_to_town()
+			# They lie where they stood before the fight, where another
+			# party can reach them.
+			GameState.dungeon_player_position = previous_grid_position
+			SceneManager.party_fell()
 		else:
 			grid_position = previous_grid_position
 			movement.update_camera_transform()

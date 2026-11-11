@@ -748,7 +748,7 @@ func _finish_exit_combat(victory: bool) -> void:
 					all_dead = false
 					break
 			if all_dead:
-				SceneManager.go_to_town()
+				SceneManager.party_fell()
 			else:
 				SceneManager.go_to_dungeon()
 

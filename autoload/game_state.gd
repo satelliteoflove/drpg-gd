@@ -416,6 +416,123 @@ func get_boss_floors() -> Array[int]:
 	return floors
 
 
+# --- Several parties ---------------------------------------------------------------
+
+## Set when the dungeon should put the active party back where it stood
+## (resuming a camped party, or a save made below) instead of at the stairs.
+var resume_at_position: bool = false
+## A wipe for the town to report once: {names, dungeon, floor}. Not saved.
+var pending_wipe: Dictionary = {}
+
+
+## Makes [param p], which the guild already has, the party the player drives.
+func set_active_party(p: Party) -> void:
+	if parties.has(p):
+		_active_party = p
+		_prune_empty_parties()
+
+
+## Leaves the active party where it stands below, camped or dead, and puts
+## the player in town with another party. The party left behind is frozen:
+## it doesn't move, fight or age until someone returns to it or fetches it.
+func leave_party_below() -> void:
+	tick_expedition()
+	var town_party: Party = null
+	for p in parties:
+		if p != _active_party and not p.is_out() and (town_party == null or town_party.is_empty()):
+			town_party = p
+	if town_party == null:
+		town_party = Party.new()
+		town_party.id = _new_party_id()
+		parties.append(town_party)
+	_active_party = town_party
+	_prune_empty_parties()
+
+
+func _prune_empty_parties() -> void:
+	for p in parties.duplicate():
+		if p != _active_party and p.is_empty() and not p.is_out():
+			parties.erase(p)
+
+
+## Parties other than the active one that the player could switch to.
+func other_parties() -> Array[Party]:
+	var result: Array[Party] = []
+	for p in parties:
+		if p != _active_party and not p.is_empty():
+			result.append(p)
+	return result
+
+
+## "Roland's party", or the party's own name if it has one.
+func party_label(p: Party) -> String:
+	if not p.party_name.is_empty():
+		return p.party_name
+	if p.is_empty():
+		return "An empty party"
+	return "%s's party" % p.get_members()[0].character_name
+
+
+## Where a party is, in words.
+func party_whereabouts(p: Party) -> String:
+	if not p.is_out():
+		return "in town"
+	var dungeon := dungeon_set.get_dungeon(p.dungeon_id)
+	var place := dungeon.dungeon_name if dungeon else "a dungeon"
+	if dungeon and not dungeon.is_final:
+		place += ", floor %d" % p.floor_num
+	return ("lying dead in %s" if p.is_wiped() else "camped in %s") % place
+
+
+## Dead parties lying on [param floor_num] of the active party's dungeon.
+func fallen_parties_on(floor_num: int) -> Array[Party]:
+	var result: Array[Party] = []
+	if _active_party == null or not _active_party.is_out():
+		return result
+	for p in parties:
+		if p != _active_party and p.is_wiped() and p.dungeon_id == _active_party.dungeon_id \
+				and p.floor_num == floor_num:
+			result.append(p)
+	return result
+
+
+## The active party gathers up a fallen one: as many bodies as it has room
+## for, then their gold and whatever of their gear fits. Returns {recovered:
+## [names], left: count, gold: amount}. A party with no bodies left is gone.
+func recover_fallen(fallen: Party) -> Dictionary:
+	var recovered: Array[String] = []
+	for member in fallen.get_members().duplicate():
+		if party.is_full():
+			break
+		fallen.remove_member(member.id)
+		party.add_member(member)
+		recovered.append(member.character_name)
+	var gold := fallen.carried_gold
+	party.add_gold(gold)
+	fallen.carried_gold = 0
+	if fallen.inventory and party.inventory:
+		var slots := fallen.inventory.slots
+		for i in range(slots.size() - 1, -1, -1):
+			var item: Item = slots[i].get("item")
+			if item == null:
+				continue
+			var remaining := party.inventory.add_item(item, slots[i].get("quantity", 1))
+			if remaining <= 0:
+				slots.remove_at(i)
+			else:
+				slots[i]["quantity"] = remaining
+	var left := fallen.size()
+	if left == 0:
+		parties.erase(fallen)
+	return {"recovered": recovered, "left": left, "gold": gold}
+
+
+## Whether [param character] is below with a party the player isn't driving.
+func is_away(character: Character) -> bool:
+	var their_party := party_of(character)
+	return their_party != null and their_party != _active_party and their_party.is_out()
+
+
 ## Starts an expedition: the active party leaves town for a dungeon.
 func begin_expedition() -> void:
 	var dungeon := active_dungeon()

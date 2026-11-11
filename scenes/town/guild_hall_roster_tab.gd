@@ -194,6 +194,10 @@ func _char_row(character: Character) -> MenuListRow:
 func _status_chip(c: Character) -> Dictionary:
 	if c.is_legend():
 		return {"text": "LEGEND", "fg": UIColors.TITLE_GOLD, "bg": Color(0.22, 0.17, 0.06)}
+	if GameState.is_away(c):
+		var fallen := GameState.party_of(c).is_wiped()
+		return {"text": "FALLEN BELOW" if fallen else "CAMPED BELOW",
+			"fg": UIColors.TEXT_DANGER if fallen else UIColors.TEXT_IN_PARTY, "bg": UIColors.SURFACE_SELECTED}
 	if c.has_status(CharacterEnums.StatusEffect.LOST):
 		return {"text": "LOST", "fg": UIColors.TEXT_LOST, "bg": Color(0.20, 0.08, 0.08)}
 	if c.is_dead:
@@ -206,7 +210,7 @@ func _status_chip(c: Character) -> Dictionary:
 		return {"text": "TRAINING %d/%d" % [e, c.get_training_total()], "fg": UIColors.TEXT_WARNING, "bg": UIColors.SURFACE_SELECTED}
 	if c.last_descent:
 		return {"text": "LAST DESCENT", "fg": UIColors.TITLE_GOLD, "bg": UIColors.SURFACE_SELECTED}
-	if GameState.party.has_member(c):
+	if GameState.party_of(c) != null:
 		return {"text": "IN PARTY", "fg": UIColors.TEXT_IN_PARTY, "bg": UIColors.SURFACE_SELECTED}
 	if c.town_job >= 0:
 		return {"text": TownJobs.get_job_name(c.town_job).to_upper(), "fg": UIColors.INFO, "bg": UIColors.SURFACE_SELECTED}
@@ -237,7 +241,7 @@ func _populate_manage_actions() -> void:
 	reclass_btn.text = "Change Class"
 	reclass_btn.custom_minimum_size = Vector2(350, 36)
 	reclass_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	if selected_character.has_left_service():
+	if selected_character.has_left_service() or GameState.is_away(selected_character):
 		reclass_btn.disabled = true
 		reclass_btn.modulate = UIColors.MODULATE_DISABLED
 	else:
@@ -250,7 +254,7 @@ func _populate_manage_actions() -> void:
 	job_btn.custom_minimum_size = Vector2(350, 36)
 	job_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if selected_character.is_dead or selected_character.is_training() or selected_character.has_left_service() \
-			or GameState.party.has_member(selected_character):
+			or GameState.party_of(selected_character) != null:
 		job_btn.disabled = true
 		job_btn.modulate = UIColors.MODULATE_DISABLED
 	else:
@@ -495,8 +499,9 @@ func _on_delete_confirmed() -> void:
 		_on_roster_mode_back()
 		return
 
-	if GameState.party.has_member(selected_character):
-		GameState.party.remove_member(selected_character.id)
+	var their_party := GameState.party_of(selected_character)
+	if their_party:
+		their_party.remove_member(selected_character.id)
 
 	GameState.roster.remove_character(selected_character.id)
 	message_changed.emit("%s has been deleted." % selected_character.character_name)

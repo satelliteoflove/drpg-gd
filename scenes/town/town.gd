@@ -16,6 +16,9 @@ const DESTS: Array = [
 		"debug_only": true},
 	{"id": "dungeon", "badge": RuneBadge.Kind.CHEVRON_DOWN, "name": "Enter Dungeon",
 		"desc": "Descend into the depths", "needs_party": true, "primary": true},
+	{"id": "parties", "badge": RuneBadge.Kind.PENTAGON, "name": "Parties",
+		"desc": "Turn to another party, in town or below", "needs_party": false,
+		"needs_others": true},
 	{"id": "menu", "badge": RuneBadge.Kind.ARCH, "name": "Main Menu",
 		"desc": "Return to the title screen", "needs_party": false},
 ]
@@ -44,6 +47,9 @@ func _ready() -> void:
 	GameState.pending_homecoming = {}
 	if not GameState.intro_seen:
 		_show_intro()
+	elif not GameState.pending_wipe.is_empty():
+		_show_wipe(GameState.pending_wipe)
+		GameState.pending_wipe = {}
 	elif not GameState.pending_collapse.is_empty():
 		_show_collapse(GameState.pending_collapse)
 		GameState.pending_collapse = {}
@@ -134,6 +140,52 @@ func _show_collapse(report: Dictionary) -> void:
 	note_label.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
 	col.add_child(note_label)
 	_add_modal_button(col, "Continue", _show_homecoming_if_due)
+
+
+## The party is dead below, and someone has to go and get them.
+func _show_wipe(report: Dictionary) -> void:
+	var col := _open_modal("The Party Has Fallen")
+	var names: Array = report.get("names", [])
+	col.add_child(_modal_paragraph("%s didn't come back. They lie in %s, with everything they carried." % [
+		", ".join(names), report.get("where", "the dungeon")]))
+	var p := _modal_paragraph("They can still be brought home. Gather another party at the Guild Hall, find where they fell, and carry them up to the Temple. But if that dungeon's master is slain while they lie there, the collapse will take them for good.")
+	p.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
+	col.add_child(p)
+	_add_modal_button(col, "Continue")
+
+
+## Lets the player turn to another of the guild's parties.
+func _show_party_picker() -> void:
+	var col := _open_modal("Parties")
+	col.add_child(_modal_paragraph("You're with %s, in town. A party you leave waits as it is until you return to it." % GameState.party_label(GameState.party)
+		if not GameState.party.is_empty() else "No party is gathered in town."))
+	_choice_buttons.clear()
+	for p in GameState.other_parties():
+		var button := Button.new()
+		button.text = "%s   ·   %s" % [GameState.party_label(p), GameState.party_whereabouts(p)]
+		button.custom_minimum_size = Vector2(520, 44)
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		if p.is_wiped():
+			button.disabled = true
+			button.tooltip_text = "Another party has to find them."
+		else:
+			button.pressed.connect(_on_party_picked.bind(p))
+		col.add_child(button)
+		_choice_buttons.append(button)
+	var cancel := Button.new()
+	cancel.text = "Stay"
+	cancel.custom_minimum_size = Vector2(200, 40)
+	cancel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	cancel.pressed.connect(_close_modal)
+	col.add_child(cancel)
+	_choice_buttons.append(cancel)
+	_choice_nav = MenuNavigator.new()
+	_choice_nav.setup(_choice_buttons, 0)
+
+
+func _on_party_picked(p: Party) -> void:
+	_close_modal()
+	SceneManager.switch_to_party(p)
 
 
 ## Lets the player pick which dungeon to enter.
@@ -390,6 +442,8 @@ func _build_rows() -> void:
 		# refight bosses, so it stays out of release builds.
 		if d.get("debug_only", false) and not OS.is_debug_build():
 			continue
+		if d.get("needs_others", false) and GameState.other_parties().is_empty():
+			continue
 		if d.get("primary", false):
 			var gap := Control.new()
 			gap.custom_minimum_size = Vector2(0, 10)
@@ -461,6 +515,7 @@ func _on_dest(id: String) -> void:
 		"temple": SceneManager.go_to_temple()
 		"autoexplore": SceneManager.go_to_autoexplore()
 		"dungeon": _show_dungeon_picker()
+		"parties": _show_party_picker()
 		"menu": SceneManager.go_to_main_menu()
 
 

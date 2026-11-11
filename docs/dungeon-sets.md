@@ -42,11 +42,15 @@ Only one party is active at a time, but the guild can have several parties **out
 
 A party that isn't active is **frozen**, as in Wizardry. It doesn't move, fight or age until the player switches back to it. Only the active party's steps move the surface calendar and its own deep-time clock.
 
+As built: a party below can **Camp** (C), which leaves it where it stands and returns the player to town. The town's Parties entry lists the guild's other parties and where they are, and picking one puts the player back with it, at the spot it camped. Continuing a save made below also resumes below. The guild hall won't offer anyone who's already in a party, and the roster marks who is camped or fallen below.
+
 Switching away from a party only pauses it. Its expedition hasn't ended, so nothing that happens at an expedition's end (the homecoming, a Legend passing on) is triggered by the switch.
 
 ## Wipes and rescue
 
 A party wipe is always a major setback. The party stays where it fell, bodies and gear with it, and another party has to go down and bring them back.
+
+As built: the town reports the wipe and where they lie. When another party reaches that floor it's told they're there, and the map marks the spot. Walking onto it gathers up as many bodies as the party has room for, with their gold and whatever of their gear fits. Anyone left waits for another trip. On a master's floor the game warns that the collapse will take whoever still lies below.
 
 So a wipe can never lock the game, a rescue party must always be able to form and train. New recruits are always available at the guild hall, and the upper floors of every dungeon stay at their original difficulty (see above). A wiped party's gold and gear are below with it, which is one argument for a guild bank.
 
@@ -167,7 +171,7 @@ After that, the set, collapse and parties-out are features built on a model that
 
 1. **The data model.** *Built.* Per-dungeon state (floors, seals, masters, step clock) and per-party state (where it is, whether it's out), in the save format from the start, even while the UI still drives one party.
 2. **Collapse and the set.** *Built.* Four dungeons open at once, collapse when a master falls, strengthening of the rest, the fifth dungeon, the story ending, and a new set after. Masters start as placeholders or tinted copies.
-3. **Parties out.** Several parties out at once, switching between them, wipes that leave the party below, and rescue.
+3. **Parties out.** *Built.* Several parties out at once, switching between them, wipes that leave the party below, and rescue.
 4. **Gold.** *Built*, as carried gold.
 5. **Later sets.** Tiers for free play.
 6. **The chronicle.** The saga covers every dungeon so far, and the guild hall keeps a record of collapsed dungeons and Legends.
