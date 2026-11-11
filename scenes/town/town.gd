@@ -40,11 +40,25 @@ func _ready() -> void:
 	_update_states()
 	_setup_navigation()
 	_setup_date_display()
+	_homecoming = GameState.pending_homecoming
+	GameState.pending_homecoming = {}
 	if not GameState.intro_seen:
 		_show_intro()
-	elif _homecoming_worth_showing(GameState.pending_homecoming):
-		_show_homecoming(GameState.pending_homecoming)
-	GameState.pending_homecoming = {}
+	elif not GameState.pending_collapse.is_empty():
+		_show_collapse(GameState.pending_collapse)
+		GameState.pending_collapse = {}
+	else:
+		_show_homecoming_if_due()
+
+
+## The last trip's report, held while a collapse card is up.
+var _homecoming: Dictionary = {}
+
+
+func _show_homecoming_if_due() -> void:
+	if _homecoming_worth_showing(_homecoming):
+		_show_homecoming.call_deferred(_homecoming)
+	_homecoming = {}
 
 
 ## One line under the title that keeps the campaign goal in view.
@@ -63,40 +77,111 @@ func _build_quest_strip() -> void:
 
 
 func _quest_text() -> String:
-	var final_boss := MonsterDatabase.get_boss_for_floor(GameState.FINAL_FLOOR)
-	var final_name := final_boss.monster_name if final_boss else "the master of the depths"
+	var dungeon_set := GameState.dungeon_set
+	var total := dungeon_set.dungeons.size()
+	var fallen := dungeon_set.collapsed_count()
+	var text := ""
+	if dungeon_set.final_dungeon and not dungeon_set.final_dungeon.is_collapsed():
+		text = "All %d dungeons have collapsed  ·  %s has opened" % [total, dungeon_set.final_dungeon.dungeon_name]
+	elif fallen == 0:
+		text = "%d dungeons stand  ·  Slay each one's master to bring it down" % total
+	else:
+		text = "%d of %d dungeons collapsed  ·  Their power has gathered in the rest" % [fallen, total]
 	if GameState.has_won():
-		return "%s was slain on %s" % [final_name, GameCalendar.format_date(GameState.victory_day)]
-	var boss_floors := GameState.get_boss_floors()
-	var slain := 0
-	for f in boss_floors:
-		if GameState.is_boss_slain(f):
-			slain += 1
-	var deepest := "Not yet entered" if GameState.deepest_floor <= 0 \
-		else "Deepest floor %d of %d" % [GameState.deepest_floor, GameState.FINAL_FLOOR]
-	return "Slay %s  ·  %s  ·  Guardians slain %d of %d" % [
-		final_name.get_slice(" ", 0), deepest, slain, boss_floors.size()]
+		text += "  ·  Set %d" % dungeon_set.set_number
+	return text
 
 
 ## The opening premise, shown once per campaign on first arrival in town.
 func _show_intro() -> void:
-	var final_boss := MonsterDatabase.get_boss_for_floor(GameState.FINAL_FLOOR)
-	var final_name := final_boss.monster_name if final_boss else "a drake"
-	var floors: Array[String] = []
-	for f in GameState.get_boss_floors():
-		floors.append(str(f))
-	var floor_list := ", ".join(floors.slice(0, -1)) + " and " + floors[-1] if floors.size() > 1 \
-		else ", ".join(floors)
+	var dungeon_set := GameState.dungeon_set
+	var names: Array[String] = []
+	for d in dungeon_set.dungeons:
+		names.append(d.dungeon_name)
+	var name_list := ", ".join(names.slice(0, -1)) + " and " + names[-1]
 
 	var col := _open_modal("The Guild Charter")
 	var paragraphs: Array[String] = [
-		"Beneath the town lies a dungeon %d floors deep. In its lowest chamber sleeps %s, and for as long as anyone can remember its servants have crept up through the halls above." % [GameState.FINAL_FLOOR, final_name],
-		"The council has chartered your guild to end it. Six adventurers have already signed on. Outfit them at the Shop, rest them at the Inn, and go below. Guardians wait on floors %s, and the last of them is the drake itself." % floor_list,
+		"%d dungeons have opened beneath the town: %s. Each goes down %d floors, and at the bottom of each a master sleeps, whose servants creep up through the halls above." % [
+			names.size(), name_list, dungeon_set.dungeons[0].depth],
+		"The council has chartered your guild to end them. Six adventurers have already signed on. Outfit them at the Shop, rest them at the Inn, and go below, into whichever dungeon you choose. Guardians seal the stairs on the way down. Slay a master and its dungeon collapses, but its power pours into the dungeons that remain, deepest first.",
 		"One more thing. Time runs faster the deeper you go. A day on the first floor is a day, but the deep halls can take years off a life in a few days, and those who stay in town don't age with them. Choose who you send with care.",
 	]
 	for text in paragraphs:
 		col.add_child(_modal_paragraph(text))
 	_add_modal_button(col, "Begin", func() -> void: GameState.intro_seen = true)
+
+
+## What a master's fall brought down, and what it means for the rest.
+func _show_collapse(report: Dictionary) -> void:
+	var col := _open_modal("%s Has Collapsed" % report.get("dungeon", "The Dungeon"))
+	col.add_child(_modal_paragraph("%s is dead, and the dungeon came down behind the party as it cast them out. Nothing is left of it but a scar in the hillside." % report.get("master", "Its master")))
+	var lost: Array = report.get("lost", [])
+	if not lost.is_empty():
+		var p := _modal_paragraph("%s still lay below when it fell, and won't be seen again." % ", ".join(lost))
+		p.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
+		col.add_child(p)
+	var note := ""
+	if report.get("new_set", false):
+		note = "The quiet doesn't last. Before the season is out, four new dungeons have opened beneath the town, deeper in malice than the last."
+	elif report.get("final_opened", false):
+		note = "With the last of the four gone, the ground has opened once more. %s lies beneath them all, a single great hall, and what waits there is what woke the others." % GameState.dungeon_set.final_dungeon.dungeon_name
+	else:
+		var fallen: int = report.get("collapsed", 0)
+		var total: int = report.get("total", 4)
+		note = "%d of %d dungeons have collapsed. The power that held this one up has poured into those that remain, and it pools in their depths. Their upper floors are as they were. The deep ones are worse." % [fallen, total]
+	var note_label := _modal_paragraph(note)
+	note_label.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
+	col.add_child(note_label)
+	_add_modal_button(col, "Continue", _show_homecoming_if_due)
+
+
+## Lets the player pick which dungeon to enter.
+func _show_dungeon_picker() -> void:
+	var open := GameState.dungeon_set.open_dungeons()
+	if open.size() <= 1:
+		_enter_dungeon(open[0] if not open.is_empty() else null)
+		return
+	var col := _open_modal("Which Dungeon?")
+	var fallen := GameState.dungeon_set.collapsed_count()
+	if fallen > 0:
+		col.add_child(_modal_paragraph("%d of %d have collapsed, and their power has gathered in the depths of the rest." % [
+			fallen, GameState.dungeon_set.dungeons.size()]))
+	_choice_buttons.clear()
+	for dungeon in open:
+		var button := Button.new()
+		var reached := "not yet entered" if dungeon.deepest_floor <= 0 \
+			else "deepest floor %d of %d" % [dungeon.deepest_floor, dungeon.depth]
+		button.text = "%s   ·   %s" % [dungeon.dungeon_name, reached]
+		button.custom_minimum_size = Vector2(480, 44)
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		button.pressed.connect(_on_dungeon_picked.bind(dungeon))
+		col.add_child(button)
+		_choice_buttons.append(button)
+	var cancel := Button.new()
+	cancel.text = "Not yet"
+	cancel.custom_minimum_size = Vector2(200, 40)
+	cancel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	cancel.pressed.connect(_close_modal)
+	col.add_child(cancel)
+	_choice_buttons.append(cancel)
+	_choice_nav = MenuNavigator.new()
+	_choice_nav.setup(_choice_buttons, 0)
+
+
+var _choice_buttons: Array[Button] = []
+var _choice_nav: MenuNavigator = null
+
+
+func _on_dungeon_picked(dungeon: Dungeon) -> void:
+	_close_modal()
+	_enter_dungeon(dungeon)
+
+
+func _enter_dungeon(dungeon: Dungeon) -> void:
+	if dungeon:
+		GameState.destination_dungeon_id = dungeon.id
+	SceneManager.go_to_dungeon()
 
 
 ## Short trips to the shallow floors don't warrant a report.
@@ -286,12 +371,15 @@ func _add_modal_button(col: VBoxContainer, text: String, on_close: Callable = Ca
 func _close_modal() -> void:
 	if _modal == null:
 		return
-	if _modal_on_close.is_valid():
-		_modal_on_close.call()
+	var on_close := _modal_on_close
 	_modal_on_close = Callable()
+	_choice_buttons.clear()
+	_choice_nav = null
 	AudioManager.play_ui("confirm")
 	_modal.queue_free()
 	_modal = null
+	if on_close.is_valid():
+		on_close.call()
 	if nav:
 		nav.update_focus()
 
@@ -372,7 +460,7 @@ func _on_dest(id: String) -> void:
 		"inn": SceneManager.go_to_inn()
 		"temple": SceneManager.go_to_temple()
 		"autoexplore": SceneManager.go_to_autoexplore()
-		"dungeon": SceneManager.go_to_dungeon()
+		"dungeon": _show_dungeon_picker()
 		"menu": SceneManager.go_to_main_menu()
 
 
@@ -408,6 +496,13 @@ func _setup_date_display() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _modal != null and _choice_nav != null:
+		if event.is_action_pressed("ui_cancel") or event.is_action_pressed("menu_cancel"):
+			get_viewport().set_input_as_handled()
+			_close_modal()
+		else:
+			_choice_nav.handle_input(event)
+		return
 	if _modal != null:
 		if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel"):
 			get_viewport().set_input_as_handled()

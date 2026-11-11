@@ -42,6 +42,7 @@ extends Resource
 @export var parties: Array[Dictionary] = []
 @export var active_party_id: String = ""
 @export var dungeon_set: DungeonSet = null
+@export var destination_dungeon_id: String = ""
 @export var guild_gold: int = 0
 @export var guild_scrap: int = 0
 

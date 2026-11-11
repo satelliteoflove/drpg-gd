@@ -3,6 +3,10 @@ class_name Monster
 extends Resource
 
 @export var monster_name: String = "Monster"
+## Whose art to show, when it isn't this monster's own. A dungeon's master
+## borrows a stock boss's art under a tint until it has its own.
+@export var art_name: String = ""
+@export var tint: Color = Color.WHITE
 @export var max_hp: int = 10
 @export var strength: int = 10
 @export var agility: int = 10
@@ -101,6 +105,10 @@ func take_damage(amount: int) -> int:
 		current_hp = 0
 		is_dead = true
 	return actual
+
+
+func get_art_name() -> String:
+	return art_name if not art_name.is_empty() else monster_name
 
 
 func get_random_attack() -> MonsterAttack:

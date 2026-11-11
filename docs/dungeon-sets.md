@@ -30,9 +30,11 @@ All four dungeons in a set are open at once, and the player clears them in whate
 
 **Each collapse makes the rest harder.** When a dungeon collapses, its evil energies pour into the ones that remain, and their monsters grow stronger. The town screen and the dungeon entrance say how many have collapsed, so the player always knows what they're walking into.
 
-**The energy pools in the deep.** *(Proposed, not yet agreed.)* The strengthening grows with depth. Floors 1 and 2 of every dungeon never change, the middle floors get part of it, and the bottom floors get all of it. That keeps veterans working where it matters while a party of new recruits always has somewhere safe to train, however many dungeons have fallen. Stronger monsters also give more XP, so a new party catches up faster on the middle floors than the first party did. Apprentices are the other way up.
+**The energy pools in the deep.** The strengthening grows with depth. Floors 1 and 2 of every dungeon never change, the middle floors get part of it, and the bottom floors get all of it. That keeps veterans working where it matters while a party of new recruits always has somewhere safe to train, however many dungeons have fallen. Stronger monsters also give more XP, so a new party catches up faster on the middle floors than the first party did. Apprentices are the other way up.
 
-The fifth dungeon is **one great floor**: a single large level with the story's final master at its heart. It appears once all four have collapsed. This is tentative. Dungeon generation is due a rethink after this feature, and the fifth dungeon's shape, or whether it needs one of its own, will be decided then.
+As built (`systems/dungeon/dungeon_surge.gd`), each collapse adds 30% and each set after the first adds 100%, scaled by depth: nothing on floors 1 and 2, then 20%, 40%, 60% and 80% on floors 3 to 6, and all of it on 7 and 8. The multiplier applies to a monster's HP and XP, with smaller bumps to level, strength and defense. These are first guesses to tune in play.
+
+The fifth dungeon is **one great floor**: a single large level with the story's final master at its heart. It appears once all four have collapsed. For now it's a single 41×41 floor that plays by floor 8's rules, with floor 5's deep-time rate. This is tentative. Dungeon generation is due a rethink after this feature, and the fifth dungeon's shape, or whether it needs one of its own, will be decided then.
 
 ## More than one party
 
@@ -60,7 +62,7 @@ Each collapse gets a short card: which dungeon fell, who was there, and what it 
 
 ## Masters and art
 
-Each dungeon needs its own master. Until more art arrives, masters use placeholder art or tinted copies of existing monsters. The same goes for any monster tiers in later sets.
+Each dungeon needs its own master. Until more art arrives, every master is the drake under a new name and a tint, and the fifth dungeon's has half again its HP. The guardians on floors 2, 4 and 6 are the same in every dungeon for now. The same placeholder approach goes for monster tiers in later sets.
 
 ## Aging by depth
 
@@ -164,7 +166,7 @@ After that, the set, collapse and parties-out are features built on a model that
 ## Build order
 
 1. **The data model.** *Built.* Per-dungeon state (floors, seals, masters, step clock) and per-party state (where it is, whether it's out), in the save format from the start, even while the UI still drives one party.
-2. **Collapse and the set.** Four dungeons open at once, collapse when a master falls, strengthening of the rest, the fifth dungeon, the story ending, and a new set after. Masters start as placeholders or tinted copies.
+2. **Collapse and the set.** *Built.* Four dungeons open at once, collapse when a master falls, strengthening of the rest, the fifth dungeon, the story ending, and a new set after. Masters start as placeholders or tinted copies.
 3. **Parties out.** Several parties out at once, switching between them, wipes that leave the party below, and rescue.
 4. **Gold.** *Built*, as carried gold.
 5. **Later sets.** Tiers for free play.

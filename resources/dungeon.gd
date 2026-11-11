@@ -1,16 +1,32 @@
 class_name Dungeon
 extends Resource
 
-## One dungeon of a set: its floors, its slain bosses, and whether it still
-## stands. See docs/dungeon-sets.md.
+## One dungeon of a set: its floors, its slain bosses, its master, and whether
+## it still stands. See docs/dungeon-sets.md.
 
 @export var id: String = ""
 @export var dungeon_name: String = ""
 @export var theme_id: String = ""
-@export var master_id: String = ""
 ## Floors generate from this plus the floor number. 0 means unseeded.
 @export var seed_value: int = 0
+## The floor the way in from town leads to, and the deepest floor. The four
+## of a set run 1 to 8. The fifth is a single floor that plays as floor 8.
+@export var entry_floor: int = 1
 @export var depth: int = 8
+## Floor whose deep-time rate applies throughout, or 0 to use each floor's own.
+@export var deep_rate_floor: int = 0
+## True for the dungeon that appears once the four have collapsed.
+@export var is_final: bool = false
+
+@export_group("Master")
+## The master waits on the deepest floor. Until each has art of its own, a
+## master is an existing boss under a new name, tinted and scaled.
+@export var master_id: String = ""
+@export var master_name: String = ""
+@export var master_tint: Color = Color.WHITE
+@export var master_scale: float = 1.0
+
+@export_group("State")
 ## Floor number to DungeonData, for the floors generated so far.
 @export var floors: Dictionary = {}
 ## Floor numbers whose boss has been slain. Slain bosses stay dead.
@@ -27,3 +43,18 @@ func is_collapsed() -> bool:
 
 func is_boss_slain(floor_num: int) -> bool:
 	return bosses_slain.has(floor_num)
+
+
+## The floor whose deep-time rate applies on [param floor_num].
+func deep_time_floor(floor_num: int) -> int:
+	return deep_rate_floor if deep_rate_floor > 0 else floor_num
+
+
+## Turns the stock boss of the deepest floor into this dungeon's master.
+func dress_master(boss: Monster) -> void:
+	if master_name.is_empty():
+		return
+	boss.art_name = boss.get_art_name()
+	boss.monster_name = master_name
+	boss.tint = master_tint
+	boss.max_hp = int(boss.max_hp * master_scale)

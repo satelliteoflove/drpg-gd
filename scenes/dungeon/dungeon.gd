@@ -460,7 +460,11 @@ func _load_or_generate_dungeon() -> void:
 		print_debug("Loaded floor ", GameState.current_floor, " from cache")
 	else:
 		var generator := DungeonGenerator.new()
-		dungeon_data = generator.generate(31, 31, GameState.current_floor)
+		var here := GameState.active_dungeon()
+		# The fifth dungeon is one great floor.
+		var extent := 41 if here.is_final else 31
+		var floor_seed := hash([here.seed_value, GameState.current_floor]) if here.seed_value != 0 else 0
+		dungeon_data = generator.generate(extent, extent, GameState.current_floor, floor_seed)
 		GameState.store_dungeon_floor(GameState.current_floor, dungeon_data)
 		print_debug("Generated floor ", GameState.current_floor, ": ", dungeon_data.rooms.size(), " rooms")
 
@@ -819,6 +823,7 @@ func _initialize_enemy_system() -> void:
 	add_child(_enemy_container)
 
 	GameState.floor_tracker.set_floor(GameState.current_floor)
+	GameState.floor_tracker.rate_floor = GameState.active_dungeon().deep_time_floor(GameState.current_floor)
 
 	enemy_manager = EnemyManager.new()
 	enemy_manager.initialize(dungeon_data, GameState.floor_tracker)
@@ -930,6 +935,7 @@ func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
 		var monster := group.monsters[i].duplicate_for_combat()
 		monster.grid_position = positions[i]
 		monster.init_combat()
+		DungeonSurge.strengthen(monster, GameState.surge_multiplier(GameState.current_floor))
 		enemies.append(monster)
 
 	var encounter := {"enemies": enemies, "enemy_group": group}
@@ -944,7 +950,8 @@ func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
 
 
 func _update_ui() -> void:
-	floor_label.text = "Floor " + str(GameState.current_floor)
+	var here := GameState.active_dungeon()
+	floor_label.text = here.dungeon_name if here.is_final else "%s  ·  Floor %d" % [here.dungeon_name, GameState.current_floor]
 	var pending_days: int = GameState.floor_tracker.accumulated_steps / FloorTracker.STEPS_PER_DAY
 	var current_day: int = GameState.game_day + pending_days
 	var hours: int = (GameState.floor_tracker.accumulated_steps % FloorTracker.STEPS_PER_DAY) * 24 / FloorTracker.STEPS_PER_DAY
@@ -1221,7 +1228,7 @@ func _stairs_sealed() -> bool:
 
 func _ascend_stairs() -> void:
 	AudioManager.play_sfx_path(SFX_STAIRS)
-	if GameState.current_floor <= 1:
+	if GameState.current_floor <= GameState.active_dungeon().entry_floor:
 		print_debug("Returning to town...")
 		SceneManager.go_to_town()
 	else:
@@ -1339,9 +1346,14 @@ func _on_combat_closed(victory: bool) -> void:
 		if enemy_manager != null:
 			enemy_manager.remove_defeated_group(group)
 		if group.ai_type == EnemyGroup.AIType.BOSS:
-			if GameState.record_boss_slain(GameState.current_floor):
-				SceneManager.go_to_ending()
-				return
+			match GameState.record_boss_slain(GameState.current_floor):
+				GameState.BossOutcome.STORY_END:
+					SceneManager.go_to_ending()
+					return
+				GameState.BossOutcome.COLLAPSE:
+					# The dungeon is coming down, and casts the party out.
+					SceneManager.go_to_town()
+					return
 			_show_dungeon_message("Somewhere ahead, the seal on the stairs cracks and falls away.")
 
 	if not victory:

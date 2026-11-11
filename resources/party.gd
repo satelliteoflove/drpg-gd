@@ -21,6 +21,9 @@ const FRONT_ROW_SIZE: int = 3
 ## The dungeon the party is in, or "" for town. See docs/dungeon-sets.md.
 @export var dungeon_id: String = ""
 @export var floor_num: int = 1
+## The dungeon floor_num refers to. Going back into the same dungeon picks up
+## on the floor the party left from; a different one starts at its entrance.
+@export var floor_dungeon_id: String = ""
 @export var position: Vector2i = Vector2i.ZERO
 @export var facing: int = 0
 @export var spawn_at_stairs_up: bool = true

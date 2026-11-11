@@ -16,6 +16,9 @@ var spotted_groups: Dictionary = {}
 var reveal_active: bool = false
 var reveal_steps_remaining: int = 0
 var current_floor: int = 0
+## The floor whose deep-time rate applies, when it isn't the one the party is
+## on (the fifth dungeon runs gentler than its depth). 0 means current_floor.
+var rate_floor: int = 0
 ## Personal aging accrued below and not yet applied to the party, in days.
 var deep_days: float = 0.0
 ## The expedition so far, for the homecoming report: surface days and deep
@@ -29,7 +32,7 @@ var trip_start: Dictionary = {}
 func increment_step() -> void:
 	global_step_count += 1
 	accumulated_steps += 1
-	var f := clampi(current_floor, 1, DEEP_DAYS_PER_DAY.size() - 1)
+	var f := clampi(rate_floor if rate_floor > 0 else current_floor, 1, DEEP_DAYS_PER_DAY.size() - 1)
 	deep_days += float(DEEP_DAYS_PER_DAY[f]) / STEPS_PER_DAY
 	if reveal_active:
 		reveal_steps_remaining -= 1

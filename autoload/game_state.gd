@@ -60,8 +60,13 @@ var floor_tracker: FloorTracker:
 	set(value): _active_party.tracker = value
 var roster: CharacterRoster = null
 var party_formations: Array[PartyFormation] = []
-## The dungeons open to the guild. Until sets are built out there is one.
+## The dungeons open to the guild.
 var dungeon_set: DungeonSet = null
+## The dungeon a party in town will enter next.
+var destination_dungeon_id: String = ""
+## What the last collapse was, for the town to show once: {dungeon, master,
+## collapsed, total, final_opened, story_end, new_set, lost}. Not saved.
+var pending_collapse: Dictionary = {}
 ## Views onto the active dungeon, kept so older code reads as before.
 var dungeon_floors: Dictionary:
 	get: return active_dungeon().floors
@@ -88,12 +93,31 @@ var pending_homecoming: Dictionary = {}
 ## The dungeon the active party is in, or would enter from town.
 func active_dungeon() -> Dungeon:
 	if dungeon_set == null:
-		dungeon_set = DungeonSet.create_single()
+		dungeon_set = DungeonSet.create()
 	if _active_party and _active_party.is_out():
 		var here := dungeon_set.get_dungeon(_active_party.dungeon_id)
 		if here:
 			return here
-	return dungeon_set.dungeons[0]
+	var chosen := dungeon_set.get_dungeon(destination_dungeon_id)
+	if chosen and not chosen.is_collapsed():
+		return chosen
+	var open := dungeon_set.open_dungeons()
+	return open[0] if not open.is_empty() else dungeon_set.dungeons[0]
+
+
+## The boss waiting on [param floor_num] of the active dungeon, or null. On
+## the deepest floor that's the dungeon's master.
+func get_floor_boss(floor_num: int) -> Monster:
+	var boss := MonsterDatabase.get_boss_for_floor(floor_num)
+	var dungeon := active_dungeon()
+	if boss and floor_num >= dungeon.depth:
+		dungeon.dress_master(boss)
+	return boss
+
+
+## How much stronger than stock the monsters on [param floor_num] are.
+func surge_multiplier(floor_num: int) -> float:
+	return DungeonSurge.multiplier(dungeon_set, floor_num)
 
 
 func _new_party_id() -> String:
@@ -186,7 +210,9 @@ func new_game() -> void:
 	party_formations = []
 	RelationshipManager.clear()
 	EventManager.clear()
-	dungeon_set = DungeonSet.create_single()
+	dungeon_set = DungeonSet.create()
+	destination_dungeon_id = ""
+	pending_collapse = {}
 	current_floor = 1
 	current_encounter = {}
 	game_day = 1
@@ -314,14 +340,67 @@ func is_boss_slain(floor_num: int) -> bool:
 	return active_dungeon().is_boss_slain(floor_num)
 
 
-## Records a boss kill. Returns true if this kill wins the game.
-func record_boss_slain(floor_num: int) -> bool:
-	if not bosses_slain.has(floor_num):
-		bosses_slain.append(floor_num)
-	if floor_num == FINAL_FLOOR and victory_day == 0:
-		victory_day = game_day
-		return true
-	return false
+enum BossOutcome { GUARDIAN, COLLAPSE, STORY_END }
+
+## Records a boss kill in the active dungeon. Killing its master collapses
+## the dungeon, and the fifth dungeon's master ends the story.
+func record_boss_slain(floor_num: int) -> BossOutcome:
+	var dungeon := active_dungeon()
+	if not dungeon.bosses_slain.has(floor_num):
+		dungeon.bosses_slain.append(floor_num)
+	if floor_num < dungeon.depth or dungeon.is_collapsed():
+		return BossOutcome.GUARDIAN
+	return _collapse(dungeon)
+
+
+## Brings [param dungeon] down. Every living party inside is cast out to
+## town with whatever it carries. A party lying dead in it is lost for good.
+func _collapse(dungeon: Dungeon) -> BossOutcome:
+	dungeon.collapsed_day = game_day
+	dungeon.floors.clear()
+	var lost: Array[String] = []
+	for p in parties.duplicate():
+		if p == _active_party or p.dungeon_id != dungeon.id:
+			continue
+		if p.is_wiped():
+			for member in p.get_members():
+				member.add_status(CharacterEnums.StatusEffect.LOST, -1, "", 0)
+				lost.append(member.character_name)
+			parties.erase(p)
+		else:
+			p.dungeon_id = ""
+			p.bank_carried()
+
+	var report := {
+		"dungeon": dungeon.dungeon_name, "master": dungeon.master_name,
+		"total": dungeon_set.dungeons.size(), "lost": lost,
+		"final_opened": false, "story_end": false, "new_set": false,
+	}
+	var outcome := BossOutcome.COLLAPSE
+	if dungeon.is_final:
+		report["new_set"] = true
+		if victory_day == 0:
+			victory_day = game_day
+			report["story_end"] = true
+			outcome = BossOutcome.STORY_END
+		dungeon_set = DungeonSet.create(dungeon_set.set_number + 1)
+	elif dungeon_set.all_collapsed() and dungeon_set.final_dungeon == null:
+		dungeon_set.open_final()
+		report["final_opened"] = true
+	report["collapsed"] = dungeon_set.collapsed_count()
+	destination_dungeon_id = ""
+	pending_collapse = report
+	return outcome
+
+
+## Whether any party lies dead in [param dungeon], to warn before its master.
+func bodies_below(dungeon: Dungeon) -> Array[String]:
+	var names: Array[String] = []
+	for p in parties:
+		if p != _active_party and p.dungeon_id == dungeon.id and p.is_wiped():
+			for member in p.get_members():
+				names.append(member.character_name)
+	return names
 
 
 func has_won() -> bool:
@@ -340,6 +419,10 @@ func get_boss_floors() -> Array[int]:
 ## Starts an expedition: the active party leaves town for a dungeon.
 func begin_expedition() -> void:
 	var dungeon := active_dungeon()
+	if party.floor_dungeon_id != dungeon.id:
+		party.floor_dungeon_id = dungeon.id
+		party.floor_num = dungeon.entry_floor
+	party.floor_num = clampi(party.floor_num, dungeon.entry_floor, dungeon.depth)
 	party.prepare_for_dungeon()
 	var t := party.tracker
 	t.deep_days = 0.0

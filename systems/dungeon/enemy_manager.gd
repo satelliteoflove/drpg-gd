@@ -292,7 +292,7 @@ func _get_smart_formation(monsters: Array[Monster]) -> Array[Vector2i]:
 
 func _generate_boss_encounter() -> Array[Monster]:
 	var monsters: Array[Monster] = []
-	var boss := MonsterDatabase.get_boss_for_floor(dungeon_data.floor_level)
+	var boss := GameState.get_floor_boss(dungeon_data.floor_level)
 	if boss == null:
 		var fallback_ids := MonsterDatabase.get_monsters_for_floor(dungeon_data.floor_level)
 		if fallback_ids.is_empty():
