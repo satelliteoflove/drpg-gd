@@ -122,6 +122,8 @@ static func retire(c: Character, apprentice: Character) -> Array[String]:
 	c.availability = Character.AVAILABILITY_RETIRED
 	c.town_post = post_id
 	c.end_service("retired", GameState.game_day)
+	GameState.record("retired", "%s retired at %d to become the guild's %s." % [
+		c.character_name, c.get_age_years(), post_title(post_id)])
 	c.add_mark(Marks.create_mark("Retired as the guild's %s" % post_title(post_id), "retirement",
 		["retirement"] as Array[String], Marks.Agency.ACTOR, Marks.Severity.MAJOR,
 		[] as Array[String], GameState.game_day))

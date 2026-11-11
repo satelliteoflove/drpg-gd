@@ -173,7 +173,6 @@ func _create_save_data() -> Resource:
 			"torch": p.torch_steps_remaining,
 			"dungeon_id": p.dungeon_id,
 			"floor": p.floor_num,
-			"floor_dungeon_id": p.floor_dungeon_id,
 			"position": p.position,
 			"facing": p.facing,
 			"spawn_at_stairs_up": p.spawn_at_stairs_up,
@@ -184,6 +183,8 @@ func _create_save_data() -> Resource:
 	data.active_party_id = GameState.party.id
 	data.guild_gold = GameState.guild_gold
 	data.guild_scrap = GameState.guild_scrap
+	data.guild_storage = GameState.guild_storage.duplicate(true)
+	data.chronicle = GameState.chronicle.duplicate(true)
 	data.party_formations = GameState.party_formations.duplicate(true)
 	data.dungeon_set = _copy_dungeon_set(GameState.dungeon_set)
 	data.destination_dungeon_id = GameState.destination_dungeon_id
@@ -240,6 +241,10 @@ func _apply_save_data(data) -> void:
 	GameState.parties.clear()
 	GameState._active_party = null
 	GameState.pending_collapse = {}
+	GameState.pending_wipe = {}
+	GameState.guild_storage = data.guild_storage.duplicate(true) if data.guild_storage else GameState._new_guild_storage()
+	_deduplicate_inventory_items(GameState.guild_storage)
+	GameState.chronicle = data.chronicle.duplicate(true)
 	if data.dungeon_set != null:
 		_apply_guild(data)
 	else:
@@ -279,7 +284,6 @@ func _apply_guild(data) -> void:
 		p.torch_steps_remaining = record.get("torch", 0)
 		p.dungeon_id = record.get("dungeon_id", "")
 		p.floor_num = record.get("floor", 1)
-		p.floor_dungeon_id = record.get("floor_dungeon_id", p.dungeon_id)
 		p.position = record.get("position", Vector2i.ZERO)
 		p.facing = record.get("facing", 0)
 		p.spawn_at_stairs_up = record.get("spawn_at_stairs_up", true)
@@ -328,7 +332,6 @@ func _apply_version_5(data) -> void:
 		p.inventory = data.party_inventory.duplicate(true)
 		_deduplicate_inventory_items(p.inventory)
 	p.floor_num = data.current_floor
-	p.floor_dungeon_id = dungeon.id
 	p.position = data.player_position
 	p.facing = data.player_facing
 	p.spawn_at_stairs_up = data.spawn_at_stairs_up

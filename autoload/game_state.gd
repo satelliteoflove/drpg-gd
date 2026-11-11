@@ -64,6 +64,12 @@ var party_formations: Array[PartyFormation] = []
 var dungeon_set: DungeonSet = null
 ## The dungeon a party in town will enter next.
 var destination_dungeon_id: String = ""
+## Items any party in town can leave or take. See docs/dungeon-sets.md.
+var guild_storage: Inventory = null
+const GUILD_STORAGE_SLOTS := 200
+## The guild's history, oldest first: [{day, kind, text}]. Kinds are
+## "collapse", "story", "legend", "retired", "death", "wipe", "rescue".
+var chronicle: Array[Dictionary] = []
 ## What the last collapse was, for the town to show once: {dungeon, master,
 ## collapsed, total, final_opened, story_end, new_set, lost}. Not saved.
 var pending_collapse: Dictionary = {}
@@ -120,6 +126,16 @@ func surge_multiplier(floor_num: int) -> float:
 	return DungeonSurge.multiplier(dungeon_set, floor_num)
 
 
+func record(kind: String, text: String) -> void:
+	chronicle.append({"day": game_day, "kind": kind, "text": text})
+
+
+func _new_guild_storage() -> Inventory:
+	var storage := Inventory.new()
+	storage.max_slots = GUILD_STORAGE_SLOTS
+	return storage
+
+
 func _new_party_id() -> String:
 	var n := parties.size() + 1
 	while get_party("party_%d" % n) != null:
@@ -171,6 +187,8 @@ func _initialize_game_data() -> void:
 		roster = CharacterRoster.new()
 	if party_formations.is_empty():
 		party_formations = []
+	if guild_storage == null:
+		guild_storage = _new_guild_storage()
 
 
 const STARTER_ROSTER: Array[Dictionary] = [
@@ -213,6 +231,9 @@ func new_game() -> void:
 	dungeon_set = DungeonSet.create()
 	destination_dungeon_id = ""
 	pending_collapse = {}
+	pending_wipe = {}
+	guild_storage = _new_guild_storage()
+	chronicle = []
 	current_floor = 1
 	current_encounter = {}
 	game_day = 1
@@ -376,21 +397,40 @@ func _collapse(dungeon: Dungeon) -> BossOutcome:
 		"total": dungeon_set.dungeons.size(), "lost": lost,
 		"final_opened": false, "story_end": false, "new_set": false,
 	}
+	var who: Array[String] = []
+	for member in party.get_members():
+		if not member.is_dead:
+			who.append(member.character_name)
+	record("collapse", "%s slew %s, and %s collapsed." % [
+		_name_list(who), dungeon.master_name, dungeon.dungeon_name])
+	if not lost.is_empty():
+		record("death", "%s still lay in %s when it fell, and were lost." % [_name_list(lost), dungeon.dungeon_name])
 	var outcome := BossOutcome.COLLAPSE
 	if dungeon.is_final:
 		report["new_set"] = true
 		if victory_day == 0:
 			victory_day = game_day
 			report["story_end"] = true
+			record("story", "With %s gone, the ground beneath the town lay still." % dungeon.dungeon_name)
 			outcome = BossOutcome.STORY_END
 		dungeon_set = DungeonSet.create(dungeon_set.set_number + 1)
+		record("story", "Four new dungeons opened beneath the town.")
 	elif dungeon_set.all_collapsed() and dungeon_set.final_dungeon == null:
 		dungeon_set.open_final()
 		report["final_opened"] = true
+		record("story", "The last of the four fell, and %s opened beneath them." % dungeon_set.final_dungeon.dungeon_name)
 	report["collapsed"] = dungeon_set.collapsed_count()
 	destination_dungeon_id = ""
 	pending_collapse = report
 	return outcome
+
+
+func _name_list(names: Array) -> String:
+	if names.is_empty():
+		return "No one"
+	if names.size() == 1:
+		return names[0]
+	return ", ".join(names.slice(0, -1)) + " and " + names[-1]
 
 
 ## Whether any party lies dead in [param dungeon], to warn before its master.
@@ -524,6 +564,9 @@ func recover_fallen(fallen: Party) -> Dictionary:
 	var left := fallen.size()
 	if left == 0:
 		parties.erase(fallen)
+	if not recovered.is_empty():
+		record("rescue", "%s carried %s up out of %s." % [
+			party_label(party), _name_list(recovered), active_dungeon().dungeon_name])
 	return {"recovered": recovered, "left": left, "gold": gold}
 
 
@@ -536,10 +579,9 @@ func is_away(character: Character) -> bool:
 ## Starts an expedition: the active party leaves town for a dungeon.
 func begin_expedition() -> void:
 	var dungeon := active_dungeon()
-	if party.floor_dungeon_id != dungeon.id:
-		party.floor_dungeon_id = dungeon.id
-		party.floor_num = dungeon.entry_floor
-	party.floor_num = clampi(party.floor_num, dungeon.entry_floor, dungeon.depth)
+	# A party always goes in at the top.
+	party.floor_num = dungeon.entry_floor
+	party.spawn_at_stairs_up = true
 	party.prepare_for_dungeon()
 	var t := party.tracker
 	t.deep_days = 0.0
@@ -600,6 +642,8 @@ func settle_expedition() -> Dictionary:
 			died = member.check_old_age_death()
 			if died:
 				member.end_service("old_age", game_day)
+				record("death", "%s died of old age at %d, at the top of the stairs." % [
+					member.character_name, member.get_age_years()])
 		rows.append({
 			"character": member,
 			"age_before": int(start[0]),

@@ -63,6 +63,9 @@ static func pass_on(c: Character, party: Party) -> Array[String]:
 	c.town_job = -1
 	c.availability = Character.AVAILABILITY_LEGEND
 	c.end_service("legend", GameState.game_day)
+	GameState.record("legend", "%s made a last descent at %d and %s. A Legend of the guild." % [
+		c.character_name, c.get_age_years(),
+		"fell in the deep" if fell else "passed on at the top of the stairs"])
 	c.add_mark(Marks.create_mark("A Legend of the guild", "last_descent",
 		["legacy"] as Array[String], Marks.Agency.ACTOR, Marks.Severity.MAJOR,
 		witnesses, GameState.game_day))

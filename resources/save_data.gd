@@ -45,6 +45,8 @@ extends Resource
 @export var destination_dungeon_id: String = ""
 @export var guild_gold: int = 0
 @export var guild_scrap: int = 0
+@export var guild_storage: Inventory = null
+@export var chronicle: Array[Dictionary] = []
 
 @export_group("Meta")
 @export var save_version: int = 6

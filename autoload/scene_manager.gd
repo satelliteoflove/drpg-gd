@@ -114,6 +114,7 @@ func party_fell() -> void:
 	GameState.pending_wipe = {
 		"names": names, "where": GameState.party_whereabouts(fallen).trim_prefix("lying dead in "),
 	}
+	GameState.record("wipe", "%s fell in %s." % [GameState._name_list(names), GameState.pending_wipe["where"]])
 	GameState.leave_party_below()
 	GameState.set_mode(GameState.GameMode.TOWN)
 	SaveManager.autosave()

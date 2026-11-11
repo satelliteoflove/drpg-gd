@@ -46,6 +46,14 @@ As built: a party below can **Camp** (C), which leaves it where it stands and re
 
 Switching away from a party only pauses it. Its expedition hasn't ended, so nothing that happens at an expedition's end (the homecoming, a Legend passing on) is triggered by the switch.
 
+## Entering a dungeon
+
+A party always enters a dungeon at the top, as in any dungeon RPG, however deep it or anyone else has been before. A way to make the return trip easier, such as an elevator unlocked at a certain depth, is an idea for later and isn't built.
+
+## Guild storage
+
+Passing items between characters was always a chore in Wizardry. Here the guild hall has a Storage tab: the party in town can leave items in the guild's storage or take them out, so two characters never need to share a party to hand gear along. Storage holds 200 stacks. *Built.*
+
 ## Wipes and rescue
 
 A party wipe is always a major setback. The party stays where it fell, bodies and gear with it, and another party has to go down and bring them back.
@@ -174,4 +182,4 @@ After that, the set, collapse and parties-out are features built on a model that
 3. **Parties out.** *Built.* Several parties out at once, switching between them, wipes that leave the party below, and rescue.
 4. **Gold.** *Built*, as carried gold.
 5. **Later sets.** Tiers for free play.
-6. **The chronicle.** The saga covers every dungeon so far, and the guild hall keeps a record of collapsed dungeons and Legends.
+6. **The chronicle.** *Built.* The guild hall has a Chronicle tab: which dungeons stand or fell and when, the Legends, who holds a town post, and a dated record of collapses, wipes, rescues, retirements and deaths.
