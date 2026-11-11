@@ -115,6 +115,7 @@ var _torch_audio: AudioStreamPlayer = null
 
 func _ready() -> void:
 	Engine.max_fps = 30
+	GameState.life_phase_changed.connect(_on_life_phase_changed)
 
 	movement = DungeonMovement.new()
 	movement.init(self)
@@ -817,8 +818,6 @@ func _initialize_enemy_system() -> void:
 	_enemy_container.name = "EnemyContainer"
 	add_child(_enemy_container)
 
-	if GameState.floor_tracker == null:
-		GameState.floor_tracker = FloorTracker.new()
 	GameState.floor_tracker.set_floor(GameState.current_floor)
 
 	enemy_manager = EnemyManager.new()
@@ -1297,6 +1296,7 @@ func _process_enemy_turn() -> void:
 		return
 
 	var combat_group := enemy_manager.on_player_move(grid_position, facing)
+	GameState.tick_expedition()
 	_rebuild_group_lookup()
 	_update_enemy_sprites()
 
@@ -1521,6 +1521,24 @@ func _setup_message_label() -> void:
 	_message_label.add_theme_font_size_override("font_size", 18)
 	_message_label.modulate.a = 0.0
 	$UI.add_child(_message_label)
+
+
+## Deep time lands as the party walks, so someone can cross into a new time
+## of life mid-corridor.
+func _on_life_phase_changed(character: Character, phase: CharacterEnums.LifePhase) -> void:
+	var text := ""
+	match phase:
+		CharacterEnums.LifePhase.PRIME:
+			text = "%s has come into the prime of life." % character.character_name
+		CharacterEnums.LifePhase.DECLINE:
+			text = "%s has gone gray at the temples down here. The veteran years have begun." % character.character_name
+		CharacterEnums.LifePhase.FRAGILE:
+			text = "%s has grown old in the deep. An elder now." % character.character_name
+	var gained := AgeTraits.gained_on(character, phase)
+	if text != "" and gained != "":
+		text += " (%s)" % gained
+	if text != "":
+		_show_dungeon_message(text)
 
 
 func _show_dungeon_message(text: String) -> void:

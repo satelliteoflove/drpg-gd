@@ -8,6 +8,8 @@ signal combat_ended(victory: bool)
 signal party_member_died(character: Resource)
 signal game_saved()
 signal game_loaded()
+## A party member crossed into a new life phase while below.
+signal life_phase_changed(character: Character, phase: CharacterEnums.LifePhase)
 
 enum GameMode { MAIN_MENU, TOWN, DUNGEON, COMBAT }
 
@@ -15,12 +17,47 @@ enum GameMode { MAIN_MENU, TOWN, DUNGEON, COMBAT }
 const FINAL_FLOOR: int = 8
 
 var current_mode: GameMode = GameMode.MAIN_MENU
-var current_floor: int = 1
 var in_combat: bool = false
 var show_combat_math: bool = true
 var debug_verbose: bool = false
 
-var party: Party = null
+## Every party the guild has, in town or out. One of them is active: the one
+## the player is driving. See docs/dungeon-sets.md.
+var parties: Array[Party] = []
+var _active_party: Party = null
+## The active party. Assigning a new party replaces the active one.
+var party: Party:
+	get: return _active_party
+	set(value):
+		var index := parties.find(_active_party) if _active_party else -1
+		if value != null and value.id.is_empty():
+			value.id = _new_party_id()
+		if index >= 0 and value != null:
+			parties[index] = value
+		elif index >= 0:
+			parties.remove_at(index)
+		elif value != null:
+			parties.append(value)
+		_active_party = value
+## The guild's gold and scrap, shared by everyone in town.
+var guild_gold: int = 0
+var guild_scrap: int = 0
+## Views onto the active party, kept so older code reads as before.
+var current_floor: int:
+	get: return _active_party.floor_num if _active_party else 1
+	set(value): _active_party.floor_num = value
+var dungeon_spawn_at_stairs_up: bool:
+	get: return _active_party.spawn_at_stairs_up if _active_party else true
+	set(value): _active_party.spawn_at_stairs_up = value
+var dungeon_player_position: Vector2i:
+	get: return _active_party.position if _active_party else Vector2i.ZERO
+	set(value): _active_party.position = value
+var dungeon_player_facing: int:
+	get: return _active_party.facing if _active_party else 0
+	set(value): _active_party.facing = value
+var floor_tracker: FloorTracker:
+	get: return _active_party.tracker if _active_party else null
+	set(value): _active_party.tracker = value
 var roster: CharacterRoster = null
 var party_formations: Array[PartyFormation] = []
 ## The dungeons open to the guild. Until sets are built out there is one.
@@ -29,14 +66,10 @@ var dungeon_set: DungeonSet = null
 var dungeon_floors: Dictionary:
 	get: return active_dungeon().floors
 	set(value): active_dungeon().floors = value
-var dungeon_spawn_at_stairs_up: bool = true
 var current_encounter: Dictionary = {}
-var dungeon_player_position: Vector2i = Vector2i.ZERO
-var dungeon_player_facing: int = 0
 var returning_from_combat: bool = false
 var combat_speed: int = 5
 var game_day: int = 1
-var floor_tracker: FloorTracker = null
 var bosses_slain: Array[int]:
 	get: return active_dungeon().bosses_slain
 	set(value): active_dungeon().bosses_slain.assign(value)
@@ -56,7 +89,33 @@ var pending_homecoming: Dictionary = {}
 func active_dungeon() -> Dungeon:
 	if dungeon_set == null:
 		dungeon_set = DungeonSet.create_single()
+	if _active_party and _active_party.is_out():
+		var here := dungeon_set.get_dungeon(_active_party.dungeon_id)
+		if here:
+			return here
 	return dungeon_set.dungeons[0]
+
+
+func _new_party_id() -> String:
+	var n := parties.size() + 1
+	while get_party("party_%d" % n) != null:
+		n += 1
+	return "party_%d" % n
+
+
+func get_party(party_id: String) -> Party:
+	for p in parties:
+		if p.id == party_id:
+			return p
+	return null
+
+
+## The party [param character] belongs to, or null if they're on the bench.
+func party_of(character: Character) -> Party:
+	for p in parties:
+		if p.has_member(character):
+			return p
+	return null
 
 
 func clear_dungeon_floors() -> void:
@@ -86,8 +145,6 @@ func _initialize_game_data() -> void:
 		party = Party.new()
 	if roster == null:
 		roster = CharacterRoster.new()
-	if floor_tracker == null:
-		floor_tracker = FloorTracker.new()
 	if party_formations.is_empty():
 		party_formations = []
 
@@ -113,6 +170,10 @@ const STARTER_LEVEL: int = 1
 
 
 func new_game() -> void:
+	parties.clear()
+	_active_party = null
+	guild_gold = 0
+	guild_scrap = 0
 	party = Party.new()
 	party.add_gold(100)
 	var starter_torch := ShopItems.get_item("torch")
@@ -123,7 +184,6 @@ func new_game() -> void:
 		party.inventory.add_item(starter_recall.duplicate() as Item, 2)
 	roster = CharacterRoster.new()
 	party_formations = []
-	floor_tracker = FloorTracker.new()
 	RelationshipManager.clear()
 	EventManager.clear()
 	dungeon_set = DungeonSet.create_single()
@@ -277,41 +337,74 @@ func get_boss_floors() -> Array[int]:
 	return floors
 
 
-## Settles the time an expedition took. The surface calendar moves by
-## [param surface_days] for everyone; the party, who were below where time
-## runs fast, age by [param deep_days] in total. Elders face the old-age roll
-## here, once per homecoming, rather than at the inn.
-func process_homecoming(surface_days: int, deep_days: int) -> Dictionary:
-	var before := {}
+## Starts an expedition: the active party leaves town for a dungeon.
+func begin_expedition() -> void:
+	var dungeon := active_dungeon()
+	party.prepare_for_dungeon()
+	var t := party.tracker
+	t.deep_days = 0.0
+	t.trip_surface_days = 0
+	t.trip_deep_days = 0
+	t.trip_start = {}
 	for member in party.get_members():
+		member.note_first_descent(game_day)
 		if not member.is_dead:
-			before[member.id] = {"age": member.age_days, "phase": member.get_life_phase()}
+			t.trip_start[member.id] = [member.age_days, member.get_life_phase()]
+	party.dungeon_id = dungeon.id
 
-	if surface_days > 0:
-		advance_game_days(surface_days)
+
+## Moves time along as the active party walks below. Deep time lands on the
+## party as it accrues, so they age, and change phase, in the dungeon itself.
+## Every day's worth of steps moves the surface calendar for everyone else.
+func tick_expedition() -> void:
+	var t := party.tracker
+	var deep := t.consume_deep_days()
+	if deep > 0:
+		t.trip_deep_days += deep
+		for member in party.get_members():
+			if member.is_dead:
+				continue
+			var phase_before := member.get_life_phase()
+			member.advance_age(deep)
+			member.days_below += deep
+			var phase_after := member.get_life_phase()
+			if phase_after != phase_before:
+				_add_phase_mark(member, phase_after)
+				life_phase_changed.emit(member, phase_after)
+	while t.accumulated_steps >= FloorTracker.STEPS_PER_DAY:
+		t.accumulated_steps -= FloorTracker.STEPS_PER_DAY
+		t.trip_surface_days += 1
+		advance_game_days(1)
+
+
+## Ends the active party's expedition as it reaches town. The aging has
+## already happened below; this banks what the party carried, gives elders
+## their old-age roll, lets Legends pass on, and returns the report for the
+## town to show.
+func settle_expedition() -> Dictionary:
+	if not party.is_out():
+		return {}
+	tick_expedition()
+	var t := party.tracker
+	party.dungeon_id = ""
+	var banked := party.bank_carried()
 
 	var rows: Array[Dictionary] = []
 	for member in party.get_members():
-		if not before.has(member.id):
+		if not t.trip_start.has(member.id):
 			continue
-		var extra := maxi(0, deep_days - surface_days)
-		if extra > 0:
-			member.advance_age(extra)
-		member.days_below += maxi(deep_days, surface_days)
-		var phase_before: CharacterEnums.LifePhase = before[member.id]["phase"]
+		var start: Array = t.trip_start[member.id]
 		var phase_after := member.get_life_phase()
-		if phase_after != phase_before:
-			_add_phase_mark(member, phase_after)
 		var died := false
-		if phase_after == CharacterEnums.LifePhase.FRAGILE and not member.last_descent:
+		if phase_after == CharacterEnums.LifePhase.FRAGILE and not member.last_descent and not member.is_dead:
 			died = member.check_old_age_death()
 			if died:
 				member.end_service("old_age", game_day)
 		rows.append({
 			"character": member,
-			"age_before": before[member.id]["age"],
+			"age_before": int(start[0]),
 			"age_after": member.age_days,
-			"phase_before": phase_before,
+			"phase_before": int(start[1]),
 			"phase_after": phase_after,
 			"died_of_age": died,
 			"legend": member.last_descent,
@@ -323,7 +416,16 @@ func process_homecoming(surface_days: int, deep_days: int) -> Dictionary:
 	for member in party.get_members().duplicate():
 		if member.last_descent:
 			legends.append({"character": member, "lines": LastDescent.pass_on(member, party)})
-	return {"surface_days": surface_days, "deep_days": deep_days, "members": rows, "legends": legends}
+
+	var report := {
+		"surface_days": t.trip_surface_days, "deep_days": t.trip_deep_days,
+		"members": rows, "legends": legends, "gold_banked": banked,
+	}
+	t.deep_days = 0.0
+	t.trip_surface_days = 0
+	t.trip_deep_days = 0
+	t.trip_start = {}
+	return report
 
 
 const PHASE_MARKS: Dictionary = {
@@ -349,11 +451,17 @@ func advance_game_days(days: int) -> void:
 		game_day += 1
 		RelationshipManager.advance_day()
 		for character in roster.get_all():
+			# Parties below keep their own time: the active one ages by deep
+			# time as it walks, and the rest are frozen until the player
+			# returns to them.
+			var their_party := party_of(character)
+			if their_party and their_party.is_out():
+				continue
 			character.advance_age(1)
 			character.tick_availability(game_day)
-			if character.is_available() and not party.has_member(character) and not character.is_dead:
+			if character.is_available() and their_party == null and not character.is_dead:
 				character.town_days_accumulated += 1
 				if character.town_job >= 0:
 					var job := TownJobs.get_job(character.town_job)
 					character.add_experience(job.get("xp_per_day", 0))
-					party.add_gold(job.get("gold_per_day", 0))
+					guild_gold += job.get("gold_per_day", 0)

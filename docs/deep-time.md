@@ -44,6 +44,10 @@ The surface calendar keeps its current rules (days below, inn nights), so the da
 
 Benched characters don't age except on the surface calendar. Resting at the inn ages everyone by a day, which is nothing next to a trip to the deep.
 
+### Time passes as you walk
+
+As first built, an expedition's time was charged all at once on reaching town. Now it lands as it accrues. Each step below adds that floor's deep time to the party, who age then and there, so someone can go gray or become an elder mid-corridor, with a message when it happens and their traits and stats changing on the spot. Every 120 steps a surface day passes for the town. Death of old age still only happens on reaching town. The homecoming report is now a summary of what the trip cost.
+
 ### Measured
 
 `tests/measure_deep_time.tscn` estimates what a dungeon run costs. It generates 12 layouts per floor and has a bot explore each one fully, counting a tile as seen once the party stands on it or next to it. It counts the enemy groups each floor starts with and simulates fights for XP per fight. All floors are 31×31 with about 520 walkable tiles and about 25 starting groups, so a fight comes every 22 steps or so while exploring.

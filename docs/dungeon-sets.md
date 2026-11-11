@@ -48,9 +48,9 @@ A party wipe is always a major setback. The party stays where it fell, bodies an
 
 So a wipe can never lock the game, a rescue party must always be able to form and train. New recruits are always available at the guild hall, and the upper floors of every dungeon stay at their original difficulty (see above). A wiped party's gold and gear are below with it, which is one argument for a guild bank.
 
-## Gold: undecided
+## Gold
 
-Whether gold belongs to each character (Wizardry), to the party, or to the guild (Etrian Odyssey) is open, and wants a careful look at what each encourages. Per-character gold makes wipes cost more and gives pooling and the bank a purpose, at the price of bookkeeping on every shop screen. A shared pool is frictionless but means a wipe costs no gold at all. Today the party shares one pool.
+The guild's gold is communal in town: one pool for shops, the inn and the temple. Gold found below is carried by the party that found it and only joins the pool when they walk back into town. So a lost party lies there with its takings and its loot, worth going back for, without per-character purses on every shop screen. *Built.* The homecoming report says how much came up.
 
 ## Collapse
 
@@ -123,9 +123,7 @@ A party is a persistent thing with an identity, wherever it is.
 
 A character belongs to at most one party. The guild hall's available list leaves out members of every party, not just the active one.
 
-**Gold stays as it is for now.** All spending already goes through `Party.has_gold`, `spend_gold` and `add_gold`, so when the gold question is settled only those change. Until then gold and scrap are one guild-wide pool that those methods read, which is today's behaviour with one party. Items belong to the party carrying them.
-
-One option to weigh (*proposed*): the guild's gold is communal in town, but gold found below is carried by the party that found it and only joins the guild's pool when they walk back into town. A lost party then lies there with its takings and its loot, worth going back for, without per-character purses on every shop screen.
+**Gold.** `Party.gold` reads the guild's pool while the party is in town and the party's own `carried_gold` while it's out, so existing code keeps calling `add_gold` and `spend_gold` unchanged. Carried gold is banked on reaching town. Scrap works the same way. Items belong to the party carrying them.
 
 ### The calendar
 
@@ -153,7 +151,7 @@ The save format goes to version 6: `parties` (each with member ids, not copies o
 
 ### Order of work
 
-Each step leaves the game playing exactly as it does now, with the tests passing:
+*All five are built.* Each step left the game playing as before, with the tests passing:
 
 1. `Dungeon` and `DungeonSet`, with floors and bosses moved in behind the `GameState` accessors. Still one dungeon in play.
 2. Location and tracker moved onto `Party`, behind the accessors.
@@ -165,9 +163,9 @@ After that, the set, collapse and parties-out are features built on a model that
 
 ## Build order
 
-1. **The data model.** Per-dungeon state (floors, seals, masters, step clock) and per-party state (where it is, whether it's out), in the save format from the start, even while the UI still drives one party.
+1. **The data model.** *Built.* Per-dungeon state (floors, seals, masters, step clock) and per-party state (where it is, whether it's out), in the save format from the start, even while the UI still drives one party.
 2. **Collapse and the set.** Four dungeons open at once, collapse when a master falls, strengthening of the rest, the fifth dungeon, the story ending, and a new set after. Masters start as placeholders or tinted copies.
 3. **Parties out.** Several parties out at once, switching between them, wipes that leave the party below, and rescue.
-4. **Gold.** Once decided.
+4. **Gold.** *Built*, as carried gold.
 5. **Later sets.** Tiers for free play.
 6. **The chronicle.** The saga covers every dungeon so far, and the guild hall keeps a record of collapsed dungeons and Legends.

@@ -171,6 +171,9 @@ func _show_homecoming(report: Dictionary) -> void:
 
 	for legend: Dictionary in report.get("legends", []):
 		notes.append(" ".join(legend["lines"]))
+	var banked: int = report.get("gold_banked", 0)
+	if banked > 0:
+		col.add_child(_modal_paragraph("The party brought %d gold up with them, and it's gone into the guild's coffers." % banked))
 	for note in notes:
 		var p := _modal_paragraph(note)
 		p.add_theme_color_override("font_color", UIColors.TITLE_GOLD)

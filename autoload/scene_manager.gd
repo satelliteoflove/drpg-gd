@@ -107,17 +107,14 @@ func go_to_ending() -> void:
 ## Applies the time an expedition took, once, when the party leaves the
 ## dungeon by any route.
 func _settle_expedition() -> void:
-	if GameState.current_mode != GameState.GameMode.DUNGEON:
+	if GameState.party == null or not GameState.party.is_out():
 		return
-	var surface_days: int = GameState.floor_tracker.consume_dungeon_days()
-	var deep_days: int = GameState.floor_tracker.consume_deep_days()
-	GameState.pending_homecoming = GameState.process_homecoming(surface_days, deep_days)
+	GameState.pending_homecoming = GameState.settle_expedition()
 
 
 func go_to_dungeon(floor_num: int = -1, spawn_at_stairs_up: bool = true) -> void:
-	GameState.party.prepare_for_dungeon()
-	for member in GameState.party.get_members():
-		member.note_first_descent(GameState.game_day)
+	if not GameState.party.is_out():
+		GameState.begin_expedition()
 	if floor_num > 0:
 		GameState.set_floor(floor_num)
 	GameState.deepest_floor = maxi(GameState.deepest_floor, GameState.current_floor)

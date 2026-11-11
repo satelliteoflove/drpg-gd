@@ -16,8 +16,14 @@ var spotted_groups: Dictionary = {}
 var reveal_active: bool = false
 var reveal_steps_remaining: int = 0
 var current_floor: int = 0
-## Personal aging accrued below since the party last came home, in days.
+## Personal aging accrued below and not yet applied to the party, in days.
 var deep_days: float = 0.0
+## The expedition so far, for the homecoming report: surface days and deep
+## days spent, and each member's age and phase on setting out ({id: [age_days,
+## phase]}). Empty when the party is home.
+var trip_surface_days: int = 0
+var trip_deep_days: int = 0
+var trip_start: Dictionary = {}
 
 
 func increment_step() -> void:
@@ -101,6 +107,9 @@ func save_state() -> Dictionary:
 		"reveal_steps_remaining": reveal_steps_remaining,
 		"current_floor": current_floor,
 		"deep_days": deep_days,
+		"trip_surface_days": trip_surface_days,
+		"trip_deep_days": trip_deep_days,
+		"trip_start": trip_start.duplicate(true),
 	}
 
 
@@ -112,3 +121,6 @@ func load_state(data: Dictionary) -> void:
 	reveal_steps_remaining = data.get("reveal_steps_remaining", 0)
 	current_floor = data.get("current_floor", 0)
 	deep_days = data.get("deep_days", 0.0)
+	trip_surface_days = data.get("trip_surface_days", 0)
+	trip_deep_days = data.get("trip_deep_days", 0)
+	trip_start = data.get("trip_start", {}).duplicate(true)
