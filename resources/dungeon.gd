@@ -6,6 +6,7 @@ extends Resource
 
 @export var id: String = ""
 @export var dungeon_name: String = ""
+## Its look and sound on every floor. See FloorThemes.
 @export var theme_id: String = ""
 ## Floors generate from this plus the floor number. 0 means unseeded.
 @export var seed_value: int = 0

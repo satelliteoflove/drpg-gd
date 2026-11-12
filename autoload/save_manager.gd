@@ -267,6 +267,7 @@ func _apply_save_data(data) -> void:
 
 func _apply_guild(data) -> void:
 	GameState.dungeon_set = _copy_dungeon_set(data.dungeon_set)
+	GameState.dungeon_set.fill_missing_themes()
 	GameState.destination_dungeon_id = data.destination_dungeon_id
 	GameState.guild_gold = data.guild_gold
 	GameState.guild_scrap = data.guild_scrap

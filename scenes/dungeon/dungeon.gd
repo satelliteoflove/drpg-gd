@@ -349,6 +349,10 @@ func _make_door_material() -> StandardMaterial3D:
 func _setup_grid_maps() -> void:
 	var floor_tex := _theme.floor_textures()
 	var floor_material := _make_surface_material(_theme.floor_tint, _theme.floor_roughness, floor_tex)
+	if _theme.floor_wet:
+		# The builder keeps surfaces matte. A flooded floor is the exception.
+		floor_material.roughness = _theme.floor_roughness
+		floor_material.metallic_specular = 0.6
 	var stairs_up_material := _make_surface_material(_theme.stairs_up_tint, _theme.floor_roughness, floor_tex)
 	var stairs_down_material := _make_surface_material(_theme.stairs_down_tint, _theme.floor_roughness, floor_tex)
 	var ceiling_material := _make_surface_material(_theme.ceiling_tint, _theme.ceiling_roughness, _theme.ceiling_textures())
@@ -477,10 +481,8 @@ func _load_or_generate_dungeon() -> void:
 
 
 func _resolve_theme() -> void:
-	_theme = dungeon_data.theme
-	if _theme == null:
-		_theme = FloorThemes.get_theme(GameState.current_floor)
-		dungeon_data.theme = _theme
+	var here := GameState.active_dungeon()
+	_theme = FloorThemes.get_theme(here.theme_id, GameState.current_floor, here.depth)
 
 
 # Apply the theme's atmosphere to the shared WorldEnvironment + background. Fog

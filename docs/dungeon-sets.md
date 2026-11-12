@@ -72,6 +72,22 @@ When a dungeon's master falls, the dungeon collapses. Every living party inside 
 
 Each collapse gets a short card: which dungeon fell, who was there, and what it means for the dungeons that remain. The full saga waits for the story's ending.
 
+## Themes
+
+Each dungeon has one look and sound from its top floor to its master, so the four can be told apart the moment a party walks in.
+
+| Dungeon | Theme |
+|---|---|
+| The Drake's Deep | Cold worked stone under blue-grey gloom |
+| The Ashen Halls | Burnt brick in brown smoke, with many ember-red braziers |
+| The Drowned Vaults | Blue-green stone, a wet floor, puddles, and a few pale braziers |
+| The Verdant Dark | Mossy rock caverns with fungi and standing water |
+| The Heart Below | The red crypt, with bones underfoot |
+
+As built (`data/dungeon/floor_themes.gd`), a theme sets the wall and floor textures and tints, the fog and ambient light, the torch and brazier colours, the props, the ambient bed and the music. Going down, the same theme gets a little darker and foggier, by about 15% on the deepest floor. Themes don't change the layout or the monsters yet.
+
+The Ashen Halls and the Drowned Vaults play music from the audition pool that hasn't been chosen by ear.
+
 ## Masters and art
 
 Each dungeon needs its own master. Until more art arrives, every master is the drake under a new name and a tint, and the fifth dungeon's has half again its HP. The guardians on floors 2, 4 and 6 are the same in every dungeon for now. The same placeholder approach goes for monster tiers in later sets.

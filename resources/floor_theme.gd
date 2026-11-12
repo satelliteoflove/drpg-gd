@@ -3,12 +3,8 @@ extends Resource
 
 ## A floor's complete sensory identity — the surface texture set + tints, the
 ## atmosphere (ambient, fog, torch colour, vignette), the decoration mix, and the
-## soundscape. One theme covers a band of floors (see FloorThemes). Adding a new
-## biome is pure data: fill one of these out and register it.
-##
-## Only the surfaces + atmosphere are consumed in D1; the decoration and audio
-## fields are read by later phases (props, generated sound) — they carry sane
-## defaults so nothing breaks before then.
+## soundscape. Each dungeon has one theme (see FloorThemes). Adding a new one is
+## pure data: fill one of these out and register it.
 
 @export var id: StringName = &"stone_catacombs"
 @export var display_name: String = "Stone Catacombs"
@@ -27,6 +23,9 @@ extends Resource
 @export var wall_tint: Color = Color.WHITE
 @export var ceiling_tint: Color = Color(0.6, 0.6, 0.65)
 @export var floor_roughness: float = 0.85
+## A flooded floor: glossy enough to mirror the torchlight. Uses
+## floor_roughness as given and wants roughness_path left blank.
+@export var floor_wet: bool = false
 @export var wall_roughness: float = 0.85
 @export var ceiling_roughness: float = 0.9
 
