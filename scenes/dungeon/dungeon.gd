@@ -888,8 +888,7 @@ func _initialize_enemy_system() -> void:
 	if dungeon_data.enemy_groups.is_empty():
 		enemy_manager.spawn_initial_enemies()
 	else:
-		for group in dungeon_data.enemy_groups:
-			enemy_manager.enemy_groups.append(group)
+		enemy_manager.restore_groups(dungeon_data.enemy_groups)
 
 	_create_enemy_sprites()
 	_rebuild_group_lookup()

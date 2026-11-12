@@ -24,6 +24,12 @@ extends Resource
 ## name for the town to speak of.
 @export var master_id: String = ""
 @export var master_name: String = ""
+## Floor number to the boss that seals the way down from it. A floor not
+## listed has MonsterDatabase's stock boss for that floor, if any.
+@export var guardians: Dictionary = {}
+## A boss's given name in MonsterDatabase to the one it goes by here. Empty
+## in the first set. Later sets have new bosses of the same kinds.
+@export var boss_renames: Dictionary = {}
 
 @export_group("State")
 ## Floor number to DungeonData, for the floors generated so far.
@@ -34,6 +40,29 @@ extends Resource
 @export var deepest_floor: int = 0
 ## Game day the dungeon collapsed, or 0 while it stands.
 @export var collapsed_day: int = 0
+
+
+## [param text] with this dungeon's names for its bosses.
+func renamed(text: String) -> String:
+	for old_name in boss_renames:
+		text = text.replace(old_name, boss_renames[old_name])
+	return text
+
+
+## Gives [param boss] the name it goes by in this dungeon, in its own name
+## and in what its fight says of it.
+func name_boss(boss: Monster) -> void:
+	var new_name := renamed(boss.monster_name)
+	if new_name == boss.monster_name:
+		return
+	# Its art is still filed under the name it has in MonsterDatabase.
+	if boss.art_name.is_empty():
+		boss.art_name = boss.monster_name
+	boss.monster_name = new_name
+	for phase in boss.boss_phases:
+		for key in ["warning_message", "transition_message"]:
+			if phase.has(key):
+				phase[key] = renamed(phase[key])
 
 
 func is_collapsed() -> bool:

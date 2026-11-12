@@ -224,6 +224,8 @@ func _copy_dungeon_set(source: DungeonSet) -> DungeonSet:
 func _copy_dungeon(source: Dungeon) -> Dungeon:
 	var copy: Dungeon = source.duplicate()
 	copy.bosses_slain = source.bosses_slain.duplicate()
+	copy.guardians = source.guardians.duplicate()
+	copy.boss_renames = source.boss_renames.duplicate()
 	copy.floors = {}
 	for floor_num in source.floors.keys():
 		var floor_data = source.floors[floor_num]

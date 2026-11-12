@@ -112,16 +112,20 @@ func active_dungeon() -> Dungeon:
 
 
 ## Which boss waits on [param floor_num] of the active dungeon, or "". On the
-## deepest floor that's the dungeon's master.
+## deepest floor that's the dungeon's master, and above it the dungeon's own
+## guardian for that floor.
 func floor_boss_id(floor_num: int) -> String:
 	var dungeon := active_dungeon()
 	if floor_num >= dungeon.depth and not dungeon.master_id.is_empty():
 		return dungeon.master_id
-	return MonsterDatabase.get_boss_id_for_floor(floor_num)
+	return dungeon.guardians.get(floor_num, MonsterDatabase.get_boss_id_for_floor(floor_num))
 
 
 func get_floor_boss(floor_num: int) -> Monster:
-	return MonsterDatabase.get_monster(floor_boss_id(floor_num))
+	var boss := MonsterDatabase.get_monster(floor_boss_id(floor_num))
+	if boss:
+		active_dungeon().name_boss(boss)
+	return boss
 
 
 func get_floor_boss_minions(floor_num: int) -> Array[String]:

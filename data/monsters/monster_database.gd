@@ -11,6 +11,15 @@ static var _boss_minion_map: Dictionary = {
 	"boss_broodmother": ["spider", "spider"],
 	"boss_ironjaw": ["orc", "bandit"],
 	"boss_lich": ["ghost", "skeleton_mage"],
+	"boss_cinder_hound": ["wolf", "wolf"],
+	"boss_forgemaster": ["orc", "kobold"],
+	"boss_pyre_priest": ["goblin_shaman", "skeleton_mage"],
+	"boss_brine_mother": ["slime", "slime", "zombie"],
+	"boss_drowned_captain": ["bandit", "bandit"],
+	"boss_tide_witch": ["ghost", "ghost"],
+	"boss_rot_bloom": ["fungal_creeper", "spider"],
+	"boss_bog_troll": ["orc", "fungal_creeper"],
+	"boss_mire_hag": ["witch", "fungal_creeper"],
 	"boss_drake": ["dark_mage", "troll"],
 	"boss_ash_wyrm": ["dark_mage", "troll"],
 	"boss_pale_wyrm": ["siren", "ghost"],
@@ -111,6 +120,15 @@ static func _create_monsters() -> void:
 	_create_boss_broodmother()
 	_create_boss_ironjaw()
 	_create_boss_lich()
+	_create_boss_cinder_hound()
+	_create_boss_forgemaster()
+	_create_boss_pyre_priest()
+	_create_boss_brine_mother()
+	_create_boss_drowned_captain()
+	_create_boss_tide_witch()
+	_create_boss_rot_bloom()
+	_create_boss_bog_troll()
+	_create_boss_mire_hag()
 	_create_boss_drake()
 	_create_boss_ash_wyrm()
 	_create_boss_pale_wyrm()
@@ -727,19 +745,8 @@ static func _create_minotaur() -> void:
 
 
 static func _create_boss_broodmother() -> void:
-	var monster := Monster.new()
-	monster.monster_name = "Broodmother"
-	monster.max_hp = 110
-	monster.strength = 12
-	monster.agility = 10
-	monster.defense = 4
-	monster.evasion = 4
+	var monster := _new_guardian(2, "Broodmother")
 	monster.creature_type = CharacterEnums.CreatureType.INSECT
-	monster.level = 4
-	monster.luck = 10
-	monster.is_boss = true
-	monster.exp_reward = 120
-	monster.gold_reward_dice = "4d10"
 
 	var venomous_fangs := MonsterAttack.create_with_effect(
 		"Venomous Fangs",
@@ -807,19 +814,8 @@ static func _create_boss_broodmother() -> void:
 
 
 static func _create_boss_ironjaw() -> void:
-	var monster := Monster.new()
-	monster.monster_name = "Ironjaw the Warchief"
-	monster.max_hp = 170
-	monster.strength = 18
-	monster.agility = 10
-	monster.defense = 7
-	monster.evasion = 4
+	var monster := _new_guardian(4, "Ironjaw the Warchief")
 	monster.creature_type = CharacterEnums.CreatureType.HUMANOID
-	monster.level = 6
-	monster.luck = 10
-	monster.is_boss = true
-	monster.exp_reward = 250
-	monster.gold_reward_dice = "6d10"
 
 	var waraxe_cleave := MonsterAttack.create_basic("Waraxe Cleave", "2d8+3", 2)
 	waraxe_cleave.targets_row = true
@@ -889,25 +885,8 @@ static func _create_boss_ironjaw() -> void:
 
 
 static func _create_boss_lich() -> void:
-	var monster := Monster.new()
-	monster.monster_name = "Nethris the Lich"
-	monster.max_hp = 170
-	# Acts twice a round. A lone caster acting once a round against six
-	# adventurers fell over long before the floor 4 boss did.
-	monster.extra_actions = 1
-	monster.strength = 8
-	monster.agility = 12
-	monster.defense = 5
-	monster.evasion = 12
+	var monster := _new_guardian(6, "Nethris the Lich")
 	monster.creature_type = CharacterEnums.CreatureType.UNDEAD
-	monster.level = 8
-	monster.intelligence = 20
-	monster.piety = 16
-	monster.max_mp = 40
-	monster.luck = 14
-	monster.is_boss = true
-	monster.exp_reward = 500
-	monster.gold_reward_dice = "8d10"
 
 	var soul_rend := MonsterAttack.create_magical("Soul Rend", "4d6+2", CharacterEnums.Element.DARK, 4)
 
@@ -976,6 +955,435 @@ static func _create_boss_lich() -> void:
 		},
 	]
 	_monsters["boss_lich"] = monster
+
+
+## What the guardians of one floor have in common in every dungeon, so that
+## no dungeon's second, fourth or sixth floor is the hard one. Each adds its
+## own attacks, phases, loot and weaknesses.
+static func _new_guardian(floor_num: int, p_name: String) -> Monster:
+	var monster := Monster.new()
+	monster.monster_name = p_name
+	monster.is_boss = true
+	monster.min_floor = 99
+	monster.max_floor = 99
+	monster.agility = 10
+	monster.evasion = 4
+	monster.luck = 10
+	match floor_num:
+		2:
+			monster.max_hp = 110
+			monster.strength = 12
+			monster.defense = 4
+			monster.level = 4
+			monster.exp_reward = 120
+			monster.gold_reward_dice = "4d10"
+		4:
+			monster.max_hp = 170
+			monster.strength = 18
+			monster.defense = 7
+			monster.level = 6
+			monster.exp_reward = 250
+			monster.gold_reward_dice = "6d10"
+		_:
+			# The sixth floor's guardian is a caster. It acts twice a round: a
+			# lone caster acting once against six adventurers fell over long
+			# before the floor 4 guardian did.
+			monster.max_hp = 170
+			monster.extra_actions = 1
+			monster.strength = 8
+			monster.agility = 12
+			monster.defense = 5
+			monster.evasion = 12
+			monster.level = 8
+			monster.intelligence = 20
+			monster.piety = 16
+			monster.max_mp = 40
+			monster.luck = 14
+			monster.exp_reward = 500
+			monster.gold_reward_dice = "8d10"
+	return monster
+
+
+## One phase of a guardian's fight.
+static func _phase(threshold: float, min_turns: int, warning: String, transition: String,
+		modifiers: Dictionary, prefer: Array, avoid: Array = []) -> Dictionary:
+	return {
+		"hp_threshold": threshold, "min_turns": min_turns,
+		"warning_message": warning, "transition_message": transition,
+		"behavior_modifiers": modifiers,
+		"attack_preferences": {"prefer": prefer, "avoid": avoid} if not prefer.is_empty() or not avoid.is_empty() else {},
+	}
+
+
+## The three phases of a second-floor guardian's fight. [param lines] holds a
+## warning and a transition message for each of the last two, and
+## [param prefer] the attacks favoured in each of those.
+static func _floor_2_phases(lines: Array, prefer: Array, avoid: Array) -> Array[Dictionary]:
+	return [
+		_phase(1.0, 0, "", "", {}, []),
+		_phase(0.50, 2, lines[0][0], lines[0][1], {"spellcaster": 15.0, "tactical": 10.0}, prefer[0], avoid),
+		_phase(0.25, 2, lines[1][0], lines[1][1],
+			{"aggressive": 20.0, "tactical": 20.0, "defensive": -20.0}, prefer[1]),
+	]
+
+
+static func _floor_4_phases(lines: Array, prefer: Array, avoid: Array) -> Array[Dictionary]:
+	return [
+		_phase(1.0, 0, "", "", {}, []),
+		_phase(0.60, 2, lines[0][0], lines[0][1], {"tactical": 15.0, "berserker": 10.0}, prefer[0], avoid),
+		_phase(0.30, 2, lines[1][0], lines[1][1],
+			{"berserker": 30.0, "aggressive": 20.0, "defensive": -20.0}, prefer[1]),
+	]
+
+
+## A sixth-floor guardian casts [param opening_spell] as it enters its second
+## phase. [param prefer] has an entry for each of the three phases, and
+## [param avoid] is its weak staff blow, which it never favours.
+static func _floor_6_phases(lines: Array, prefer: Array, avoid: Array, opening_spell: String) -> Array[Dictionary]:
+	var second := _phase(0.60, 3, lines[0][0], lines[0][1], {"spellcaster": 30.0, "tactical": 15.0}, prefer[1], avoid)
+	second["on_transition_spell"] = opening_spell
+	return [
+		_phase(1.0, 0, "", "", {"spellcaster": 20.0}, prefer[0], avoid),
+		second,
+		_phase(0.30, 3, lines[1][0], lines[1][1], {"spellcaster": 40.0, "aggressive": -10.0}, prefer[2], avoid),
+	]
+
+
+# The Ashen Halls, floor 2. A hound of the burnt halls: it bites hard and its
+# breath blinds. Fire does little to it.
+static func _create_boss_cinder_hound() -> void:
+	var monster := _new_guardian(2, "The Cinder Hound")
+	monster.art_name = "Dire Wolf"
+	monster.tint = Color(1.0, 0.62, 0.42)
+	monster.creature_type = CharacterEnums.CreatureType.BEAST
+	monster.element_resist = {CharacterEnums.Element.FIRE: 0.5, CharacterEnums.Element.ICE: -0.5}
+
+	var searing_bite := MonsterAttack.create_basic("Searing Bite", "1d10+2", 0)
+
+	var ash_breath := MonsterAttack.create_with_effect(
+		"Ash Breath", "1d4", 0, CharacterEnums.StatusEffect.BLINDED, 0.35, "2+1d2", "physical", 2)
+	ash_breath.targets_row = true
+
+	var raking_claws := MonsterAttack.create_basic("Raking Claws", "1d6+1", 0)
+
+	var ember_spit := MonsterAttack.create_magical("Ember Spit", "2d6", CharacterEnums.Element.FIRE, 0)
+	ember_spit.weapon_range = 2
+
+	monster.attacks = [searing_bite, searing_bite, ash_breath, raking_claws, ember_spit]
+	monster.loot_drops = [
+		LootDrop.create("long_sword", 0.25),
+		LootDrop.create("chain_mail", 0.20),
+		LootDrop.create("greater_healing", 0.50),
+		LootDrop.create("eye_drops", 0.40),
+	]
+	monster.boss_phases = _floor_2_phases([
+		["Smoke curls from the Cinder Hound's jaws...", "The Cinder Hound howls, and the embers flare!"],
+		["The Cinder Hound's flanks begin to glow...", "The Cinder Hound burns like a coal!"],
+	], [["Ember Spit", "Searing Bite"], ["Ash Breath", "Ember Spit"]], ["Raking Claws"])
+	_monsters["boss_cinder_hound"] = monster
+
+
+# The Ashen Halls, floor 4. The smith who keeps the forges lit: hammer blows,
+# thrown slag that blinds, and a furnace blast that leaves casters choking.
+static func _create_boss_forgemaster() -> void:
+	var monster := _new_guardian(4, "Brakka the Forgemaster")
+	monster.art_name = "Orc"
+	monster.tint = Color(1.0, 0.7, 0.55)
+	monster.creature_type = CharacterEnums.CreatureType.HUMANOID
+	monster.element_resist = {CharacterEnums.Element.FIRE: 0.5, CharacterEnums.Element.ICE: -0.5}
+
+	var hammer_sweep := MonsterAttack.create_basic("Hammer Sweep", "2d8+3", 2)
+	hammer_sweep.targets_row = true
+
+	var molten_hammer := MonsterAttack.create_basic("Molten Hammer", "2d10+2", 0)
+
+	var slag_throw := MonsterAttack.create_with_effect(
+		"Slag Throw", "1d6+2", 2, CharacterEnums.StatusEffect.BLINDED, 0.25, "2+1d2", "physical", 3)
+
+	var furnace_blast := MonsterAttack.create_ability(
+		"Furnace Blast", "1d4", CharacterEnums.StatusEffect.SILENCED, 0.30, "2+1d3", "physical", 3)
+	furnace_blast.targets_all = true
+
+	var forge_hammer := MonsterAttack.create_basic("Forge Hammer", "1d10+3", 2)
+
+	monster.attacks = [hammer_sweep, molten_hammer, slag_throw, furnace_blast, forge_hammer]
+	monster.loot_drops = [
+		LootDrop.create("battle_axe", 0.30),
+		LootDrop.create("plate_armor", 0.15),
+		LootDrop.create("iron_helm", 0.25),
+		LootDrop.create("iron_boots", 0.25),
+		LootDrop.create("greater_healing", 0.50),
+	]
+	monster.boss_phases = _floor_4_phases([
+		["Brakka spits and hefts her hammer...", "Brakka kicks the furnace doors wide!"],
+		["Brakka's apron is slick with blood...", "Brakka swings as if the anvil were under you!"],
+	], [["Hammer Sweep", "Molten Hammer"], ["Molten Hammer", "Forge Hammer", "Furnace Blast"]], ["Slag Throw"])
+	_monsters["boss_forgemaster"] = monster
+
+
+# The Ashen Halls, floor 6. A priest of the pyres: flame, brands that blind,
+# and smoke that silences. Fire does little to him, cold a lot.
+static func _create_boss_pyre_priest() -> void:
+	var monster := _new_guardian(6, "Serrak the Pyre-Priest")
+	monster.creature_type = CharacterEnums.CreatureType.HUMANOID
+	monster.element_resist = {CharacterEnums.Element.FIRE: 0.5, CharacterEnums.Element.ICE: -0.5}
+
+	var flame_lash := MonsterAttack.create_magical("Flame Lash", "4d6+2", CharacterEnums.Element.FIRE, 4)
+
+	var searing_brand := MonsterAttack.create_with_effect(
+		"Searing Brand", "2d4", 2, CharacterEnums.StatusEffect.BLINDED, 0.30, "2+1d2", "magical", 4)
+	searing_brand.is_magical = true
+	searing_brand.element = CharacterEnums.Element.FIRE
+
+	var smoke := MonsterAttack.create_ability(
+		"Smothering Smoke", "2d6", CharacterEnums.StatusEffect.SILENCED, 0.35, "2+1d3", "physical", 4)
+	smoke.targets_all = true
+	smoke.is_magical = true
+	smoke.element = CharacterEnums.Element.FIRE
+
+	var charred_staff := MonsterAttack.create_basic("Charred Staff", "1d6", 0)
+
+	monster.attacks = [flame_lash, flame_lash, searing_brand, smoke, charred_staff]
+	monster.spells = ["m1_fire_bolt", "m2_fire_wave", "m3_fireball", "m3_curse", "m3_silence"]
+	monster.loot_drops = [
+		LootDrop.create("staff", 0.30),
+		LootDrop.create("plate_armor", 0.20),
+		LootDrop.create("mana_potion", 0.50),
+		LootDrop.create("greater_healing", 0.50),
+	]
+	monster.boss_phases = _floor_6_phases([
+		["Serrak's brands begin to glow...", "Smoke pours from Serrak's censer!"],
+		["Serrak begins the rite of the pyre...", "Serrak sets himself alight!"],
+	], [
+		["Flame Lash", "Searing Brand"], ["Flame Lash"], ["Flame Lash", "Searing Brand"],
+	], ["Charred Staff"], "m3_silence")
+	_monsters["boss_pyre_priest"] = monster
+
+
+# The Drowned Vaults, floor 2. A great cold jelly from the flooded cellars:
+# its touch numbs and its spray sends the front rank to sleep. Fire hurts it.
+static func _create_boss_brine_mother() -> void:
+	var monster := _new_guardian(2, "The Brine Mother")
+	monster.art_name = "Slime"
+	monster.tint = Color(0.62, 0.86, 1.0)
+	monster.creature_type = CharacterEnums.CreatureType.AQUATIC
+	monster.element_resist = {CharacterEnums.Element.ICE: 0.5, CharacterEnums.Element.FIRE: -0.5}
+
+	var numbing_clutch := MonsterAttack.create_with_effect(
+		"Numbing Clutch", "1d8+3", 0, CharacterEnums.StatusEffect.PARALYZED, 0.25, "1+1d2", "physical", 3)
+
+	var brine_spray := MonsterAttack.create_with_effect(
+		"Brine Spray", "1d4", 0, CharacterEnums.StatusEffect.ASLEEP, 0.35, "1+1d2", "physical", 2)
+	brine_spray.targets_row = true
+
+	var pseudopod := MonsterAttack.create_basic("Pseudopod", "1d6+1", 0)
+
+	var frigid_spit := MonsterAttack.create_magical("Frigid Spit", "2d6", CharacterEnums.Element.ICE, 0)
+	frigid_spit.weapon_range = 2
+
+	monster.attacks = [numbing_clutch, numbing_clutch, brine_spray, pseudopod, frigid_spit]
+	monster.loot_drops = [
+		LootDrop.create("long_sword", 0.25),
+		LootDrop.create("chain_mail", 0.20),
+		LootDrop.create("greater_healing", 0.50),
+		LootDrop.create("wake_dust", 0.40),
+	]
+	monster.boss_phases = _floor_2_phases([
+		["The Brine Mother shudders and swells...", "The Brine Mother bursts into a cold spray!"],
+		["The Brine Mother's body clouds over...", "The Brine Mother surges across the floor!"],
+	], [["Frigid Spit", "Numbing Clutch"], ["Brine Spray", "Frigid Spit"]], ["Pseudopod"])
+	_monsters["boss_brine_mother"] = monster
+
+
+# The Drowned Vaults, floor 4. A captain who went down with the vaults and
+# hasn't left: cutlass, a grip that numbs, and a bell that sends the party to
+# sleep. Holy magic hurts him.
+static func _create_boss_drowned_captain() -> void:
+	var monster := _new_guardian(4, "Captain Morrow the Drowned")
+	monster.art_name = "Zombie"
+	monster.tint = Color(0.62, 0.9, 0.95)
+	monster.creature_type = CharacterEnums.CreatureType.UNDEAD
+	monster.element_resist = {CharacterEnums.Element.ICE: 0.5, CharacterEnums.Element.HOLY: -0.5}
+
+	var cutlass_sweep := MonsterAttack.create_basic("Cutlass Sweep", "2d8+3", 2)
+	cutlass_sweep.targets_row = true
+
+	var anchor_blow := MonsterAttack.create_basic("Anchor Blow", "2d10+2", 0)
+
+	var cold_grasp := MonsterAttack.create_with_effect(
+		"Cold Grasp", "1d6+2", 2, CharacterEnums.StatusEffect.PARALYZED, 0.25, "1+1d2", "physical", 3)
+
+	var drowned_bell := MonsterAttack.create_ability(
+		"Drowned Bell", "1d4", CharacterEnums.StatusEffect.ASLEEP, 0.40, "1+1d2", "mental", 3)
+	drowned_bell.targets_all = true
+
+	var rusted_cutlass := MonsterAttack.create_basic("Rusted Cutlass", "1d10+3", 2)
+
+	monster.attacks = [cutlass_sweep, anchor_blow, cold_grasp, drowned_bell, rusted_cutlass]
+	monster.loot_drops = [
+		LootDrop.create("spear", 0.30),
+		LootDrop.create("plate_armor", 0.15),
+		LootDrop.create("iron_helm", 0.25),
+		LootDrop.create("iron_shield", 0.25),
+		LootDrop.create("greater_healing", 0.50),
+	]
+	monster.boss_phases = _floor_4_phases([
+		["Water runs from Morrow's coat...", "Morrow rings the drowned bell!"],
+		["Morrow's eyes go white as salt...", "Morrow fights like a man going under!"],
+	], [["Cutlass Sweep", "Anchor Blow"], ["Anchor Blow", "Rusted Cutlass", "Drowned Bell"]], ["Cold Grasp"])
+	_monsters["boss_drowned_captain"] = monster
+
+
+# The Drowned Vaults, floor 6. A witch of the cold tide: lances of ice, a
+# touch that numbs, and a song that sends the party to sleep. Cold does
+# little to her, fire a lot.
+static func _create_boss_tide_witch() -> void:
+	var monster := _new_guardian(6, "Ysolde the Tide Witch")
+	monster.creature_type = CharacterEnums.CreatureType.HUMANOID
+	monster.element_resist = {CharacterEnums.Element.ICE: 0.5, CharacterEnums.Element.FIRE: -0.5}
+
+	var ice_lance := MonsterAttack.create_magical("Ice Lance", "4d6+2", CharacterEnums.Element.ICE, 4)
+
+	var numbing_touch := MonsterAttack.create_with_effect(
+		"Numbing Touch", "2d4", 2, CharacterEnums.StatusEffect.PARALYZED, 0.30, "1+1d2", "magical", 4)
+	numbing_touch.is_magical = true
+	numbing_touch.element = CharacterEnums.Element.ICE
+
+	var song := MonsterAttack.create_ability(
+		"Song of the Deep", "2d6", CharacterEnums.StatusEffect.ASLEEP, 0.35, "1+1d2", "mental", 4)
+	song.targets_all = true
+	song.is_magical = true
+	song.element = CharacterEnums.Element.ICE
+
+	var coral_staff := MonsterAttack.create_basic("Coral Staff", "1d6", 0)
+
+	monster.attacks = [ice_lance, ice_lance, numbing_touch, song, coral_staff]
+	monster.spells = ["m1_sleep", "m2_fear", "m3_curse", "m3_silence", "m4_freeze"]
+	monster.loot_drops = [
+		LootDrop.create("staff", 0.30),
+		LootDrop.create("plate_armor", 0.20),
+		LootDrop.create("mana_potion", 0.50),
+		LootDrop.create("greater_healing", 0.50),
+	]
+	monster.boss_phases = _floor_6_phases([
+		["Ysolde begins to hum under her breath...", "The water rises around Ysolde!"],
+		["Frost creeps out across the floor...", "Ysolde calls the cold tide in!"],
+	], [
+		["Ice Lance", "Numbing Touch"], ["Ice Lance"], ["Ice Lance", "Numbing Touch"],
+	], ["Coral Staff"], "m1_sleep")
+	_monsters["boss_tide_witch"] = monster
+
+
+# The Verdant Dark, floor 2. A flowering rot the size of a cart: poison
+# thorns, and spores that turn the front rank on each other. Fire hurts it.
+static func _create_boss_rot_bloom() -> void:
+	var monster := _new_guardian(2, "The Rot Bloom")
+	monster.art_name = "Fungal Creeper"
+	monster.tint = Color(0.86, 1.0, 0.72)
+	monster.creature_type = CharacterEnums.CreatureType.PLANT
+	monster.element_resist = {CharacterEnums.Element.FIRE: -0.5}
+
+	var toxic_thorns := MonsterAttack.create_with_effect(
+		"Toxic Thorns", "1d8+2", 0, CharacterEnums.StatusEffect.POISONED, 0.50, "3+1d3", "physical", 3)
+
+	var spore_burst := MonsterAttack.create_with_effect(
+		"Spore Burst", "1d4", 0, CharacterEnums.StatusEffect.CONFUSED, 0.35, "1+1d2", "mental", 2)
+	spore_burst.targets_row = true
+
+	var vine_lash := MonsterAttack.create_basic("Vine Lash", "1d6+1", 0)
+
+	var acid_sap := MonsterAttack.create_magical("Acid Sap", "2d6", CharacterEnums.Element.ACID, 0)
+	acid_sap.weapon_range = 2
+
+	monster.attacks = [toxic_thorns, toxic_thorns, spore_burst, vine_lash, acid_sap]
+	monster.loot_drops = [
+		LootDrop.create("long_sword", 0.25),
+		LootDrop.create("chain_mail", 0.20),
+		LootDrop.create("greater_healing", 0.50),
+		LootDrop.create("antidote", 0.40),
+	]
+	monster.boss_phases = _floor_2_phases([
+		["The Rot Bloom's petals peel back...", "The Rot Bloom bursts open in a cloud of spores!"],
+		["Sap runs from the Rot Bloom's wounds...", "The Rot Bloom lashes out in every direction!"],
+	], [["Acid Sap", "Toxic Thorns"], ["Spore Burst", "Acid Sap"]], ["Vine Lash"])
+	_monsters["boss_rot_bloom"] = monster
+
+
+# The Verdant Dark, floor 4. A troll that has lain in the bog longer than the
+# guild has stood: a club, filthy claws, and a belch that addles the party.
+# Fire hurts it.
+static func _create_boss_bog_troll() -> void:
+	var monster := _new_guardian(4, "Old Grum the Bog Troll")
+	monster.creature_type = CharacterEnums.CreatureType.HUMANOID
+	monster.element_resist = {CharacterEnums.Element.FIRE: -0.5}
+
+	var club_sweep := MonsterAttack.create_basic("Club Sweep", "2d8+3", 2)
+	club_sweep.targets_row = true
+
+	var trunk_smash := MonsterAttack.create_basic("Tree-Trunk Smash", "2d10+2", 0)
+
+	var filthy_claws := MonsterAttack.create_with_effect(
+		"Filthy Claws", "1d6+2", 2, CharacterEnums.StatusEffect.POISONED, 0.40, "3+1d3", "physical", 3)
+
+	var fetid_belch := MonsterAttack.create_ability(
+		"Fetid Belch", "1d4", CharacterEnums.StatusEffect.CONFUSED, 0.35, "1+1d2", "mental", 3)
+	fetid_belch.targets_all = true
+
+	var knotted_club := MonsterAttack.create_basic("Knotted Club", "1d10+3", 2)
+
+	monster.attacks = [club_sweep, trunk_smash, filthy_claws, fetid_belch, knotted_club]
+	monster.loot_drops = [
+		LootDrop.create("mace", 0.30),
+		LootDrop.create("plate_armor", 0.15),
+		LootDrop.create("iron_helm", 0.25),
+		LootDrop.create("iron_shield", 0.25),
+		LootDrop.create("greater_healing", 0.50),
+	]
+	monster.boss_phases = _floor_4_phases([
+		["Old Grum grunts and drags his club up...", "Old Grum bellows, and the bog shakes!"],
+		["Old Grum's wounds bubble and stink...", "Old Grum goes berserk!"],
+	], [["Club Sweep", "Tree-Trunk Smash"], ["Tree-Trunk Smash", "Knotted Club", "Fetid Belch"]], ["Filthy Claws"])
+	_monsters["boss_bog_troll"] = monster
+
+
+# The Verdant Dark, floor 6. A hag of the mire: hexes that eat like acid, a
+# touch that rots, and a cackle that turns the party on itself. Lightning
+# hurts her, as it does her master.
+static func _create_boss_mire_hag() -> void:
+	var monster := _new_guardian(6, "Mother Nettle the Mire Hag")
+	monster.creature_type = CharacterEnums.CreatureType.HUMANOID
+	monster.element_resist = {CharacterEnums.Element.LIGHTNING: -0.5}
+
+	var hex_bolt := MonsterAttack.create_magical("Hex Bolt", "4d6+2", CharacterEnums.Element.ACID, 4)
+
+	var rotting_touch := MonsterAttack.create_with_effect(
+		"Rotting Touch", "2d4", 2, CharacterEnums.StatusEffect.POISONED, 0.50, "3+1d3", "magical", 4)
+	rotting_touch.is_magical = true
+	rotting_touch.element = CharacterEnums.Element.ACID
+
+	var cackle := MonsterAttack.create_ability(
+		"Maddening Cackle", "2d6", CharacterEnums.StatusEffect.CONFUSED, 0.35, "1+1d2", "mental", 4)
+	cackle.targets_all = true
+	cackle.is_magical = true
+	cackle.element = CharacterEnums.Element.PSYCHIC
+
+	var gnarled_staff := MonsterAttack.create_basic("Gnarled Staff", "1d6", 0)
+
+	monster.attacks = [hex_bolt, hex_bolt, rotting_touch, cackle, gnarled_staff]
+	monster.spells = ["m1_fire_bolt", "m1_sleep", "m3_curse", "m3_dread", "m3_silence"]
+	monster.loot_drops = [
+		LootDrop.create("staff", 0.30),
+		LootDrop.create("plate_armor", 0.20),
+		LootDrop.create("mana_potion", 0.50),
+		LootDrop.create("greater_healing", 0.50),
+	]
+	monster.boss_phases = _floor_6_phases([
+		["Mother Nettle starts to mutter...", "Mother Nettle spits a curse!"],
+		["Mother Nettle's laughter rises...", "Mother Nettle shrieks with laughter!"],
+	], [
+		["Hex Bolt", "Rotting Touch"], ["Hex Bolt"], ["Hex Bolt", "Rotting Touch"],
+	], ["Gnarled Staff"], "m3_curse")
+	_monsters["boss_mire_hag"] = monster
 
 
 ## What every dungeon's master has in common, so that the four of a set are

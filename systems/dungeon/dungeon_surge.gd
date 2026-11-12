@@ -5,10 +5,17 @@ extends RefCounted
 ## and their monsters grow stronger. The energy pools in the deep: the top two
 ## floors never change, so new recruits always have somewhere to train, and
 ## the bottom floors get all of it. Later sets add a tier on the same curve.
-## These numbers are first guesses, to be tuned in play.
+##
+## The numbers come from tests/measure_bosses.tscn. A master at a surge of 1.0
+## wants a party of level 10, and each 1.0 more wants about two and a half
+## levels more. A party that clears a dungeon gains a level or two from it, so
+## 0.30 a collapse keeps the next master about level with the party that
+## brought the last one down. A set is five dungeons, so a new set adds 2.0:
+## less, and veterans of the last set walk through the next. See
+## docs/dungeon-sets.md.
 
 const PER_COLLAPSE := 0.30
-const PER_SET := 1.0
+const PER_SET := 2.0
 ## Share of the surge each floor takes. Index 0 is unused.
 const DEPTH_SHARE: Array[float] = [0.0, 0.0, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.0]
 

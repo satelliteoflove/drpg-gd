@@ -75,6 +75,16 @@ func spawn_initial_enemies() -> void:
 			_spawn_enemy_in_zone(zone)
 
 
+## Takes back the groups saved with the floor. A boss's group is rebuilt from
+## the database, so a saved floor follows any change to its boss.
+func restore_groups(groups: Array[EnemyGroup]) -> void:
+	var has_boss := GameState.get_floor_boss(dungeon_data.floor_level) != null
+	for group in groups:
+		if has_boss and group.ai_type == EnemyGroup.AIType.BOSS:
+			group.monsters = _generate_boss_encounter()
+		enemy_groups.append(group)
+
+
 func _calculate_initial_spawn_count(zone: EncounterZone) -> int:
 	match zone.zone_type:
 		EncounterZone.ZoneType.NORMAL:

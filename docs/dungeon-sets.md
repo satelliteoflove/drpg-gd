@@ -32,7 +32,28 @@ All four dungeons in a set are open at once, and the player clears them in whate
 
 **The energy pools in the deep.** The strengthening grows with depth. Floors 1 and 2 of every dungeon never change, the middle floors get part of it, and the bottom floors get all of it. That keeps veterans working where it matters while a party of new recruits always has somewhere safe to train, however many dungeons have fallen. Stronger monsters also give more XP, so a new party catches up faster on the middle floors than the first party did. Apprentices are the other way up.
 
-As built (`systems/dungeon/dungeon_surge.gd`), each collapse adds 30% and each set after the first adds 100%, scaled by depth: nothing on floors 1 and 2, then 20%, 40%, 60% and 80% on floors 3 to 6, and all of it on 7 and 8. The multiplier applies to a monster's HP and XP, with smaller bumps to level, strength and defense. These are first guesses to tune in play.
+As built (`systems/dungeon/dungeon_surge.gd`), each collapse adds 30% and each set after the first adds 200%, scaled by depth: nothing on floors 1 and 2, then 20%, 40%, 60% and 80% on floors 3 to 6, and all of it on 7 and 8. The multiplier applies to a monster's HP and XP, with smaller bumps to level, strength and defense.
+
+### Measured
+
+`tests/measure_bosses.tscn` simulates each boss fight 200 times against the same parties, at any surge. This is the party level at which a balanced party beats a master and its two helpers at least 95 times in 100:
+
+| Surge | Where | Level the master wants | Level a party arrives at |
+|---|---|---|---|
+| ×1.0 | First dungeon | 10 | 10 |
+| ×1.3 | Second | 12 | 12 |
+| ×1.6 | Third | 13 | 13 or 14 |
+| ×1.9 | Fourth | 13 or 14 | 15 |
+| ×2.2 | The Heart Below | 16 (the King) | 15 or 16 |
+| ×3.0 | Second set, first dungeon | 17 | 17 or 18 |
+| ×3.9 | Second set, fourth dungeon | About 19 or 20 | 21 |
+| ×5.0 | Third set, first dungeon | 22 | |
+
+The last column is a party that explores every floor once, loses nobody and never grinds, using the XP per fight in [deep-time.md](deep-time.md#measured). Stronger monsters pay more XP, so it keeps pace. Each 1.0 of surge asks about two and a half levels more of the party, and a dungeon gives a level or two, which is why 30% a collapse holds a set level. A set is five dungeons, so the step between sets is 200%. At the first guess of 100% the second set opened weaker than the Heart Below had been, and a party of veterans stayed three levels ahead of it all the way through.
+
+A party of new recruits has it harder in a late dungeon, which is the intent. In the first set's fourth dungeon the floor 4 guardian wants level 7 where it wanted 5 or 6, and the master wants 13 or 14. That's somewhat more grinding on floor 7 than the first dungeon's master took, though the monsters there pay nearly double. In the second set it's about twice what the first dungeon took.
+
+Bosses that disable the party get harder faster under a surge than ones that only hit, because the fight runs longer. At ×2.6 the Tide Witch beats a level 10 party two times in three where the Lich loses three in four. By level 12 both lose nearly every time.
 
 The fifth dungeon is **one great floor**: a single large level with the story's final master at its heart. It appears once all four have collapsed. For now it's a single 41×41 floor that plays by floor 8's rules, with floor 5's deep-time rate. This is tentative. Dungeon generation is due a rethink after this feature, and the fifth dungeon's shape, or whether it needs one of its own, will be decided then.
 
@@ -48,7 +69,7 @@ Switching away from a party only pauses it. Its expedition hasn't ended, so noth
 
 ## Entering a dungeon
 
-A party always enters a dungeon at the top, as in any dungeon RPG, however deep it or anyone else has been before. A way to make the return trip easier, such as an elevator unlocked at a certain depth, is an idea for later and isn't built.
+A party always enters a dungeon at the top, as in any dungeon RPG, however deep it or anyone else has been before. A way to make the return trip easier, such as an elevator unlocked at a certain depth, isn't built. It will come in with the rework of dungeon generation.
 
 ## Guild storage
 
@@ -90,7 +111,7 @@ The Ashen Halls and the Drowned Vaults play music from the audition pool that ha
 
 ## Masters and art
 
-Each dungeon has its own master, with its own fight. The four of a set share their HP, strength and defenses, so no dungeon is the hard one, and differ in what they do to the party and what hurts them.
+Each dungeon has its own master and its own guardians, each with its own fight. Bosses on the same floor share their HP, strength and defenses whichever dungeon they're in, so no dungeon is the hard one. They differ in what they do to the party and what hurts them.
 
 | Master | Dungeon | What it does | Spells against it |
 |---|---|---|---|
@@ -102,9 +123,24 @@ Each dungeon has its own master, with its own fight. The four of a set share the
 
 A resistance halves that element's spell damage and a weakness adds half again, and the combat log says so when it happens. The Pale Wyrm's frost does half damage to the races that resist ice (Rawulf, Mook, Felpurr). Each master brings two lesser monsters that suit its dungeon. The Hollow King is undead, has half again a master's HP and a better guard, and doesn't fly, and plays about a level harder than a master.
 
-`tests/measure_masters.tscn` simulates each fight a few hundred times against the same parties. As measured, the four masters come out within a few points of each other for a party at level 10 or above. The simulated party doesn't know to stop casting ice at the Pale Wyrm, so that fight looks a little harder there than it should be.
+As measured, the four masters come out within a few points of each other for a party at level 10 or above. The simulated party doesn't know to stop casting ice at the Pale Wyrm, so that fight looks a little harder there than it should be.
 
-Until art arrives, every master shows the drake's art under a tint. The guardians on floors 2, 4 and 6 are the same in every dungeon for now. Monster tiers in later sets are still placeholders.
+The guardians seal the stairs on floors 2, 4 and 6. A dungeon's guardians do in small what its master does, so the way down teaches the fight at the bottom.
+
+| Dungeon | Floor 2 | Floor 4 | Floor 6 |
+|---|---|---|---|
+| The Drake's Deep | Broodmother: poison, webs that paralyze | Ironjaw the Warchief: a war cry that frightens | Nethris the Lich: fear and a paralyzing touch |
+| The Ashen Halls | The Cinder Hound: a hard bite, ash that blinds | Brakka the Forgemaster: slag that blinds, a blast that silences | Serrak the Pyre-Priest: flame, brands that blind, smoke that silences |
+| The Drowned Vaults | The Brine Mother: a numbing touch, spray that puts to sleep | Captain Morrow the Drowned: a numbing grip, a bell that puts to sleep | Ysolde the Tide Witch: ice, a numbing touch, a song that puts to sleep |
+| The Verdant Dark | The Rot Bloom: poison thorns, spores that confuse | Old Grum the Bog Troll: poisoned claws, a belch that confuses | Mother Nettle the Mire Hag: acid hexes, poison, a cackle that confuses |
+
+The Ashen Halls' three resist fire and are weak to ice. The Brine Mother and the Tide Witch resist ice and are weak to fire, and Captain Morrow, who is undead, resists ice and is weak to holy. The Rot Bloom and Old Grum are weak to fire, and Mother Nettle to lightning, like her master.
+
+As measured against a balanced party, the guardians of a floor come out within about ten points of each other at the level where the fight is in doubt, and all are certain wins a level later. A party of casters at level 6 finds the Pyre-Priest much harder than the other three (about 55 wins in 100 against 85), since it has only fire to throw at him. A level later it wins every time.
+
+Until art arrives, every master shows the drake's art under a tint. The Cinder Hound, the Brine Mother, the Rot Bloom, Brakka and Captain Morrow borrow a stock monster's art under a tint, in the fight and in the dungeon. The rest have none yet.
+
+A boss's group is rebuilt from the monster database whenever its floor loads, so a floor saved before these bosses existed gets the right one, and retuning a boss reaches floors already saved.
 
 ## Aging by depth
 
@@ -112,7 +148,9 @@ Deep time stays as built: every step below ages the party according to the floor
 
 ## Later sets and the great floor's clock
 
-In free play, each new set of four is a tier harder than the last, with stronger monsters and masters, so surviving veterans still have something to push against.
+In free play, each new set of four is a tier harder than the last, with stronger monsters and masters, so surviving veterans still have something to push against. *Built.* A new set adds 200% to the surge, on the same depth curve, so its top two floors are as safe as ever for recruits (see Measured, above).
+
+A later set's dungeons are new ones of the same four kinds, with names of their own: the second set has the Wyrm's Rest, the Cinder Pits, the Sunken Cloister and the Rotwood Hollow, with Skarnoth the Drake at the bottom of the first. Bosses with a given name get a new one, in the fight's own lines too, and the ones without (the Broodmother, the Cinder Hound) are the same. There are names for three later sets, after which they come round again. The Heart Below and the Hollow King are the same every time.
 
 Deep time on the great floor runs gentler than on the deep floors, so the final dungeon isn't also a race against age. Floor 5's rate (about three months per surface day) is a starting point to tune from.
 
@@ -140,7 +178,8 @@ Lives on `GameState` and is saved once.
 | `Dungeon` field | Meaning |
 |---|---|
 | `id` | Stable string id |
-| `dungeon_name`, `theme_id`, `master_id` | What makes it this dungeon and not another |
+| `dungeon_name`, `theme_id`, `master_id`, `guardians` | What makes it this dungeon and not another |
+| `boss_renames` | In a later set, the names its bosses go by |
 | `seed` | Floors generate from this plus the floor number |
 | `depth` | Number of floors. Replaces the `FINAL_FLOOR` constant |
 | `floors: Dictionary` | Floor number to `DungeonData`: layout, doors, zones, enemy groups. Replaces `GameState.dungeon_floors` |
@@ -211,5 +250,5 @@ After that, the set, collapse and parties-out are features built on a model that
 2. **Collapse and the set.** *Built.* Four dungeons open at once, collapse when a master falls, strengthening of the rest, the fifth dungeon, the story ending, and a new set after. Masters start as placeholders or tinted copies.
 3. **Parties out.** *Built.* Several parties out at once, switching between them, wipes that leave the party below, and rescue.
 4. **Gold.** *Built*, as carried gold.
-5. **Later sets.** Tiers for free play.
+5. **Later sets.** *Built.* A harder tier and new names for each set in free play.
 6. **The chronicle.** *Built.* The guild hall has a Chronicle tab: which dungeons stand or fell and when, the Legends, who holds a town post, and a dated record of collapses, wipes, rescues, retirements and deaths.
