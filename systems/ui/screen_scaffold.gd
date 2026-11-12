@@ -154,7 +154,9 @@ func _build_top_bar() -> PanelContainer:
 	if _show_gold:
 		_gold_sep = VSeparator.new()
 		row.add_child(_gold_sep)
-		row.add_child(_build_coin_box("GOLD", UIColors.GOLD))
+		# Below, the party only has what it carries; the guild's gold waits in town.
+		var out := _party() != null and _party().is_out()
+		row.add_child(_build_coin_box("CARRIED" if out else "GOLD", UIColors.GOLD))
 
 	if _show_scrap:
 		row.add_child(VSeparator.new())

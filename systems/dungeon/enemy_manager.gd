@@ -75,6 +75,16 @@ func spawn_initial_enemies() -> void:
 			_spawn_enemy_in_zone(zone)
 
 
+## Takes back the groups saved with the floor. A boss's group is rebuilt from
+## the database, so a saved floor follows any change to its boss.
+func restore_groups(groups: Array[EnemyGroup]) -> void:
+	var has_boss := GameState.get_floor_boss(dungeon_data.floor_level) != null
+	for group in groups:
+		if has_boss and group.ai_type == EnemyGroup.AIType.BOSS:
+			group.monsters = _generate_boss_encounter()
+		enemy_groups.append(group)
+
+
 func _calculate_initial_spawn_count(zone: EncounterZone) -> int:
 	match zone.zone_type:
 		EncounterZone.ZoneType.NORMAL:
@@ -292,7 +302,7 @@ func _get_smart_formation(monsters: Array[Monster]) -> Array[Vector2i]:
 
 func _generate_boss_encounter() -> Array[Monster]:
 	var monsters: Array[Monster] = []
-	var boss := MonsterDatabase.get_boss_for_floor(dungeon_data.floor_level)
+	var boss := GameState.get_floor_boss(dungeon_data.floor_level)
 	if boss == null:
 		var fallback_ids := MonsterDatabase.get_monsters_for_floor(dungeon_data.floor_level)
 		if fallback_ids.is_empty():
@@ -306,7 +316,7 @@ func _generate_boss_encounter() -> Array[Monster]:
 	boss.init_combat()
 	monsters.append(boss)
 
-	var minion_ids := MonsterDatabase.get_boss_minions(dungeon_data.floor_level)
+	var minion_ids := GameState.get_floor_boss_minions(dungeon_data.floor_level)
 	for minion_id in minion_ids:
 		var minion := MonsterDatabase.get_monster(minion_id)
 		if minion != null:

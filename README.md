@@ -4,7 +4,7 @@ A Wizardry-style first-person dungeon crawler built in Godot 4.7 with GDScript.
 
 ## What Is This
 
-A classic dungeon RPG inspired by Wizardry and its descendants. You lead a guild of adventurers down through eight procedurally generated floors, fight turn-based battles, and manage your crew back in town. Guardians wait on floors 2, 4 and 6, and the stairs down stay sealed until each one falls. Slaying Vrakthorne the Drake on floor 8 wins the game, and the guild can keep delving afterward.
+A classic dungeon RPG inspired by Wizardry and its descendants. You lead a guild of adventurers into four procedurally generated dungeons, each eight floors deep, fight turn-based battles, and manage your crew back in town. Guardians wait on floors 2, 4 and 6 of each, and the stairs down stay sealed until each one falls. Slaying a dungeon's master on floor 8 collapses it, and its power pours into the dungeons that remain. When all four are gone a fifth opens, and its master ends the story. After that a new and harder set appears, and the guild can keep going.
 
 Time runs faster the deeper you go. A day on floor 1 is a day, but a few days on the lower floors can cost your adventurers years, and only the ones you send down age. Veterans and elders trade body for skill, and can retire to a post in town, train an apprentice, or go down one last time as a Legend. See [docs/deep-time.md](docs/deep-time.md).
 

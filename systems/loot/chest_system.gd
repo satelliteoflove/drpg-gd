@@ -67,7 +67,7 @@ static func attempt_inspect(chest: Chest, inspector: Character) -> Dictionary:
 			"success": true,
 			"found_trap": true,
 			"trap_name": chest.trap.trap_name,
-			"message": "%s carefully inspects the chest... A %s trap!" % [inspector.get_display_name(), chest.trap.trap_name]
+			"message": "%s carefully inspects the chest... Trapped: %s!" % [inspector.get_display_name(), chest.trap.trap_name]
 		}
 	elif success:
 		return {

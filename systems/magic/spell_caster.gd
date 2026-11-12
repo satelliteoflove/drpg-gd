@@ -97,17 +97,24 @@ static func _process_damage(
 
 		var damage := maxi(1, total_base)
 
+		var element_name := CharacterEnums.get_element_name(effect.element)
+		var resist_suffix := ""
+		if target is Monster:
+			var resist: float = target.element_resist.get(effect.element, 0.0)
+			if resist != 0.0:
+				damage = maxi(1, int(damage * (1.0 - resist)))
+				resist_suffix = " (%s resistant)" % element_name if resist > 0.0 else " (weak to %s)" % element_name
+
 		var actual: int = target.take_damage(damage)
 		result.damage += actual
 
-		var element_name := CharacterEnums.get_element_name(effect.element)
 		if target.is_dead:
-			result.messages.append("%s takes %d %s damage and is defeated!" % [
-				target.get_display_name(), actual, element_name
+			result.messages.append("%s takes %d %s damage%s and is defeated!" % [
+				target.get_display_name(), actual, element_name, resist_suffix
 			])
 		else:
-			result.messages.append("%s takes %d %s damage." % [
-				target.get_display_name(), actual, element_name
+			result.messages.append("%s takes %d %s damage%s." % [
+				target.get_display_name(), actual, element_name, resist_suffix
 			])
 
 	return result
@@ -252,17 +259,25 @@ static func _process_resurrection(
 			result.messages.append("%s is not dead." % target.get_display_name())
 			continue
 
-		if target.has_status(CharacterEnums.StatusEffect.ASHED):
-			if CombatRNG.randf() > effect.resurrection_chance * 0.5:
-				result.messages.append("Failed to resurrect %s from ashes!" % target.get_display_name())
-				continue
-
 		if target.has_status(CharacterEnums.StatusEffect.LOST):
 			result.messages.append("%s is lost forever." % target.get_display_name())
 			continue
 
-		if CombatRNG.randf() > effect.resurrection_chance:
-			result.messages.append("Failed to resurrect %s!" % target.get_display_name())
+		# As in Wizardry: a failed raise turns a body to ashes, and a failed
+		# raise from ashes loses the character for good.
+		if target.has_status(CharacterEnums.StatusEffect.ASHED):
+			if not effect.raises_ashes:
+				result.messages.append("%s is only ashes now. This spell can't reach that far." % target.get_display_name())
+				continue
+			if CombatRNG.randf() >= effect.ashes_chance:
+				target.remove_status(CharacterEnums.StatusEffect.ASHED)
+				target.add_status(CharacterEnums.StatusEffect.LOST, -1, "", 0)
+				result.messages.append("%s's ashes scatter. %s is lost forever." % [
+					target.get_display_name(), target.get_display_name()])
+				continue
+		elif CombatRNG.randf() >= effect.resurrection_chance:
+			target.add_status(CharacterEnums.StatusEffect.ASHED, -1, "", 0)
+			result.messages.append("The spell goes wrong, and %s's body crumbles to ashes." % target.get_display_name())
 			continue
 
 		if target.resurrect(1):

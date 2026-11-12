@@ -117,7 +117,11 @@ func _on_new_game_pressed() -> void:
 
 func _on_continue_pressed() -> void:
 	if SaveManager.load_game(SaveManager.AUTOSAVE_SLOT):
-		SceneManager.go_to_town()
+		# A save made below resumes below, where the party stood.
+		if GameState.party.is_out() and not GameState.party.is_wiped():
+			SceneManager.switch_to_party(GameState.party)
+		else:
+			SceneManager.go_to_town()
 
 
 func _on_quit_pressed() -> void:

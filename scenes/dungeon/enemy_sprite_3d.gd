@@ -10,6 +10,8 @@ var enemy_group: EnemyGroup = null
 var _last_grid_position: Vector2i = Vector2i(-999, -999)
 var _sprite_y: float = 1.75
 var _audio: AudioStreamPlayer3D = null
+## The lead monster's tint, for a boss that borrows another's art.
+var _tint: Color = Color.WHITE
 
 
 func _ready() -> void:
@@ -58,9 +60,11 @@ func _load_texture() -> void:
 	var texture_path := "res://textures/monsters/goblin.png"
 	if enemy_group and not enemy_group.monsters.is_empty():
 		var lead_monster := enemy_group.monsters[0]
-		var specific_path := "res://textures/monsters/%s.png" % lead_monster.monster_name.to_lower().replace(" ", "_")
+		var specific_path := "res://textures/monsters/%s.png" % lead_monster.get_art_name().to_lower().replace(" ", "_")
 		if ResourceLoader.exists(specific_path):
 			texture_path = specific_path
+			_tint = lead_monster.tint
+			modulate = _tint
 	if ResourceLoader.exists(texture_path):
 		texture = load(texture_path)
 	else:
@@ -94,11 +98,11 @@ const DARK_SILHOUETTE := Color(0.16, 0.16, 0.2)
 ## Revealed (map/scry) enemies always show at full brightness.
 func update_visibility(dist_tiles: int, light_range_tiles: float, is_revealed: bool) -> void:
 	if is_revealed:
-		modulate = Color.WHITE
+		modulate = _tint
 		return
 	var lr := maxf(1.0, light_range_tiles)
 	var t := clampf((float(dist_tiles) - lr * 0.4) / (lr * 0.6), 0.0, 1.0)
-	modulate = Color.WHITE.lerp(DARK_SILHOUETTE, t)
+	modulate = _tint.lerp(DARK_SILHOUETTE, t)
 
 
 func update_world_position() -> void:

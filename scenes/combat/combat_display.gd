@@ -127,7 +127,7 @@ func update_portrait_for_enemy(enemy: Monster) -> void:
 		combat.portrait_texture.texture = null
 		combat.portrait_name.text = ""
 		return
-	var sheet := _get_monster_sprite_sheet(enemy.monster_name)
+	var sheet := _get_monster_sprite_sheet(enemy.get_art_name())
 	if sheet != null:
 		var mat := ShaderMaterial.new()
 		mat.shader = _sprite_sheet_shader
@@ -141,12 +141,12 @@ func update_portrait_for_enemy(enemy: Monster) -> void:
 	else:
 		combat.portrait_texture.material = null
 		combat.portrait_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		combat.portrait_texture.texture = _get_monster_texture(enemy.monster_name)
+		combat.portrait_texture.texture = _get_monster_texture(enemy.get_art_name())
 	combat.portrait_name.text = enemy.monster_name
 	if enemy.is_dead:
 		combat.portrait_texture.modulate = UIColors.DEAD_TINT
 	else:
-		combat.portrait_texture.modulate = Color.WHITE
+		combat.portrait_texture.modulate = enemy.tint
 
 
 func update_portrait_for_character(character: Character) -> void:

@@ -76,12 +76,15 @@ func _populate_options() -> void:
 		options_vbox.add_child(quick_btn)
 		option_buttons.append(quick_btn)
 
-	var inspect_btn := Button.new()
-	inspect_btn.text = "Inspect"
-	inspect_btn.custom_minimum_size = Vector2(0, 36)
-	inspect_btn.pressed.connect(_on_inspect)
-	options_vbox.add_child(inspect_btn)
-	option_buttons.append(inspect_btn)
+	# Once an inspection has found the trap or shown the chest is safe, there's
+	# nothing more for it to tell.
+	if not chest.trap_identified and not _found_safe:
+		var inspect_btn := Button.new()
+		inspect_btn.text = "Inspect"
+		inspect_btn.custom_minimum_size = Vector2(0, 36)
+		inspect_btn.pressed.connect(_on_inspect)
+		options_vbox.add_child(inspect_btn)
+		option_buttons.append(inspect_btn)
 
 	if chest.trap_identified and chest.is_trapped and not chest.trap_disarmed:
 		var disarm_btn := Button.new()
@@ -143,9 +146,14 @@ func _on_quick_open() -> void:
 		_populate_options()
 
 
+var _found_safe := false
+
+
 func _on_inspect() -> void:
 	var inspector := _get_best_inspector()
 	var result := ChestSystem.attempt_inspect(chest, inspector)
+	if result.success and not result.found_trap:
+		_found_safe = true
 
 	_add_status_message(result.message)
 	_update_trap_warning()

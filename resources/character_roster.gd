@@ -68,6 +68,9 @@ func get_available(party: Party) -> Array[Character]:
 	for character in characters:
 		if character.has_left_service():
 			continue
+		# Members of any party, in town or below, are spoken for.
+		if GameState.party_of(character) != null:
+			continue
 		if party == null or party.get_member(character.id) == null:
 			available.append(character)
 	return available

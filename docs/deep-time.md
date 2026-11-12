@@ -44,6 +44,31 @@ The surface calendar keeps its current rules (days below, inn nights), so the da
 
 Benched characters don't age except on the surface calendar. Resting at the inn ages everyone by a day, which is nothing next to a trip to the deep.
 
+### Time passes as you walk
+
+As first built, an expedition's time was charged all at once on reaching town. Now it lands as it accrues. Each step below adds that floor's deep time to the party, who age then and there, so someone can go gray or become an elder mid-corridor, with a message when it happens and their traits and stats changing on the spot. Every 120 steps a surface day passes for the town. Death of old age still only happens on reaching town. The homecoming report is now a summary of what the trip cost.
+
+### Measured
+
+`tests/measure_deep_time.tscn` estimates what a dungeon run costs. It generates 12 layouts per floor and has a bot explore each one fully, counting a tile as seen once the party stands on it or next to it. It counts the enemy groups each floor starts with and simulates fights for XP per fight. All floors are 31×31 with about 520 walkable tiles and about 25 starting groups, so a fight comes every 22 steps or so while exploring.
+
+| Floor | Days aged per day | Years to explore once | Years per 10 fights | XP per fight |
+|---|---|---|---|---|
+| 1 | 1 | 0.01 | 0.00 | 21 |
+| 2 | 7 | 0.09 | 0.04 | 29 |
+| 3 | 28 | 0.34 | 0.15 | 51 |
+| 4 | 56 | 0.70 | 0.29 | 75 |
+| 5 | 84 | 1.03 | 0.41 | 120 |
+| 6 | 140 | 1.80 | 0.74 | 169 |
+| 7 | 196 | 2.46 | 1.01 | 262 |
+| 8 | 280 | 3.72 | 1.43 | 217 |
+
+A fresh party that explores every floor once and grinds on the floor above each boss until it reaches the level the boss needs ages about **16 years** by the bottom: 10 from exploring, and 6 from about 60 fights of grinding on floor 7 before the drake. An experienced party that only explores ages about **10 years**. Floors 7 and 8 account for about 60% of the exploring years, and floors 1 to 3 for under 5%.
+
+The bot explores efficiently (its steps barely exceed the tile count), and the estimate leaves out backtracking, retreats, trips to town and fights from respawns. Real play will cost more, maybe one and a half to two times as much. That puts a dungeon run at roughly 15 to 30 years, so a human lasts two or three dungeons and a Rawulf one or two, close to the target.
+
+Where you grind is the big lever. XP per fight rises with depth about as fast as the years per fight do, so through floors 3 to 7 a level costs about the same number of years wherever you earn it, and floor 8 costs more. Floors 1 and 2 are the exception. A level near 10 takes about 475 fights on floor 1 for a quarter of a year, or 345 on floor 2 for about a year, against about 38 fights and four years on floor 7. So the player can trade hours of play for years of life, which seems like a fair choice to offer.
+
 ### 2. Seeing it
 
 Aging has to be visible every time it happens, not just recorded on a character sheet.
@@ -62,7 +87,7 @@ The phases get new names. The old Decline and Fragile frame aging as failure, an
 
 | Phase | Body | Gains |
 |---|---|---|
-| **Youth** | Full | +25% XP (they learn fast) |
+| **Youth** | Full | None. The +25% XP bonus was cut, since it lasted far longer for long-lived races |
 | **Prime** | Full | None, this is the baseline |
 | **Veteran** | STR, VIT and AGI fall gradually | A class veteran trait (below) |
 | **Elder** | Physical stats fall faster, max HP shrinks | A stronger class trait, plus **Counsel**: a party-wide bonus while they're in the party (everyone else gets +10% XP, +1 accuracy, and 10 points off their spell fizzle chance) |
@@ -138,7 +163,7 @@ With the deep-time table above and someone who goes on every expedition:
 | Hobbit, Faerie, Dracon | Prime throughout, a few gray hairs |
 | Dwarf, Gnome, Elf | Unchanged. They're the ones who remember everyone else |
 
-The short-lived races then need something to pay for it. Lean into the existing racial XP modifiers so they level noticeably faster, and give them the best Youth bonus. A Rawulf fighter should feel like a comet.
+The short-lived races then need something to pay for it. Lean into the existing racial XP modifiers so they level noticeably faster. A Rawulf fighter should feel like a comet.
 
 ## What this replaces in the current code
 

@@ -27,7 +27,10 @@ const BASE_XP_TABLE: Array[int] = [
 	360000   # Level 20
 ]
 
-const MAX_LEVEL: int = 20
+## Levels aren't capped. Past the end of the table, each level costs the same
+## as the last step in it, as in Wizardry, so a long-lived character keeps
+## growing across campaigns.
+const FLAT_XP_PER_LEVEL: int = 68000
 
 const RACE_CLASS_XP_MODIFIERS: Dictionary = {
 	CharacterEnums.Race.HUMAN: {
@@ -212,9 +215,9 @@ const RACE_CLASS_XP_MODIFIERS: Dictionary = {
 static func get_xp_for_level(level: int) -> int:
 	if level < 1:
 		return 0
-	if level > MAX_LEVEL:
-		level = MAX_LEVEL
-	return BASE_XP_TABLE[level - 1]
+	if level <= BASE_XP_TABLE.size():
+		return BASE_XP_TABLE[level - 1]
+	return BASE_XP_TABLE[-1] + (level - BASE_XP_TABLE.size()) * FLAT_XP_PER_LEVEL
 
 
 static func get_xp_modifier(race: CharacterEnums.Race, char_class: CharacterEnums.CharacterClass) -> float:
@@ -230,16 +233,11 @@ static func get_required_xp(level: int, race: CharacterEnums.Race, char_class: C
 
 static func get_level_for_xp(xp: int, race: CharacterEnums.Race, char_class: CharacterEnums.CharacterClass) -> int:
 	var level := 1
-	for i in range(MAX_LEVEL, 0, -1):
-		var required := get_required_xp(i, race, char_class)
-		if xp >= required:
-			level = i
-			break
+	while xp >= get_required_xp(level + 1, race, char_class):
+		level += 1
 	return level
 
 
 static func get_xp_to_next_level(current_xp: int, current_level: int, race: CharacterEnums.Race, char_class: CharacterEnums.CharacterClass) -> int:
-	if current_level >= MAX_LEVEL:
-		return 0
 	var next_required := get_required_xp(current_level + 1, race, char_class)
 	return maxi(0, next_required - current_xp)

@@ -104,20 +104,57 @@ func go_to_ending() -> void:
 	change_scene("ending")
 
 
+## The active party has been wiped out. It stays where it fell, with its
+## gear, and the player is back in town to send someone after it.
+func party_fell() -> void:
+	var fallen := GameState.party
+	var names: Array[String] = []
+	for member in fallen.get_members():
+		names.append(member.character_name)
+	GameState.pending_wipe = {
+		"names": names, "where": GameState.party_whereabouts(fallen).trim_prefix("lying dead in "),
+	}
+	GameState.record("wipe", "%s fell in %s." % [GameState.name_list(names), GameState.pending_wipe["where"]])
+	GameState.leave_party_below()
+	GameState.set_mode(GameState.GameMode.TOWN)
+	SaveManager.autosave()
+	change_scene("town")
+
+
+## The active party makes camp below and the player turns to another party.
+func camp_party() -> void:
+	var camped := GameState.party
+	GameState.leave_party_below()
+	GameState.pending_camp = {
+		"party": GameState.party_label(camped), "where": GameState.party_whereabouts(camped),
+	}
+	GameState.set_mode(GameState.GameMode.TOWN)
+	SaveManager.autosave()
+	change_scene("town")
+
+
+## Turns the player's attention to [param p]: back into the dungeon where it
+## camped, or to the guild hall's party if it's in town.
+func switch_to_party(p: Party) -> void:
+	GameState.set_active_party(p)
+	if p.is_out():
+		GameState.resume_at_position = true
+		go_to_dungeon(p.floor_num, p.spawn_at_stairs_up)
+	else:
+		go_to_town()
+
+
 ## Applies the time an expedition took, once, when the party leaves the
 ## dungeon by any route.
 func _settle_expedition() -> void:
-	if GameState.current_mode != GameState.GameMode.DUNGEON:
+	if GameState.party == null or not GameState.party.is_out():
 		return
-	var surface_days: int = GameState.floor_tracker.consume_dungeon_days()
-	var deep_days: int = GameState.floor_tracker.consume_deep_days()
-	GameState.pending_homecoming = GameState.process_homecoming(surface_days, deep_days)
+	GameState.pending_homecoming = GameState.settle_expedition()
 
 
 func go_to_dungeon(floor_num: int = -1, spawn_at_stairs_up: bool = true) -> void:
-	GameState.party.prepare_for_dungeon()
-	for member in GameState.party.get_members():
-		member.note_first_descent(GameState.game_day)
+	if not GameState.party.is_out():
+		GameState.begin_expedition()
 	if floor_num > 0:
 		GameState.set_floor(floor_num)
 	GameState.deepest_floor = maxi(GameState.deepest_floor, GameState.current_floor)

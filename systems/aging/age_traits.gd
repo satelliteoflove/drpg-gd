@@ -4,14 +4,13 @@ extends RefCounted
 ## What getting older gives a character, as opposed to what it takes away
 ## (the stat decline in Character.apply_aging_effects). See docs/deep-time.md.
 ##
-## Youth learn fast. Veterans gain a trait from their class's archetype, and
+## Veterans gain a trait from their class's archetype, and
 ## Elders gain a stronger one on top of it, plus Counsel: everyone else in
 ## the party learns faster, strikes truer and casts more surely while an elder
 ## travels with them.
 
 enum Archetype { MARTIAL, SKULKER, ARCANE, DIVINE, BISHOP }
 
-const YOUTH_XP_MULTIPLIER := 1.25
 const COUNSEL_XP_MULTIPLIER := 1.10
 const COUNSEL_ACCURACY := 1
 const COUNSEL_FIZZLE_REDUCTION := 10.0
@@ -35,10 +34,6 @@ static func archetype(c: Character) -> Archetype:
 		CharacterEnums.CharacterClass.BISHOP:
 			return Archetype.BISHOP
 	return Archetype.MARTIAL
-
-
-static func is_youth(c: Character) -> bool:
-	return c.get_life_phase() == CharacterEnums.LifePhase.YOUTH
 
 
 static func is_veteran(c: Character) -> bool:
@@ -115,12 +110,7 @@ static func is_counseled(c: Character, party: Party) -> bool:
 
 
 static func xp_multiplier(c: Character, party: Party) -> float:
-	var mult := 1.0
-	if is_youth(c):
-		mult *= YOUTH_XP_MULTIPLIER
-	if is_counseled(c, party):
-		mult *= COUNSEL_XP_MULTIPLIER
-	return mult
+	return COUNSEL_XP_MULTIPLIER if is_counseled(c, party) else 1.0
 
 
 ## Accuracy bonus from an elder's counsel. Only the guild's own party gets
@@ -167,8 +157,6 @@ static func describe(c: Character) -> Array[String]:
 	var lines: Array[String] = []
 	if c.last_descent:
 		lines.append("Last descent: prime body, +%d all stats, won't come home" % LastDescent.STAT_BONUS)
-	if is_youth(c):
-		lines.append("Quick study: +25% experience")
 	if is_veteran(c):
 		lines.append(_veteran_line(archetype(c)))
 	if is_elder(c):

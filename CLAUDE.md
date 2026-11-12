@@ -10,6 +10,10 @@ Prefer reusing running game sessions over stopping/restarting:
 - Verify state by reading runtime state or screenshots rather than restarting to "check if it worked" (see **Screenshots & Game Observation** below — prefer text introspection)
 - If unsure whether a change requires restart, try it first - worst case is a crash
 
+### Running the editor without a desktop
+
+`tools/background_editor.sh <godot binary>` starts the editor inside a headless sway compositor, so godot-mcp works with nobody logged in to the desktop. It renders in software (llvmpipe): fine for menus and UI checks, slow for the 3D dungeon, and the game takes 20 seconds or so to load. For tests and simulations no editor is needed: run Godot with `--headless` (see `tests/`).
+
 ### Screenshots & Game Observation
 
 Screenshots compound in cost: any frame Claude views is inlined into context and **persists for the whole session with no decay** (~600–1,200 tokens each). A long visual session can drown in stale frames. So:

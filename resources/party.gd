@@ -11,16 +11,71 @@ signal party_wiped()
 const MAX_SIZE: int = 6
 const FRONT_ROW_SIZE: int = 3
 
+@export var id: String = ""
+@export var party_name: String = ""
 @export var members: Array[Character] = []
-@export var gold: int = 0
-@export var scrap: int = 0
 @export var inventory: Inventory = null
 @export var torch_steps_remaining: int = 0
+
+@export_group("Location")
+## The dungeon the party is in, or "" for town. See docs/dungeon-sets.md.
+@export var dungeon_id: String = ""
+@export var floor_num: int = 1
+@export var position: Vector2i = Vector2i.ZERO
+@export var facing: int = 0
+@export var spawn_at_stairs_up: bool = true
+## The party's own expedition clock: steps, deep time, what it has spotted.
+var tracker: FloorTracker = FloorTracker.new()
+
+@export_group("Gold")
+## Gold found below, carried until the party walks back into town.
+@export var carried_gold: int = 0
+@export var carried_scrap: int = 0
+
+## What the party can spend right now. In town that's the guild's pool. Below,
+## it's only what the party carries. A party the guild doesn't know about
+## (a simulator's copy, a test's) just has its own purse.
+var gold: int:
+	get:
+		return GameState.guild_gold if _uses_guild_pool() else carried_gold
+	set(value):
+		if _uses_guild_pool():
+			GameState.guild_gold = value
+		else:
+			carried_gold = value
+var scrap: int:
+	get:
+		return GameState.guild_scrap if _uses_guild_pool() else carried_scrap
+	set(value):
+		if _uses_guild_pool():
+			GameState.guild_scrap = value
+		else:
+			carried_scrap = value
 
 
 func _init() -> void:
 	if inventory == null:
 		inventory = Inventory.new()
+
+
+func is_out() -> bool:
+	return not dungeon_id.is_empty()
+
+
+func _uses_guild_pool() -> bool:
+	return not is_out() and GameState.parties.has(self)
+
+
+## Hands what the party carried up from below to the guild. Returns the gold.
+func bank_carried() -> int:
+	var banked := carried_gold
+	GameState.guild_gold += carried_gold
+	GameState.guild_scrap += carried_scrap
+	carried_gold = 0
+	carried_scrap = 0
+	gold_changed.emit(gold)
+	scrap_changed.emit(scrap)
+	return banked
 
 
 ## Adds a character to the party at the last position.

@@ -44,6 +44,11 @@ enum EffectType {
 @export_group("Resurrection")
 @export var resurrection_chance: float = 1.0
 @export var restore_hp_percent: float = 0.25
+## Whether the spell can raise ashes. A failed raise from a body leaves ashes,
+## and a failed raise from ashes loses the character for good.
+@export var raises_ashes: bool = false
+## Chance of raising ashes, for spells that can.
+@export var ashes_chance: float = 0.5
 
 @export_group("Instant Death")
 @export var death_save_modifier: int = 0
@@ -117,11 +122,14 @@ static func create_debuff(p_stat: String, p_value: int, p_duration: int, p_save:
 	return effect
 
 
-static func create_resurrection(p_chance: float = 1.0, p_hp_percent: float = 0.25) -> SpellEffect:
+static func create_resurrection(p_chance: float = 1.0, p_hp_percent: float = 0.25,
+		p_raises_ashes: bool = false, p_ashes_chance: float = 0.5) -> SpellEffect:
 	var effect := SpellEffect.new()
 	effect.effect_type = EffectType.RESURRECTION
 	effect.resurrection_chance = p_chance
 	effect.restore_hp_percent = p_hp_percent
+	effect.raises_ashes = p_raises_ashes
+	effect.ashes_chance = p_ashes_chance
 	return effect
 
 

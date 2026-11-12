@@ -45,12 +45,11 @@ func _ready() -> void:
 
 
 func _build(col: VBoxContainer) -> void:
-	var boss := MonsterDatabase.get_boss_for_floor(GameState.FINAL_FLOOR)
-	var boss_name := boss.monster_name if boss else "the master of the depths"
+	var boss_name: String = GameState.pending_collapse.get("master", "the master of the depths")
 
 	var title := Label.new()
 	title.theme_type_variation = &"TitleLabel"
-	title.text = "%s Has Fallen" % boss_name.get_slice(" ", 0)
+	title.text = "%s Has Fallen" % boss_name
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
 
@@ -116,7 +115,7 @@ func _build(col: VBoxContainer) -> void:
 	after.theme_type_variation = &"MutedLabel"
 	after.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	after.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	after.text = "The dungeon isn't empty. Its upper halls still stir, and the guild can keep delving for as long as it likes."
+	after.text = "The stillness won't last. Something that old doesn't die in one place, and the guild will be needed again."
 	col.add_child(after)
 
 	_continue_btn = Button.new()
@@ -131,8 +130,8 @@ func _build(col: VBoxContainer) -> void:
 func _epilogue_text(boss_name: String, days: int) -> String:
 	var date := GameCalendar.format_date(GameState.victory_day)
 	var day_word := "day" if days == 1 else "days"
-	return ("On %s, %d %s after the guild was founded, the party cut down %s in the deepest chamber of the dungeon. "
-		+ "They carried the news up every one of its stairs, and for the first time in living memory the lowest halls went quiet.") \
+	return ("On %s, %d %s after the guild was founded, the party cut down %s in the great hall beneath all the others. "
+		+ "The last of the dungeons came down behind them, and for the first time in living memory the ground under the town lay still.") \
 		% [date, days, day_word, boss_name]
 
 

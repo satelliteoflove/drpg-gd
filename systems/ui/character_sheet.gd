@@ -614,17 +614,12 @@ func _draw_vitals(x: float, y: float, w: float) -> float:
 
 	# XP toward the next level (a real progress bar, not raw points).
 	y += 9.0
-	if _character.level >= ExperienceTable.MAX_LEVEL:
-		draw_string(_font_semibold, Vector2(x, y + 12.0), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIColors.TEXT_SECONDARY)
-		draw_string(_font, Vector2(x, y + 12.0), "MAX LEVEL", HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.GOLD)
-		y += 18.0
-	else:
-		draw_string(_font_semibold, Vector2(x, y + 12.0), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIColors.TEXT_SECONDARY)
-		var nxt := "%s to Lv %d" % [_format_int(_character.get_xp_to_next_level()), _character.level + 1]
-		draw_string(_font, Vector2(x, y + 12.0), nxt, HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.TEXT_SECONDARY)
-		y += 16.0
-		_draw_meter(Rect2(x, y, w, 8.0), _character.get_xp_progress_percent() / 100.0, UIColors.GOLD)
-		y += 12.0
+	draw_string(_font_semibold, Vector2(x, y + 12.0), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIColors.TEXT_SECONDARY)
+	var nxt := "%s to Lv %d" % [_format_int(_character.get_xp_to_next_level()), _character.level + 1]
+	draw_string(_font, Vector2(x, y + 12.0), nxt, HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.TEXT_SECONDARY)
+	y += 16.0
+	_draw_meter(Rect2(x, y, w, 8.0), _character.get_xp_progress_percent() / 100.0, UIColors.GOLD)
+	y += 12.0
 
 	# Bonus XP modifiers, if any.
 	if not _character.is_dead:

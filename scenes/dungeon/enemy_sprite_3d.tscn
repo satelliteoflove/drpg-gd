@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cccchyeiebqlo"]
 
 [ext_resource type="Script" uid="uid://c6511sweqr2n" path="res://scenes/dungeon/enemy_sprite_3d.gd" id="1_enemy"]
-[ext_resource type="Texture2D" uid="uid://bk3755c6te1mm" path="res://textures/monsters/goblin.png" id="1_ldirn"]
+[ext_resource type="Texture2D" uid="uid://dw501pasyrx5w" path="res://textures/monsters/goblin.png" id="1_ldirn"]
 
 [node name="EnemySprite3D" type="Sprite3D" unique_id=1637838329]
 billboard = 1
