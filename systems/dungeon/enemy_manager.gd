@@ -75,6 +75,16 @@ func spawn_initial_enemies() -> void:
 			_spawn_enemy_in_zone(zone)
 
 
+## Takes back the groups saved with the floor. A boss's group is rebuilt from
+## the database, so a saved floor follows any change to its boss.
+func restore_groups(groups: Array[EnemyGroup]) -> void:
+	var has_boss := GameState.get_floor_boss(dungeon_data.floor_level) != null
+	for group in groups:
+		if has_boss and group.ai_type == EnemyGroup.AIType.BOSS:
+			group.monsters = _generate_boss_encounter()
+		enemy_groups.append(group)
+
+
 func _calculate_initial_spawn_count(zone: EncounterZone) -> int:
 	match zone.zone_type:
 		EncounterZone.ZoneType.NORMAL:
@@ -91,6 +101,9 @@ func _calculate_initial_spawn_count(zone: EncounterZone) -> int:
 
 func _spawn_enemy_in_zone(zone: EncounterZone) -> EnemyGroup:
 	if zone.current_group_count >= zone.max_groups:
+		return null
+	# Slain bosses stay dead; their lair is left empty.
+	if zone.zone_type == EncounterZone.ZoneType.BOSS and GameState.is_boss_slain(dungeon_data.floor_level):
 		return null
 
 	var spawn_pos := _find_valid_spawn_position(zone)
@@ -289,7 +302,7 @@ func _get_smart_formation(monsters: Array[Monster]) -> Array[Vector2i]:
 
 func _generate_boss_encounter() -> Array[Monster]:
 	var monsters: Array[Monster] = []
-	var boss := MonsterDatabase.get_boss_for_floor(dungeon_data.floor_level)
+	var boss := GameState.get_floor_boss(dungeon_data.floor_level)
 	if boss == null:
 		var fallback_ids := MonsterDatabase.get_monsters_for_floor(dungeon_data.floor_level)
 		if fallback_ids.is_empty():
@@ -303,7 +316,7 @@ func _generate_boss_encounter() -> Array[Monster]:
 	boss.init_combat()
 	monsters.append(boss)
 
-	var minion_ids := MonsterDatabase.get_boss_minions(dungeon_data.floor_level)
+	var minion_ids := GameState.get_floor_boss_minions(dungeon_data.floor_level)
 	for minion_id in minion_ids:
 		var minion := MonsterDatabase.get_monster(minion_id)
 		if minion != null:
@@ -364,6 +377,14 @@ func _find_patrol_destination(from: Vector2i, zone: EncounterZone, exclude: Arra
 	return candidates[randi() % candidates.size()]
 
 
+const AWARE_STATES: Array[EnemyGroup.State] = [
+	EnemyGroup.State.CHASE, EnemyGroup.State.PURSUE, EnemyGroup.State.SEARCH]
+const FACING_VECTORS := {0: Vector2i(0, -1), 1: Vector2i(1, 0), 2: Vector2i(0, 1), 3: Vector2i(-1, 0)}
+
+## How the most recent fight started, for the surprise roll.
+var last_engagement: Dictionary = {}
+
+
 func on_player_move(new_pos: Vector2i, facing: int) -> EnemyGroup:
 	floor_tracker.increment_step()
 
@@ -375,8 +396,18 @@ func on_player_move(new_pos: Vector2i, facing: int) -> EnemyGroup:
 			break
 
 	if combat_group != null:
+		# The party walked into them.
+		last_engagement = {
+			"party_engaged": true,
+			"group_aware": combat_group.state in AWARE_STATES,
+			"from_behind": false,
+		}
 		combat_triggered.emit(combat_group)
 		return combat_group
+
+	var before := {}
+	for group in enemy_groups:
+		before[group] = group.grid_position
 
 	_update_all_enemies(new_pos, facing)
 
@@ -386,6 +417,15 @@ func on_player_move(new_pos: Vector2i, facing: int) -> EnemyGroup:
 			break
 
 	if combat_group != null:
+		# They ran the party down. Coming from anywhere but straight ahead
+		# counts as from behind.
+		var came_from: Vector2i = before.get(combat_group, new_pos) - new_pos
+		var ahead: Vector2i = FACING_VECTORS.get(facing, Vector2i.ZERO)
+		last_engagement = {
+			"party_engaged": false,
+			"group_aware": true,
+			"from_behind": came_from.x * ahead.x + came_from.y * ahead.y <= 0,
+		}
 		combat_triggered.emit(combat_group)
 
 	_process_respawns()

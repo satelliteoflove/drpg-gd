@@ -62,6 +62,19 @@ static func _create_items() -> void:
 	_items["long_bow"].required_races.assign(LARGE_RACES)
 	_items["long_bow"].two_handed = true
 
+	# Rare weapons. The shop doesn't stock these; they turn up in the dungeon.
+	_items["cutthroats_dirk"] = Item.create_weapon("cutthroats_dirk", "Cutthroat's Dirk", "1d4", 1, 400, Item.WeaponType.DAGGER)
+	_items["cutthroats_dirk"].rarity = Item.ItemRarity.RARE
+	_items["cutthroats_dirk"].grants_critical = true
+	_items["cutthroats_dirk"].description = "A thin, ugly blade made for one job. Whoever wields it can land critical hits that kill outright."
+
+	_items["headsmans_axe"] = Item.create_weapon("headsmans_axe", "Headsman's Axe", "1d12", 1, 900, Item.WeaponType.AXE)
+	_items["headsmans_axe"].required_races.assign(LARGE_RACES)
+	_items["headsmans_axe"].two_handed = true
+	_items["headsmans_axe"].rarity = Item.ItemRarity.RARE
+	_items["headsmans_axe"].grants_critical = true
+	_items["headsmans_axe"].description = "A broad executioner's axe, black with age. Whoever wields it can land critical hits that kill outright."
+
 	# -------------------------------------------------------------------------
 	# ARMOR
 	# -------------------------------------------------------------------------
@@ -172,6 +185,9 @@ static func _create_items() -> void:
 	_items["torch"].burn_duration = 150
 	_items["torch"].description = "A pitch-soaked brand. Lights the way for about 150 steps before it gutters out. The dungeon is lightless without one."
 
+	_items["recall_stone"] = Item.create_consumable("recall_stone", "Recall Stone", 0, 0, 40)
+	_items["recall_stone"].description = "A smooth stone bound to the town square. Crush it in the dungeon (T) to return the party to town at once."
+
 	var dungeon_key := Item.new()
 	dungeon_key.id = "dungeon_key"
 	dungeon_key.item_name = "Dungeon Key"
@@ -192,8 +208,9 @@ static func get_item(item_id: String) -> Item:
 static func get_shop_inventory() -> Array[Item]:
 	_ensure_initialized()
 	var items: Array[Item] = []
-	for item in _items.values():
-		items.append(item)
+	for item: Item in _items.values():
+		if item.rarity < Item.ItemRarity.RARE:
+			items.append(item)
 	return items
 
 

@@ -8,6 +8,8 @@ signal inventory_full()
 const MAX_SLOTS: int = 30
 
 @export var slots: Array[Dictionary] = []
+## How many slots this inventory holds. The guild's storage holds more.
+@export var max_slots: int = MAX_SLOTS
 
 
 func add_item(item: Item, quantity: int = 1) -> int:
@@ -23,7 +25,7 @@ func add_item(item: Item, quantity: int = 1) -> int:
 				if quantity <= 0:
 					return 0
 
-	while quantity > 0 and slots.size() < MAX_SLOTS:
+	while quantity > 0 and slots.size() < max_slots:
 		var add_qty := mini(quantity, item.max_stack) if item.stackable else 1
 		var slot_item: Item = item if quantity == 1 else item.duplicate() as Item
 		slots.append({
@@ -102,7 +104,7 @@ func is_empty() -> bool:
 
 
 func is_full() -> bool:
-	return slots.size() >= MAX_SLOTS
+	return slots.size() >= max_slots
 
 
 func get_all_items() -> Array[Item]:

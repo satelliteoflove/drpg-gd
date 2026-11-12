@@ -373,7 +373,11 @@ static func _get_fallback(context_type: String, speaker: Character) -> String:
 	_recent_fallback_lines.append(chosen)
 	while _recent_fallback_lines.size() > MAX_RECENT_FALLBACKS:
 		_recent_fallback_lines.pop_front()
-	return "[fb] " + chosen
+	# Marks a canned line in debug builds when the LLM should have spoken, to
+	# spot generation failures. With the LLM off, every line is canned.
+	if OS.is_debug_build() and LLMManager.opted_in and not LLMManager.debug_force_fallback:
+		return "[fb] " + chosen
+	return chosen
 
 
 static func _get_dominant_trait(character: Character) -> String:

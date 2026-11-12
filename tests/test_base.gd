@@ -1,10 +1,22 @@
 class_name TestBase
 extends RefCounted
 
+## Script errors seen so far. A script error stops a test where it stands
+## without failing any assertion, so run_all counts one as a failure.
+static var script_errors: int = 0
+
 var _test_name: String = ""
 var _passed: int = 0
 var _failed: int = 0
 var _errors: Array[String] = []
+
+
+## Add one with OS.add_logger before running tests.
+class ScriptErrorCounter extends Logger:
+	func _log_error(_function: String, _file: String, _line: int, _code: String, _rationale: String,
+			_editor_notify: bool, error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		if error_type == Logger.ERROR_TYPE_SCRIPT:
+			TestBase.script_errors += 1
 
 
 func run_all() -> Dictionary:
@@ -14,7 +26,13 @@ func run_all() -> Dictionary:
 		if name.begins_with("test_"):
 			_test_name = name
 			print("  Running: %s" % name)
+			var errors_before := script_errors
 			call(name)
+			if script_errors > errors_before:
+				_failed += 1
+				var error := "%s: Stopped by a script error." % name
+				_errors.append(error)
+				print("    FAIL: %s" % error)
 	return {"passed": _passed, "failed": _failed, "errors": _errors}
 
 

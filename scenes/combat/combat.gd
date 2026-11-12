@@ -581,7 +581,9 @@ func _start_combat() -> void:
 	combat_system.monster_turn_delay_requested.connect(_on_monster_turn_delay)
 	combat_system.layout_changed.connect(display.on_layout_changed)
 
-	combat_system.start_combat(GameState.party, typed_enemies)
+	CombatNotes.clear()
+	var surprise: Surprise.Result = encounter.get("surprise", Surprise.Result.NONE)
+	combat_system.start_combat(GameState.party, typed_enemies, surprise)
 	GameState.party_member_died.connect(_on_party_member_died_in_combat)
 	display.build_enemy_display()
 	display.build_party_display()
@@ -607,6 +609,8 @@ func _on_monster_turn_delay(delay: float) -> void:
 
 func _on_action_performed(message: String) -> void:
 	message_log.append_text("[color=#aaaaaa]>[/color] " + message + "\n")
+	for extra in CombatNotes.take():
+		message_log.append_text("[color=#debc78]>[/color] " + extra + "\n")
 	display.schedule_display_update()
 
 
@@ -744,7 +748,7 @@ func _finish_exit_combat(victory: bool) -> void:
 					all_dead = false
 					break
 			if all_dead:
-				SceneManager.go_to_town()
+				SceneManager.party_fell()
 			else:
 				SceneManager.go_to_dungeon()
 
@@ -892,7 +896,7 @@ func _get_enemy_by_combat_id(combat_id: String) -> Monster:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("debug_win"):
+	if OS.is_debug_build() and event.is_action_pressed("debug_win"):
 		_debug_win_combat()
 		return
 
@@ -901,7 +905,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _input_cooldown > 0.0:
 		return
 
-	if event is InputEventKey and event.pressed:
+	# Instant-win shortcuts for testing chests; debug builds only.
+	if OS.is_debug_build() and event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_1:
 				if combat_system and combat_system.is_active:

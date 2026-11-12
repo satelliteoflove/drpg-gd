@@ -33,6 +33,8 @@ var _show_gold := true
 var _show_scrap := false
 
 var _title_label: Label
+var _note_label: Label
+var _spacer: Control
 var _gold_value: Label
 var _scrap_box: HBoxContainer
 var _scrap_value: Label
@@ -128,10 +130,21 @@ func _build_top_bar() -> PanelContainer:
 	_title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_title_label)
 
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(spacer)
+	_note_label = Label.new()
+	_note_label.add_theme_color_override("font_color", UIColors.GOLD)
+	_note_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# The note takes the spacer's place when shown, and trims rather than
+	# pushing the date and coins off the bar.
+	_note_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_note_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_note_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	_note_label.visible = false
+	row.add_child(_note_label)
+
+	_spacer = Control.new()
+	_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_spacer)
 
 	_date_host = HBoxContainer.new()
 	_date_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -141,7 +154,9 @@ func _build_top_bar() -> PanelContainer:
 	if _show_gold:
 		_gold_sep = VSeparator.new()
 		row.add_child(_gold_sep)
-		row.add_child(_build_coin_box("GOLD", UIColors.GOLD))
+		# Below, the party only has what it carries; the guild's gold waits in town.
+		var out := _party() != null and _party().is_out()
+		row.add_child(_build_coin_box("CARRIED" if out else "GOLD", UIColors.GOLD))
 
 	if _show_scrap:
 		row.add_child(VSeparator.new())
@@ -238,6 +253,15 @@ func set_title(value: String) -> void:
 	_title = value
 	if _title_label != null:
 		_title_label.text = value
+
+
+## A short line beside the title, e.g. who holds a post in this building.
+func set_note(value: String) -> void:
+	if _note_label != null:
+		_note_label.text = value
+		_note_label.tooltip_text = value
+		_note_label.visible = not value.is_empty()
+		_spacer.visible = value.is_empty()
 
 
 func set_hint(value: String) -> void:

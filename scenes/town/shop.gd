@@ -112,6 +112,7 @@ func _install_chrome() -> void:
 	move_child(_scaffold, 0)
 	_scaffold.body.add_child(main)
 	_scaffold.back_pressed.connect(_on_back_pressed)
+	_scaffold.set_note(Retirement.note_for("shop"))
 
 	_detail = ItemDetailView.new(right_panel)
 	_build_mode_rail(left)

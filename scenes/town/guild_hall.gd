@@ -1,6 +1,6 @@
 extends Control
 
-enum Tab { CREATE, ROSTER, PARTY }
+enum Tab { CREATE, ROSTER, PARTY, STORAGE, CHRONICLE }
 
 var current_tab: Tab = Tab.CREATE
 
@@ -28,6 +28,13 @@ func _ready() -> void:
 	_install_scaffold()
 	_detail = CharacterDetailView.new(right_panel)
 	_build_count_strip()
+	tab_bar.add_tab("Storage")
+	tab_bar.add_tab("Chronicle")
+	# Five tabs don't fit the panel at the default spacing, and a scrolling
+	# tab bar hides the first one.
+	tab_bar.clip_tabs = false
+	tab_bar.add_theme_constant_override("h_separation", 2)
+	tab_bar.add_theme_font_size_override("font_size", 14)
 	tab_bar.tab_changed.connect(_on_tab_changed)
 
 	roster_tab = GuildHallRosterTab.new()
@@ -81,7 +88,7 @@ func _build_count_strip() -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.shift_pressed and event.keycode == KEY_D:
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and event.shift_pressed and event.keycode == KEY_D:
 		GameState.advance_game_days(30)
 		message_label.text = "DEBUG: Advanced 30 days. Now %s." % GameCalendar.format_short(GameState.game_day)
 		_refresh_display()
@@ -109,6 +116,10 @@ func _refresh_display() -> void:
 			roster_tab.populate()
 		Tab.PARTY:
 			party_tab.populate()
+		Tab.STORAGE:
+			_populate_storage_tab()
+		Tab.CHRONICLE:
+			_populate_chronicle_tab()
 
 	_update_help()
 
@@ -157,7 +168,7 @@ func _guild_summary_text() -> String:
 	for c in roster.get_all():
 		if c.is_dead:
 			dead += 1
-		else:
+		elif c.is_available():
 			living += 1
 
 	var text := "[b]The Adventurers' Guild[/b]\n\n"
@@ -174,6 +185,156 @@ func _guild_summary_text() -> String:
 	else:
 		text += "Recruit a new adventurer to join the guild."
 	return text
+
+
+# --- Storage -------------------------------------------------------------------------
+
+## Each row on the storage tab: {from: Inventory, to: Inventory, index: int}.
+var _storage_rows: Array[Dictionary] = []
+var _storage_focus: int = 0
+
+
+## The guild's storage: anything left here can be taken by whichever party is
+## in town, so characters never have to share a party to pass gear along.
+func _populate_storage_tab() -> void:
+	_clear_options()
+	_storage_rows.clear()
+	var pack := GameState.party.inventory
+	var storage := GameState.guild_storage
+
+	_add_section_label("PARTY'S PACK  (%d / %d)" % [pack.size(), pack.max_slots])
+	_add_storage_rows(pack, storage, "Store")
+	_add_section_label("GUILD STORAGE  (%d / %d)" % [storage.size(), storage.max_slots])
+	_add_storage_rows(storage, pack, "Take")
+
+	message_label.text = "Store what the party won't need, or take what it will." if not buttons.is_empty() \
+		else "Nothing in the party's pack or in storage."
+	_setup_nav()
+	if nav:
+		nav.selection_changed.connect(_on_storage_selection)
+		nav.select(clampi(_storage_focus, 0, buttons.size() - 1))
+	_on_storage_selection(nav.get_current_index() if nav else -1)
+
+
+func _add_section_label(text: String) -> void:
+	var label := Label.new()
+	label.text = text
+	label.theme_type_variation = &"MutedLabel"
+	options_list.add_child(label)
+
+
+func _add_storage_rows(from: Inventory, to: Inventory, verb: String) -> void:
+	if from.slots.is_empty():
+		var empty := Label.new()
+		empty.text = "  (empty)"
+		empty.theme_type_variation = &"MutedLabel"
+		options_list.add_child(empty)
+		return
+	for i in from.slots.size():
+		var item: Item = from.slots[i].get("item")
+		if item == null:
+			continue
+		var quantity: int = from.slots[i].get("quantity", 1)
+		var button := Button.new()
+		button.text = "%s   %s%s" % [verb, item.get_display_name(), "  ×%d" % quantity if quantity > 1 else ""]
+		button.custom_minimum_size = Vector2(350, 34)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.pressed.connect(_on_storage_row.bind(_storage_rows.size()))
+		options_list.add_child(button)
+		buttons.append(button)
+		_storage_rows.append({"from": from, "to": to, "index": i})
+
+
+func _on_storage_row(row_index: int) -> void:
+	var row: Dictionary = _storage_rows[row_index]
+	var from: Inventory = row["from"]
+	var to: Inventory = row["to"]
+	var slot: Dictionary = from.slots[row["index"]]
+	var item: Item = slot.get("item")
+	var quantity: int = slot.get("quantity", 1)
+	var remaining := to.add_item(item, quantity)
+	if remaining >= quantity:
+		message_label.text = "There's no room for %s." % item.get_display_name()
+		return
+	if remaining <= 0:
+		from.slots.remove_at(row["index"])
+	else:
+		slot["quantity"] = remaining
+	_storage_focus = row_index
+	_refresh_display()
+
+
+func _on_storage_selection(index: int) -> void:
+	if index < 0 or index >= _storage_rows.size():
+		_detail.show_text("[b]Guild Storage[/b]\n\nAnything stored here stays in town, and any party in town can take it.")
+		return
+	var row: Dictionary = _storage_rows[index]
+	var item: Item = row["from"].slots[row["index"]].get("item")
+	_detail.show_text("[b]%s[/b]\n\n%s" % [item.get_display_name(), item.get_stats_text()])
+
+
+# --- Chronicle -----------------------------------------------------------------------
+
+const CHRONICLE_SHOWN := 40
+const CHRONICLE_COLORS := {
+	"collapse": "#dfbd78", "story": "#dfbd78", "legend": "#e6c040",
+	"retired": "#a8c8e8", "rescue": "#8fd49a", "wipe": "#ff6b6b", "death": "#c9a0a0",
+}
+
+
+## The guild's record: dungeons brought down, Legends, retirements and losses.
+func _populate_chronicle_tab() -> void:
+	_clear_options()
+	var dungeon_set := GameState.dungeon_set
+	_add_section_label("DUNGEONS")
+	for d in dungeon_set.dungeons:
+		_add_chronicle_line("%s  ·  %s" % [d.dungeon_name,
+			"collapsed %s" % GameCalendar.format_short(d.collapsed_day) if d.is_collapsed() else "stands"])
+	if dungeon_set.final_dungeon:
+		_add_chronicle_line("%s  ·  stands" % dungeon_set.final_dungeon.dungeon_name)
+	if dungeon_set.set_number > 1:
+		_add_chronicle_line("Set %d. The story ended %s." % [
+			dungeon_set.set_number, GameCalendar.format_short(GameState.victory_day)])
+
+	var legends: Array[String] = []
+	var posts: Array[String] = []
+	for c in GameState.roster.get_all():
+		if c.is_legend():
+			legends.append(c.character_name)
+		elif c.is_retired() and not c.town_post.is_empty():
+			posts.append("%s, %s" % [c.character_name, Retirement.post_title(c.town_post)])
+	if not legends.is_empty():
+		_add_section_label("LEGENDS")
+		for line in legends:
+			_add_chronicle_line(line)
+	if not posts.is_empty():
+		_add_section_label("IN TOWN POSTS")
+		for line in posts:
+			_add_chronicle_line(line)
+
+	message_label.text = "The guild's record so far."
+	var entries := GameState.chronicle
+	if entries.is_empty():
+		_detail.show_text("[b]Chronicle[/b]\n\nNothing worth writing down has happened yet.")
+		return
+	var text := "[b]Chronicle[/b]\n"
+	var first := maxi(0, entries.size() - CHRONICLE_SHOWN)
+	for i in range(entries.size() - 1, first - 1, -1):
+		var entry: Dictionary = entries[i]
+		text += "\n[color=#8a8680]%s[/color]\n[color=%s]%s[/color]\n" % [
+			GameCalendar.format_short(entry.get("day", 1)),
+			CHRONICLE_COLORS.get(entry.get("kind", ""), "#e0dcd2"), entry.get("text", "")]
+	if first > 0:
+		text += "\n[color=#8a8680]%d earlier entries not shown.[/color]" % first
+	_detail.show_text(text)
+
+
+func _add_chronicle_line(text: String) -> void:
+	var label := Label.new()
+	label.text = "  " + text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(340, 0)
+	options_list.add_child(label)
 
 
 func _on_create_character() -> void:
@@ -205,6 +366,11 @@ func _update_help() -> void:
 			help_label.text = roster_tab.get_help_text()
 		Tab.PARTY:
 			help_label.text = party_tab.get_help_text()
+		Tab.STORAGE:
+			help_label.text = "%s | %s | Enter: Store or take | %s" % [
+				KeyBindingHelper.get_horizontal_help(), KeyBindingHelper.get_nav_help(), KeyBindingHelper.get_cancel_help()]
+		Tab.CHRONICLE:
+			help_label.text = "%s | %s" % [KeyBindingHelper.get_horizontal_help(), KeyBindingHelper.get_cancel_help()]
 
 	if _scaffold != null:
 		_scaffold.set_hint(help_label.text)
@@ -239,10 +405,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 	if event.is_action_pressed("menu_left"):
-		tab_bar.current_tab = (tab_bar.current_tab - 1 + 3) % 3
+		tab_bar.current_tab = (tab_bar.current_tab - 1 + tab_bar.tab_count) % tab_bar.tab_count
 		return
 	if event.is_action_pressed("menu_right"):
-		tab_bar.current_tab = (tab_bar.current_tab + 1) % 3
+		tab_bar.current_tab = (tab_bar.current_tab + 1) % tab_bar.tab_count
 		return
 
 	if event.is_action_pressed("menu_cancel"):
@@ -261,7 +427,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			party_tab.handle_input(event)
 		Tab.ROSTER:
 			roster_tab.handle_input(event)
-		Tab.CREATE:
+		_:
 			if nav:
 				nav.handle_input(event)
 

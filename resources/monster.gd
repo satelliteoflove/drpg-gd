@@ -3,6 +3,10 @@ class_name Monster
 extends Resource
 
 @export var monster_name: String = "Monster"
+## Whose art to show, when it isn't this monster's own. A dungeon's master
+## borrows a stock boss's art under a tint until it has its own.
+@export var art_name: String = ""
+@export var tint: Color = Color.WHITE
 @export var max_hp: int = 10
 @export var strength: int = 10
 @export var agility: int = 10
@@ -23,6 +27,12 @@ extends Resource
 @export var race: CharacterEnums.Race = CharacterEnums.Race.HUMAN
 @export var loot_drops: Array[LootDrop] = []
 @export var is_boss: bool = false
+## Whether this monster's physical attacks can land a critical hit (instant
+## death) on a party member.
+@export var can_critical: bool = false
+## Element to the share of that element's spell damage it shrugs off. Above 0
+## is a resistance, below 0 a weakness: -0.5 takes half again as much.
+@export var element_resist: Dictionary = {}
 
 @export_group("Spawn Info")
 @export var min_floor: int = 1
@@ -98,6 +108,10 @@ func take_damage(amount: int) -> int:
 		current_hp = 0
 		is_dead = true
 	return actual
+
+
+func get_art_name() -> String:
+	return art_name if not art_name.is_empty() else monster_name
 
 
 func get_random_attack() -> MonsterAttack:

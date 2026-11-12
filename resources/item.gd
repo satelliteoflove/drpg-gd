@@ -84,6 +84,8 @@ enum ItemRarity {
 
 @export_group("Equipment Effects")
 @export var grants_status: CharacterEnums.StatusEffect = CharacterEnums.StatusEffect.NONE
+## A weapon that lets anyone wielding it land critical hits, as a ninja can.
+@export var grants_critical: bool = false
 
 @export_group("Consumable Effects")
 @export var heal_amount: int = 0
@@ -291,6 +293,8 @@ func get_stats_text() -> String:
 		parts.append("HP: %+d" % get_effective_hp_bonus())
 	if get_effective_mp_bonus() != 0:
 		parts.append("MP: %+d" % get_effective_mp_bonus())
+	if grants_critical:
+		parts.append("Critical hits")
 
 	if heal_amount > 0:
 		parts.append("Heals %d HP" % heal_amount)

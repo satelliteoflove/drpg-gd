@@ -161,26 +161,47 @@ func _create_save_data() -> Resource:
 
 	data.roster = GameState.roster.duplicate(true)
 
-	data.party_member_ids.clear()
+	for p in GameState.parties:
+		var member_ids: Array[String] = []
+		for member in p.get_members():
+			member_ids.append(member.id)
+		data.parties.append({
+			"id": p.id,
+			"name": p.party_name,
+			"member_ids": member_ids,
+			"inventory": p.inventory.duplicate(true) if p.inventory else null,
+			"torch": p.torch_steps_remaining,
+			"dungeon_id": p.dungeon_id,
+			"floor": p.floor_num,
+			"position": p.position,
+			"facing": p.facing,
+			"spawn_at_stairs_up": p.spawn_at_stairs_up,
+			"carried_gold": p.carried_gold,
+			"carried_scrap": p.carried_scrap,
+			"tracker": p.tracker.save_state(),
+		})
+	data.active_party_id = GameState.party.id
+	data.guild_gold = GameState.guild_gold
+	data.guild_scrap = GameState.guild_scrap
+	data.guild_storage = GameState.guild_storage.duplicate(true)
+	data.chronicle = GameState.chronicle.duplicate(true)
+	data.party_formations = GameState.party_formations.duplicate(true)
+	data.dungeon_set = _copy_dungeon_set(GameState.dungeon_set)
+	data.destination_dungeon_id = GameState.destination_dungeon_id
+
+	# Summary fields the load screen reads.
 	for member in GameState.party.get_members():
 		data.party_member_ids.append(member.id)
-
-	data.party_gold = GameState.party.gold
-	data.party_scrap = GameState.party.scrap
-	data.party_formations = GameState.party_formations.duplicate(true)
-	data.party_inventory = GameState.party.inventory.duplicate(true) if GameState.party.inventory else null
-
+	data.party_gold = GameState.guild_gold + GameState.party.carried_gold
 	data.current_floor = GameState.current_floor
-	data.dungeon_floors = _duplicate_dungeon_floors()
-	data.player_position = GameState.dungeon_player_position
-	data.player_facing = GameState.dungeon_player_facing
-	data.spawn_at_stairs_up = GameState.dungeon_spawn_at_stairs_up
 
 	data.game_day = GameState.game_day
-	data.floor_tracker_state = GameState.floor_tracker.save_state()
 
 	data.relationship_state = RelationshipManager.get_save_state()
 	data.event_state = EventManager.get_save_state()
+
+	data.victory_day = GameState.victory_day
+	data.intro_seen = GameState.intro_seen
 
 	data.save_timestamp = int(Time.get_unix_time_from_system())
 	data.play_time_seconds = _get_total_play_time()
@@ -188,13 +209,29 @@ func _create_save_data() -> Resource:
 	return data
 
 
-func _duplicate_dungeon_floors() -> Dictionary:
-	var result: Dictionary = {}
-	for floor_num in GameState.dungeon_floors.keys():
-		var dungeon_data = GameState.dungeon_floors[floor_num]
-		if dungeon_data:
-			result[floor_num] = dungeon_data.duplicate(true)
-	return result
+## A copy that shares nothing with the original. Resource.duplicate(true)
+## doesn't reach the floors, which sit inside a Dictionary.
+func _copy_dungeon_set(source: DungeonSet) -> DungeonSet:
+	var copy := DungeonSet.new()
+	copy.set_number = source.set_number
+	for d in source.dungeons:
+		copy.dungeons.append(_copy_dungeon(d))
+	if source.final_dungeon:
+		copy.final_dungeon = _copy_dungeon(source.final_dungeon)
+	return copy
+
+
+func _copy_dungeon(source: Dungeon) -> Dungeon:
+	var copy: Dungeon = source.duplicate()
+	copy.bosses_slain = source.bosses_slain.duplicate()
+	copy.guardians = source.guardians.duplicate()
+	copy.boss_renames = source.boss_renames.duplicate()
+	copy.floors = {}
+	for floor_num in source.floors.keys():
+		var floor_data = source.floors[floor_num]
+		if floor_data:
+			copy.floors[floor_num] = floor_data.duplicate(true)
+	return copy
 
 
 func _apply_save_data(data) -> void:
@@ -203,40 +240,112 @@ func _apply_save_data(data) -> void:
 	for character in GameState.roster.get_all():
 		character.restore_active_statuses()
 
-	GameState.party = Party.new()
-	for char_id in data.party_member_ids:
-		var character: Character = GameState.roster.get_character(char_id)
-		if character:
-			GameState.party.add_member(character)
+	GameState.parties.clear()
+	GameState._active_party = null
+	GameState.pending_collapse = {}
+	GameState.pending_wipe = {}
+	GameState.pending_camp = {}
+	GameState.guild_storage = data.guild_storage.duplicate(true) if data.guild_storage else GameState._new_guild_storage()
+	_deduplicate_inventory_items(GameState.guild_storage)
+	GameState.chronicle = data.chronicle.duplicate(true)
+	if data.dungeon_set != null:
+		_apply_guild(data)
+	else:
+		_apply_version_5(data)
 
-	GameState.party.gold = data.party_gold
-	GameState.party.scrap = data.party_scrap
 	GameState.party_formations = data.party_formations.duplicate(true) if data.party_formations else []
-	if data.party_inventory:
-		GameState.party.inventory = data.party_inventory.duplicate(true)
-		_deduplicate_inventory_items(GameState.party.inventory)
-
-	GameState.current_floor = data.current_floor
-	GameState.dungeon_floors.clear()
-	for floor_num in data.dungeon_floors.keys():
-		var dungeon_data = data.dungeon_floors[floor_num]
-		if dungeon_data:
-			GameState.dungeon_floors[floor_num] = dungeon_data.duplicate(true)
-
-	GameState.dungeon_player_position = data.player_position
-	GameState.dungeon_player_facing = data.player_facing
-	GameState.dungeon_spawn_at_stairs_up = data.spawn_at_stairs_up
-
 	GameState.game_day = data.game_day if data.game_day else 1
-	if not data.floor_tracker_state.is_empty():
-		GameState.floor_tracker.load_state(data.floor_tracker_state)
 
 	if data.relationship_state:
 		RelationshipManager.load_save_state(data.relationship_state)
 
+	GameState.victory_day = data.victory_day
+	GameState.intro_seen = data.intro_seen
+
 	var event_data: Dictionary = data.get("event_state")
 	if event_data and not event_data.is_empty():
 		EventManager.load_save_state(event_data)
+
+
+func _apply_guild(data) -> void:
+	GameState.dungeon_set = _copy_dungeon_set(data.dungeon_set)
+	GameState.dungeon_set.update_from_older_save()
+	GameState.destination_dungeon_id = data.destination_dungeon_id
+	GameState.guild_gold = data.guild_gold
+	GameState.guild_scrap = data.guild_scrap
+	for record: Dictionary in data.parties:
+		var p := Party.new()
+		p.id = record.get("id", "")
+		p.party_name = record.get("name", "")
+		for char_id in record.get("member_ids", []):
+			var character: Character = GameState.roster.get_character(char_id)
+			if character:
+				p.add_member(character)
+		var inventory: Inventory = record.get("inventory")
+		if inventory:
+			p.inventory = inventory.duplicate(true)
+			_deduplicate_inventory_items(p.inventory)
+		p.torch_steps_remaining = record.get("torch", 0)
+		p.dungeon_id = record.get("dungeon_id", "")
+		p.floor_num = record.get("floor", 1)
+		p.position = record.get("position", Vector2i.ZERO)
+		p.facing = record.get("facing", 0)
+		p.spawn_at_stairs_up = record.get("spawn_at_stairs_up", true)
+		p.carried_gold = record.get("carried_gold", 0)
+		p.carried_scrap = record.get("carried_scrap", 0)
+		p.tracker.load_state(record.get("tracker", {}))
+		GameState.parties.append(p)
+	GameState._active_party = GameState.get_party(data.active_party_id)
+	if GameState._active_party == null:
+		if GameState.parties.is_empty():
+			GameState.party = Party.new()
+		else:
+			GameState._active_party = GameState.parties[0]
+
+
+## A version 5 save had one party and one dungeon. It loads as a party in
+## town and a fresh set whose first dungeon takes the old floors and slain
+## bosses. If that save had already won, the first dungeon has collapsed.
+func _apply_version_5(data) -> void:
+	GameState.dungeon_set = DungeonSet.create()
+	GameState.destination_dungeon_id = ""
+	var dungeon: Dungeon = GameState.dungeon_set.dungeons[0]
+	for floor_num in data.dungeon_floors.keys():
+		var floor_data = data.dungeon_floors[floor_num]
+		if floor_data:
+			dungeon.floors[floor_num] = floor_data.duplicate(true)
+	dungeon.bosses_slain.assign(data.bosses_slain if data.bosses_slain else [])
+	# Saves from before deepest_floor existed: infer it from the floors visited.
+	var deepest: int = data.deepest_floor
+	for floor_num in dungeon.floors.keys():
+		deepest = maxi(deepest, int(floor_num))
+	dungeon.deepest_floor = deepest
+	if data.victory_day > 0:
+		dungeon.collapsed_day = data.victory_day
+		dungeon.floors.clear()
+		data.victory_day = 0
+
+	GameState.guild_gold = data.party_gold
+	GameState.guild_scrap = data.party_scrap
+	var p := Party.new()
+	for char_id in data.party_member_ids:
+		var character: Character = GameState.roster.get_character(char_id)
+		if character:
+			p.add_member(character)
+	if data.party_inventory:
+		p.inventory = data.party_inventory.duplicate(true)
+		_deduplicate_inventory_items(p.inventory)
+	p.floor_num = data.current_floor
+	p.position = data.player_position
+	p.facing = data.player_facing
+	p.spawn_at_stairs_up = data.spawn_at_stairs_up
+	if not data.floor_tracker_state.is_empty():
+		p.tracker.load_state(data.floor_tracker_state)
+	GameState.party = p
+
+
+func get_play_time_seconds() -> int:
+	return _get_total_play_time()
 
 
 func _get_total_play_time() -> int:

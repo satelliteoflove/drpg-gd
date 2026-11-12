@@ -36,6 +36,8 @@ const SFX_STAIRS := "res://audio/sfx/stairs.wav"
 const SFX_TORCH_LIGHT := "res://audio/sfx/torch_light.wav"
 const SFX_TORCH_LOW := "res://audio/sfx/torch_low.wav"
 const SFX_ENCOUNTER := "res://audio/sfx/encounter.wav"
+const BOSS_MUSIC := "res://audio/music/music_boss.ogg"
+const RECALL_ITEM := "recall_stone"
 const SFX_TORCH_LOOP := "res://audio/sfx/torch_loop.wav"
 
 enum Facing { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 }
@@ -113,6 +115,7 @@ var _torch_audio: AudioStreamPlayer = null
 
 func _ready() -> void:
 	Engine.max_fps = 30
+	GameState.life_phase_changed.connect(_on_life_phase_changed)
 
 	movement = DungeonMovement.new()
 	movement.init(self)
@@ -244,10 +247,18 @@ func _build_nav_buttons() -> void:
 	row.add_child(menu_btn)
 
 	var town_btn := Button.new()
-	town_btn.text = "Town (T)"
+	town_btn.text = "Recall (T)"
+	town_btn.tooltip_text = "Crush a Recall Stone to return to town"
 	town_btn.focus_mode = Control.FOCUS_NONE
 	town_btn.pressed.connect(_on_town_pressed)
 	row.add_child(town_btn)
+
+	var camp_btn := Button.new()
+	camp_btn.text = "Camp (C)"
+	camp_btn.tooltip_text = "Leave this party here and turn to another. They wait, frozen, until you return."
+	camp_btn.focus_mode = Control.FOCUS_NONE
+	camp_btn.pressed.connect(_on_camp_pressed)
+	row.add_child(camp_btn)
 
 
 func _build_vitals_strip() -> void:
@@ -338,6 +349,10 @@ func _make_door_material() -> StandardMaterial3D:
 func _setup_grid_maps() -> void:
 	var floor_tex := _theme.floor_textures()
 	var floor_material := _make_surface_material(_theme.floor_tint, _theme.floor_roughness, floor_tex)
+	if _theme.floor_wet:
+		# The builder keeps surfaces matte. A flooded floor is the exception.
+		floor_material.roughness = _theme.floor_roughness
+		floor_material.metallic_specular = 0.6
 	var stairs_up_material := _make_surface_material(_theme.stairs_up_tint, _theme.floor_roughness, floor_tex)
 	var stairs_down_material := _make_surface_material(_theme.stairs_down_tint, _theme.floor_roughness, floor_tex)
 	var ceiling_material := _make_surface_material(_theme.ceiling_tint, _theme.ceiling_roughness, _theme.ceiling_textures())
@@ -456,16 +471,18 @@ func _load_or_generate_dungeon() -> void:
 		print_debug("Loaded floor ", GameState.current_floor, " from cache")
 	else:
 		var generator := DungeonGenerator.new()
-		dungeon_data = generator.generate(31, 31, GameState.current_floor)
+		var here := GameState.active_dungeon()
+		# The fifth dungeon is one great floor.
+		var extent := 41 if here.is_final else 31
+		var floor_seed := hash([here.seed_value, GameState.current_floor]) if here.seed_value != 0 else 0
+		dungeon_data = generator.generate(extent, extent, GameState.current_floor, floor_seed)
 		GameState.store_dungeon_floor(GameState.current_floor, dungeon_data)
 		print_debug("Generated floor ", GameState.current_floor, ": ", dungeon_data.rooms.size(), " rooms")
 
 
 func _resolve_theme() -> void:
-	_theme = dungeon_data.theme
-	if _theme == null:
-		_theme = FloorThemes.get_theme(GameState.current_floor)
-		dungeon_data.theme = _theme
+	var here := GameState.active_dungeon()
+	_theme = FloorThemes.get_theme(here.theme_id, GameState.current_floor, here.depth)
 
 
 # Apply the theme's atmosphere to the shared WorldEnvironment + background. Fog
@@ -797,16 +814,60 @@ func _update_enemy_door_visuals() -> void:
 
 
 func _spawn_player() -> void:
-	if GameState.dungeon_spawn_at_stairs_up:
+	if GameState.resume_at_position and dungeon_data.is_walkable(GameState.dungeon_player_position.x, GameState.dungeon_player_position.y):
+		grid_position = GameState.dungeon_player_position
+		facing = GameState.dungeon_player_facing as Facing
+	elif GameState.dungeon_spawn_at_stairs_up:
 		grid_position = dungeon_data.stairs_up_pos
 		facing = Facing.SOUTH
 	else:
 		grid_position = dungeon_data.stairs_down_pos
 		facing = Facing.NORTH
 
+	GameState.resume_at_position = false
+	GameState.dungeon_player_position = grid_position
+	GameState.dungeon_player_facing = facing
 	previous_grid_position = grid_position
 	movement.update_camera_transform()
 	_mark_current_tile_discovered()
+	_announce_fallen.call_deferred()
+
+
+## Tells the party about anyone lying dead on this floor, and warns before a
+## master's fight that the collapse will take whoever is still below.
+func _announce_fallen() -> void:
+	var here := GameState.active_dungeon()
+	var lines: Array[String] = []
+	for fallen in GameState.fallen_parties_on(GameState.current_floor):
+		lines.append("%s lies dead on this floor, and the map marks where. Bring them home." % GameState.party_label(fallen))
+	if GameState.current_floor >= here.depth:
+		var below := GameState.bodies_below(here)
+		if not below.is_empty():
+			lines.append("If this dungeon's master falls, the dungeon falls with it, and %s will be lost for good." % GameState.name_list(below))
+	if not lines.is_empty():
+		_show_dungeon_message(" ".join(lines))
+
+
+## Gathers up any fallen party lying where the party now stands.
+func _recover_fallen_here() -> void:
+	for fallen in GameState.fallen_parties_on(GameState.current_floor):
+		if fallen.position != grid_position:
+			continue
+		var result := GameState.recover_fallen(fallen)
+		var recovered: Array = result["recovered"]
+		var text := ""
+		if recovered.is_empty():
+			text = "The dead lie here, but the party is full and can't carry anyone."
+		else:
+			text = "The party gathers up %s." % GameState.name_list(recovered)
+		if result["gold"] > 0:
+			text += " %s %d gold on them, and the party takes it." % [
+				"They had" if not recovered.is_empty() else "The dead had", result["gold"]]
+		if not recovered.is_empty() and result["left"] > 0:
+			text += " %s more will have to wait for another trip." % GameState.count_word(result["left"]).capitalize()
+		_show_dungeon_message(text)
+		if _vitals_strip:
+			_vitals_strip.refresh()
 
 
 func _initialize_enemy_system() -> void:
@@ -814,9 +875,8 @@ func _initialize_enemy_system() -> void:
 	_enemy_container.name = "EnemyContainer"
 	add_child(_enemy_container)
 
-	if GameState.floor_tracker == null:
-		GameState.floor_tracker = FloorTracker.new()
 	GameState.floor_tracker.set_floor(GameState.current_floor)
+	GameState.floor_tracker.rate_floor = GameState.active_dungeon().deep_time_floor(GameState.current_floor)
 
 	enemy_manager = EnemyManager.new()
 	enemy_manager.initialize(dungeon_data, GameState.floor_tracker)
@@ -828,8 +888,7 @@ func _initialize_enemy_system() -> void:
 	if dungeon_data.enemy_groups.is_empty():
 		enemy_manager.spawn_initial_enemies()
 	else:
-		for group in dungeon_data.enemy_groups:
-			enemy_manager.enemy_groups.append(group)
+		enemy_manager.restore_groups(dungeon_data.enemy_groups)
 
 	_create_enemy_sprites()
 	_rebuild_group_lookup()
@@ -894,8 +953,61 @@ func _update_enemy_sprites() -> void:
 
 
 func _on_enemy_combat_triggered(group: EnemyGroup) -> void:
+	if _needs_master_warning(group):
+		_ask_before_master(group)
+		return
 	var encounter := _create_encounter_from_group(group)
 	_open_combat(encounter)
+
+
+## The confirmation before a master's fight while bodies still lie below.
+var _master_prompt: CanvasLayer = null
+var _master_nav: MenuNavigator = null
+var _master_confirmed := false
+
+
+func _needs_master_warning(group: EnemyGroup) -> bool:
+	if group.ai_type != EnemyGroup.AIType.BOSS or _master_confirmed:
+		return false
+	var here := GameState.active_dungeon()
+	return GameState.current_floor >= here.depth and not GameState.bodies_below(here).is_empty()
+
+
+func _ask_before_master(group: EnemyGroup) -> void:
+	event_open = true
+	var here := GameState.active_dungeon()
+	var below := GameState.bodies_below(here)
+	_master_prompt = ModalCard.open($UI, "Before the Master")
+	var col := ModalCard.body(_master_prompt)
+	var warning := ModalCard.paragraph("%s still %s in %s. If %s falls, the dungeon falls with it, and %s lost for good." % [
+		GameState.name_list(below), "lies" if below.size() == 1 else "lie", here.dungeon_name,
+		here.master_name, "they'll be" if below.size() > 1 else "that body will be"])
+	warning.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
+	col.add_child(warning)
+	var fight := ModalCard.choice_button("Fight")
+	fight.pressed.connect(_on_master_choice.bind(group, true))
+	col.add_child(fight)
+	var back := ModalCard.choice_button("Fall Back")
+	back.pressed.connect(_on_master_choice.bind(group, false))
+	col.add_child(back)
+	var buttons: Array[Button] = [fight, back]
+	_master_nav = MenuNavigator.new()
+	_master_nav.setup(buttons, 1)
+
+
+func _on_master_choice(group: EnemyGroup, fight: bool) -> void:
+	if _master_prompt:
+		_master_prompt.queue_free()
+	_master_prompt = null
+	_master_nav = null
+	event_open = false
+	if fight:
+		_master_confirmed = true
+		_open_combat(_create_encounter_from_group(group))
+	else:
+		grid_position = previous_grid_position
+		GameState.dungeon_player_position = grid_position
+		movement.update_camera_transform()
 
 
 func _on_enemy_spawned(group: EnemyGroup) -> void:
@@ -928,16 +1040,23 @@ func _create_encounter_from_group(group: EnemyGroup) -> Dictionary:
 		var monster := group.monsters[i].duplicate_for_combat()
 		monster.grid_position = positions[i]
 		monster.init_combat()
+		DungeonSurge.strengthen(monster, GameState.surge_multiplier(GameState.current_floor))
 		enemies.append(monster)
 
 	var encounter := {"enemies": enemies, "enemy_group": group}
 	if is_boss:
 		encounter["is_boss"] = true
+	var how: Dictionary = enemy_manager.last_engagement if enemy_manager else {}
+	encounter["surprise"] = Surprise.roll(
+		how.get("party_engaged", true), how.get("group_aware", true),
+		how.get("from_behind", false), is_boss, GameState.party)
+	enemy_manager.last_engagement = {}
 	return encounter
 
 
 func _update_ui() -> void:
-	floor_label.text = "Floor " + str(GameState.current_floor)
+	var here := GameState.active_dungeon()
+	floor_label.text = here.dungeon_name if here.is_final else "%s  ·  Floor %d" % [here.dungeon_name, GameState.current_floor]
 	var pending_days: int = GameState.floor_tracker.accumulated_steps / FloorTracker.STEPS_PER_DAY
 	var current_day: int = GameState.game_day + pending_days
 	var hours: int = (GameState.floor_tracker.accumulated_steps % FloorTracker.STEPS_PER_DAY) * 24 / FloorTracker.STEPS_PER_DAY
@@ -964,6 +1083,14 @@ func _tick_exploration_effects() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _master_nav:
+		get_viewport().set_input_as_handled()
+		if event.is_action_pressed("menu_cancel"):
+			_master_nav.select(1)
+			_master_nav.get_current_item().pressed.emit()
+		else:
+			_master_nav.handle_input(event)
+		return
 	if combat_open:
 		return
 
@@ -981,7 +1108,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if menu_open or map_open or combat_open or event_open or is_moving:
 		return
 
-	if event is InputEventKey and event.pressed and _handle_debug_keys(event as InputEventKey):
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and _handle_debug_keys(event as InputEventKey):
 		return
 
 	if event.is_action_pressed("strafe_left"):
@@ -1004,6 +1131,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_open_map()
 	elif event.is_action_pressed("go_to_town"):
 		_on_town_pressed()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C \
+			and not event.shift_pressed and not event.ctrl_pressed:
+		_on_camp_pressed()
+	elif not OS.is_debug_build():
+		return
+	# Debug-only keys below; release builds stop at the line above.
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_X:
 		_force_combat()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_G:
@@ -1035,7 +1168,7 @@ func _handle_debug_keys(event: InputEventKey) -> bool:
 		_debug_level_party(5)
 		return true
 	elif event.keycode == KEY_F and event.shift_pressed:
-		_debug_teleport_floor(GameState.current_floor + 1)
+		_debug_teleport_floor(mini(GameState.current_floor + 1, GameState.FINAL_FLOOR))
 		return true
 	elif event.keycode == KEY_F and event.ctrl_pressed and GameState.current_floor > 1:
 		_debug_teleport_floor(GameState.current_floor - 1)
@@ -1173,6 +1306,9 @@ func _check_special_tile() -> void:
 
 
 func _descend_stairs() -> void:
+	if _stairs_sealed():
+		_show_dungeon_message("A seal of black iron bars the stairs. This floor's guardian still lives.")
+		return
 	AudioManager.play_sfx_path(SFX_STAIRS)
 	var next_floor := GameState.current_floor + 1
 	var event_context := {
@@ -1195,9 +1331,20 @@ func _descend_stairs() -> void:
 	)
 
 
+## The way down stays sealed until the floor's guardian falls. A party that
+## has already been deeper (an older save, say) is let through.
+func _stairs_sealed() -> bool:
+	var floor_num := GameState.current_floor
+	if MonsterDatabase.get_boss_for_floor(floor_num) == null:
+		return false
+	if GameState.is_boss_slain(floor_num):
+		return false
+	return GameState.deepest_floor <= floor_num
+
+
 func _ascend_stairs() -> void:
 	AudioManager.play_sfx_path(SFX_STAIRS)
-	if GameState.current_floor <= 1:
+	if GameState.current_floor <= GameState.active_dungeon().entry_floor:
 		print_debug("Returning to town...")
 		SceneManager.go_to_town()
 	else:
@@ -1253,7 +1400,24 @@ func _check_held_movement() -> void:
 		movement.turn_right()
 
 
+## Leaves the party here and returns the player to town to drive another.
+func _on_camp_pressed() -> void:
+	if combat_open or menu_open or map_open or event_open or is_moving:
+		return
+	SceneManager.camp_party()
+
+
+## Returning to town from the depths costs a Recall Stone. Walking out up the
+## floor 1 stairs is always free.
 func _on_town_pressed() -> void:
+	if combat_open or GameState.party == null:
+		return
+	var inventory := GameState.party.inventory
+	if inventory == null or not inventory.has_item(RECALL_ITEM):
+		_show_dungeon_message("You have no Recall Stone. Find the stairs up, or buy stones in town.")
+		return
+	inventory.remove_item(RECALL_ITEM, 1)
+	_show_dungeon_message("The Recall Stone crumbles, and the dungeon falls away.")
 	SceneManager.go_to_town()
 
 
@@ -1261,18 +1425,20 @@ func _process_enemy_turn() -> void:
 	if enemy_manager == null:
 		return
 
+	if GameState.party.is_wiped():
+		SceneManager.party_fell()
+		return
+	GameState.dungeon_player_position = grid_position
+	GameState.dungeon_player_facing = facing
+	# Deferred so its message isn't replaced by this step's other messages.
+	_recover_fallen_here.call_deferred()
 	var combat_group := enemy_manager.on_player_move(grid_position, facing)
+	GameState.tick_expedition()
 	_rebuild_group_lookup()
 	_update_enemy_sprites()
 
 	if combat_group != null:
 		return
-
-
-func _check_random_encounter() -> void:
-	if randf() < GameState.encounter_chance:
-		var encounter := EncounterGenerator.generate_encounter()
-		_open_combat(encounter)
 
 
 func _force_combat() -> void:
@@ -1290,6 +1456,8 @@ func _open_combat(encounter: Dictionary) -> void:
 
 	AudioManager.play_sfx_path(SFX_ENCOUNTER)
 	AudioManager.stop_ambient(0.3)
+	if encounter.get("is_boss", false):
+		AudioManager.crossfade_music(load(BOSS_MUSIC), 0.6)
 	if _torch_audio:
 		_torch_audio.stop()
 
@@ -1307,6 +1475,16 @@ func _on_combat_closed(victory: bool) -> void:
 		var group: EnemyGroup = encounter.enemy_group
 		if enemy_manager != null:
 			enemy_manager.remove_defeated_group(group)
+		if group.ai_type == EnemyGroup.AIType.BOSS:
+			match GameState.record_boss_slain(GameState.current_floor):
+				GameState.BossOutcome.STORY_END:
+					SceneManager.go_to_ending()
+					return
+				GameState.BossOutcome.COLLAPSE:
+					# The dungeon is coming down, and casts the party out.
+					SceneManager.go_to_town()
+					return
+			_show_dungeon_message("Somewhere ahead, the seal on the stairs cracks and falls away.")
 
 	if not victory:
 		var all_dead := true
@@ -1316,7 +1494,10 @@ func _on_combat_closed(victory: bool) -> void:
 					all_dead = false
 					break
 		if all_dead:
-			SceneManager.go_to_town()
+			# They lie where they stood before the fight, where another
+			# party can reach them.
+			GameState.dungeon_player_position = previous_grid_position
+			SceneManager.party_fell()
 		else:
 			grid_position = previous_grid_position
 			movement.update_camera_transform()
@@ -1334,6 +1515,8 @@ func _close_combat() -> void:
 		_vitals_strip.refresh()
 	if _theme and _theme.ambient_bed != "" and ResourceLoader.exists(_theme.ambient_bed):
 		AudioManager.play_ambient(load(_theme.ambient_bed))
+	if _theme and _theme.music != "" and ResourceLoader.exists(_theme.music):
+		AudioManager.crossfade_music(load(_theme.music), 1.5)
 	_update_torch_audio()
 	if combat_ui:
 		combat_ui.queue_free()
@@ -1475,13 +1658,32 @@ func _setup_message_label() -> void:
 	_message_label.anchor_right = 0.5
 	_message_label.anchor_top = 1.0
 	_message_label.anchor_bottom = 1.0
-	_message_label.offset_left = -200
-	_message_label.offset_right = 200
+	_message_label.offset_left = -380
+	_message_label.offset_right = 380
+	_message_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_message_label.offset_top = -150
 	_message_label.offset_bottom = -120
 	_message_label.add_theme_font_size_override("font_size", 18)
 	_message_label.modulate.a = 0.0
 	$UI.add_child(_message_label)
+
+
+## Deep time lands as the party walks, so someone can cross into a new time
+## of life mid-corridor.
+func _on_life_phase_changed(character: Character, phase: CharacterEnums.LifePhase) -> void:
+	var text := ""
+	match phase:
+		CharacterEnums.LifePhase.PRIME:
+			text = "%s has come into the prime of life." % character.character_name
+		CharacterEnums.LifePhase.DECLINE:
+			text = "%s has gone gray at the temples down here. The veteran years have begun." % character.character_name
+		CharacterEnums.LifePhase.FRAGILE:
+			text = "%s has grown old in the deep. An elder now." % character.character_name
+	var gained := AgeTraits.gained_on(character, phase)
+	if text != "" and gained != "":
+		text += " (%s)" % gained
+	if text != "":
+		_show_dungeon_message(text)
 
 
 func _show_dungeon_message(text: String) -> void:
@@ -1490,7 +1692,8 @@ func _show_dungeon_message(text: String) -> void:
 	if _message_tween:
 		_message_tween.kill()
 	_message_tween = create_tween()
-	_message_tween.tween_interval(1.5)
+	# Long messages stay up long enough to read.
+	_message_tween.tween_interval(maxf(1.5, text.length() / 22.0))
 	_message_tween.tween_property(_message_label, "modulate:a", 0.0, 0.5)
 
 

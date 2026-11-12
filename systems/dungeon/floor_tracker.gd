@@ -6,6 +6,9 @@ signal reveal_expired
 signal step_taken(total_steps: int)
 
 const STEPS_PER_DAY: int = 120
+## Time runs faster the deeper you go. Days of personal aging per surface day
+## spent on each floor; see docs/deep-time.md. Index 0 is unused.
+const DEEP_DAYS_PER_DAY: Array[int] = [1, 1, 7, 28, 56, 84, 140, 196, 280]
 
 var global_step_count: int = 0
 var accumulated_steps: int = 0
@@ -13,11 +16,24 @@ var spotted_groups: Dictionary = {}
 var reveal_active: bool = false
 var reveal_steps_remaining: int = 0
 var current_floor: int = 0
+## The floor whose deep-time rate applies, when it isn't the one the party is
+## on (the fifth dungeon runs gentler than its depth). 0 means current_floor.
+var rate_floor: int = 0
+## Personal aging accrued below and not yet applied to the party, in days.
+var deep_days: float = 0.0
+## The expedition so far, for the homecoming report: surface days and deep
+## days spent, and each member's age and phase on setting out ({id: [age_days,
+## phase]}). Empty when the party is home.
+var trip_surface_days: int = 0
+var trip_deep_days: int = 0
+var trip_start: Dictionary = {}
 
 
 func increment_step() -> void:
 	global_step_count += 1
 	accumulated_steps += 1
+	var f := clampi(rate_floor if rate_floor > 0 else current_floor, 1, DEEP_DAYS_PER_DAY.size() - 1)
+	deep_days += float(DEEP_DAYS_PER_DAY[f]) / STEPS_PER_DAY
 	if reveal_active:
 		reveal_steps_remaining -= 1
 		if reveal_steps_remaining <= 0:
@@ -78,6 +94,13 @@ func consume_dungeon_days() -> int:
 	return days
 
 
+## Returns the personal aging accrued below, in whole days, and resets it.
+func consume_deep_days() -> int:
+	var days := floori(deep_days)
+	deep_days -= days
+	return days
+
+
 func save_state() -> Dictionary:
 	return {
 		"global_step_count": global_step_count,
@@ -85,7 +108,11 @@ func save_state() -> Dictionary:
 		"spotted_groups": spotted_groups.duplicate(),
 		"reveal_active": reveal_active,
 		"reveal_steps_remaining": reveal_steps_remaining,
-		"current_floor": current_floor
+		"current_floor": current_floor,
+		"deep_days": deep_days,
+		"trip_surface_days": trip_surface_days,
+		"trip_deep_days": trip_deep_days,
+		"trip_start": trip_start.duplicate(true),
 	}
 
 
@@ -96,3 +123,7 @@ func load_state(data: Dictionary) -> void:
 	reveal_active = data.get("reveal_active", false)
 	reveal_steps_remaining = data.get("reveal_steps_remaining", 0)
 	current_floor = data.get("current_floor", 0)
+	deep_days = data.get("deep_days", 0.0)
+	trip_surface_days = data.get("trip_surface_days", 0)
+	trip_deep_days = data.get("trip_deep_days", 0)
+	trip_start = data.get("trip_start", {}).duplicate(true)

@@ -451,6 +451,16 @@ func _draw_hero_band(r: Rect2) -> void:
 	var sub := "Level %d   ·   %s %s" % [_character.level, CharacterEnums.get_race_name(_character.race), CharacterEnums.get_class_name(_character.character_class)]
 	draw_string(_font_semibold, Vector2(tx, ty + 45.0), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UIColors.TEXT_SECONDARY)
 
+	# What their time of life gives them, by name; the story overlay has details.
+	var trait_names: Array[String] = []
+	for line in AgeTraits.describe(_character):
+		trait_names.append(line.get_slice(":", 0))
+	if not trait_names.is_empty():
+		var traits_text := "  ·  ".join(trait_names)
+		var right := r.position.x + r.size.x - 16.0
+		var tw := _font_semibold.get_string_size(traits_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		draw_string(_font_semibold, Vector2(right - tw, ty + 45.0), traits_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UIColors.TITLE_GOLD)
+
 	# Identity chips.
 	var cy := ty + 53.0
 	var cx := tx
@@ -462,6 +472,15 @@ func _draw_hero_band(r: Rect2) -> void:
 		var row_text := "Front Row" if _party_index < 3 else "Back Row"
 		var row_color := UIColors.FRONT_ROW if _party_index < 3 else UIColors.BACK_ROW
 		cx += _draw_chip(cx, cy, row_text, row_color) + 6.0
+
+	# Where they are in life, and how much of it the dungeon has had.
+	var line_left := cx + 8.0
+	var line_right := r.position.x + r.size.x - inset
+	if line_right - line_left > 80.0:
+		var served := _character.first_descent_day >= 0 or _character.days_below > 0
+		var age_in := LastDescent.saga_age_in(_character) if served else _character.age_days
+		SagaLifeline.paint(self, Rect2(line_left, cy + CHIP_H * 0.5 - 6.0, line_right - line_left, 12.0),
+			_character.race, age_in, _character.age_days, UIColors.TITLE_GOLD)
 
 	# Status chip pinned to the right edge.
 	var status_text := "DEAD" if _character.is_dead else _get_status_text()
@@ -475,6 +494,11 @@ func _draw_hero_band(r: Rect2) -> void:
 
 func _draw_emblem(r: Rect2) -> void:
 	var tint := _class_tint(_character.character_class)
+	# The emblem grays a little in the veteran years and more as an elder.
+	if AgeTraits.is_elder(_character):
+		tint = tint.lerp(Color(0.72, 0.70, 0.68), 0.55)
+	elif AgeTraits.is_veteran(_character):
+		tint = tint.lerp(Color(0.72, 0.70, 0.68), 0.28)
 	var plate := StyleBoxFlat.new()
 	plate.bg_color = tint.darkened(0.55)
 	plate.set_corner_radius_all(10)
@@ -590,17 +614,12 @@ func _draw_vitals(x: float, y: float, w: float) -> float:
 
 	# XP toward the next level (a real progress bar, not raw points).
 	y += 9.0
-	if _character.level >= ExperienceTable.MAX_LEVEL:
-		draw_string(_font_semibold, Vector2(x, y + 12.0), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIColors.TEXT_SECONDARY)
-		draw_string(_font, Vector2(x, y + 12.0), "MAX LEVEL", HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.GOLD)
-		y += 18.0
-	else:
-		draw_string(_font_semibold, Vector2(x, y + 12.0), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIColors.TEXT_SECONDARY)
-		var nxt := "%s to Lv %d" % [_format_int(_character.get_xp_to_next_level()), _character.level + 1]
-		draw_string(_font, Vector2(x, y + 12.0), nxt, HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.TEXT_SECONDARY)
-		y += 16.0
-		_draw_meter(Rect2(x, y, w, 8.0), _character.get_xp_progress_percent() / 100.0, UIColors.GOLD)
-		y += 12.0
+	draw_string(_font_semibold, Vector2(x, y + 12.0), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UIColors.TEXT_SECONDARY)
+	var nxt := "%s to Lv %d" % [_format_int(_character.get_xp_to_next_level()), _character.level + 1]
+	draw_string(_font, Vector2(x, y + 12.0), nxt, HORIZONTAL_ALIGNMENT_RIGHT, int(w), 12, UIColors.TEXT_SECONDARY)
+	y += 16.0
+	_draw_meter(Rect2(x, y, w, 8.0), _character.get_xp_progress_percent() / 100.0, UIColors.GOLD)
+	y += 12.0
 
 	# Bonus XP modifiers, if any.
 	if not _character.is_dead:
@@ -871,6 +890,18 @@ func _get_marks_detail() -> String:
 	return text
 
 
+func _get_age_detail() -> String:
+	var text := "[b]%s, age %d[/b]\n" % [_character.get_life_phase_name(), _character.get_age_years()]
+	var lines := AgeTraits.describe(_character)
+	if lines.is_empty():
+		text += "In the prime of life. Nothing gained or lost to age yet."
+	for line in lines:
+		text += line + "\n"
+	if _character.days_below >= CharacterEnums.DAYS_PER_YEAR:
+		text += "%d years spent below." % (_character.days_below / CharacterEnums.DAYS_PER_YEAR)
+	return text
+
+
 ## The character's full story — personality, bonds and marks in detail — as one
 ## bbcode block, with each section header tinted gold. Used by the Status tab's
 ## story overlay.
@@ -878,7 +909,7 @@ func get_story_detail() -> String:
 	if _character == null:
 		return ""
 	var gold := UIColors.TITLE_GOLD.to_html(false)
-	var sections := [_get_personality_detail(), _get_bonds_detail(), _get_marks_detail()]
+	var sections := [_get_age_detail(), _get_personality_detail(), _get_bonds_detail(), _get_marks_detail()]
 	var out := ""
 	for s in sections:
 		# Each helper opens with a single "[b]Header[/b]" line; tint it gold.

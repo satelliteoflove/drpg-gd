@@ -48,7 +48,7 @@ func _emit_combat_math() -> void:
 		DamageCalculator.last_save_detail = ""
 
 
-func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
+func start_combat(p_party: Party, enemy_list: Array[Monster], surprise: Surprise.Result = Surprise.Result.NONE) -> void:
 	party = p_party
 	party_members = party.get_members()
 	enemies = []
@@ -70,6 +70,8 @@ func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 		if not character.is_dead:
 			character.init_combat()
 			initiative.add_combatant(character.id, true, character.agility)
+			if AgeTraits.acts_first(character):
+				initiative.move_to_front(character.id)
 
 	for enemy in enemies:
 		initiative.add_combatant(enemy.combat_id, false, enemy.agility)
@@ -105,6 +107,14 @@ func start_combat(p_party: Party, enemy_list: Array[Monster]) -> void:
 		action_performed.emit("A %s appears!" % enemies[0].monster_name)
 	else:
 		action_performed.emit("%d enemies appear!" % enemy_count)
+
+	match surprise:
+		Surprise.Result.PARTY:
+			initiative.grant_surprise_round(true)
+			action_performed.emit("You surprised the monsters! Your party strikes first.")
+		Surprise.Result.MONSTERS:
+			initiative.grant_surprise_round(false)
+			action_performed.emit("The monsters surprised you! They strike before you can react.")
 
 	_advance_turn()
 
@@ -1582,6 +1592,11 @@ func _get_charmed_monster_spell_targets(spell: Spell, caster: Monster) -> Array:
 
 
 func _check_combat_end() -> void:
+	# A delayed turn can land after the fight is already over. Without this
+	# guard the end was processed twice: loot rolled again (the duplicate
+	# chest items in #12) and XP and gold paid out twice.
+	if not is_active:
+		return
 	if _all_enemies_dead():
 		var total_exp := 0
 		var total_gold := 0
@@ -1596,6 +1611,9 @@ func _check_combat_end() -> void:
 		var floor_level: int = GameState.current_floor
 		var party_luck: int = party.get_average_luck() if party else 10
 		var loot: Array[Item] = LootGenerator.generate_combat_loot(enemies, floor_level, party_luck)
+		# Roll the key here so the victory message counts it.
+		if not loot.is_empty():
+			ChestSystem.maybe_add_dungeon_key(loot)
 
 		var loot_msg := ""
 		if not loot.is_empty():

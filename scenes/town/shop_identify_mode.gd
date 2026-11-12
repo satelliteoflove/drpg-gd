@@ -42,7 +42,7 @@ func populate() -> void:
 
 
 func get_info_suffix(item: Item) -> String:
-	var cost := item.buy_price / 2
+	var cost := Retirement.identify_cost(item)
 	return "\n\n[color=#%s]Identify cost: %d gold[/color]" % [UIColors.GOLD.to_html(false), cost]
 
 
@@ -79,9 +79,9 @@ func handle_confirm() -> bool:
 
 
 func _create_identify_button(index: int, item: Item) -> Button:
-	var cost := item.buy_price / 2
+	var cost := Retirement.identify_cost(item)
 	var can_afford := GameState.party.has_gold(cost)
-	var chips: Array = [{"text": "%d g" % cost,
+	var chips: Array = [{"text": "%d g" % cost if cost > 0 else "free",
 		"fg": UIColors.INFO if can_afford else UIColors.TEXT_DANGER, "bg": UIColors.SURFACE_SELECTED}]
 	var btn: Button = shop.make_item_row(item, chips, not can_afford)
 	if not can_afford:
@@ -92,7 +92,7 @@ func _create_identify_button(index: int, item: Item) -> Button:
 
 
 func _on_identify_item(_index: int, item: Item) -> void:
-	var cost := item.buy_price / 2
+	var cost := Retirement.identify_cost(item)
 	if not GameState.party.spend_gold(cost):
 		shop.message_label.text = "Not enough gold!"
 		return

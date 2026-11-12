@@ -76,12 +76,15 @@ func _populate_options() -> void:
 		options_vbox.add_child(quick_btn)
 		option_buttons.append(quick_btn)
 
-	var inspect_btn := Button.new()
-	inspect_btn.text = "Inspect"
-	inspect_btn.custom_minimum_size = Vector2(0, 36)
-	inspect_btn.pressed.connect(_on_inspect)
-	options_vbox.add_child(inspect_btn)
-	option_buttons.append(inspect_btn)
+	# Once an inspection has found the trap or shown the chest is safe, there's
+	# nothing more for it to tell.
+	if not chest.trap_identified and not _found_safe:
+		var inspect_btn := Button.new()
+		inspect_btn.text = "Inspect"
+		inspect_btn.custom_minimum_size = Vector2(0, 36)
+		inspect_btn.pressed.connect(_on_inspect)
+		options_vbox.add_child(inspect_btn)
+		option_buttons.append(inspect_btn)
 
 	if chest.trap_identified and chest.is_trapped and not chest.trap_disarmed:
 		var disarm_btn := Button.new()
@@ -118,6 +121,8 @@ func _on_quick_open() -> void:
 
 	for msg in result.messages:
 		_add_status_message(msg)
+	for msg in CombatNotes.take():
+		_add_status_message(msg)
 
 	if result.get("combat_triggered", false):
 		await get_tree().create_timer(1.0).timeout
@@ -141,9 +146,14 @@ func _on_quick_open() -> void:
 		_populate_options()
 
 
+var _found_safe := false
+
+
 func _on_inspect() -> void:
 	var inspector := _get_best_inspector()
 	var result := ChestSystem.attempt_inspect(chest, inspector)
+	if result.success and not result.found_trap:
+		_found_safe = true
 
 	_add_status_message(result.message)
 	_update_trap_warning()
@@ -156,9 +166,11 @@ func _on_disarm() -> void:
 
 	_add_status_message(result.message)
 
-	if not result.success:
+	if not result.success and not result.get("held", false):
 		var trap_result := ChestSystem.trigger_trap(chest, disarmer, party)
 		for msg in trap_result.messages:
+			_add_status_message(msg)
+		for msg in CombatNotes.take():
 			_add_status_message(msg)
 
 		if trap_result.get("combat_triggered", false):
@@ -182,6 +194,8 @@ func _on_open() -> void:
 	var result := ChestSystem.open_chest(chest, opener, party)
 
 	for msg in result.messages:
+		_add_status_message(msg)
+	for msg in CombatNotes.take():
 		_add_status_message(msg)
 
 	if result.get("combat_triggered", false):
@@ -212,7 +226,10 @@ func _collect_items() -> void:
 	var items_collected: Array[Item] = []
 	var items_left_behind: Array[Item] = []
 
+	var appraised := AgeTraits.party_has(GameState.party, AgeTraits.identifies_loot)
 	for item in chest.contents:
+		if appraised:
+			item.is_identified = true
 		var remaining := GameState.party.inventory.add_item(item)
 		if remaining == 0:
 			items_collected.append(item)

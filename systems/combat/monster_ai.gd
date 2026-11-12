@@ -576,8 +576,42 @@ static func _get_spell_targets_for_monster(spell: Spell, party: Party, allies: A
 			for member in party.get_alive_members():
 				result.append(member)
 			return result
+		CharacterEnums.SpellTargetType.SPLASH, \
+		CharacterEnums.SpellTargetType.ROW, \
+		CharacterEnums.SpellTargetType.COLUMN:
+			var center := _score_and_select_target(party, false)
+			return _get_area_targets(spell.target_type, center, party) if center else []
 		_:
 			return []
+
+
+## Expands an area spell around a chosen party member. The party is two rows
+## of three (indices 0-2 front, 3-5 back), so a column is a front/back pair.
+static func _get_area_targets(target_type: CharacterEnums.SpellTargetType, center: Character, party: Party) -> Array:
+	var members := party.get_members()
+	var center_idx := members.find(center)
+	if center_idx < 0:
+		return [center]
+	var row_size := Party.FRONT_ROW_SIZE
+	var row := center_idx / row_size
+	var col := center_idx % row_size
+	var result: Array = []
+	for i in range(members.size()):
+		var m: Character = members[i]
+		if m.is_dead:
+			continue
+		var same_row := i / row_size == row
+		var include := false
+		match target_type:
+			CharacterEnums.SpellTargetType.SPLASH:
+				include = same_row and absi(i % row_size - col) <= 1
+			CharacterEnums.SpellTargetType.ROW:
+				include = same_row
+			CharacterEnums.SpellTargetType.COLUMN:
+				include = i % row_size == col
+		if include:
+			result.append(m)
+	return result
 
 
 static func _find_wounded_ally(allies: Array[Monster], exclude: Monster) -> Monster:
