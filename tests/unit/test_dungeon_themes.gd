@@ -52,10 +52,10 @@ func test_unknown_theme_falls_back() -> void:
 	assert_eq(FloorThemes.get_theme(&"").id, FloorThemes.DEFAULT)
 
 
-func test_fill_missing_themes_leaves_set_themes_alone() -> void:
+func test_older_save_gets_missing_themes_and_keeps_set_ones() -> void:
 	var dungeon_set := DungeonSet.create()
 	dungeon_set.dungeons[1].theme_id = ""
 	dungeon_set.dungeons[2].theme_id = "profane_crypt"
-	dungeon_set.fill_missing_themes()
+	dungeon_set.update_from_older_save()
 	assert_eq(dungeon_set.dungeons[1].theme_id, DungeonSet.DUNGEONS[1]["theme"])
 	assert_eq(dungeon_set.dungeons[2].theme_id, "profane_crypt")

@@ -111,14 +111,21 @@ func active_dungeon() -> Dungeon:
 	return open[0] if not open.is_empty() else dungeon_set.dungeons[0]
 
 
-## The boss waiting on [param floor_num] of the active dungeon, or null. On
-## the deepest floor that's the dungeon's master.
-func get_floor_boss(floor_num: int) -> Monster:
-	var boss := MonsterDatabase.get_boss_for_floor(floor_num)
+## Which boss waits on [param floor_num] of the active dungeon, or "". On the
+## deepest floor that's the dungeon's master.
+func floor_boss_id(floor_num: int) -> String:
 	var dungeon := active_dungeon()
-	if boss and floor_num >= dungeon.depth:
-		dungeon.dress_master(boss)
-	return boss
+	if floor_num >= dungeon.depth and not dungeon.master_id.is_empty():
+		return dungeon.master_id
+	return MonsterDatabase.get_boss_id_for_floor(floor_num)
+
+
+func get_floor_boss(floor_num: int) -> Monster:
+	return MonsterDatabase.get_monster(floor_boss_id(floor_num))
+
+
+func get_floor_boss_minions(floor_num: int) -> Array[String]:
+	return MonsterDatabase.get_minions_of(floor_boss_id(floor_num))
 
 
 ## How much stronger than stock the monsters on [param floor_num] are.

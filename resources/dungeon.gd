@@ -20,12 +20,10 @@ extends Resource
 @export var is_final: bool = false
 
 @export_group("Master")
-## The master waits on the deepest floor. Until each has art of its own, a
-## master is an existing boss under a new name, tinted and scaled.
+## The master waits on the deepest floor: a boss in MonsterDatabase, and its
+## name for the town to speak of.
 @export var master_id: String = ""
 @export var master_name: String = ""
-@export var master_tint: Color = Color.WHITE
-@export var master_scale: float = 1.0
 
 @export_group("State")
 ## Floor number to DungeonData, for the floors generated so far.
@@ -49,13 +47,3 @@ func is_boss_slain(floor_num: int) -> bool:
 ## The floor whose deep-time rate applies on [param floor_num].
 func deep_time_floor(floor_num: int) -> int:
 	return deep_rate_floor if deep_rate_floor > 0 else floor_num
-
-
-## Turns the stock boss of the deepest floor into this dungeon's master.
-func dress_master(boss: Monster) -> void:
-	if master_name.is_empty():
-		return
-	boss.art_name = boss.get_art_name()
-	boss.monster_name = master_name
-	boss.tint = master_tint
-	boss.max_hp = int(boss.max_hp * master_scale)

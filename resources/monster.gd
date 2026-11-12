@@ -30,6 +30,9 @@ extends Resource
 ## Whether this monster's physical attacks can land a critical hit (instant
 ## death) on a party member.
 @export var can_critical: bool = false
+## Element to the share of that element's spell damage it shrugs off. Above 0
+## is a resistance, below 0 a weakness: -0.5 takes half again as much.
+@export var element_resist: Dictionary = {}
 
 @export_group("Spawn Info")
 @export var min_floor: int = 1

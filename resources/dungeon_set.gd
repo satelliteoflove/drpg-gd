@@ -6,15 +6,15 @@ extends Resource
 ## free play brings further sets. See docs/dungeon-sets.md.
 
 const SIZE := 4
-## Names, themes and masters for a set's four dungeons. Masters are stock art
-## under new names for now.
+## Names, themes and masters for a set's four dungeons. "master" is a boss in
+## MonsterDatabase and "master_name" is what that boss is called.
 const DUNGEONS: Array[Dictionary] = [
-	{"name": "The Drake's Deep", "theme": "stone_catacombs", "master": "Vrakthorne the Drake", "tint": Color.WHITE},
-	{"name": "The Ashen Halls", "theme": "ashen_halls", "master": "Morvane the Ash Wyrm", "tint": Color(1.0, 0.72, 0.55)},
-	{"name": "The Drowned Vaults", "theme": "drowned_vaults", "master": "Ulthessa the Pale Wyrm", "tint": Color(0.62, 0.86, 1.0)},
-	{"name": "The Verdant Dark", "theme": "mossy_caverns", "master": "Khaldrun the Mire Wyrm", "tint": Color(0.68, 1.0, 0.62)},
+	{"name": "The Drake's Deep", "theme": "stone_catacombs", "master": "boss_drake", "master_name": "Vrakthorne the Drake"},
+	{"name": "The Ashen Halls", "theme": "ashen_halls", "master": "boss_ash_wyrm", "master_name": "Morvane the Ash Wyrm"},
+	{"name": "The Drowned Vaults", "theme": "drowned_vaults", "master": "boss_pale_wyrm", "master_name": "Ulthessa the Pale Wyrm"},
+	{"name": "The Verdant Dark", "theme": "mossy_caverns", "master": "boss_mire_wyrm", "master_name": "Khaldrun the Mire Wyrm"},
 ]
-const FINAL := {"name": "The Heart Below", "theme": "profane_crypt", "master": "The Hollow King", "tint": Color(0.82, 0.6, 1.0)}
+const FINAL := {"name": "The Heart Below", "theme": "profane_crypt", "master": "boss_hollow_king", "master_name": "The Hollow King"}
 
 ## 1 for the story, 2 and up in free play.
 @export var set_number: int = 1
@@ -32,9 +32,8 @@ static func create(p_set_number: int = 1) -> DungeonSet:
 		dungeon.id = "set%d_dungeon%d" % [p_set_number, i + 1]
 		dungeon.dungeon_name = spec["name"]
 		dungeon.theme_id = spec["theme"]
-		dungeon.master_id = "boss_drake"
-		dungeon.master_name = spec["master"]
-		dungeon.master_tint = spec["tint"]
+		dungeon.master_id = spec["master"]
+		dungeon.master_name = spec["master_name"]
 		dungeon.seed_value = randi()
 		dungeon_set.dungeons.append(dungeon)
 	return dungeon_set
@@ -47,10 +46,8 @@ func open_final() -> Dungeon:
 	dungeon.id = "set%d_final" % set_number
 	dungeon.dungeon_name = FINAL["name"]
 	dungeon.theme_id = FINAL["theme"]
-	dungeon.master_id = "boss_drake"
-	dungeon.master_name = FINAL["master"]
-	dungeon.master_tint = FINAL["tint"]
-	dungeon.master_scale = 1.5
+	dungeon.master_id = FINAL["master"]
+	dungeon.master_name = FINAL["master_name"]
 	dungeon.entry_floor = dungeons[0].depth if not dungeons.is_empty() else 8
 	dungeon.depth = dungeon.entry_floor
 	dungeon.deep_rate_floor = 5
@@ -60,13 +57,21 @@ func open_final() -> Dungeon:
 	return dungeon
 
 
-## Gives a theme to any dungeon saved before dungeons had them.
-func fill_missing_themes() -> void:
+## Brings a set saved by an older version up to date: a theme for any dungeon
+## saved before dungeons had them, and its own master for any saved when every
+## master was the drake.
+func update_from_older_save() -> void:
 	for i in dungeons.size():
-		if dungeons[i].theme_id.is_empty():
-			dungeons[i].theme_id = DUNGEONS[i % DUNGEONS.size()]["theme"]
-	if final_dungeon and final_dungeon.theme_id.is_empty():
-		final_dungeon.theme_id = FINAL["theme"]
+		_update_dungeon(dungeons[i], DUNGEONS[i % DUNGEONS.size()])
+	if final_dungeon:
+		_update_dungeon(final_dungeon, FINAL)
+
+
+func _update_dungeon(dungeon: Dungeon, spec: Dictionary) -> void:
+	if dungeon.theme_id.is_empty():
+		dungeon.theme_id = spec["theme"]
+	if dungeon.master_name == spec["master_name"]:
+		dungeon.master_id = spec["master"]
 
 
 func get_dungeon(dungeon_id: String) -> Dungeon:

@@ -306,7 +306,7 @@ func _generate_boss_encounter() -> Array[Monster]:
 	boss.init_combat()
 	monsters.append(boss)
 
-	var minion_ids := MonsterDatabase.get_boss_minions(dungeon_data.floor_level)
+	var minion_ids := GameState.get_floor_boss_minions(dungeon_data.floor_level)
 	for minion_id in minion_ids:
 		var minion := MonsterDatabase.get_monster(minion_id)
 		if minion != null:

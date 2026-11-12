@@ -1,10 +1,22 @@
 class_name MonsterDatabase
 extends RefCounted
 
+const DRAKE_NAME := "Vrakthorne the Drake"
+
 static var _monsters: Dictionary = {}
 static var _initialized: bool = false
 static var _boss_floor_map: Dictionary = {2: "boss_broodmother", 4: "boss_ironjaw", 6: "boss_lich", 8: "boss_drake"}
-static var _boss_minion_map: Dictionary = {2: ["spider", "spider"], 4: ["orc", "bandit"], 6: ["ghost", "skeleton_mage"], 8: ["dark_mage", "troll"]}
+## Who stands with each boss and each dungeon's master.
+static var _boss_minion_map: Dictionary = {
+	"boss_broodmother": ["spider", "spider"],
+	"boss_ironjaw": ["orc", "bandit"],
+	"boss_lich": ["ghost", "skeleton_mage"],
+	"boss_drake": ["dark_mage", "troll"],
+	"boss_ash_wyrm": ["dark_mage", "troll"],
+	"boss_pale_wyrm": ["siren", "ghost"],
+	"boss_mire_wyrm": ["witch", "troll"],
+	"boss_hollow_king": ["wraith", "ghost"],
+}
 
 
 static func get_monster(monster_id: String) -> Monster:
@@ -36,9 +48,15 @@ static func get_monsters_for_floor(floor_num: int) -> Array[String]:
 	return result
 
 
+## The stock boss of [param floor_num], or "". A dungeon's deepest floor has
+## its own master instead: see GameState.floor_boss_id.
+static func get_boss_id_for_floor(floor_num: int) -> String:
+	return _boss_floor_map.get(floor_num, "")
+
+
 static func get_boss_for_floor(floor_num: int) -> Monster:
 	_ensure_initialized()
-	var boss_id: String = _boss_floor_map.get(floor_num, "")
+	var boss_id := get_boss_id_for_floor(floor_num)
 	if boss_id == "":
 		return null
 	# get_monster carries over boss_phases and extra_actions, which a plain
@@ -47,9 +65,12 @@ static func get_boss_for_floor(floor_num: int) -> Monster:
 
 
 static func get_boss_minions(floor_num: int) -> Array[String]:
+	return get_minions_of(get_boss_id_for_floor(floor_num))
+
+
+static func get_minions_of(boss_id: String) -> Array[String]:
 	var result: Array[String] = []
-	var minions: Array = _boss_minion_map.get(floor_num, [])
-	for m in minions:
+	for m in _boss_minion_map.get(boss_id, []):
 		result.append(m)
 	return result
 
@@ -91,6 +112,10 @@ static func _create_monsters() -> void:
 	_create_boss_ironjaw()
 	_create_boss_lich()
 	_create_boss_drake()
+	_create_boss_ash_wyrm()
+	_create_boss_pale_wyrm()
+	_create_boss_mire_wyrm()
+	_create_boss_hollow_king()
 
 
 static func _create_slime() -> void:
@@ -953,9 +978,14 @@ static func _create_boss_lich() -> void:
 	_monsters["boss_lich"] = monster
 
 
-static func _create_boss_drake() -> void:
+## What every dungeon's master has in common, so that the four of a set are
+## as hard as each other. Each adds its own attacks, phases and weaknesses.
+## Until they have art of their own they borrow the drake's, under a tint.
+static func _new_master(p_name: String, p_tint: Color = Color.WHITE) -> Monster:
 	var monster := Monster.new()
-	monster.monster_name = "Vrakthorne the Drake"
+	monster.monster_name = p_name
+	monster.art_name = DRAKE_NAME
+	monster.tint = p_tint
 	monster.max_hp = 260
 	# Acts twice a round, as befits the last thing in the dungeon.
 	monster.extra_actions = 1
@@ -971,6 +1001,59 @@ static func _create_boss_drake() -> void:
 	monster.is_boss = true
 	monster.exp_reward = 1000
 	monster.gold_reward_dice = "10d12"
+	monster.loot_drops = [
+		LootDrop.create("plate_armor", 0.30),
+		LootDrop.create("battle_axe", 0.25),
+		LootDrop.create("iron_helm", 0.30),
+		LootDrop.create("iron_shield", 0.25),
+		LootDrop.create("greater_healing", 0.60),
+	]
+	monster.min_floor = 99
+	monster.max_floor = 99
+	return monster
+
+
+## The four phases every master's fight moves through. [param lines] holds a
+## warning and a transition message for each of the last three, and
+## [param prefer] the attacks favoured in each of the four.
+static func _master_phases(lines: Array, prefer: Array) -> Array[Dictionary]:
+	return [
+		{
+			"hp_threshold": 1.0, "min_turns": 0,
+			"transition_message": "",
+			"behavior_modifiers": {"berserker": 10.0},
+			"attack_preferences": {"prefer": prefer[0], "avoid": []},
+		},
+		{
+			"hp_threshold": 0.70, "min_turns": 2,
+			"warning_message": lines[0][0],
+			"transition_message": lines[0][1],
+			"behavior_modifiers": {"tactical": 25.0, "spellcaster": 15.0, "berserker": -15.0},
+			# It leaves off its opening attack once it has pulled back.
+			"attack_preferences": {"prefer": prefer[1], "avoid": prefer[0].slice(0, 1)},
+		},
+		{
+			"hp_threshold": 0.40, "min_turns": 2,
+			"warning_message": lines[1][0],
+			"transition_message": lines[1][1],
+			"behavior_modifiers": {"berserker": 25.0, "aggressive": 15.0, "tactical": 10.0},
+			# Back in the thick of it, it has no time for the second phase's cloud or roar.
+			"attack_preferences": {"prefer": prefer[2], "avoid": prefer[1].slice(1, 2)},
+		},
+		{
+			"hp_threshold": 0.15, "min_turns": 1,
+			"warning_message": lines[2][0],
+			"transition_message": lines[2][1],
+			"behavior_modifiers": {"tactical": 30.0, "berserker": 20.0, "defensive": -30.0},
+			"attack_preferences": {"prefer": prefer[3], "avoid": []},
+		},
+	]
+
+
+# The Drake's Deep. Fire and fear: it burns the whole party from the air and
+# its roar sends them running.
+static func _create_boss_drake() -> void:
+	var monster := _new_master(DRAKE_NAME)
 
 	var fire_breath := MonsterAttack.create_magical("Fire Breath", "4d6", CharacterEnums.Element.FIRE, 0)
 	fire_breath.targets_all = true
@@ -1004,48 +1087,177 @@ static func _create_boss_drake() -> void:
 	)
 
 	monster.attacks = [fire_breath, tail_sweep, rending_claws, terrifying_roar, crushing_bite]
-
-	monster.loot_drops = [
-		LootDrop.create("plate_armor", 0.30),
-		LootDrop.create("battle_axe", 0.25),
-		LootDrop.create("iron_helm", 0.30),
-		LootDrop.create("iron_shield", 0.25),
-		LootDrop.create("greater_healing", 0.60),
-	]
-
-	monster.min_floor = 99
-	monster.max_floor = 99
-
-	monster.boss_phases = [
-		{
-			"hp_threshold": 1.0, "min_turns": 0,
-			"transition_message": "",
-			"behavior_modifiers": {"berserker": 10.0},
-			"attack_preferences": {"prefer": ["Rending Claws", "Tail Sweep"], "avoid": []},
-		},
-		{
-			"hp_threshold": 0.70, "min_turns": 2,
-			"warning_message": "Vrakthorne spreads its wings wide...",
-			"transition_message": "Vrakthorne takes to the air!",
-			"behavior_modifiers": {"tactical": 25.0, "spellcaster": 15.0, "berserker": -15.0},
-			"attack_preferences": {"prefer": ["Fire Breath", "Terrifying Roar"], "avoid": ["Rending Claws"]},
-		},
-		{
-			"hp_threshold": 0.40, "min_turns": 2,
-			"warning_message": "Vrakthorne's descent shakes the ground...",
-			"transition_message": "Vrakthorne lands with earth-shaking force!",
-			"behavior_modifiers": {"berserker": 25.0, "aggressive": 15.0, "tactical": 10.0},
-			"attack_preferences": {"prefer": ["Crushing Bite", "Tail Sweep"], "avoid": ["Terrifying Roar"]},
-		},
-		{
-			"hp_threshold": 0.15, "min_turns": 1,
-			"warning_message": "Vrakthorne's eyes burn with desperate fury...",
-			"transition_message": "Vrakthorne unleashes a desperate fury!",
-			"behavior_modifiers": {"tactical": 30.0, "berserker": 20.0, "defensive": -30.0},
-			"attack_preferences": {"prefer": ["Fire Breath", "Rending Claws", "Crushing Bite"], "avoid": []},
-		},
-	]
+	monster.boss_phases = _master_phases([
+		["Vrakthorne spreads its wings wide...", "Vrakthorne takes to the air!"],
+		["Vrakthorne's descent shakes the ground...", "Vrakthorne lands with earth-shaking force!"],
+		["Vrakthorne's eyes burn with desperate fury...", "Vrakthorne unleashes a desperate fury!"],
+	], [
+		["Rending Claws", "Tail Sweep"],
+		["Fire Breath", "Terrifying Roar"],
+		["Crushing Bite", "Tail Sweep"],
+		["Fire Breath", "Rending Claws", "Crushing Bite"],
+	])
 	_monsters["boss_drake"] = monster
+
+
+# The Ashen Halls. Smoke and cinders: its ash chokes off spells and its
+# embers blind. It shrugs off fire and hates the cold.
+static func _create_boss_ash_wyrm() -> void:
+	var monster := _new_master("Morvane the Ash Wyrm", Color(1.0, 0.72, 0.55))
+	monster.element_resist = {CharacterEnums.Element.FIRE: 0.5, CharacterEnums.Element.ICE: -0.5}
+
+	var cinder_breath := MonsterAttack.create_magical("Cinder Breath", "4d6", CharacterEnums.Element.FIRE, 0)
+	cinder_breath.targets_all = true
+	cinder_breath.is_breath_weapon = true
+
+	var ember_lash := MonsterAttack.create_with_effect(
+		"Ember Lash", "2d8+4", 2, CharacterEnums.StatusEffect.BLINDED, 0.25, "2+1d3", "physical", 4)
+	ember_lash.targets_row = true
+
+	var searing_claws := MonsterAttack.create_basic("Searing Claws", "3d8+3", 4)
+
+	var choking_ash := MonsterAttack.create_ability(
+		"Choking Ash", "1d4", CharacterEnums.StatusEffect.SILENCED, 0.45, "2+1d3", "physical", 5)
+	choking_ash.targets_all = true
+
+	var crushing_bite := MonsterAttack.create_basic("Crushing Bite", "2d10+4", 4)
+
+	monster.attacks = [cinder_breath, ember_lash, searing_claws, choking_ash, crushing_bite]
+	monster.boss_phases = _master_phases([
+		["Ash begins to pour from Morvane's jaws...", "Morvane rises on a pillar of smoke!"],
+		["The smoke thins as Morvane drops...", "Morvane crashes down in a storm of embers!"],
+		["Morvane's hide glows like a banked fire...", "Morvane burns white with fury!"],
+	], [
+		["Searing Claws", "Ember Lash"],
+		["Cinder Breath", "Choking Ash"],
+		["Crushing Bite", "Ember Lash"],
+		["Cinder Breath", "Searing Claws", "Crushing Bite"],
+	])
+	_monsters["boss_ash_wyrm"] = monster
+
+
+# The Drowned Vaults. Cold water: its breath is frost, its mist puts the party
+# to sleep and its coils hold them under. Cold does little to it, fire a lot.
+static func _create_boss_pale_wyrm() -> void:
+	var monster := _new_master("Ulthessa the Pale Wyrm", Color(0.62, 0.86, 1.0))
+	monster.element_resist = {CharacterEnums.Element.ICE: 0.5, CharacterEnums.Element.FIRE: -0.5}
+
+	var frost_breath := MonsterAttack.create_magical("Frost Breath", "4d6", CharacterEnums.Element.ICE, 0)
+	frost_breath.targets_all = true
+	frost_breath.is_breath_weapon = true
+
+	var tail_sweep := MonsterAttack.create_basic("Tail Sweep", "2d8+4", 2)
+	tail_sweep.targets_row = true
+
+	var rending_claws := MonsterAttack.create_basic("Rending Claws", "3d8+3", 4)
+
+	var numbing_mist := MonsterAttack.create_ability(
+		"Numbing Mist", "1d4", CharacterEnums.StatusEffect.ASLEEP, 0.30, "1+1d2", "physical", 5)
+	numbing_mist.targets_all = true
+	numbing_mist.is_magical = true
+	numbing_mist.element = CharacterEnums.Element.ICE
+
+	var drowning_coil := MonsterAttack.create_with_effect(
+		"Drowning Coil", "2d10+4", 4, CharacterEnums.StatusEffect.PARALYZED, 0.20, "1+1d2", "physical", 4)
+
+	monster.attacks = [frost_breath, tail_sweep, rending_claws, numbing_mist, drowning_coil]
+	monster.boss_phases = _master_phases([
+		["Cold mist rises around Ulthessa...", "Ulthessa slides up into the dark above!"],
+		["Water streams from above as Ulthessa uncoils...", "Ulthessa drops among you like a falling wave!"],
+		["Ulthessa's pale eyes go flat and still...", "Ulthessa thrashes in a killing frenzy!"],
+	], [
+		["Rending Claws", "Tail Sweep"],
+		["Frost Breath", "Numbing Mist"],
+		["Drowning Coil", "Tail Sweep"],
+		["Frost Breath", "Rending Claws", "Drowning Coil"],
+	])
+	_monsters["boss_pale_wyrm"] = monster
+
+
+# The Verdant Dark. Rot and spores: nearly everything it does poisons, and
+# its spores turn the party on each other. Lightning is its bane.
+static func _create_boss_mire_wyrm() -> void:
+	var monster := _new_master("Khaldrun the Mire Wyrm", Color(0.68, 1.0, 0.62))
+	monster.element_resist = {CharacterEnums.Element.LIGHTNING: -0.5}
+
+	# Weaker than the other masters' breath, since the poison keeps working.
+	var miasma := MonsterAttack.create_with_effect(
+		"Miasma", "3d6", 0, CharacterEnums.StatusEffect.POISONED, 0.50, "3+1d3", "physical", 5)
+	miasma.targets_all = true
+	miasma.is_breath_weapon = true
+
+	var tail_sweep := MonsterAttack.create_basic("Tail Sweep", "2d8+4", 2)
+	tail_sweep.targets_row = true
+
+	var rending_claws := MonsterAttack.create_basic("Rending Claws", "3d8+3", 4)
+
+	var spore_cloud := MonsterAttack.create_ability(
+		"Spore Cloud", "1d4", CharacterEnums.StatusEffect.CONFUSED, 0.35, "2+1d2", "mental", 5)
+	spore_cloud.targets_all = true
+
+	var venomous_bite := MonsterAttack.create_with_effect(
+		"Venomous Bite", "2d10+4", 4, CharacterEnums.StatusEffect.POISONED, 0.60, "3+1d3", "physical", 4)
+
+	monster.attacks = [miasma, tail_sweep, rending_claws, spore_cloud, venomous_bite]
+	monster.boss_phases = _master_phases([
+		["Khaldrun's throat swells with something foul...", "Khaldrun rears up into the canopy of roots!"],
+		["Roots crack as Khaldrun bears down...", "Khaldrun drops into the mire and it erupts!"],
+		["Black ichor runs from Khaldrun's wounds...", "Khaldrun lashes out in its death throes!"],
+	], [
+		["Rending Claws", "Tail Sweep"],
+		["Miasma", "Spore Cloud"],
+		["Venomous Bite", "Tail Sweep"],
+		["Miasma", "Rending Claws", "Venomous Bite"],
+	])
+	_monsters["boss_mire_wyrm"] = monster
+
+
+# The Heart Below. What woke the others: a dead king, half again as hard to
+# kill as a master, who stands his ground. Dark and the mind's arts do little
+# to him, and holy power does the most.
+static func _create_boss_hollow_king() -> void:
+	var monster := _new_master("The Hollow King", Color(0.82, 0.6, 1.0))
+	monster.max_hp = 390
+	monster.exp_reward = 1500
+	monster.creature_type = CharacterEnums.CreatureType.UNDEAD
+	# He doesn't fly, so his guard does the work the masters' wings do.
+	monster.is_flying = false
+	monster.evasion = 12
+	monster.defense = 11
+	monster.element_resist = {
+		CharacterEnums.Element.DARK: 0.5, CharacterEnums.Element.PSYCHIC: 0.5,
+		CharacterEnums.Element.HOLY: -0.5,
+	}
+
+	var grave_chill := MonsterAttack.create_magical("Grave Chill", "4d6", CharacterEnums.Element.DARK, 0)
+	grave_chill.targets_all = true
+
+	var sweeping_blade := MonsterAttack.create_basic("Sweeping Blade", "2d8+4", 2)
+	sweeping_blade.targets_row = true
+
+	var kings_blade := MonsterAttack.create_basic("King's Blade", "3d8+3", 4)
+
+	var hollow_gaze := MonsterAttack.create_ability(
+		"Hollow Gaze", "1d4", CharacterEnums.StatusEffect.AFRAID, 0.50, "2+1d3", "mental", 5)
+	hollow_gaze.targets_all = true
+
+	var withering_touch := MonsterAttack.create_with_effect(
+		"Withering Touch", "2d10+4", 4, CharacterEnums.StatusEffect.PARALYZED, 0.20, "1+1d2", "magical", 4)
+	withering_touch.is_magical = true
+	withering_touch.element = CharacterEnums.Element.DARK
+
+	monster.attacks = [grave_chill, sweeping_blade, kings_blade, hollow_gaze, withering_touch]
+	monster.boss_phases = _master_phases([
+		["The Hollow King lifts his empty crown...", "The dark gathers to the Hollow King!"],
+		["The Hollow King lowers his blade...", "The Hollow King strides in among you!"],
+		["Cracks of pale light run through the Hollow King...", "The Hollow King will not go down alone!"],
+	], [
+		["King's Blade", "Sweeping Blade"],
+		["Grave Chill", "Hollow Gaze"],
+		["Withering Touch", "Sweeping Blade"],
+		["Grave Chill", "King's Blade", "Withering Touch"],
+	])
+	_monsters["boss_hollow_king"] = monster
 
 
 static func _create_goblin_shaman() -> void:

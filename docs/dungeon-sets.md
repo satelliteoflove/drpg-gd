@@ -90,7 +90,21 @@ The Ashen Halls and the Drowned Vaults play music from the audition pool that ha
 
 ## Masters and art
 
-Each dungeon needs its own master. Until more art arrives, every master is the drake under a new name and a tint, and the fifth dungeon's has half again its HP. The guardians on floors 2, 4 and 6 are the same in every dungeon for now. The same placeholder approach goes for monster tiers in later sets.
+Each dungeon has its own master, with its own fight. The four of a set share their HP, strength and defenses, so no dungeon is the hard one, and differ in what they do to the party and what hurts them.
+
+| Master | Dungeon | What it does | Spells against it |
+|---|---|---|---|
+| Vrakthorne the Drake | The Drake's Deep | Fire breath, a roar that frightens, a bite that paralyzes | Nothing special |
+| Morvane the Ash Wyrm | The Ashen Halls | Fire breath, ash that silences, a lash that blinds | Resists fire, weak to ice |
+| Ulthessa the Pale Wyrm | The Drowned Vaults | Frost breath, mist that puts to sleep, coils that paralyze | Resists ice, weak to fire |
+| Khaldrun the Mire Wyrm | The Verdant Dark | Poison breath and bite, spores that confuse | Weak to lightning |
+| The Hollow King | The Heart Below | Dark chill, a gaze that frightens, a touch that paralyzes | Resists dark and psychic, weak to holy |
+
+A resistance halves that element's spell damage and a weakness adds half again, and the combat log says so when it happens. The Pale Wyrm's frost does half damage to the races that resist ice (Rawulf, Mook, Felpurr). Each master brings two lesser monsters that suit its dungeon. The Hollow King is undead, has half again a master's HP and a better guard, and doesn't fly, and plays about a level harder than a master.
+
+`tests/measure_masters.tscn` simulates each fight a few hundred times against the same parties. As measured, the four masters come out within a few points of each other for a party at level 10 or above. The simulated party doesn't know to stop casting ice at the Pale Wyrm, so that fight looks a little harder there than it should be.
+
+Until art arrives, every master shows the drake's art under a tint. The guardians on floors 2, 4 and 6 are the same in every dungeon for now. Monster tiers in later sets are still placeholders.
 
 ## Aging by depth
 
