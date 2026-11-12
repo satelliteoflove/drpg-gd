@@ -45,6 +45,11 @@ const ARCHIVES := {
 
 const DOWNLOAD_OVERLAY_SCENE := preload("res://scenes/ui/download_overlay.tscn")
 
+# Set to 1 (or true) to keep the LLM off whatever the player's setting says:
+# no download, no llama-server. For automated playtests and CI, where an
+# install that already has the model would otherwise start the server.
+const DISABLE_ENV := "DRPG_DISABLE_LLM"
+
 const TEMPERATURE := 0.7
 const TOP_P := 0.8
 const TOP_K := 20
@@ -113,6 +118,10 @@ func _deferred_boot() -> void:
 
 
 func _boot() -> void:
+	var disable_value := OS.get_environment(DISABLE_ENV).strip_edges().to_lower()
+	if disable_value == "1" or disable_value == "true":
+		print_debug("[LLMManager] Disabled by %s; using written dialogue" % DISABLE_ENV)
+		return
 	if not opted_in:
 		print_debug("[LLMManager] AI dialogue is off; using written dialogue")
 		return
