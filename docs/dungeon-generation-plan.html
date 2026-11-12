@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dungeon generation: a plan</title>
+<style>
+  :root {
+    --paper: #f6f1e7; --ink: #26221d; --soft: #6d6558; --rule: #d9cfbd;
+    --panel: #ece4d3; --accent: #8a3b1c; --line: #6d6558;
+    --upper: #e3d6b4; --lower: #cfd8cf; --opt: #f0e6cf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper: #1c1a17; --ink: #e8e0d0; --soft: #a59b89; --rule: #3a352d;
+      --panel: #26231e; --accent: #e0935f; --line: #a59b89;
+      --upper: #4a4230; --lower: #34423a; --opt: #3a352a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 17px/1.6 Georgia, "Iowan Old Style", "Palatino Linotype", serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 56px 24px 96px; }
+  h1 { font-size: 2.1rem; line-height: 1.15; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--soft); margin: 0 0 36px; font-style: italic; }
+  h2 { font-size: 1.4rem; margin: 56px 0 10px; padding-top: 18px; border-top: 1px solid var(--rule); }
+  h3 { font-size: 1.08rem; margin: 30px 0 6px; }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.3em; }
+  li { margin-bottom: 6px; }
+  code, pre { font: 0.86em/1.3 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  code { background: var(--panel); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--panel); padding: 14px 18px; overflow-x: auto; line-height: 1.15; margin: 10px 0 8px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 20px; font-size: 0.93rem; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--rule); }
+  th { font-family: system-ui, sans-serif; font-size: 0.74rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--soft); font-weight: 600; }
+  .wrap { overflow-x: auto; }
+  .short { background: var(--panel); border-left: 3px solid var(--accent);
+    padding: 18px 22px 8px; margin: 0 0 8px; }
+  .short p:first-child { font-family: system-ui, sans-serif; font-size: 0.74rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--soft); margin-bottom: 8px; }
+  figure { margin: 22px 0 26px; }
+  figure svg { max-width: 100%; height: auto; display: block; }
+  figcaption { color: var(--soft); font-size: 0.88rem; margin-top: 8px; }
+  .note { color: var(--soft); font-size: 0.9rem; }
+  svg text { font: 12px system-ui, sans-serif; fill: var(--ink); }
+  svg .lab { font-size: 10.5px; fill: var(--soft); }
+  svg .band { font-size: 11px; letter-spacing: 0.08em; fill: var(--soft); }
+  .step { margin: 0 0 22px; }
+  .step h3 { margin-bottom: 4px; }
+  .step p { margin-bottom: 8px; }
+  .step .see { color: var(--soft); font-size: 0.93rem; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Dungeon generation: a plan</h1>
+<p class="sub">A draft to argue with. 12 November 2026. It follows <a href="dungeon-generation-survey.html">the survey</a>, whose last section lists the decisions this is built on.</p>
+
+<div class="short">
+<p>The short version</p>
+<ul>
+  <li>The generator stops carving a maze and looking for places to put things. It decides what a tier is first, as a short list of areas in a known order, and then builds the floors to fit.</li>
+  <li>Floors are assembled from hand-made blocks with thin walls. A block knows what it's for and where a trap, a chest or a guard may go in it.</li>
+  <li>Every floor is checked before it's used: that it can be finished, that there's a way home from wherever a pit or teleporter lands, and that no guardian can be passed.</li>
+  <li>The work comes in eight steps. Each one leaves the game playable, and the old generator stays until the new one is measurably better.</li>
+  <li>The first step is small and worth doing whatever else happens: make floors repeatable from their seed and write the checker.</li>
+</ul>
+</div>
+
+<h2>What we're building toward</h2>
+<p>These are the decisions from the conversation, gathered by subject.</p>
+<div class="wrap">
+<table>
+<tr><th>Subject</th><th>What was decided</th></tr>
+<tr><td>The unit</td><td>A tier of two floors, planned together, ending at a guardian in a chamber of its own. Nothing but the stairs behind the guardian leads from one tier to the next.</td></tr>
+<tr><td>Shape</td><td>Mostly rooms opening onto rooms, short passages where needed, now and then an open space. Thin walls.</td></tr>
+<tr><td>Puzzles</td><td>In. Built from hand-made templates. A solved puzzle stays solved for every later party. Nothing whose only effect is to confuse the player's sense of place.</td></tr>
+<tr><td>Pits and teleporters</td><td>They move the party somewhere unmapped and may cut it off from the way it came. A way home always exists and may cross floors. They're permanent.</td></tr>
+<tr><td>Other traps</td><td>Damage and ailment traps, which a switch may sometimes disable. Thieves, ninjas and bards sense traps and hidden doors a tile or two off, more exactly as their skill grows.</td></tr>
+<tr><td>Rewards</td><td>Shortcuts and high-value treasure are the strong pulls. Required keys and levers are rare. Knowledge turns up at a steady, modest rate.</td></tr>
+<tr><td>Treasure</td><td>The best loot sits behind hidden doors and placed battles. Wanderers still drop loot, some of it good.</td></tr>
+<tr><td>Wanderers</td><td>About one group for every 21 tiles, as now. Easy to find, possible to skirt.</td></tr>
+<tr><td>Time</td><td>An efficient player gets a young human through all five dungeons, at 10 to 12 years each. A thorough one gets two or three. The difference is what side paths cost.</td></tr>
+<tr><td>Affinity</td><td>Each dungeon leans one way so that a kind of character shines there. It leans and doesn't lock.</td></tr>
+<tr><td>Blocks</td><td>Floors are built from hand-made blocks with slots. The generator plans first and picks blocks to fit. The library is as large as a good result needs.</td></tr>
+<tr><td>Elevator</td><td>One stop at the top of each tier, opened when the guardian above it falls.</td></tr>
+<tr><td>The last dungeon</td><td>A small version of each of the four affinities in turn, then the Hollow King. Wings or a line, still open.</td></tr>
+</table>
+</div>
+
+<h2>How a tier gets made</h2>
+<p>There are five stages. The first is the one no earlier generator had.</p>
+
+<h3>1. Plan the tier</h3>
+<p>Before any tile exists, the generator writes down what the tier contains: a handful of <strong>areas</strong> and the <strong>links</strong> between them. An area is a part of a floor with a purpose, such as the way in, a hall, a vault or the guardian's chamber. A link says how a party gets from one area to another: an open door, a gate that needs a lever, a hidden door, a stair, a pit.</p>
+<p>The plan has a spine, which is the chain of areas from the way in to the guardian. Everything else hangs off it: vaults, lever rooms, shortcuts, the place a pit lands. The order of things is settled here. A lever goes in an area the party can reach before the gate it opens, so the puzzle works by construction and doesn't need solving afterwards.</p>
+
+<figure>
+<svg viewBox="0 0 780 340" width="780" height="340" role="img" aria-label="An example plan for one tier, showing areas on two floors and the links between them">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--line)"/></marker>
+  </defs>
+  <text class="band" x="8" y="18">UPPER FLOOR</text>
+  <text class="band" x="8" y="198">LOWER FLOOR</text>
+  <line x1="0" y1="176" x2="780" y2="176" stroke="var(--rule)" stroke-dasharray="4 4"/>
+  <g stroke="var(--line)" stroke-width="1.4" fill="none">
+    <line x1="112" y1="52" x2="158" y2="52" marker-end="url(#arr)"/>
+    <line x1="262" y1="52" x2="308" y2="52" marker-end="url(#arr)"/>
+    <line x1="412" y1="52" x2="458" y2="52" marker-end="url(#arr)"/>
+    <line x1="210" y1="72" x2="210" y2="108" stroke-dasharray="3 3" marker-end="url(#arr)"/>
+    <line x1="510" y1="72" x2="510" y2="208" marker-end="url(#arr)"/>
+    <line x1="458" y1="230" x2="412" y2="230" marker-end="url(#arr)"/>
+    <line x1="308" y1="230" x2="262" y2="230" stroke-width="3" marker-end="url(#arr)"/>
+    <line x1="158" y1="230" x2="112" y2="230" marker-end="url(#arr)"/>
+    <line x1="360" y1="250" x2="360" y2="286" marker-end="url(#arr)"/>
+    <path d="M380,72 C400,140 600,120 640,208" stroke-dasharray="6 3" marker-end="url(#arr)"/>
+    <path d="M660,208 C680,150 680,110 660,72" marker-end="url(#arr)"/>
+    <path d="M620,36 C560,6 300,6 240,32" marker-end="url(#arr)"/>
+  </g>
+  <g>
+    <rect x="12" y="32" width="100" height="40" rx="4" fill="var(--upper)"/><text x="62" y="57" text-anchor="middle">Way in</text>
+    <rect x="160" y="32" width="100" height="40" rx="4" fill="var(--upper)"/><text x="210" y="57" text-anchor="middle">Hall</text>
+    <rect x="310" y="32" width="100" height="40" rx="4" fill="var(--upper)"/><text x="360" y="57" text-anchor="middle">Galleries</text>
+    <rect x="460" y="32" width="100" height="40" rx="4" fill="var(--upper)"/><text x="510" y="57" text-anchor="middle">Stairs down</text>
+    <rect x="610" y="32" width="100" height="40" rx="4" fill="var(--opt)" stroke="var(--line)" stroke-dasharray="3 3"/><text x="660" y="57" text-anchor="middle">Back rooms</text>
+    <rect x="160" y="110" width="100" height="40" rx="4" fill="var(--opt)" stroke="var(--line)" stroke-dasharray="3 3"/><text x="210" y="135" text-anchor="middle">Vault</text>
+    <rect x="460" y="210" width="100" height="40" rx="4" fill="var(--lower)"/><text x="510" y="235" text-anchor="middle">Landing</text>
+    <rect x="310" y="210" width="100" height="40" rx="4" fill="var(--lower)"/><text x="360" y="235" text-anchor="middle">Warren</text>
+    <rect x="160" y="210" width="100" height="40" rx="4" fill="var(--lower)"/><text x="210" y="228" text-anchor="middle">Guardian's</text><text x="210" y="243" text-anchor="middle">chamber</text>
+    <rect x="12" y="210" width="100" height="40" rx="4" fill="var(--lower)"/><text x="62" y="228" text-anchor="middle">Stairs to the</text><text x="62" y="243" text-anchor="middle">next tier</text>
+    <rect x="310" y="288" width="100" height="40" rx="4" fill="var(--opt)" stroke="var(--line)" stroke-dasharray="3 3"/><text x="360" y="313" text-anchor="middle">Lever room</text>
+    <rect x="610" y="210" width="100" height="40" rx="4" fill="var(--opt)" stroke="var(--line)" stroke-dasharray="3 3"/><text x="660" y="235" text-anchor="middle">Cellar</text>
+  </g>
+  <text class="lab" x="216" y="95">hidden door</text>
+  <text class="lab" x="285" y="204" text-anchor="middle">gate</text>
+  <text class="lab" x="366" y="273">placed battle</text>
+  <text class="lab" x="592" y="150">pit</text>
+  <text class="lab" x="516" y="104">stairs</text>
+  <text class="lab" x="686" y="144">second stair</text>
+  <text class="lab" x="430" y="27" text-anchor="middle">one-way door</text>
+</svg>
+<figcaption>One possible plan for a tier. Solid boxes are the spine. Dashed boxes are optional. The lever room's lever opens the gate before the guardian. The pit in the galleries drops the party into a cellar with no way back up except a second stair, which comes out in rooms that only open towards the hall.</figcaption>
+</figure>
+
+<p>A plan like this is small, a dozen areas or so, and the generator builds it from rules: how long the spine is, how many vaults, which puzzle templates this tier gets, whether there's a pit. Those rules are also where a dungeon's affinity lives. The trapped dungeon's plans call for more pits and trapped approaches, and the undead one's call for different placed battles.</p>
+
+<h3>2. Lay the areas out</h3>
+<p>Each floor is a grid of thin-walled tiles. I'd start at 24×24, which is 576 tiles against today's 522 that can be walked, so a floor costs about the same number of steps as now and the aging numbers still roughly hold. The generator gives each area a patch of the grid, with areas that are linked placed side by side.</p>
+
+<h3>3. Fill the areas with blocks</h3>
+<p>A block is a hand-made piece of floor: a room, a few rooms, a stretch of passage. Each one says what roles it can play, where its doors may be, and where its slots are. The generator picks blocks whose role matches the area, turns or mirrors them to fit, and opens doors between neighbours where the plan has a link. Inside an area it opens extra doors to make loops, so wanderers can be dodged. Between areas it opens only what the plan says.</p>
+<p>Blocks could be written as small text files. This one is only to show the idea, and the real format gets settled in step 2 below:</p>
+<pre>name   alcove_vault
+role   vault
+leans  traps
+
++--+--+--+--+--+--+
+|        |        |
++  +  +  +  +  +  +
+D      t Sg  c    |
++  +  +  +  +  +  +
+|        |        |
++--+--+--+--+--+--+</pre>
+<p class="note"><code>D</code> a place a door may go. <code>S</code> a hidden door. <code>t</code> a slot for a trap. <code>g</code> a slot for a guard. <code>c</code> a slot for a chest.</p>
+<p>Whoever writes this block can see that the trap sits on the only way to the hidden door, that the room is optional, and that the chest is what it all protects. That's the knowledge every trap trial lacked.</p>
+
+<h3>4. Fill the slots</h3>
+<p>The generator decides which slots are used. A vault's chest slot always is. A trap slot is filled or left empty according to the dungeon's affinity and how many traps the tier already has. Placed battles, levers, inscriptions and shrines go in the same way. Then each area becomes an encounter zone and wanderers are added at the usual density.</p>
+
+<h3>5. Check it</h3>
+<p>The checker plays the tier as a party with no knowledge would, and refuses the floor if any of these fails:</p>
+<ul>
+  <li>The guardian can be reached from the way in, throwing only levers that can be reached first.</li>
+  <li>From every place a pit or teleporter can put a party, there's a way home.</li>
+  <li>No route reaches the stairs to the next tier except through the guardian's chamber.</li>
+  <li>Every vault and every lever can be reached.</li>
+  <li>No required stretch has a trap that can be neither sensed nor walked round.</li>
+</ul>
+<p>A refused floor is thrown away and made again from the next seed. Because the plan comes first this should be rare, and the measuring tool will say how rare.</p>
+
+<h2>What has to be built</h2>
+<p>Besides the generator, these are the things in the game that don't exist yet. The survey has the detail on what's there today.</p>
+<div class="wrap">
+<table>
+<tr><th>Thing</th><th>What it needs</th></tr>
+<tr><td>Links between floors</td><td>A floor has one way up and one way down today. It needs a list of links (stairs, pits, teleporters), each with where it leads.</td></tr>
+<tr><td>Hidden doors</td><td>The wall type exists. It needs detection, a way to open one, and a look in the 3D view and on the map.</td></tr>
+<tr><td>Detection</td><td>A skill for thieves, ninjas and bards that rises with level. One check for hidden doors and traps alike, with vague, exact and "what kind" results.</td></tr>
+<tr><td>Levers and gates</td><td>A thing to throw, a gate that answers, and their state saved with the floor.</td></tr>
+<tr><td>Chests on the floor</td><td>The chest screen exists for after-fight loot. It needs a chest that sits in a room.</td></tr>
+<tr><td>Placed battles</td><td>The enemy manager has a "guardian" behaviour that stays put. It needs groups tied to a slot, that guard something and don't come back with their prize.</td></tr>
+<tr><td>Traps</td><td>Damage and ailment traps on tiles, pits, and teleporters. Arriving on another floor somewhere other than the stairs.</td></tr>
+<tr><td>Loot with a place</td><td>A tier's best items held back from ordinary drops and put in vaults.</td></tr>
+<tr><td>Affinity</td><td>A few numbers per dungeon that the planner and the monster pools read.</td></tr>
+<tr><td>Elevator</td><td>A choice of stop on entering a dungeon.</td></tr>
+</table>
+</div>
+<p>None of the things that read a floor needs replacing. Movement, enemy pathfinding, line of sight, the map and the 3D view all work from walls on the edges of tiles already.</p>
+
+<h2>The order of work</h2>
+<p>Each step ends with the game playable and the tests passing. Floors already saved keep their old layout; new floors come from whichever generator is switched on.</p>
+
+<div class="step">
+<h3>Step 1. Repeatable floors and a checker</h3>
+<p>Make the current generator give the same floor for the same seed. Write the checker and run it against today's floors, where it should refuse about one in 130. Have the game throw away a refused floor and try again.</p>
+<p class="see">What it gives: #24 closed, and the yardstick everything after is measured with. It's a day or two, and it's worth having even if the rest changed.</p>
+<p class="note">Built on the branch <code>feature/floor-checker</code>. The checker refuses 9 normal floors in 500 and 3 great floors in 500, which is more than the one in 130 guessed above. The one in 130 counted only floors with no way to the stairs down (5 in 500 on this run). The checker also refuses a floor with a pocket of tiles walled off from the rest, since monsters and shrines can end up in one. With the retry in, 2,000 floors came out with none refused.</p>
+</div>
+
+<div class="step">
+<h3>Step 2. Blocks and thin-walled floors, with nothing new in them</h3>
+<p>The block format and its loader. A first library of thirty or so blocks. A planner that makes only a spine and a few side areas. Floors with the stairs, doors, the guardian's chamber and wanderers, and none of the new features yet. Switched on by a setting, with the old generator still there.</p>
+<p class="see">What you'd see: floors of rooms opening onto rooms, two or three times as many as now, with the guardian always in its chamber. This is the step to play and argue about feel, before anything is built on it.</p>
+</div>
+
+<div class="step">
+<h3>Step 3. Things found in places</h3>
+<p>Chests on the floor, placed battles, vaults, hidden doors, and detection for thieves, ninjas and bards. Inscriptions and shrines placed by the plan. The best loot moved into vaults.</p>
+<p class="see">What you'd see: side paths with something at the end, and the thief with a job.</p>
+</div>
+
+<div class="step">
+<h3>Step 4. Levers, gates and the first puzzles</h3>
+<p>Levers and gates with saved state. Shortcuts back towards the way in. The first handful of puzzle templates, and the count that keeps one from repeating in a dungeon.</p>
+<p class="see">What you'd see: a gate passed early that opens later, and trips home that get shorter as the guild works a tier.</p>
+</div>
+
+<div class="step">
+<h3>Step 5. Traps, pits and teleporters</h3>
+<p>Damage and ailment traps first, in block slots, with detection. Then links between a tier's two floors: pits, teleporters and second stairs. The way-home check. Rescue parties reaching a party that fell through a pit.</p>
+<p class="see">What you'd see: the first time a floor takes the party somewhere it didn't choose to go.</p>
+</div>
+
+<div class="step">
+<h3>Step 6. Affinities</h3>
+<p>What each of the four dungeons leans towards, as settings for the planner, the monster pools and the loot. Blocks and templates marked with the affinities they suit.</p>
+<p class="see">What you'd see: four dungeons that play differently, and a reason to send different parties.</p>
+</div>
+
+<div class="step">
+<h3>Step 7. The elevator and the last dungeon</h3>
+<p>The elevator's stops. The Heart Below as four short sections, one per affinity, and the Hollow King.</p>
+</div>
+
+<div class="step">
+<h3>Step 8. Retune time, and play it through</h3>
+<p>Rerun the aging measurements with two simulated players, one efficient and one thorough, and tune floor size, deep time and experience until they land on five dungeons and two or three. Then the end-to-end playthrough that was put off (#22).</p>
+</div>
+
+<p>Steps 3, 4 and 5 each add blocks and templates to the library, so the writing is spread across the work and not saved for the end.</p>
+
+<h2>How we'll know it's working</h2>
+<p>The measuring tool from the survey grows a target for each goal, and every step is run against it over a few hundred tiers.</p>
+<div class="wrap">
+<table>
+<tr><th>Goal</th><th>What gets measured</th><th>Today</th></tr>
+<tr><td>Every floor can be finished</td><td>Floors the checker refuses, and floors it passes that are wrong</td><td>1 in 130 can't be finished, and nothing checks</td></tr>
+<tr><td>Full, with lots of rooms</td><td>Rooms a floor, and the share of the map in use</td><td>14 rooms, 54%</td></tr>
+<tr><td>Gates mean something</td><td>Areas a party must pass through, and ways round each gate</td><td>None on 3 floors in 4</td></tr>
+<tr><td>Wanderers can be skirted</td><td>Loops inside an area</td><td>32 loops a floor, everywhere</td></tr>
+<tr><td>Places to hide things</td><td>Optional areas with one way in</td><td>Usually none</td></tr>
+<tr><td>The time budget</td><td>Years a dungeon for the efficient and the thorough player</td><td>About 16 and up, one kind of player</td></tr>
+<tr><td>Puzzles don't wear out</td><td>Times one template is met in a playthrough</td><td>No puzzles</td></tr>
+<tr><td>The guardian is where it should be</td><td>Where it stands relative to its stairs</td><td>Behind its door on 2 floors in 3</td></tr>
+</table>
+</div>
+
+<h2>What could go wrong</h2>
+<ul>
+  <li><strong>Floors that look assembled.</strong> Blocks on a grid can show their joins. Blocks of several sizes, turning and mirroring, and slots all help. Step 2 exists to find this out early, when changing course is cheap.</li>
+  <li><strong>The library is too small.</strong> A few hundred blocks are placed in a set. If thirty look repetitive, the answer is more blocks and better slots, and we'll know by playing step 2.</li>
+  <li><strong>The planner grows clever.</strong> It should stay a short list of rules that make small plans. If a puzzle needs the planner to be smart, that's a sign it should be a template.</li>
+  <li><strong>Wanderers in rooms that open onto rooms.</strong> They've only ever lived in corridors and separate rooms. They already wait at doors and open them, but dodging one may feel different, and density may need another look.</li>
+  <li><strong>The first pit.</strong> A cut-off party on a deep floor can be lost outright. That's intended, but the first one a player meets shouldn't be on floor 7. The plan rules can put a tier's first pit somewhere survivable.</li>
+</ul>
+
+<h2>Still to decide</h2>
+<p>None of these blocks step 1 or 2.</p>
+<ul>
+  <li><strong>Which dungeon leans which way.</strong> A starting suggestion from what each already has: the Drake's Deep to undead, the Ashen Halls to melee, the Drowned Vaults to magic, the Verdant Dark to traps.</li>
+  <li><strong>The size of a floor.</strong> 24×24 is my starting figure. Step 8 tunes it.</li>
+  <li><strong>The last dungeon's shape.</strong> Wings or a line. I lean to the line.</li>
+  <li><strong>The puzzle templates themselves.</strong> Which ones, and which you remember most fondly from other games.</li>
+  <li><strong>A party with no thief.</strong> It walks blind, by the decision on detection. Whether anything else, a spell or an item, gives a weaker warning.</li>
+</ul>
+
+</main>
+</body>
+</html>

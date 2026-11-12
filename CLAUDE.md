@@ -74,6 +74,7 @@ Example: `uv run --with Pillow python3 script.py`
 
 ### Dungeon System
 - `dungeon_generator.gd` - Procedural dungeon generation
+- `floor_checker.gd` - Refuses a generated floor that can't be played (no way to the stairs, cut-off tiles, no reachable guardian); the generator retries from the next seed
 - `enemy_manager.gd` - Enemy spawning and AI coordination
 - `enemy_ai.gd` - Individual enemy behavior decisions
 - `pathfinding.gd` - A* pathfinding for enemies
