@@ -19,6 +19,7 @@ const TEST_SUITES: Array[String] = [
 	"res://tests/unit/test_masters.gd",
 	"res://tests/unit/test_guardians.gd",
 	"res://tests/unit/test_later_sets.gd",
+	"res://tests/unit/test_floor_checker.gd",
 ]
 
 

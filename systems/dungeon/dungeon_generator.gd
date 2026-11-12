@@ -7,6 +7,8 @@ const ROOM_ATTEMPTS: int = 80
 const WINDING_PERCENT: int = 60
 const EXTRA_CONNECTOR_CHANCE: float = 0.20
 const DOOR_CHANCE: float = 0.70
+## A floor is refused about once in sixty, so this is never reached in practice.
+const MAX_ATTEMPTS: int = 20
 
 var width: int = 31
 var height: int = 31
@@ -19,7 +21,31 @@ var _regions: Array[int] = []
 var _current_region: int = -1
 
 
+## A floor the checker passes. A floor it refuses is thrown away and another
+## is made from the next seed in line, so the same seed still always gives the
+## same floor.
 func generate(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> DungeonData:
+	var dungeon: DungeonData = null
+	for attempt in range(MAX_ATTEMPTS):
+		dungeon = generate_unchecked(p_width, p_height, p_floor, _attempt_seed(p_seed, attempt))
+		var problems := FloorChecker.problems(dungeon)
+		if problems.is_empty():
+			return dungeon
+		print_debug("Floor %d from seed %d refused: %s" % [p_floor, dungeon.seed_value, ", ".join(problems)])
+	push_error("No sound floor %d in %d tries from seed %d" % [p_floor, MAX_ATTEMPTS, p_seed])
+	return dungeon
+
+
+## Attempt 0 uses the seed as given. A seed of 0 asks for a random floor.
+func _attempt_seed(p_seed: int, attempt: int) -> int:
+	if p_seed == 0 or attempt == 0:
+		return p_seed
+	var derived := hash([p_seed, attempt])
+	return derived if derived != 0 else attempt
+
+
+## One floor straight from the generator, sound or not.
+func generate_unchecked(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> DungeonData:
 	width = _make_odd(p_width)
 	height = _make_odd(p_height)
 	floor_level = p_floor
@@ -28,7 +54,9 @@ func generate(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> Dun
 		_rng.randomize()
 	else:
 		_rng.seed = p_seed
+	var used_seed := _rng.seed
 
+	_current_region = -1
 	_init_tiles()
 	_place_rooms()
 	_fill_mazes()
@@ -41,7 +69,7 @@ func generate(p_width: int, p_height: int, p_floor: int, p_seed: int = 0) -> Dun
 	dungeon.width = width
 	dungeon.height = height
 	dungeon.floor_level = floor_level
-	dungeon.seed_value = _rng.seed
+	dungeon.seed_value = used_seed
 	dungeon.tiles = _tiles.duplicate()
 	dungeon.rooms = _rooms.duplicate()
 
@@ -228,7 +256,12 @@ func _connect_regions() -> void:
 
 	var open_regions: int = _current_region + 1
 
-	connectors.shuffle()
+	# Shuffled with the floor's own generator, so a seed always gives the same floor.
+	for i in range(connectors.size() - 1, 0, -1):
+		var j := _rng.randi_range(0, i)
+		var swap: Dictionary = connectors[i]
+		connectors[i] = connectors[j]
+		connectors[j] = swap
 
 	for conn in connectors:
 		var regions: Array = conn["regions"]
