@@ -232,6 +232,7 @@ func new_game() -> void:
 	destination_dungeon_id = ""
 	pending_collapse = {}
 	pending_wipe = {}
+	pending_camp = {}
 	guild_storage = _new_guild_storage()
 	chronicle = []
 	current_floor = 1
@@ -392,19 +393,19 @@ func _collapse(dungeon: Dungeon) -> BossOutcome:
 			p.dungeon_id = ""
 			p.bank_carried()
 
-	var report := {
-		"dungeon": dungeon.dungeon_name, "master": dungeon.master_name,
-		"total": dungeon_set.dungeons.size(), "lost": lost,
-		"final_opened": false, "story_end": false, "new_set": false,
-	}
 	var who: Array[String] = []
 	for member in party.get_members():
 		if not member.is_dead:
 			who.append(member.character_name)
+	var report := {
+		"dungeon": dungeon.dungeon_name, "master": dungeon.master_name,
+		"total": dungeon_set.dungeons.size(), "lost": lost, "who": who,
+		"final_opened": false, "story_end": false, "new_set": false,
+	}
 	record("collapse", "%s slew %s, and %s collapsed." % [
-		_name_list(who), dungeon.master_name, dungeon.dungeon_name])
+		name_list(who), dungeon.master_name, dungeon.dungeon_name])
 	if not lost.is_empty():
-		record("death", "%s still lay in %s when it fell, and were lost." % [_name_list(lost), dungeon.dungeon_name])
+		record("death", "%s still lay in %s when it fell, and were lost." % [name_list(lost), dungeon.dungeon_name])
 	var outcome := BossOutcome.COLLAPSE
 	if dungeon.is_final:
 		report["new_set"] = true
@@ -425,12 +426,19 @@ func _collapse(dungeon: Dungeon) -> BossOutcome:
 	return outcome
 
 
-func _name_list(names: Array) -> String:
+func name_list(names: Array) -> String:
 	if names.is_empty():
 		return "No one"
 	if names.size() == 1:
 		return names[0]
 	return ", ".join(names.slice(0, -1)) + " and " + names[-1]
+
+
+const _COUNT_WORDS := ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
+
+## [param n] as a word for prose ("four"), or digits past twelve.
+func count_word(n: int) -> String:
+	return _COUNT_WORDS[n] if n >= 0 and n < _COUNT_WORDS.size() else str(n)
 
 
 ## Whether any party lies dead in [param dungeon], to warn before its master.
@@ -463,6 +471,8 @@ func get_boss_floors() -> Array[int]:
 var resume_at_position: bool = false
 ## A wipe for the town to report once: {names, dungeon, floor}. Not saved.
 var pending_wipe: Dictionary = {}
+## A party that just made camp below, for the town to mention once.
+var pending_camp: Dictionary = {}
 
 
 ## Makes [param p], which the guild already has, the party the player drives.
@@ -565,8 +575,8 @@ func recover_fallen(fallen: Party) -> Dictionary:
 	if left == 0:
 		parties.erase(fallen)
 	if not recovered.is_empty():
-		record("rescue", "%s carried %s up out of %s." % [
-			party_label(party), _name_list(recovered), active_dungeon().dungeon_name])
+		record("rescue", "%s found %s where they fell in %s." % [
+			party_label(party), name_list(recovered), active_dungeon().dungeon_name])
 	return {"recovered": recovered, "left": left, "gold": gold}
 
 
@@ -661,9 +671,15 @@ func settle_expedition() -> Dictionary:
 		if member.last_descent:
 			legends.append({"character": member, "lines": LastDescent.pass_on(member, party)})
 
+	# The dead come home too, the party's own and any it found below.
+	var dead: Array[String] = []
+	for member in party.get_members():
+		if member.is_dead and not member.has_left_service():
+			dead.append(member.character_name)
 	var report := {
 		"surface_days": t.trip_surface_days, "deep_days": t.trip_deep_days,
-		"members": rows, "legends": legends, "gold_banked": banked,
+		"members": rows, "legends": legends, "gold_banked": banked, "dead": dead,
+		"party": party_label(party),
 	}
 	t.deep_days = 0.0
 	t.trip_surface_days = 0

@@ -114,7 +114,7 @@ func party_fell() -> void:
 	GameState.pending_wipe = {
 		"names": names, "where": GameState.party_whereabouts(fallen).trim_prefix("lying dead in "),
 	}
-	GameState.record("wipe", "%s fell in %s." % [GameState._name_list(names), GameState.pending_wipe["where"]])
+	GameState.record("wipe", "%s fell in %s." % [GameState.name_list(names), GameState.pending_wipe["where"]])
 	GameState.leave_party_below()
 	GameState.set_mode(GameState.GameMode.TOWN)
 	SaveManager.autosave()
@@ -123,7 +123,11 @@ func party_fell() -> void:
 
 ## The active party makes camp below and the player turns to another party.
 func camp_party() -> void:
+	var camped := GameState.party
 	GameState.leave_party_below()
+	GameState.pending_camp = {
+		"party": GameState.party_label(camped), "where": GameState.party_whereabouts(camped),
+	}
 	GameState.set_mode(GameState.GameMode.TOWN)
 	SaveManager.autosave()
 	change_scene("town")

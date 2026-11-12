@@ -53,6 +53,9 @@ func _ready() -> void:
 	elif not GameState.pending_collapse.is_empty():
 		_show_collapse(GameState.pending_collapse)
 		GameState.pending_collapse = {}
+	elif not GameState.pending_camp.is_empty():
+		_show_camp(GameState.pending_camp)
+		GameState.pending_camp = {}
 	else:
 		_show_homecoming_if_due()
 
@@ -64,7 +67,23 @@ var _homecoming: Dictionary = {}
 func _show_homecoming_if_due() -> void:
 	if _homecoming_worth_showing(_homecoming):
 		_show_homecoming.call_deferred(_homecoming)
+	elif int(_homecoming.get("gold_banked", 0)) > 0:
+		_flash_gold_gain(int(_homecoming["gold_banked"]))
 	_homecoming = {}
+
+
+## A short "+N" beside the guild's gold, for a trip that came home with some
+## but nothing else worth a card.
+func _flash_gold_gain(amount: int) -> void:
+	var gain := Label.new()
+	gain.text = "+%d" % amount
+	gain.add_theme_color_override("font_color", UIColors.GOLD)
+	gain.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_gold_box.add_child(gain)
+	var tween := create_tween()
+	tween.tween_interval(3.0)
+	tween.tween_property(gain, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(gain.queue_free)
 
 
 ## One line under the title that keeps the campaign goal in view.
@@ -104,12 +123,10 @@ func _show_intro() -> void:
 	var names: Array[String] = []
 	for d in dungeon_set.dungeons:
 		names.append(d.dungeon_name)
-	var name_list := ", ".join(names.slice(0, -1)) + " and " + names[-1]
-
 	var col := _open_modal("The Guild Charter")
 	var paragraphs: Array[String] = [
-		"%d dungeons have opened beneath the town: %s. Each goes down %d floors, and at the bottom of each a master sleeps, whose servants creep up through the halls above." % [
-			names.size(), name_list, dungeon_set.dungeons[0].depth],
+		"%s dungeons have opened beneath the town: %s. Each goes down %d floors, and at the bottom of each a master sleeps, whose servants creep up through the halls above." % [
+			GameState.count_word(names.size()).capitalize(), GameState.name_list(names), dungeon_set.dungeons[0].depth],
 		"The council has chartered your guild to end them. Six adventurers have already signed on. Outfit them at the Shop, rest them at the Inn, and go below, into whichever dungeon you choose. Guardians seal the stairs on the way down. Slay a master and its dungeon collapses, but its power pours into the dungeons that remain, deepest first.",
 		"One more thing. Time runs faster the deeper you go. A day on the first floor is a day, but the deep halls can take years off a life in a few days, and those who stay in town don't age with them. Choose who you send with care.",
 	]
@@ -121,10 +138,13 @@ func _show_intro() -> void:
 ## What a master's fall brought down, and what it means for the rest.
 func _show_collapse(report: Dictionary) -> void:
 	var col := _open_modal("%s Has Collapsed" % report.get("dungeon", "The Dungeon"))
-	col.add_child(_modal_paragraph("%s is dead, and the dungeon came down behind the party as it cast them out. Nothing is left of it but a scar in the hillside." % report.get("master", "Its master")))
+	var who: Array = report.get("who", [])
+	var slayers := GameState.name_list(who) if not who.is_empty() else "The party"
+	col.add_child(_modal_paragraph("%s slew %s, and the dungeon came down behind them as it cast them out. Nothing is left of it but a scar in the hillside." % [
+		slayers, report.get("master", "its master")]))
 	var lost: Array = report.get("lost", [])
 	if not lost.is_empty():
-		var p := _modal_paragraph("%s still lay below when it fell, and won't be seen again." % ", ".join(lost))
+		var p := _modal_paragraph("%s still lay below when it fell, and won't be seen again." % GameState.name_list(lost))
 		p.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
 		col.add_child(p)
 	var note := ""
@@ -135,7 +155,7 @@ func _show_collapse(report: Dictionary) -> void:
 	else:
 		var fallen: int = report.get("collapsed", 0)
 		var total: int = report.get("total", 4)
-		note = "%d of %d dungeons have collapsed. The power that held this one up has poured into those that remain, and it pools in their depths. Their upper floors are as they were. The deep ones are worse." % [fallen, total]
+		note = "%s. The power that held this one up has poured into those that remain, and it pools in their depths. Their upper floors are as they were. The deep ones are worse." % _collapsed_of(fallen, total)
 	var note_label := _modal_paragraph(note)
 	note_label.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
 	col.add_child(note_label)
@@ -147,10 +167,28 @@ func _show_wipe(report: Dictionary) -> void:
 	var col := _open_modal("The Party Has Fallen")
 	var names: Array = report.get("names", [])
 	col.add_child(_modal_paragraph("%s didn't come back. They lie in %s, with everything they carried." % [
-		", ".join(names), report.get("where", "the dungeon")]))
-	var p := _modal_paragraph("They can still be brought home. Gather another party at the Guild Hall, find where they fell, and carry them up to the Temple. But if that dungeon's master is slain while they lie there, the collapse will take them for good.")
+		GameState.name_list(names), report.get("where", "the dungeon")]))
+	var p := _modal_paragraph("They can still be brought home. Send another party down with room to carry them, since a party holds six, living or dead. Find where they fell and bring them up to the Temple. But if that dungeon's master is slain while they lie there, the collapse will take them for good.")
 	p.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
 	col.add_child(p)
+	_add_modal_button(col, "Continue")
+
+
+## "One of the four dungeons has collapsed", for the cards.
+func _collapsed_of(fallen: int, total: int) -> String:
+	return "%s of the %s dungeons %s collapsed" % [GameState.count_word(fallen).capitalize(),
+		GameState.count_word(total), "has" if fallen == 1 else "have"]
+
+
+## A party has made camp below and the player has turned to another.
+func _show_camp(report: Dictionary) -> void:
+	var col := _open_modal("Camp Made")
+	col.add_child(_modal_paragraph("%s is %s, and will wait there as it is until you come back to it from Parties." % [
+		report.get("party", "The party"), report.get("where", "camped below")]))
+	if GameState.party.is_empty():
+		col.add_child(_modal_paragraph("No other party is gathered in town. The Guild Hall can put one together."))
+	else:
+		col.add_child(_modal_paragraph("You're with %s now." % GameState.party_label(GameState.party)))
 	_add_modal_button(col, "Continue")
 
 
@@ -197,8 +235,8 @@ func _show_dungeon_picker() -> void:
 	var col := _open_modal("Which Dungeon?")
 	var fallen := GameState.dungeon_set.collapsed_count()
 	if fallen > 0:
-		col.add_child(_modal_paragraph("%d of %d have collapsed, and their power has gathered in the depths of the rest." % [
-			fallen, GameState.dungeon_set.dungeons.size()]))
+		col.add_child(_modal_paragraph("%s, and %s power has gathered in the depths of the rest." % [_collapsed_of(
+			fallen, GameState.dungeon_set.dungeons.size()), "its" if fallen == 1 else "their"]))
 	_choice_buttons.clear()
 	for dungeon in open:
 		var button := Button.new()
@@ -242,7 +280,7 @@ func _homecoming_worth_showing(report: Dictionary) -> bool:
 		return false
 	if int(report.get("deep_days", 0)) >= GameCalendar.DAYS_PER_MONTH:
 		return true
-	if not report.get("legends", []).is_empty():
+	if not report.get("legends", []).is_empty() or not report.get("dead", []).is_empty():
 		return true
 	for row: Dictionary in report.get("members", []):
 		if row["died_of_age"] or row["phase_after"] != row["phase_before"]:
@@ -311,6 +349,10 @@ func _show_homecoming(report: Dictionary) -> void:
 	var banked: int = report.get("gold_banked", 0)
 	if banked > 0:
 		col.add_child(_modal_paragraph("The party brought %d gold up with them, and it's gone into the guild's coffers." % banked))
+	var dead: Array = report.get("dead", [])
+	if not dead.is_empty():
+		col.add_child(_modal_paragraph("%s came home dead. The Temple can try to raise %s." % [
+			GameState.name_list(dead), "them" if dead.size() > 1 else "the body"]))
 	for note in notes:
 		var p := _modal_paragraph(note)
 		p.add_theme_color_override("font_color", UIColors.TITLE_GOLD)
@@ -351,58 +393,12 @@ static func _span(days: int) -> String:
 
 ## Opens a centered modal panel above the menu and returns its column.
 func _open_modal(title_text: String) -> VBoxContainer:
-	# A CanvasLayer keeps the modal above the menu cursor and its effects.
-	_modal = CanvasLayer.new()
-	_modal.layer = 10
-	add_child(_modal)
-
-	var dim := ColorRect.new()
-	dim.color = UIColors.SURFACE_MODAL_OVERLAY
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_modal.add_child(dim)
-
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# Controls under a CanvasLayer don't inherit the root window's theme.
-	center.theme = get_tree().root.theme
-	_modal.add_child(center)
-
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(640, 0)
-	center.add_child(panel)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right"]:
-		margin.add_theme_constant_override("margin_" + side, 36)
-	for side in ["top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 28)
-	panel.add_child(margin)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 14)
-	margin.add_child(col)
-
-	var title := Label.new()
-	title.theme_type_variation = &"TitleLabel"
-	title.text = title_text
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(title)
-
-	var divider := ArcaneDivider.new()
-	divider.custom_minimum_size = Vector2(320, 14)
-	divider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	col.add_child(divider)
-	return col
+	_modal = ModalCard.open(self, title_text)
+	return ModalCard.body(_modal)
 
 
 func _modal_paragraph(text: String) -> Label:
-	var p := Label.new()
-	p.theme_type_variation = &"SubtitleLabel"
-	p.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	p.custom_minimum_size = Vector2(560, 0)
-	p.text = text
-	return p
+	return ModalCard.paragraph(text)
 
 
 var _modal_on_close: Callable = Callable()
@@ -437,19 +433,26 @@ func _close_modal() -> void:
 
 
 func _build_rows() -> void:
-	for d in DESTS:
+	var shown: Array[Dictionary] = []
+	for d: Dictionary in DESTS:
 		# AutoExplore is a balancing tool: it stocks free test potions and can
 		# refight bosses, so it stays out of release builds.
 		if d.get("debug_only", false) and not OS.is_debug_build():
 			continue
 		if d.get("needs_others", false) and GameState.other_parties().is_empty():
 			continue
+		shown.append(d)
+	# Keep the menu clear of the controls hint at the bottom of the screen.
+	$CenterContainer.offset_bottom = -40.0
+	var row_height := 60.0 if shown.size() <= 8 else 54.0
+	for d in shown:
 		if d.get("primary", false):
 			var gap := Control.new()
 			gap.custom_minimum_size = Vector2(0, 10)
 			gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_content.add_child(gap)
 		var b := _make_row(d)
+		b.custom_minimum_size.y = row_height
 		b.pressed.connect(_on_dest.bind(d["id"]))
 		_content.add_child(b)
 		_rows.append(b)

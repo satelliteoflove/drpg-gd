@@ -837,11 +837,11 @@ func _announce_fallen() -> void:
 	var here := GameState.active_dungeon()
 	var lines: Array[String] = []
 	for fallen in GameState.fallen_parties_on(GameState.current_floor):
-		lines.append("%s lies dead somewhere on this floor. Find them to bring them home." % GameState.party_label(fallen))
+		lines.append("%s lies dead on this floor, and the map marks where. Bring them home." % GameState.party_label(fallen))
 	if GameState.current_floor >= here.depth:
 		var below := GameState.bodies_below(here)
 		if not below.is_empty():
-			lines.append("If this dungeon's master falls, the dungeon falls with it, and %s will be lost for good." % ", ".join(below))
+			lines.append("If this dungeon's master falls, the dungeon falls with it, and %s will be lost for good." % GameState.name_list(below))
 	if not lines.is_empty():
 		_show_dungeon_message(" ".join(lines))
 
@@ -855,13 +855,14 @@ func _recover_fallen_here() -> void:
 		var recovered: Array = result["recovered"]
 		var text := ""
 		if recovered.is_empty():
-			text = "The dead lie here, but there's no room in the party to carry anyone."
+			text = "The dead lie here, but the party is full and can't carry anyone."
 		else:
-			text = "The party gathers up %s." % ", ".join(recovered)
-			if result["gold"] > 0:
-				text += " They had %d gold on them." % result["gold"]
-			if result["left"] > 0:
-				text += " %d more will have to wait for another trip." % result["left"]
+			text = "The party gathers up %s." % GameState.name_list(recovered)
+		if result["gold"] > 0:
+			text += " %s %d gold on them, and the party takes it." % [
+				"They had" if not recovered.is_empty() else "The dead had", result["gold"]]
+		if not recovered.is_empty() and result["left"] > 0:
+			text += " %s more will have to wait for another trip." % GameState.count_word(result["left"]).capitalize()
 		_show_dungeon_message(text)
 		if _vitals_strip:
 			_vitals_strip.refresh()
@@ -951,8 +952,61 @@ func _update_enemy_sprites() -> void:
 
 
 func _on_enemy_combat_triggered(group: EnemyGroup) -> void:
+	if _needs_master_warning(group):
+		_ask_before_master(group)
+		return
 	var encounter := _create_encounter_from_group(group)
 	_open_combat(encounter)
+
+
+## The confirmation before a master's fight while bodies still lie below.
+var _master_prompt: CanvasLayer = null
+var _master_nav: MenuNavigator = null
+var _master_confirmed := false
+
+
+func _needs_master_warning(group: EnemyGroup) -> bool:
+	if group.ai_type != EnemyGroup.AIType.BOSS or _master_confirmed:
+		return false
+	var here := GameState.active_dungeon()
+	return GameState.current_floor >= here.depth and not GameState.bodies_below(here).is_empty()
+
+
+func _ask_before_master(group: EnemyGroup) -> void:
+	event_open = true
+	var here := GameState.active_dungeon()
+	var below := GameState.bodies_below(here)
+	_master_prompt = ModalCard.open($UI, "Before the Master")
+	var col := ModalCard.body(_master_prompt)
+	var warning := ModalCard.paragraph("%s still %s in %s. If %s falls, the dungeon falls with it, and %s lost for good." % [
+		GameState.name_list(below), "lies" if below.size() == 1 else "lie", here.dungeon_name,
+		here.master_name, "they'll be" if below.size() > 1 else "that body will be"])
+	warning.add_theme_color_override("font_color", UIColors.TEXT_DANGER)
+	col.add_child(warning)
+	var fight := ModalCard.choice_button("Fight")
+	fight.pressed.connect(_on_master_choice.bind(group, true))
+	col.add_child(fight)
+	var back := ModalCard.choice_button("Fall Back")
+	back.pressed.connect(_on_master_choice.bind(group, false))
+	col.add_child(back)
+	var buttons: Array[Button] = [fight, back]
+	_master_nav = MenuNavigator.new()
+	_master_nav.setup(buttons, 1)
+
+
+func _on_master_choice(group: EnemyGroup, fight: bool) -> void:
+	if _master_prompt:
+		_master_prompt.queue_free()
+	_master_prompt = null
+	_master_nav = null
+	event_open = false
+	if fight:
+		_master_confirmed = true
+		_open_combat(_create_encounter_from_group(group))
+	else:
+		grid_position = previous_grid_position
+		GameState.dungeon_player_position = grid_position
+		movement.update_camera_transform()
 
 
 func _on_enemy_spawned(group: EnemyGroup) -> void:
@@ -1028,6 +1082,14 @@ func _tick_exploration_effects() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _master_nav:
+		get_viewport().set_input_as_handled()
+		if event.is_action_pressed("menu_cancel"):
+			_master_nav.select(1)
+			_master_nav.get_current_item().pressed.emit()
+		else:
+			_master_nav.handle_input(event)
+		return
 	if combat_open:
 		return
 

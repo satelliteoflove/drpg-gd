@@ -242,6 +242,7 @@ func _apply_save_data(data) -> void:
 	GameState._active_party = null
 	GameState.pending_collapse = {}
 	GameState.pending_wipe = {}
+	GameState.pending_camp = {}
 	GameState.guild_storage = data.guild_storage.duplicate(true) if data.guild_storage else GameState._new_guild_storage()
 	_deduplicate_inventory_items(GameState.guild_storage)
 	GameState.chronicle = data.chronicle.duplicate(true)
