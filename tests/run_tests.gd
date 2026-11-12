@@ -20,6 +20,7 @@ const TEST_SUITES: Array[String] = [
 
 
 func _init() -> void:
+	OS.add_logger(TestBase.ScriptErrorCounter.new())
 	call_deferred("_run_all_tests")
 
 
@@ -47,19 +48,15 @@ func _run_all_tests() -> void:
 
 
 func _run_suite(path: String) -> void:
-	if not ResourceLoader.exists(path):
-		print("SKIP: %s (not found)" % path)
-		return
-
-	var script: Script = load(path)
-	if script == null:
-		print("SKIP: %s (failed to load)" % path)
+	# A suite that's missing or won't compile is a failure, not a skip.
+	var script: Script = load(path) if ResourceLoader.exists(path) else null
+	if script == null or not script.can_instantiate():
+		_total_failed += 1
+		_all_errors.append("%s: Failed to load." % path.get_file())
+		print("FAIL: %s (failed to load)" % path)
 		return
 
 	var suite = script.new()
-	if suite == null:
-		print("SKIP: %s (failed to instantiate)" % path)
-		return
 
 	print("Suite: %s" % path.get_file())
 	var result: Dictionary = suite.run_all()
